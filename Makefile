@@ -8,7 +8,11 @@ src/$(TARGET).elf :
 run : src/$(TARGET).elf
 	mkdir -p mnt/EFI/BOOT
 	cp src/$(TARGET).elf mnt/EFI/BOOT/BOOTX64.EFI
-	$(QEMU) -bios $(OVMF) -drive file=fat:ro:mnt
+	$(QEMU) \
+		-bios $(OVMF) \
+		-drive file=fat:ro:mnt \
+		-vnc :5,password \
+		-monitor stdio
 
 clean :
 	make -C src clean

@@ -1,3 +1,4 @@
 *.lib
 *.elf
 *.o
+*.manifest

@@ -1,15 +1,22 @@
 TARGET=efimain
-CC=$(shell brew --prefix llvm)/bin/clang
-LD=$(shell brew --prefix llvm)/bin/lld-link
 OVMF=ovmf/bios64.bin
 QEMU=qemu-system-x86_64
+
+OSNAME=${shell uname -s}
+ifeq ($(OSNAME),Darwin)
+	CC=$(shell brew --prefix llvm)/bin/clang
+	LD=$(shell brew --prefix llvm)/bin/lld-link	
+else
+	CC=clang
+	LD=lld-link-4.0
+endif
 
 LIBOBJS=$(addsuffix .o, $(basename $(wildcard libuefi/*.c)))
 
 default: $(TARGET).elf
 
 %.o : %.c Makefile
-	clang \
+	$(CC) \
 		-target x86_64-pc-win32-coff \
 		-Iinclude \
 		-fno-stack-protector -fshort-wchar -mno-red-zone \
