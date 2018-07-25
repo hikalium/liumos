@@ -3,15 +3,22 @@ A toy operating system supports UEFI boot.
 
 ## Requirements
 
-Currently, this project is built and tested on macOS (10.13.6).
+### macOS
 
+- Tested on 10.13.6
+
+Install following packages via [Homebrew](https://brew.sh/).
 - qemu (for qemu-system-x86_64)
 - llvm (for clang, lld-link)
 
-Install these packages via [Homebrew](https://brew.sh/).
-
 ```
 brew install qemu llvm
+```
+
+### Ubuntu 18.04
+
+```
+sudo apt install clang lld-4.0 qemu
 ```
 
 ## How to build
