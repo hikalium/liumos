@@ -1,19 +1,20 @@
-TARGET=efimain
+OBJS=efimain.o
 OVMF=ovmf/bios64.bin
 QEMU=qemu-system-x86_64
 
 OSNAME=${shell uname -s}
 ifeq ($(OSNAME),Darwin)
-	CC=$(shell brew --prefix llvm)/bin/clang
-	LD=$(shell brew --prefix llvm)/bin/lld-link	
+	LLVM_PREFIX:=$(shell brew --prefix llvm)
+	CC:=$(LLVM_PREFIX)/bin/clang
+	LD:=$(LLVM_PREFIX)/bin/lld-link	
 else
-	CC=clang
-	LD=lld-link-4.0
+	CC:=clang
+	LD:=lld-link-4.0
 endif
 
 LIBOBJS=$(addsuffix .o, $(basename $(wildcard libuefi/*.c)))
 
-default: $(TARGET).elf
+default: BOOTX64.EFI
 
 %.o : %.c Makefile
 	$(CC) \
@@ -23,11 +24,12 @@ default: $(TARGET).elf
 		-Wno-incompatible-library-redeclaration \
 		-c -o $*.o $*.c
 
-%.elf : %.o $(LIBOBJS) Makefile
+BOOTX64.EFI : $(OBJS) $(LIBOBJS) Makefile
 	$(LD) \
 		-subsystem:efi_application -nodefaultlib -dll \
-		-entry:efi_main $*.o $(LIBOBJS) -out:$@
+		-entry:efi_main $(OBJS) $(LIBOBJS) -out:$@
 
 clean :
-	-rm *.elf
+	-rm *.EFI
 	-rm *.lib
+	-rm *.o
