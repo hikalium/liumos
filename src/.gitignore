@@ -2,3 +2,4 @@
 *.elf
 *.o
 *.manifest
+*.swp

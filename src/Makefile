@@ -12,22 +12,24 @@ else
 	LD:=lld-link-4.0
 endif
 
-LIBOBJS=$(addsuffix .o, $(basename $(wildcard libuefi/*.c)))
-
 default: BOOTX64.EFI
 
 %.o : %.c Makefile
 	$(CC) \
 		-target x86_64-pc-win32-coff \
-		-Iinclude \
-		-fno-stack-protector -fshort-wchar -mno-red-zone \
-		-Wno-incompatible-library-redeclaration \
+		-fno-stack-protector -fshort-wchar \
+		-mno-red-zone \
+		-nostdlibinc \
+		-Wall -Wpedantic \
 		-c -o $*.o $*.c
 
-BOOTX64.EFI : $(OBJS) $(LIBOBJS) Makefile
+BOOTX64.EFI : $(OBJS) Makefile
 	$(LD) \
 		-subsystem:efi_application -nodefaultlib -dll \
-		-entry:efi_main $(OBJS) $(LIBOBJS) -out:$@
+		-entry:efi_main $(OBJS) -out:$@
+
+run:
+	make -C .. run
 
 clean :
 	-rm *.EFI
