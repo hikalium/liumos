@@ -1,4 +1,5 @@
 OBJS=efimain.o
+HEADERS=efi.h
 OVMF=ovmf/bios64.bin
 QEMU=qemu-system-x86_64
 
@@ -14,7 +15,7 @@ endif
 
 default: BOOTX64.EFI
 
-%.o : %.c Makefile
+%.o : %.c $(HEADERS) Makefile
 	$(CC) \
 		-target x86_64-pc-win32-coff \
 		-fno-stack-protector -fshort-wchar \
@@ -23,7 +24,7 @@ default: BOOTX64.EFI
 		-Wall -Wpedantic \
 		-c -o $*.o $*.c
 
-BOOTX64.EFI : $(OBJS) Makefile
+BOOTX64.EFI : $(OBJS) $(HEADERS) Makefile
 	$(LD) \
 		-subsystem:efi_application -nodefaultlib -dll \
 		-entry:efi_main $(OBJS) -out:$@
