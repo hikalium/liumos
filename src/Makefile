@@ -19,7 +19,7 @@ default: BOOTX64.EFI
 	$(CC) \
 		-target x86_64-pc-win32-coff \
 		-fno-stack-protector -fshort-wchar \
-		-mno-red-zone -mno-sse\
+		-mno-red-zone \
 		-nostdlibinc \
 		-Wall -Wpedantic \
 		-c -o $*.o $*.c
