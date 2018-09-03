@@ -1,3 +1,4 @@
 mnt/
 *.EFI
 .DS_Store
+*.img

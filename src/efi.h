@@ -1,5 +1,7 @@
 typedef unsigned short wchar_t;
 
+#define EFI_MEMORY_NV 0x8000
+
 typedef enum {
   EfiResetCold,
   EfiResetWarm,
@@ -38,6 +40,7 @@ typedef struct EFI_DEVICE_PATH_PROTOCOL EFIDevicePathProtocol;
 typedef struct EFI_GUID EFIGUID;
 typedef struct EFI_BOOT_SERVICES EFIBootServices;
 typedef struct EFI_SYSTEM_TABLE EFISystemTable;
+typedef uint64_t EFI_UINTN;
 
 struct EFI_TABLE_HEADER {
   uint64_t signature;
@@ -89,11 +92,11 @@ struct EFI_RUNTIME_SERVICES {
 };
 
 struct EFI_MEMORY_DESCRIPTOR {
-  unsigned int Type;
-  uint64_t PhysicalStart;
-  uint64_t VirtualStart;
-  uint64_t NumberOfPages;
-  uint64_t Attribute;
+  unsigned int type;
+  uint64_t physical_start;
+  uint64_t virtual_start;
+  uint64_t number_of_pages;
+  uint64_t attribute;
 };
 
 struct EFI_DEVICE_PATH_PROTOCOL {
