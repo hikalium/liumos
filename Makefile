@@ -17,10 +17,9 @@ QEMU_ARGS_PMEM=\
 					 -drive file=fat:ro:mnt
 
 
-ifdef $(SSH_CONNECTION)
+ifdef SSH_CONNECTION
 QEMU_ARGS+=-vnc :5,password
-else
-QEMU_ARGS+=
+QEMU_ARGS_PMEM+=-vnc :5,password
 endif
 
 src/BOOTX64.EFI : .FORCE
