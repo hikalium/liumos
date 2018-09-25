@@ -1,5 +1,5 @@
-OBJS=efimain.o
-HEADERS=efi.h
+OBJS=efi.o guid.o liumos.o static.o
+HEADERS=efi.h acpi.h liumos.h
 OVMF=ovmf/bios64.bin
 QEMU=qemu-system-x86_64
 
@@ -26,7 +26,7 @@ default: BOOTX64.EFI
 
 BOOTX64.EFI : $(OBJS) $(HEADERS) Makefile
 	$(LD) \
-		-subsystem:efi_application -nodefaultlib -dll \
+		-subsystem:efi_application -nodefaultlib \
 		-entry:efi_main $(OBJS) -out:$@
 
 run:
@@ -36,3 +36,6 @@ clean :
 	-rm *.EFI
 	-rm *.lib
 	-rm *.o
+
+format :
+	clang-format -i *.c *.h

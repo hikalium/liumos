@@ -42,3 +42,6 @@ run_pmem : src/BOOTX64.EFI pmem.img
 
 clean :
 	make -C src clean
+
+format :
+	make -C src format
