@@ -26,12 +26,16 @@ void EFIPutString(wchar_t* s) {
   _system_table->con_out->output_string(_system_table->con_out, s);
 }
 
-void EFIPutCString(char* s) {
+void EFIPutChar(wchar_t c) {
   wchar_t buf[2];
+  buf[0] = c;
   buf[1] = 0;
+  _system_table->con_out->output_string(_system_table->con_out, buf);
+}
+
+void EFIPutCString(char* s) {
   while (*s) {
-    buf[0] = *s;
-    _system_table->con_out->output_string(_system_table->con_out, buf);
+    EFIPutChar(*s);
     s++;
   }
 }
@@ -43,6 +47,15 @@ void EFIPutnCString(char* s, int n) {
     buf[0] = s[i];
     _system_table->con_out->output_string(_system_table->con_out, buf);
   }
+}
+
+wchar_t EFIGetChar() {
+  EFIInputKey key;
+  while (1) {
+    if (!_system_table->con_in->ReadKeyStroke(_system_table->con_in, &key))
+      break;
+  }
+  return key.UnicodeChar;
 }
 
 void EFIGetMemoryMap() {

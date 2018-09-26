@@ -61,7 +61,7 @@ struct EFI_TABLE_HEADER {
 
 struct EFI_INPUT_KEY {
   uint16_t ScanCode;
-  uint16_t UnicodeChar;
+  wchar_t UnicodeChar;
 };
 
 struct EFI_SIMPLE_TEXT_INPUT_PROTOCOL {
@@ -364,9 +364,11 @@ struct EFI_DEVICE_PATH_UTILITIES_PROTOCOL {
 bool IsEqualStringWithSize(const char* s1, const char* s2, int n);
 void EFIInit(struct EFI_SYSTEM_TABLE* system_table);
 void EFIClearScreen();
+void EFIPutChar(wchar_t c);
 void EFIPutString(wchar_t* s);
 void EFIPutCString(char* s);
 void EFIPutnCString(char* s, int n);
+wchar_t EFIGetChar();
 void EFIGetMemoryMap();
 void EFIPrintHex64(uint64_t value);
 void EFIPrintStringAndHex(wchar_t* s, uint64_t value);

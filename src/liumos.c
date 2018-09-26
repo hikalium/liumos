@@ -52,5 +52,7 @@ void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
 
   // EFIPrintMemoryMap();
   while (1) {
+    wchar_t c = EFIGetChar();
+    EFIPutChar(c);
   };
 }
