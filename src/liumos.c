@@ -1,7 +1,15 @@
 #include "liumos.h"
 
+void InitEFI(EFISystemTable* system_table) {
+  _system_table = system_table;
+  _system_table->boot_services->SetWatchdogTimer(0, 0, 0, NULL);
+  _system_table->boot_services->LocateProtocol(
+      &EFI_GraphicsOutputProtocolGUID, NULL,
+      (void**)&efi_graphics_output_protocol);
+}
+
 void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
-  EFIInit(system_table);
+  InitEFI(system_table);
   EFIClearScreen();
   EFIPutString(L"Hello, liumOS world!...\r\n");
   EFIGetMemoryMap();
@@ -47,6 +55,18 @@ void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
       EFIPrintStringAndHex(L"PMEM Previous value: ", *p);
       *p = *p + 3;
       EFIPrintStringAndHex(L"PMEM value after write: ", *p);
+    }
+  }
+
+  uint8_t* vram = efi_graphics_output_protocol->mode->frame_buffer_base;
+  int xsize = efi_graphics_output_protocol->mode->info->horizontal_resolution;
+  int ysize = efi_graphics_output_protocol->mode->info->vertical_resolution;
+
+  for (int y = 0; y < ysize; y++) {
+    for (int x = 0; x < xsize; x++) {
+      vram[(xsize * y + x) * 4] = x;
+      vram[(xsize * y + x) * 4 + 1] = y;
+      vram[(xsize * y + x) * 4 + 2] = x + y;
     }
   }
 

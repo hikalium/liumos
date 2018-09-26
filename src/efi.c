@@ -3,6 +3,8 @@
 #define MEMORY_MAP_ENTRIES 64
 
 EFISystemTable* _system_table;
+EFIGraphicsOutputProtocol* efi_graphics_output_protocol;
+
 EFIMemoryDescriptor memory_map[MEMORY_MAP_ENTRIES];
 EFI_UINTN memory_map_used;
 
@@ -12,10 +14,6 @@ bool IsEqualStringWithSize(const char* s1, const char* s2, int n) {
       return false;
   }
   return true;
-}
-
-void EFIInit(struct EFI_SYSTEM_TABLE* system_table) {
-  _system_table = system_table;
 }
 
 void EFIClearScreen() {

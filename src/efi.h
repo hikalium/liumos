@@ -45,6 +45,7 @@ typedef struct EFI_MEMORY_DESCRIPTOR EFIMemoryDescriptor;
 typedef struct EFI_DEVICE_PATH_PROTOCOL EFIDevicePathProtocol;
 typedef struct EFI_BOOT_SERVICES EFIBootServices;
 typedef struct EFI_SYSTEM_TABLE EFISystemTable;
+typedef struct EFI_GRAPHICS_OUTPUT_PROTOCOL EFIGraphicsOutputProtocol;
 
 struct EFI_CONFIGURATION_TABLE {
   GUID vendor_guid;
@@ -165,7 +166,7 @@ struct EFI_BOOT_SERVICES {
                            unsigned int Attributes);
   uint64_t _buf9[2];
   uint64_t _buf10[2];
-  uint64_t (*LocateProtocol)(GUID* Protocol,
+  uint64_t (*LocateProtocol)(const GUID* Protocol,
                              void* Registration,
                              void** Interface);
   uint64_t _buf10_2[2];
@@ -201,24 +202,24 @@ struct EFI_GRAPHICS_OUTPUT_BLT_PIXEL {
 struct EFI_GRAPHICS_OUTPUT_PROTOCOL {
   uint64_t _buf[3];
   struct EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE {
-    unsigned int MaxMode;
-    unsigned int Mode;
+    unsigned int max_mode;
+    unsigned int mode;
     struct EFI_GRAPHICS_OUTPUT_MODE_INFORMATION {
-      unsigned int Version;
-      unsigned int HorizontalResolution;
-      unsigned int VerticalResolution;
+      unsigned int version;
+      unsigned int horizontal_resolution;
+      unsigned int vertical_resolution;
       enum EFI_GRAPHICS_PIXEL_FORMAT {
-        PixelRedGreenBlueReserved8BitPerColor,
-        PixelBlueGreenRedReserved8BitPerColor,
-        PixelBitMask,
-        PixelBltOnly,
-        PixelFormatMax
-      } PixelFormat;
-    } * Info;
-    uint64_t SizeOfInfo;
-    uint64_t FrameBufferBase;
-    uint64_t FrameBufferSize;
-  } * Mode;
+        kPixelRedGreenBlueReserved8BitPerColor,
+        kPixelBlueGreenRedReserved8BitPerColor,
+        kPixelBitMask,
+        kPixelBltOnly,
+        kPixelFormatMax
+      } pixel_format;
+    } * info;
+    uint64_t size_of_info;
+    void* frame_buffer_base;
+    uint64_t frame_buffer_size;
+  } * mode;
 };
 
 struct EFI_SIMPLE_POINTER_STATE {
@@ -361,8 +362,10 @@ struct EFI_DEVICE_PATH_UTILITIES_PROTOCOL {
       const struct EFI_DEVICE_PATH_PROTOCOL* DeviceNode);
 };
 
+extern EFISystemTable* _system_table;
+extern EFIGraphicsOutputProtocol* efi_graphics_output_protocol;
+
 bool IsEqualStringWithSize(const char* s1, const char* s2, int n);
-void EFIInit(struct EFI_SYSTEM_TABLE* system_table);
 void EFIClearScreen();
 void EFIPutChar(wchar_t c);
 void EFIPutString(wchar_t* s);

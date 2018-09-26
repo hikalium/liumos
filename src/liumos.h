@@ -7,3 +7,4 @@
 
 // @static.c
 extern const GUID EFI_ACPITableGUID;
+extern const GUID EFI_GraphicsOutputProtocolGUID;
