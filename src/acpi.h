@@ -11,6 +11,9 @@ typedef struct ACPI_EXTENDED_SYSTEM_DESCRIPTION_TABLE ACPI_XSDT;
 typedef struct ACPI_NVDIMM_FIRMWARE_INTERFACE_TABLE ACPI_NFIT;
 typedef struct ACPI_NFIT_SYSTEM_PHYSICAL_ADDRESS_RANGE_STRUCTURE
     ACPI_NFIT_SPARange;
+typedef struct ACPI_GENERIC_ADDRESS_STRUCTURE ACPI_GAS;
+typedef struct ACPI_HPET_DESCRIPTION_TABLE ACPI_HPET;
+typedef struct HPET_REGISTER_SPACE HPETRegisterSpace;
 
 packed_struct ACPI_ROOT_SYSTEM_DESCRIPTION_POINTER {
   char signature[8];
@@ -72,4 +75,41 @@ packed_struct ACPI_NFIT_SYSTEM_PHYSICAL_ADDRESS_RANGE_STRUCTURE {
   uint64_t system_physical_address_range_base;
   uint64_t system_physical_address_range_length;
   uint64_t address_range_memory_mapping_attribute;
+};
+
+packed_struct ACPI_GENERIC_ADDRESS_STRUCTURE {
+  uint8_t address_space_id;
+  uint8_t register_bit_width;
+  uint8_t register_bit_offset;
+  uint8_t reserved;
+  void* address;
+};
+
+packed_struct ACPI_HPET_DESCRIPTION_TABLE {
+  char signature[4];
+  uint32_t length;
+  uint8_t revision;
+  uint8_t checksum;
+  uint8_t oem_id[6];
+  uint64_t oem_table_id;
+  uint32_t oem_revision;
+  uint32_t creator_id;
+  uint32_t creator_revision;
+  uint32_t event_timer_block_id;
+  ACPI_GAS base_address;
+  uint8_t hpet_number;
+  uint16_t main_counter_minimum_clock_tick_in_periodic_mode;
+  uint8_t page_protection_and_oem_attribute;
+};
+
+packed_struct HPET_REGISTER_SPACE {
+  uint64_t general_capabilities_and_id;
+  uint64_t reserved00;
+  uint64_t general_configuration;
+  uint64_t reserved01;
+  uint64_t general_interrupt_status;
+  uint64_t reserved02;
+  uint64_t reserved03[24];
+  uint64_t main_counter_value;
+  uint64_t reserved04;
 };

@@ -25,13 +25,26 @@ void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
   EFIPrintStringAndHex(L"XSDT Table entries", num_of_xsdt_entries);
   EFIPrintStringAndHex(L"XSDT Table entries", num_of_xsdt_entries);
 
+  uint8_t* vram = efi_graphics_output_protocol->mode->frame_buffer_base;
+  int xsize = efi_graphics_output_protocol->mode->info->horizontal_resolution;
+  int ysize = efi_graphics_output_protocol->mode->info->vertical_resolution;
+
+  for (int y = 0; y < ysize; y++) {
+    for (int x = 0; x < xsize; x++) {
+      vram[(xsize * y + x) * 4] = x;
+      vram[(xsize * y + x) * 4 + 1] = y;
+      vram[(xsize * y + x) * 4 + 2] = x + y;
+    }
+  }
+
   ACPI_NFIT* nfit = NULL;
+  ACPI_HPET* hpet = NULL;
 
   for (int i = 0; i < num_of_xsdt_entries; i++) {
-    if (!IsEqualStringWithSize(xsdt->entry[i], "NFIT", 4))
-      continue;
-    nfit = xsdt->entry[i];
-    break;
+    if (IsEqualStringWithSize(xsdt->entry[i], "NFIT", 4))
+      nfit = xsdt->entry[i];
+    if (IsEqualStringWithSize(xsdt->entry[i], "HPET", 4))
+      hpet = xsdt->entry[i];
   }
 
   if (nfit) {
@@ -58,16 +71,24 @@ void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
     }
   }
 
-  uint8_t* vram = efi_graphics_output_protocol->mode->frame_buffer_base;
-  int xsize = efi_graphics_output_protocol->mode->info->horizontal_resolution;
-  int ysize = efi_graphics_output_protocol->mode->info->vertical_resolution;
+  if (hpet) {
+    EFIPutCString("HPET found.");
+    EFIPrintStringAndHex(L"base addr", (uint64_t)hpet->base_address.address);
+    HPETRegisterSpace* hpet_registers = hpet->base_address.address;
+    uint64_t general_config = hpet_registers->general_configuration;
+    EFIPrintStringAndHex(L"geneal cap",
+                         hpet_registers->general_capabilities_and_id);
+    EFIPrintStringAndHex(L"geneal configuration", general_config);
+    general_config |= 1;
+    hpet_registers->general_configuration = general_config;
 
-  for (int y = 0; y < ysize; y++) {
-    for (int x = 0; x < xsize; x++) {
-      vram[(xsize * y + x) * 4] = x;
-      vram[(xsize * y + x) * 4 + 1] = y;
-      vram[(xsize * y + x) * 4 + 2] = x + y;
-    }
+    EFIPrintStringAndHex(L"geneal configuration",
+                         hpet_registers->general_configuration);
+    while (1) {
+      EFIPrintStringAndHex(L"counter", hpet_registers->main_counter_value);
+
+      EFIGetChar();
+    };
   }
 
   // EFIPrintMemoryMap();
