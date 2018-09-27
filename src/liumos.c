@@ -8,6 +8,21 @@ void InitEFI(EFISystemTable* system_table) {
       (void**)&efi_graphics_output_protocol);
 }
 
+void IntHandler03() {
+  EFIPutString(L"Int03\r\n");
+}
+
+void PrintIDTGateDescriptor(IDTGateDescriptor* desc) {
+  EFIPrintStringAndHex(L"desc.ofs", ((uint64_t)desc->offset_high << 32) |
+                                        ((uint64_t)desc->offset_mid << 16) |
+                                        desc->offset_low);
+  EFIPrintStringAndHex(L"desc.segmt", desc->segment_descriptor);
+  EFIPrintStringAndHex(L"desc.IST", desc->interrupt_stack_table);
+  EFIPrintStringAndHex(L"desc.type", desc->type);
+  EFIPrintStringAndHex(L"desc.DPL", desc->descriptor_privilege_level);
+  EFIPrintStringAndHex(L"desc.present", desc->present);
+}
+
 void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
   InitEFI(system_table);
   EFIClearScreen();
@@ -36,6 +51,45 @@ void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
       vram[(xsize * y + x) * 4 + 2] = x + y;
     }
   }
+
+  GDTR gdtr;
+  ReadGDTR(&gdtr);
+  EFIPrintStringAndHex(L"gdtr.base", gdtr.base);
+  EFIPrintStringAndHex(L"gdtr.limit", gdtr.limit);
+
+  IDTR idtr;
+  ReadIDTR(&idtr);
+  EFIPrintStringAndHex(L"idtr.base", idtr.base);
+  EFIPrintStringAndHex(L"idtr.limit", idtr.limit);
+
+  EFIPrintStringAndHex(L"sizeof(IDTGateDescriptor)", sizeof(IDTGateDescriptor));
+
+  IDTGateDescriptor* sample_desc = NULL;
+  for (int i = 0; i * sizeof(IDTGateDescriptor) < idtr.limit; i++) {
+    if (!idtr.base[i].present)
+      continue;
+    sample_desc = &idtr.base[i];
+    break;
+  }
+
+  PrintIDTGateDescriptor(&idtr.base[1]);
+
+  idtr.base[0x03] = *sample_desc;
+  IDTGateDescriptor* debug_exception_desc = &idtr.base[0x03];
+  IDTGateDescriptor* gp_fault_desc = &idtr.base[13];
+
+
+  idtr.base[0x03].type = 0xf;
+  idtr.base[0x03].offset_low = (uint64_t)AsmIntHandler03 & 0xffff;
+  idtr.base[0x03].offset_mid = ((uint64_t)AsmIntHandler03 >> 16) & 0xffff;
+  idtr.base[0x03].offset_high = ((uint64_t)AsmIntHandler03 >> 32) & 0xffffffff;
+
+  EFIPrintStringAndHex(L"AsmIntHandler03", AsmIntHandler03);
+  PrintIDTGateDescriptor(debug_exception_desc);
+  PrintIDTGateDescriptor(gp_fault_desc);
+
+  WriteIDTR(&idtr);
+  Int03();
 
   ACPI_NFIT* nfit = NULL;
   ACPI_HPET* hpet = NULL;

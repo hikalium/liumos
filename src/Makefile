@@ -1,4 +1,4 @@
-OBJS=efi.o guid.o liumos.o static.o
+OBJS=asm.o efi.o guid.o liumos.o static.o
 HEADERS=efi.h acpi.h liumos.h
 OVMF=ovmf/bios64.bin
 QEMU=qemu-system-x86_64
@@ -23,6 +23,15 @@ default: BOOTX64.EFI
 		-nostdlibinc \
 		-Wall -Wpedantic \
 		-c -o $*.o $*.c
+
+%.o : %.S Makefile
+	$(CC) \
+		-target x86_64-pc-win32-coff \
+		-fno-stack-protector -fshort-wchar \
+		-mno-red-zone \
+		-nostdlibinc \
+		-Wall -Wpedantic \
+		-c -o $*.o $*.S
 
 BOOTX64.EFI : $(OBJS) $(HEADERS) Makefile
 	$(LD) \
