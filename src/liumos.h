@@ -7,10 +7,20 @@
 
 // @asm.S
 typedef packed_struct {
+  uint32_t eax;
+  uint32_t ebx;
+  uint32_t ecx;
+  uint32_t edx;
+}
+CPUID;
+void ReadCPUID(CPUID*, uint32_t eax, uint32_t ecx);
+
+typedef packed_struct {
   uint16_t limit;
   uint64_t base;
-} GDTR;
-void ReadGDTR(GDTR *);
+}
+GDTR;
+void ReadGDTR(GDTR*);
 
 typedef packed_struct {
   uint16_t offset_low;
@@ -24,18 +34,22 @@ typedef packed_struct {
   unsigned offset_mid : 16;
   uint32_t offset_high;
   uint32_t reserved2;
-} IDTGateDescriptor;
+}
+IDTGateDescriptor;
 
 typedef packed_struct {
   uint16_t limit;
-  IDTGateDescriptor *base;
-} IDTR;
-void ReadIDTR(IDTR *);
-void WriteIDTR(IDTR *);
+  IDTGateDescriptor* base;
+}
+IDTR;
+void ReadIDTR(IDTR*);
+void WriteIDTR(IDTR*);
 
 void Int03(void);
 
 void AsmIntHandler03(void);
+
+void Disable8259PIC(void);
 
 // @static.c
 extern const GUID EFI_ACPITableGUID;

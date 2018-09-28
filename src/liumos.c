@@ -54,15 +54,9 @@ void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
 
   GDTR gdtr;
   ReadGDTR(&gdtr);
-  EFIPrintStringAndHex(L"gdtr.base", gdtr.base);
-  EFIPrintStringAndHex(L"gdtr.limit", gdtr.limit);
 
   IDTR idtr;
   ReadIDTR(&idtr);
-  EFIPrintStringAndHex(L"idtr.base", idtr.base);
-  EFIPrintStringAndHex(L"idtr.limit", idtr.limit);
-
-  EFIPrintStringAndHex(L"sizeof(IDTGateDescriptor)", sizeof(IDTGateDescriptor));
 
   IDTGateDescriptor* sample_desc = NULL;
   for (int i = 0; i * sizeof(IDTGateDescriptor) < idtr.limit; i++) {
@@ -72,24 +66,23 @@ void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
     break;
   }
 
-  PrintIDTGateDescriptor(&idtr.base[1]);
-
   idtr.base[0x03] = *sample_desc;
-  IDTGateDescriptor* debug_exception_desc = &idtr.base[0x03];
-  IDTGateDescriptor* gp_fault_desc = &idtr.base[13];
-
 
   idtr.base[0x03].type = 0xf;
   idtr.base[0x03].offset_low = (uint64_t)AsmIntHandler03 & 0xffff;
   idtr.base[0x03].offset_mid = ((uint64_t)AsmIntHandler03 >> 16) & 0xffff;
   idtr.base[0x03].offset_high = ((uint64_t)AsmIntHandler03 >> 32) & 0xffffffff;
 
-  EFIPrintStringAndHex(L"AsmIntHandler03", AsmIntHandler03);
-  PrintIDTGateDescriptor(debug_exception_desc);
-  PrintIDTGateDescriptor(gp_fault_desc);
-
   WriteIDTR(&idtr);
   Int03();
+
+  Disable8259PIC();
+
+  CPUID cpuid;
+  ReadCPUID(&cpuid, 0, 0);
+  EFIPrintStringAndHex(L"Max CPUID", cpuid.eax);
+  ReadCPUID(&cpuid, 1, 0);
+  EFIPrintStringAndHex(L"APIC support", (cpuid.edx & (1 << 9)) != 0);
 
   ACPI_NFIT* nfit = NULL;
   ACPI_HPET* hpet = NULL;

@@ -1,15 +1,15 @@
 OVMF=ovmf/bios64.bin
 QEMU=qemu-system-x86_64
 QEMU_ARGS=\
-					 -bios $(OVMF) \
-					 -machine pc,nvdimm \
+					 -pflash $(OVMF) \
+					 -machine q35,nvdimm \
 					 -monitor stdio \
 					 -m 8G,slots=2,maxmem=10G \
-					 -drive file=fat:ro:mnt
+					 -hda fat:ro:mnt -net none
 	
 QEMU_ARGS_PMEM=\
-					 -bios $(OVMF) \
-					 -machine pc,nvdimm \
+					 -pflash $(OVMF) \
+					 -machine q35,nvdimm \
 					 -monitor stdio \
 					 -m 8G,slots=2,maxmem=10G \
 					 -object memory-backend-file,id=mem1,share=on,mem-path=pmem.img,size=2G \
