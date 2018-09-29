@@ -1,5 +1,8 @@
 #include "liumos.h"
 
+GDTR gdtr;
+IDTR idtr;
+
 void InitEFI(EFISystemTable* system_table) {
   _system_table = system_table;
   _system_table->boot_services->SetWatchdogTimer(0, 0, 0, NULL);
@@ -8,8 +11,16 @@ void InitEFI(EFISystemTable* system_table) {
       (void**)&efi_graphics_output_protocol);
 }
 
-void IntHandler03() {
-  EFIPutString(L"Int03\r\n");
+void IntHandler(uint64_t intcode, InterruptInfo* info) {
+  EFIPrintStringAndHex(L"Int#", intcode);
+  EFIPrintStringAndHex(L"RIP", info->rip);
+  EFIPrintStringAndHex(L"CS", info->cs);
+
+  if (intcode == 0x03) {
+    EFIPutCString("!!!! Trap !!!!\r\n");
+    return;
+  }
+  EFIPutCString("!!!! PANIC !!!!\r\n");
 }
 
 void PrintIDTGateDescriptor(IDTGateDescriptor* desc) {
@@ -39,21 +50,40 @@ uint32_t ReadIOAPICRegister(uint64_t io_apic_base_addr, uint8_t reg_index) {
   return *(uint32_t volatile*)(io_apic_base_addr + 0x10);
 }
 
+void SetIntHandler(int index,
+                   uint8_t segm_desc,
+                   uint8_t ist,
+                   uint8_t type,
+                   uint8_t dpl,
+                   void (*handler)()) {
+  IDTGateDescriptor* desc = &idtr.base[index];
+  desc->segment_descriptor = segm_desc;
+  desc->interrupt_stack_table = ist;
+  desc->type = type;
+  desc->descriptor_privilege_level = dpl;
+  desc->present = 1;
+  desc->offset_low = (uint64_t)AsmIntHandler03 & 0xffff;
+  desc->offset_mid = ((uint64_t)AsmIntHandler03 >> 16) & 0xffff;
+  desc->offset_high = ((uint64_t)AsmIntHandler03 >> 32) & 0xffffffff;
+  desc->reserved0 = 0;
+  desc->reserved1 = 0;
+  desc->reserved2 = 0;
+}
+
 void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
   InitEFI(system_table);
   EFIClearScreen();
-  EFIPutString(L"Hello, liumOS world!...\r\n");
   EFIGetMemoryMap();
-  EFIPrintStringAndHex(L"Num of table entries",
-                       system_table->number_of_table_entries);
+
   ACPI_RSDP* rsdp = EFIGetConfigurationTableByUUID(&EFI_ACPITableGUID);
   ACPI_XSDT* xsdt = rsdp->xsdt;
+
   EFIPrintStringAndHex(L"ACPI Table address", (uint64_t)rsdp);
   EFIPutnCString(rsdp->signature, 8);
   EFIPrintStringAndHex(L"XSDT Table address", (uint64_t)xsdt);
   EFIPutnCString(xsdt->signature, 4);
+
   int num_of_xsdt_entries = (xsdt->length - ACPI_DESCRIPTION_HEADER_SIZE) >> 3;
-  EFIPrintStringAndHex(L"XSDT Table entries", num_of_xsdt_entries);
   EFIPrintStringAndHex(L"XSDT Table entries", num_of_xsdt_entries);
 
   uint8_t* vram = efi_graphics_output_protocol->mode->frame_buffer_base;
@@ -68,27 +98,11 @@ void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
     }
   }
 
-  GDTR gdtr;
   ReadGDTR(&gdtr);
-
-  IDTR idtr;
   ReadIDTR(&idtr);
 
-  IDTGateDescriptor* sample_desc = NULL;
-  for (int i = 0; i * sizeof(IDTGateDescriptor) < idtr.limit; i++) {
-    if (!idtr.base[i].present)
-      continue;
-    sample_desc = &idtr.base[i];
-    break;
-  }
-
-  idtr.base[0x03] = *sample_desc;
-
-  idtr.base[0x03].type = 0xf;
-  idtr.base[0x03].offset_low = (uint64_t)AsmIntHandler03 & 0xffff;
-  idtr.base[0x03].offset_mid = ((uint64_t)AsmIntHandler03 >> 16) & 0xffff;
-  idtr.base[0x03].offset_high = ((uint64_t)AsmIntHandler03 >> 32) & 0xffffffff;
-
+  SetIntHandler(0x03, ReadCSSelector(), 0, 0xf, 0, AsmIntHandler03);
+  SetIntHandler(0x0d, ReadCSSelector(), 0, 0xf, 0, AsmIntHandler0D);
   WriteIDTR(&idtr);
   Int03();
 
@@ -105,7 +119,6 @@ void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
     Panic("MSR not supported");
 
   uint64_t local_apic_base_msr = ReadMSR(0x1b);
-  EFIPrintStringAndHex(L"LOCAL APIC BASE MSR", local_apic_base_msr);
   uint64_t local_apic_base_addr =
       (local_apic_base_msr & ((1ULL << MAX_PHY_ADDR_BITS) - 1)) & ~0xfffULL;
   EFIPrintStringAndHex(L"LOCAL APIC BASE addr", local_apic_base_addr);
@@ -166,10 +179,10 @@ void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
         L"timer[0].config",
         hpet_registers->timers[0].configuration_and_capability);
     uint64_t config = hpet_registers->timers[0].configuration_and_capability;
-    config |= (1 << 6);
-    config |= (1 << 3);
-    config |= (1 << 2);
-    config |= (1 << 1);
+    config |= HPET_SET_VALUE;
+    config |= HPET_MODE_PERIODIC;
+    config |= HPET_INT_ENABLE;
+    config |= HPET_INT_TYPE_LEVEL_TRIGGERED;
     hpet_registers->timers[0].configuration_and_capability = config;
     hpet_registers->timers[0].comparator_value = HPET_TICK_PER_SEC * 10;
     EFIPrintStringAndHex(L"timer[0].comp",

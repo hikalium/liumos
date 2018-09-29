@@ -32,6 +32,16 @@ GDTR;
 void ReadGDTR(GDTR*);
 
 typedef packed_struct {
+  // uint64_t error_code;
+  uint64_t rip;
+  uint64_t cs;
+  uint64_t eflags;
+  uint64_t rsp;
+  uint64_t ss;
+}
+InterruptInfo;
+
+typedef packed_struct {
   uint16_t offset_low;
   uint16_t segment_descriptor;
   unsigned interrupt_stack_table : 3;
@@ -57,12 +67,20 @@ void WriteIDTR(IDTR*);
 
 void Int03(void);
 
+uint16_t ReadCSSelector(void);
+
 void AsmIntHandler03(void);
+void AsmIntHandler0D(void);
 
 void Disable8259PIC(void);
 
 #define HPET_TIMER_CONFIG_REGISTER_BASE_OFS 0x100
 #define HPET_TICK_PER_SEC (10UL * 1000 * 1000)
+
+#define HPET_INT_TYPE_LEVEL_TRIGGERED (1UL << 1)
+#define HPET_INT_ENABLE (1UL << 2)
+#define HPET_MODE_PERIODIC (1UL << 3)
+#define HPET_SET_VALUE (1UL << 6)
 
 typedef packed_struct {
   uint64_t configuration_and_capability;

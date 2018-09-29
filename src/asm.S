@@ -49,10 +49,26 @@ Int03:
 	int3
 	ret
 
-.global IntHandler03
+.global ReadCSSelector
+ReadCSSelector:
+	mov rax, 0
+	mov ax, cs
+	ret
+
+.global IntHandler
+
 .global AsmIntHandler03
 AsmIntHandler03:
-	call IntHandler03
+	mov rcx, 0x03
+	mov rdx, rsp
+	call IntHandler
+  iretq
+
+.global AsmIntHandler0D
+AsmIntHandler0D:
+	mov rcx, 0x0D
+	mov rdx, rsp
+	call IntHandler
   iretq
 
 .global Disable8259PIC
