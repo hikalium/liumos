@@ -2,6 +2,13 @@ OBJS=asm.o efi.o guid.o liumos.o static.o
 HEADERS=efi.h acpi.h liumos.h
 OVMF=ovmf/bios64.bin
 QEMU=qemu-system-x86_64
+CFLAGS= \
+		-target x86_64-pc-win32-coff \
+		-fno-stack-protector -fshort-wchar \
+		-mno-red-zone \
+		-nostdlibinc \
+		-Wall -Wpedantic -Wshorten-64-to-32
+
 
 OSNAME=${shell uname -s}
 ifeq ($(OSNAME),Darwin)
@@ -16,21 +23,11 @@ endif
 default: BOOTX64.EFI
 
 %.o : %.c $(HEADERS) Makefile
-	$(CC) \
-		-target x86_64-pc-win32-coff \
-		-fno-stack-protector -fshort-wchar \
-		-mno-red-zone \
-		-nostdlibinc \
-		-Wall -Wpedantic \
+	$(CC) $(CFLAGS) \
 		-c -o $*.o $*.c
 
 %.o : %.S Makefile
-	$(CC) \
-		-target x86_64-pc-win32-coff \
-		-fno-stack-protector -fshort-wchar \
-		-mno-red-zone \
-		-nostdlibinc \
-		-Wall -Wpedantic \
+	$(CC) $(CFLAGS) \
 		-c -o $*.o $*.S
 
 BOOTX64.EFI : $(OBJS) $(HEADERS) Makefile

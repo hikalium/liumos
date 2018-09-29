@@ -1,27 +1,21 @@
 OVMF=ovmf/bios64.bin
 QEMU=qemu-system-x86_64
 QEMU_ARGS=\
-					 -pflash $(OVMF) \
-					 -machine q35,nvdimm \
+					 -drive if=pflash,format=raw,file=$(OVMF) \
+					 -machine q35,nvdimm -cpu qemu64 \
 					 -monitor stdio \
 					 -m 8G,slots=2,maxmem=10G \
-					 -hda fat:ro:mnt -net none
-	
-QEMU_ARGS_PMEM=\
-					 -pflash $(OVMF) \
-					 -machine q35,nvdimm \
-					 -monitor stdio \
-					 -m 8G,slots=2,maxmem=10G \
-					 -object memory-backend-file,id=mem1,share=on,mem-path=pmem.img,size=2G \
-					 -device nvdimm,id=nvdimm1,memdev=mem1 \
-					 -drive file=fat:ro:mnt
+					 -drive format=raw,file=fat:rw:mnt -net none
 
+QEMU_ARGS_PMEM=\
+					 $(QEMU_ARGS) \
+					 -object memory-backend-file,id=mem1,share=on,mem-path=pmem.img,size=2G \
+					 -device nvdimm,id=nvdimm1,memdev=mem1
 
 ifdef SSH_CONNECTION
-QEMU_ARGS+=-vnc :5,password
-QEMU_ARGS_PMEM+=-vnc :5,password
+QEMU_ARGS+= -vnc :5,password
 endif
-
+	
 src/BOOTX64.EFI : .FORCE
 	make -C src
 

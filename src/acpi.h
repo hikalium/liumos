@@ -101,15 +101,3 @@ packed_struct ACPI_HPET_DESCRIPTION_TABLE {
   uint16_t main_counter_minimum_clock_tick_in_periodic_mode;
   uint8_t page_protection_and_oem_attribute;
 };
-
-packed_struct HPET_REGISTER_SPACE {
-  uint64_t general_capabilities_and_id;
-  uint64_t reserved00;
-  uint64_t general_configuration;
-  uint64_t reserved01;
-  uint64_t general_interrupt_status;
-  uint64_t reserved02;
-  uint64_t reserved03[24];
-  uint64_t main_counter_value;
-  uint64_t reserved04;
-};

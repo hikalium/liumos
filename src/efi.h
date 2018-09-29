@@ -73,7 +73,7 @@ struct EFI_SIMPLE_TEXT_INPUT_PROTOCOL {
 
 struct EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL {
   uint64_t _buf;
-  uint64_t (*output_string)(EFISimpleTextOutputProtocol*, wchar_t*);
+  uint64_t (*output_string)(EFISimpleTextOutputProtocol*, const wchar_t*);
   uint64_t (*test_string)(EFISimpleTextOutputProtocol*, wchar_t*);
   uint64_t (*query_mode)(EFISimpleTextOutputProtocol*,
                          wchar_t*,
@@ -368,13 +368,13 @@ extern EFIGraphicsOutputProtocol* efi_graphics_output_protocol;
 bool IsEqualStringWithSize(const char* s1, const char* s2, int n);
 void EFIClearScreen();
 void EFIPutChar(wchar_t c);
-void EFIPutString(wchar_t* s);
-void EFIPutCString(char* s);
-void EFIPutnCString(char* s, int n);
+void EFIPutString(const wchar_t* s);
+void EFIPutCString(const char* s);
+void EFIPutnCString(const char* s, int n);
 wchar_t EFIGetChar();
 void EFIGetMemoryMap();
 void EFIPrintHex64(uint64_t value);
-void EFIPrintStringAndHex(wchar_t* s, uint64_t value);
+void EFIPrintStringAndHex(const wchar_t* s, uint64_t value);
 void EFIPrintMemoryDescriptor(EFIMemoryDescriptor* desc);
 void EFIPrintMemoryMap();
 void* EFIGetConfigurationTableByUUID(const GUID* guid);

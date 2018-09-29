@@ -23,6 +23,22 @@ void PrintIDTGateDescriptor(IDTGateDescriptor* desc) {
   EFIPrintStringAndHex(L"desc.present", desc->present);
 }
 
+_Noreturn void Panic(const char* s) {
+  EFIPutCString("!!!! PANIC !!!!\r\n");
+  EFIPutCString(s);
+  for (;;) {
+  }
+}
+
+uint8_t GetLocalAPICID(uint64_t local_apic_base_addr) {
+  return *(uint32_t*)(local_apic_base_addr + 0x20) >> 24;
+}
+
+uint32_t ReadIOAPICRegister(uint64_t io_apic_base_addr, uint8_t reg_index) {
+  *(uint32_t volatile*)(io_apic_base_addr) = (uint32_t)reg_index;
+  return *(uint32_t volatile*)(io_apic_base_addr + 0x10);
+}
+
 void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
   InitEFI(system_table);
   EFIClearScreen();
@@ -81,8 +97,23 @@ void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
   CPUID cpuid;
   ReadCPUID(&cpuid, 0, 0);
   EFIPrintStringAndHex(L"Max CPUID", cpuid.eax);
+
   ReadCPUID(&cpuid, 1, 0);
-  EFIPrintStringAndHex(L"APIC support", (cpuid.edx & (1 << 9)) != 0);
+  if (!(cpuid.eax & CPUID_01_EDX_APIC))
+    Panic("APIC not supported");
+  if (!(cpuid.eax & CPUID_01_EDX_MSR))
+    Panic("MSR not supported");
+
+  uint64_t local_apic_base_msr = ReadMSR(0x1b);
+  EFIPrintStringAndHex(L"LOCAL APIC BASE MSR", local_apic_base_msr);
+  uint64_t local_apic_base_addr =
+      (local_apic_base_msr & ((1ULL << MAX_PHY_ADDR_BITS) - 1)) & ~0xfffULL;
+  EFIPrintStringAndHex(L"LOCAL APIC BASE addr", local_apic_base_addr);
+  EFIPrintStringAndHex(L"LOCAL APIC ID", GetLocalAPICID(local_apic_base_addr));
+  EFIPrintStringAndHex(L"IO APIC ID",
+                       ReadIOAPICRegister(IO_APIC_BASE_ADDR, 0) >> 24);
+  EFIPrintStringAndHex(L"IO APIC VER",
+                       ReadIOAPICRegister(IO_APIC_BASE_ADDR, 1));
 
   ACPI_NFIT* nfit = NULL;
   ACPI_HPET* hpet = NULL;
@@ -131,8 +162,30 @@ void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
 
     EFIPrintStringAndHex(L"geneal configuration",
                          hpet_registers->general_configuration);
+    EFIPrintStringAndHex(
+        L"timer[0].config",
+        hpet_registers->timers[0].configuration_and_capability);
+    uint64_t config = hpet_registers->timers[0].configuration_and_capability;
+    config |= (1 << 6);
+    config |= (1 << 3);
+    config |= (1 << 2);
+    config |= (1 << 1);
+    hpet_registers->timers[0].configuration_and_capability = config;
+    hpet_registers->timers[0].comparator_value = HPET_TICK_PER_SEC * 10;
+    EFIPrintStringAndHex(L"timer[0].comp",
+                         hpet_registers->timers[0].comparator_value);
+    EFIPrintStringAndHex(L"timer[0].fsb int",
+                         hpet_registers->timers[0].fsb_interrupt_route);
+    hpet_registers->main_counter_value = 0;
     while (1) {
       EFIPrintStringAndHex(L"counter", hpet_registers->main_counter_value);
+      EFIPrintStringAndHex(L"int status",
+                           hpet_registers->general_interrupt_status);
+      uint64_t int_status = hpet_registers->general_interrupt_status;
+      int_status |= 1ULL << 0;
+      hpet_registers->general_interrupt_status = int_status;
+      EFIPrintStringAndHex(L"timer[0].comp",
+                           hpet_registers->timers[0].comparator_value);
 
       EFIGetChar();
     };

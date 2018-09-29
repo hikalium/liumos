@@ -21,6 +21,14 @@ ReadCPUID:
 	mov [r9 + 12], edx
 	ret
 
+.global ReadMSR
+ReadMSR:
+	mov rax, 0
+	rdmsr
+	shl rdx, 32
+	or	rax, rdx
+	ret
+
 .global ReadGDTR
 ReadGDTR:
 	sgdt [rcx]

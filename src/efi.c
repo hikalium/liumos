@@ -20,7 +20,7 @@ void EFIClearScreen() {
   _system_table->con_out->clear_screen(_system_table->con_out);
 }
 
-void EFIPutString(wchar_t* s) {
+void EFIPutString(const wchar_t* s) {
   _system_table->con_out->output_string(_system_table->con_out, s);
 }
 
@@ -31,14 +31,14 @@ void EFIPutChar(wchar_t c) {
   _system_table->con_out->output_string(_system_table->con_out, buf);
 }
 
-void EFIPutCString(char* s) {
+void EFIPutCString(const char* s) {
   while (*s) {
     EFIPutChar(*s);
     s++;
   }
 }
 
-void EFIPutnCString(char* s, int n) {
+void EFIPutnCString(const char* s, int n) {
   wchar_t buf[2];
   buf[1] = 0;
   for (int i = 0; i < n; i++) {
@@ -85,7 +85,7 @@ void EFIPrintHex64(uint64_t value) {
   }
 }
 
-void EFIPrintStringAndHex(wchar_t* s, uint64_t value) {
+void EFIPrintStringAndHex(const wchar_t* s, uint64_t value) {
   EFIPutString(s);
   EFIPutString(L": 0x");
   EFIPrintHex64(value);
