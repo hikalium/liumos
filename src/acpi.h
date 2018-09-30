@@ -14,6 +14,7 @@ typedef struct ACPI_NFIT_SYSTEM_PHYSICAL_ADDRESS_RANGE_STRUCTURE
 typedef struct ACPI_GENERIC_ADDRESS_STRUCTURE ACPI_GAS;
 typedef struct ACPI_HPET_DESCRIPTION_TABLE ACPI_HPET;
 typedef struct HPET_REGISTER_SPACE HPETRegisterSpace;
+typedef struct ACPI_MULTIPLE_APIC_DESCRIPTION_TABLE ACPI_MADT;
 
 packed_struct ACPI_ROOT_SYSTEM_DESCRIPTION_POINTER {
   char signature[8];
@@ -95,9 +96,26 @@ packed_struct ACPI_HPET_DESCRIPTION_TABLE {
   uint32_t oem_revision;
   uint32_t creator_id;
   uint32_t creator_revision;
+
   uint32_t event_timer_block_id;
   ACPI_GAS base_address;
   uint8_t hpet_number;
   uint16_t main_counter_minimum_clock_tick_in_periodic_mode;
   uint8_t page_protection_and_oem_attribute;
+};
+
+packed_struct ACPI_MULTIPLE_APIC_DESCRIPTION_TABLE {
+  char signature[4];
+  uint32_t length;
+  uint8_t revision;
+  uint8_t checksum;
+  uint8_t oem_id[6];
+  uint64_t oem_table_id;
+  uint32_t oem_revision;
+  uint32_t creator_id;
+  uint32_t creator_revision;
+
+  uint32_t local_apic_address;
+  uint32_t flags;
+  uint8_t entries[];
 };

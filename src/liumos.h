@@ -71,6 +71,7 @@ uint16_t ReadCSSelector(void);
 
 void AsmIntHandler03(void);
 void AsmIntHandler0D(void);
+void AsmIntHandler20(void);
 
 void Disable8259PIC(void);
 

@@ -57,19 +57,43 @@ ReadCSSelector:
 
 .global IntHandler
 
+// The registers Rax, Rcx Rdx R8, R9, R10, R11, and XMM0-XMM5 are volatile
+// TODO: Save xmm registers
+IntHandlerWrapper:
+	push rax
+	push rdx
+	push r8
+	push r9
+	push r10
+	push r11
+	lea rdx, [rsp + 7 * 8]
+	call IntHandler
+	pop r11
+	pop r10
+	pop r9
+	pop r8
+	pop rdx
+	pop rax
+	pop rcx
+	iretq
+
 .global AsmIntHandler03
 AsmIntHandler03:
+	push rcx
 	mov rcx, 0x03
-	mov rdx, rsp
-	call IntHandler
-  iretq
+	jmp IntHandlerWrapper
 
 .global AsmIntHandler0D
 AsmIntHandler0D:
+	push rcx
 	mov rcx, 0x0D
-	mov rdx, rsp
-	call IntHandler
-  iretq
+	jmp IntHandlerWrapper
+
+.global AsmIntHandler20
+AsmIntHandler20:
+	push rcx
+	mov rcx, 0x20
+	jmp IntHandlerWrapper
 
 .global Disable8259PIC
 Disable8259PIC:

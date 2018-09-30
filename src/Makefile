@@ -1,5 +1,5 @@
 OBJS=asm.o efi.o guid.o liumos.o static.o
-HEADERS=efi.h acpi.h liumos.h
+HEADERS=$(wildcard *.h)
 OVMF=ovmf/bios64.bin
 QEMU=qemu-system-x86_64
 CFLAGS= \
