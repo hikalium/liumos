@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
 extern uint8_t font[0x100][16];
 uint8_t font[0x100][16];
