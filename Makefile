@@ -1,7 +1,7 @@
 OVMF=ovmf/bios64.bin
 QEMU=qemu-system-x86_64
 QEMU_ARGS=\
-					 -drive if=pflash,format=raw,file=$(OVMF) \
+					 -bios $(OVMF) \
 					 -machine q35,nvdimm -cpu qemu64 \
 					 -monitor stdio \
 					 -m 8G,slots=2,maxmem=10G \
@@ -39,7 +39,6 @@ run_pmem : src/BOOTX64.EFI pmem.img
 
 clean :
 	make -C src clean
-	make -C tools clean
 
 format :
 	make -C src format
