@@ -19,6 +19,12 @@ brew install qemu llvm
 
 ```
 sudo apt install clang lld-4.0 qemu
+
+```
+
+## Prepare tools
+```
+make tools
 ```
 
 ## How to build

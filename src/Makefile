@@ -1,4 +1,4 @@
-OBJS=asm.o efi.o guid.o liumos.o static.o
+OBJS=asm.o efi.o guid.o liumos.o static.o font.gen.o
 HEADERS=$(wildcard *.h)
 OVMF=ovmf/bios64.bin
 QEMU=qemu-system-x86_64
@@ -22,6 +22,9 @@ endif
 
 default: BOOTX64.EFI
 
+font.gen.c : font.txt
+	../tools/fontmaker font.txt > font.gen.c
+
 %.o : %.c $(HEADERS) Makefile
 	$(CC) $(CFLAGS) \
 		-c -o $*.o $*.c
@@ -42,6 +45,7 @@ clean :
 	-rm *.EFI
 	-rm *.lib
 	-rm *.o
+	-rm *.gen.c
 
 format :
 	clang-format -i *.c *.h

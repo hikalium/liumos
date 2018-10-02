@@ -21,6 +21,9 @@ src/BOOTX64.EFI : .FORCE
 
 .FORCE :
 
+tools : .FORCE
+	make -C tools
+
 pmem.img :
 	qemu-img create $@ 2G
 
@@ -36,6 +39,7 @@ run_pmem : src/BOOTX64.EFI pmem.img
 
 clean :
 	make -C src clean
+	make -C tools clean
 
 format :
 	make -C src format

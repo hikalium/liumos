@@ -104,6 +104,10 @@ packed_struct HPET_REGISTER_SPACE {
   HPETTimerRegisterSet timers[32];
 };
 
+// @font.gen.c
+extern uint8_t font[0x100][16];
+
 // @static.c
 extern const GUID EFI_ACPITableGUID;
 extern const GUID EFI_GraphicsOutputProtocolGUID;
+

@@ -3,3 +3,4 @@
 *.o
 *.manifest
 *.swp
+*.gen.c
