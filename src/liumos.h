@@ -110,4 +110,3 @@ extern uint8_t font[0x100][16];
 // @static.c
 extern const GUID EFI_ACPITableGUID;
 extern const GUID EFI_GraphicsOutputProtocolGUID;
-

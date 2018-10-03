@@ -22,23 +22,97 @@ _Noreturn void Panic(const char* s) {
   }
 }
 
-int count = 0;
-
-void IntHandler(uint64_t intcode, InterruptInfo* info) {
-  if (intcode == 0x20) {
-    count += 3;
-    // EFIPutCString("timer!\r\n");
-    uint64_t local_apic_base_msr = ReadMSR(0x1b);
-    uint64_t local_apic_base_addr =
-        (local_apic_base_msr & ((1ULL << MAX_PHY_ADDR_BITS) - 1)) & ~0xfffULL;
-    *(uint32_t*)(local_apic_base_addr + 0xB0) = 0;
-    for (int y = 0; y < count; y++) {
-      for (int x = 0; x < count; x++) {
-        vram[(xsize * y + x) * 4] = y;
-        vram[(xsize * y + x) * 4 + 1] = x;
-        vram[(xsize * y + x) * 4 + 2] = x - y;
+void DrawCharacter(char c, int px, int py) {
+  for (int dy = 0; dy < 16; dy++) {
+    for (int dx = 0; dx < 8; dx++) {
+      uint8_t col = ((font[(uint8_t)c][dy] >> (7 - dx)) & 1) * 0xff;
+      int x = px + dx;
+      int y = py + dy;
+      vram[4 * (y * xsize + x) + 0] = col;
+      vram[4 * (y * xsize + x) + 1] = col;
+      vram[4 * (y * xsize + x) + 2] = col;
+      // vram[4 * (y * xsize + x) + 3] = col;
+    }
+  }
+}
+void DrawRect(int px, int py, int w, int h, uint32_t col) {
+  for (int y = py; y < py + h; y++) {
+    for (int x = px; x < px + w; x++) {
+      for (int i = 0; i < 4; i++) {
+        vram[4 * (y * xsize + x) + i] = (col >> (i * 8)) & 0xff;
       }
     }
+  }
+}
+
+int cursor_x, cursor_y;
+void PutChar(char c) {
+  if (c == '\n') {
+    cursor_y += 16;
+    cursor_x = 0;
+
+  } else {
+    DrawCharacter(c, cursor_x, cursor_y);
+    cursor_x += 8;
+  }
+  if (cursor_x > xsize) {
+    cursor_y += 16;
+    cursor_x = 0;
+  }
+  if (cursor_y + 16 > ysize) {
+    cursor_y -= 16;
+  }
+}
+
+void PutString(const char* s) {
+  while (*s) {
+    PutChar(*(s++));
+  }
+}
+
+void PutHex64(uint64_t value) {
+  int i;
+  char s[2];
+  s[1] = 0;
+  for (i = 15; i > 0; i--) {
+    if ((value >> (4 * i)) & 0xF)
+      break;
+  }
+  for (; i >= 0; i--) {
+    s[0] = (value >> (4 * i)) & 0xF;
+    if (s[0] < 10)
+      s[0] += '0';
+    else
+      s[0] += 'A' - 10;
+    PutString(s);
+  }
+}
+
+void PutStringAndHex(const char* s, uint64_t value) {
+  PutString(s);
+  PutString(": 0x");
+  PutHex64(value);
+  PutString("\n");
+}
+
+uint32_t* GetLocalAPICRegisterAddr(uint64_t offset) {
+  uint64_t local_apic_base_msr = ReadMSR(0x1b);
+  return (
+      uint32_t*)(((local_apic_base_msr & ((1ULL << MAX_PHY_ADDR_BITS) - 1)) &
+                  ~0xfffULL) +
+                 offset);
+}
+
+void SendEndOfInterruptToLocalAPIC() {
+  *GetLocalAPICRegisterAddr(0xB0) = 0;
+}
+
+int count = 0;
+void IntHandler(uint64_t intcode, InterruptInfo* info) {
+  if (intcode == 0x20) {
+    PutStringAndHex("Int20", count);
+    count++;
+    SendEndOfInterruptToLocalAPIC();
     return;
   }
   EFIPrintStringAndHex(L"Int#", intcode);
