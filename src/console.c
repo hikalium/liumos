@@ -43,6 +43,12 @@ void PutString(const char* s) {
   }
 }
 
+void PutChars(const char* s, int n) {
+  for (int i = 0; i < n; i++) {
+    PutChar(*(s++));
+  }
+}
+
 void PutHex64(uint64_t value) {
   int i;
   char s[2];

@@ -108,6 +108,7 @@ packed_struct HPET_REGISTER_SPACE {
 void ResetCursorPosition();
 void PutChar(char c);
 void PutString(const char* s);
+void PutChars(const char* s, int n);
 void PutHex64(uint64_t value);
 void PutStringAndHex(const char* s, uint64_t value);
 

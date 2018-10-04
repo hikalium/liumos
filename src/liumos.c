@@ -14,6 +14,9 @@ void InitEFI(EFISystemTable* system_table) {
   _system_table->boot_services->LocateProtocol(
       &EFI_GraphicsOutputProtocolGUID, NULL,
       (void**)&efi_graphics_output_protocol);
+  vram = efi_graphics_output_protocol->mode->frame_buffer_base;
+  xsize = efi_graphics_output_protocol->mode->info->horizontal_resolution;
+  ysize = efi_graphics_output_protocol->mode->info->vertical_resolution;
 }
 
 _Noreturn void Panic(const char* s) {
@@ -136,28 +139,18 @@ void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
   EFIClearScreen();
   EFIGetMemoryMap();
 
+  PutString("liumOS is booting...\n");
+
   ACPI_RSDP* rsdp = EFIGetConfigurationTableByUUID(&EFI_ACPITableGUID);
   ACPI_XSDT* xsdt = rsdp->xsdt;
 
-  EFIPrintStringAndHex(L"ACPI Table address", (uint64_t)rsdp);
-  EFIPutnCString(rsdp->signature, 8);
-  EFIPrintStringAndHex(L"XSDT Table address", (uint64_t)xsdt);
-  EFIPutnCString(xsdt->signature, 4);
+  PutStringAndHex("ACPI Table address", (uint64_t)rsdp);
+  PutChars(rsdp->signature, 8);
+  PutStringAndHex("XSDT Table address", (uint64_t)xsdt);
+  PutChars(xsdt->signature, 4);
 
   int num_of_xsdt_entries = (xsdt->length - ACPI_DESCRIPTION_HEADER_SIZE) >> 3;
   EFIPrintStringAndHex(L"XSDT Table entries", num_of_xsdt_entries);
-
-  vram = efi_graphics_output_protocol->mode->frame_buffer_base;
-  xsize = efi_graphics_output_protocol->mode->info->horizontal_resolution;
-  ysize = efi_graphics_output_protocol->mode->info->vertical_resolution;
-
-  for (int y = 0; y < ysize; y++) {
-    for (int x = 0; x < xsize; x++) {
-      vram[(xsize * y + x) * 4] = x;
-      vram[(xsize * y + x) * 4 + 1] = y;
-      vram[(xsize * y + x) * 4 + 2] = x + y;
-    }
-  }
 
   ReadGDTR(&gdtr);
   ReadIDTR(&idtr);
