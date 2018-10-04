@@ -60,6 +60,14 @@ void PutChar(char c) {
     cursor_x = 0;
   }
   if (cursor_y + 16 > ysize) {
+    for (int y = 0; y < cursor_y - 16; y++) {
+      for (int x = 0; x < xsize; x++) {
+        for (int i = 0; i < 4; i++) {
+          vram[4 * (y * xsize + x) + i] = vram[4 * ((y + 16) * xsize + x) + i];
+        }
+      }
+    }
+    DrawRect(0, cursor_y - 16, xsize, 16, 0x000000);
     cursor_y -= 16;
   }
 }
