@@ -46,26 +46,26 @@ void IntHandler(uint64_t intcode, InterruptInfo* info) {
     SendEndOfInterruptToLocalAPIC();
     return;
   }
-  EFIPrintStringAndHex(L"Int#", intcode);
-  EFIPrintStringAndHex(L"RIP", info->rip);
-  EFIPrintStringAndHex(L"CS", info->cs);
+  PutStringAndHex("Int#", intcode);
+  PutStringAndHex("RIP", info->rip);
+  PutStringAndHex("CS", info->cs);
 
   if (intcode == 0x03) {
-    EFIPutCString("!!!! Trap !!!!\r\n");
+    PutString("!!!! Int3 Trap !!!!\r\n");
     return;
   }
   Panic("INTHandler not implemented");
 }
 
 void PrintIDTGateDescriptor(IDTGateDescriptor* desc) {
-  EFIPrintStringAndHex(L"desc.ofs", ((uint64_t)desc->offset_high << 32) |
-                                        ((uint64_t)desc->offset_mid << 16) |
-                                        desc->offset_low);
-  EFIPrintStringAndHex(L"desc.segmt", desc->segment_descriptor);
-  EFIPrintStringAndHex(L"desc.IST", desc->interrupt_stack_table);
-  EFIPrintStringAndHex(L"desc.type", desc->type);
-  EFIPrintStringAndHex(L"desc.DPL", desc->descriptor_privilege_level);
-  EFIPrintStringAndHex(L"desc.present", desc->present);
+  PutStringAndHex("desc.ofs", ((uint64_t)desc->offset_high << 32) |
+                                  ((uint64_t)desc->offset_mid << 16) |
+                                  desc->offset_low);
+  PutStringAndHex("desc.segmt", desc->segment_descriptor);
+  PutStringAndHex("desc.IST", desc->interrupt_stack_table);
+  PutStringAndHex("desc.type", desc->type);
+  PutStringAndHex("desc.DPL", desc->descriptor_privilege_level);
+  PutStringAndHex("desc.present", desc->present);
 }
 
 uint8_t GetLocalAPICID(uint64_t local_apic_base_addr) {
@@ -122,7 +122,7 @@ void SetIntHandler(int index,
 
 void SetHPETTimer(int timer_index, uint64_t count, uint64_t flags) {
   HPETTimerRegisterSet* entry = &hpet_registers->timers[timer_index];
-  EFIPrintStringAndHex(L"timer.oldconfig", entry->configuration_and_capability);
+  PutStringAndHex("timer.oldconfig", entry->configuration_and_capability);
   uint64_t config = entry->configuration_and_capability;
   uint64_t mask =
       HPET_MODE_PERIODIC | HPET_INT_ENABLE | HPET_INT_TYPE_LEVEL_TRIGGERED;
@@ -131,7 +131,7 @@ void SetHPETTimer(int timer_index, uint64_t count, uint64_t flags) {
   config |= HPET_SET_VALUE;
   entry->configuration_and_capability = config;
   entry->comparator_value = count;
-  EFIPrintStringAndHex(L"timer.newconfig", entry->configuration_and_capability);
+  PutStringAndHex("timer.newconfig", entry->configuration_and_capability);
 }
 
 void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
@@ -150,7 +150,7 @@ void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
   PutChars(xsdt->signature, 4);
 
   int num_of_xsdt_entries = (xsdt->length - ACPI_DESCRIPTION_HEADER_SIZE) >> 3;
-  EFIPrintStringAndHex(L"XSDT Table entries", num_of_xsdt_entries);
+  PutStringAndHex("XSDT Table entries", num_of_xsdt_entries);
 
   ReadGDTR(&gdtr);
   ReadIDTR(&idtr);
@@ -163,7 +163,7 @@ void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
 
   CPUID cpuid;
   ReadCPUID(&cpuid, 0, 0);
-  EFIPrintStringAndHex(L"Max CPUID", cpuid.eax);
+  PutStringAndHex("Max CPUID", cpuid.eax);
 
   ReadCPUID(&cpuid, 1, 0);
   if (!(cpuid.eax & CPUID_01_EDX_APIC))
@@ -193,31 +193,29 @@ void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
        i += madt->entries[i + 1]) {
     uint8_t type = madt->entries[i];
     if (type == 0) {
-      // EFIPrintStringAndHex(L"APIC Processor ID", madt->entries[i + 2]);
+      // PutStringAndHex("APIC Processor ID", madt->entries[i + 2]);
       boot_cpu_apic_id = madt->entries[i + 2];
-      // EFIPrintStringAndHex(L"  Local APIC ID", madt->entries[i + 3]);
-      // EFIPrintStringAndHex(L"  flags", *(uint32_t*)&madt->entries[i + 4]);
+      // PutStringAndHex("  Local APIC ID", madt->entries[i + 3]);
+      // PutStringAndHex("  flags", *(uint32_t*)&madt->entries[i + 4]);
     } else if (type == 1) {
       /*
-      EFIPrintStringAndHex(L"IO APIC ID", madt->entries[i + 2]);
-      EFIPrintStringAndHex(L"  Base addr", *(uint32_t*)&madt->entries[i + 4]);
-      EFIPrintStringAndHex(L"  Global system int base",
+      PutStringAndHex("IO APIC ID", madt->entries[i + 2]);
+      PutStringAndHex("  Base addr", *(uint32_t*)&madt->entries[i + 4]);
+      PutStringAndHex("  Global system int base",
                            *(uint32_t*)&madt->entries[i + 8]);
                            */
     } else if (type == 2) {
-      // EFIPrintStringAndHex(L"Bus source", madt->entries[i + 2]);
-      // EFIPrintStringAndHex(L"IRQ source", madt->entries[i + 3]);
-      // EFIPrintStringAndHex(L"  global system int",
+      // PutStringAndHex("Bus source", madt->entries[i + 2]);
+      // PutStringAndHex("IRQ source", madt->entries[i + 3]);
+      // PutStringAndHex("  global system int",
       //                    *(uint32_t*)&madt->entries[i + 4]);
       /*
-      EFIPrintStringAndHex(L"  flags",
+      PutStringAndHex("  flags",
                            *(uint16_t*)&madt->entries[i + 8]);
                            */
       if (madt->entries[i + 3] == 0x00) {
-        EFIPrintStringAndHex(L"  flags",
-                             0x02 & *(uint16_t*)&madt->entries[i + 8]);
-        EFIPrintStringAndHex(L"  flags",
-                             0x08 & *(uint16_t*)&madt->entries[i + 8]);
+        PutStringAndHex("  flags", 0x02 & *(uint16_t*)&madt->entries[i + 8]);
+        PutStringAndHex("  flags", 0x08 & *(uint16_t*)&madt->entries[i + 8]);
       }
     }
   }
@@ -230,34 +228,31 @@ void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
   uint64_t local_apic_base_msr = ReadMSR(0x1b);
   uint64_t local_apic_base_addr =
       (local_apic_base_msr & ((1ULL << MAX_PHY_ADDR_BITS) - 1)) & ~0xfffULL;
-  EFIPrintStringAndHex(L"LOCAL APIC BASE addr", local_apic_base_addr);
-  EFIPrintStringAndHex(L"LOCAL APIC ID", GetLocalAPICID(local_apic_base_addr));
-  EFIPrintStringAndHex(L"ID", *(uint32_t*)(local_apic_base_addr + 0x20));
-  EFIPrintStringAndHex(L"VER", *(uint32_t*)(local_apic_base_addr + 0x30));
-  EFIPrintStringAndHex(L"IO APIC ID",
-                       ReadIOAPICRegister(IO_APIC_BASE_ADDR, 0) >> 24);
-  EFIPrintStringAndHex(L"IO APIC VER",
-                       ReadIOAPICRegister(IO_APIC_BASE_ADDR, 1));
-  EFIPrintStringAndHex(L"IOREDTBL[2]",
-                       ReadIOAPICRedirectTableRegister(IO_APIC_BASE_ADDR, 2));
+  PutStringAndHex("LOCAL APIC BASE addr", local_apic_base_addr);
+  PutStringAndHex("LOCAL APIC ID", GetLocalAPICID(local_apic_base_addr));
+  PutStringAndHex("ID", *(uint32_t*)(local_apic_base_addr + 0x20));
+  PutStringAndHex("VER", *(uint32_t*)(local_apic_base_addr + 0x30));
+  PutStringAndHex("IO APIC ID", ReadIOAPICRegister(IO_APIC_BASE_ADDR, 0) >> 24);
+  PutStringAndHex("IO APIC VER", ReadIOAPICRegister(IO_APIC_BASE_ADDR, 1));
+  PutStringAndHex("IOREDTBL[2]",
+                  ReadIOAPICRedirectTableRegister(IO_APIC_BASE_ADDR, 2));
 
   WriteIOAPICRedirectTableRegister(IO_APIC_BASE_ADDR, 2,
                                    ((uint64_t)boot_cpu_apic_id << 56) | 0x20);
-  EFIPrintStringAndHex(L"IOREDTBL[2]",
-                       ReadIOAPICRedirectTableRegister(IO_APIC_BASE_ADDR, 2));
+  PutStringAndHex("IOREDTBL[2]",
+                  ReadIOAPICRedirectTableRegister(IO_APIC_BASE_ADDR, 2));
   if (!hpet)
     Panic("HPET table not found");
 
   hpet_registers = hpet->base_address.address;
   uint64_t general_config = hpet_registers->general_configuration;
-  EFIPrintStringAndHex(L"geneal cap",
-                       hpet_registers->general_capabilities_and_id);
-  EFIPrintStringAndHex(L"geneal configuration", general_config);
+  PutStringAndHex("geneal cap", hpet_registers->general_capabilities_and_id);
+  PutStringAndHex("geneal configuration", general_config);
   general_config |= 1;
   general_config |= (1ULL << 1);
   hpet_registers->general_configuration = general_config;
-  EFIPrintStringAndHex(L"geneal configuration",
-                       hpet_registers->general_configuration);
+  PutStringAndHex("geneal configuration",
+                  hpet_registers->general_configuration);
 
   count = 0;
   SetHPETTimer(0, HPET_TICK_PER_SEC * 1, HPET_MODE_PERIODIC | HPET_INT_ENABLE);
@@ -270,48 +265,44 @@ void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
     ;
 
   while (1) {
-    EFIPrintStringAndHex(L"counter", hpet_registers->main_counter_value);
-    EFIPrintStringAndHex(L"int status",
-                         hpet_registers->general_interrupt_status);
+    PutStringAndHex("counter", hpet_registers->main_counter_value);
+    PutStringAndHex("int status", hpet_registers->general_interrupt_status);
     uint64_t int_status = hpet_registers->general_interrupt_status;
     int_status |= 1ULL << 0;
     hpet_registers->general_interrupt_status = int_status;
-    EFIPrintStringAndHex(L"timer[0].comp",
-                         hpet_registers->timers[0].comparator_value);
-    EFIPrintStringAndHex(L"IOREDTBL[2]",
-                         ReadIOAPICRedirectTableRegister(IO_APIC_BASE_ADDR, 2));
-    EFIPrintStringAndHex(L"ISR", *(uint32_t*)(local_apic_base_addr + 0x0100));
-    EFIPrintStringAndHex(L"IRR", *(uint32_t*)(local_apic_base_addr + 0x0200));
-    EFIPrintStringAndHex(L"ESR", *(uint32_t*)(local_apic_base_addr + 0x0280));
-
-    // EFIGetChar();
+    PutStringAndHex("timer[0].comp",
+                    hpet_registers->timers[0].comparator_value);
+    PutStringAndHex("IOREDTBL[2]",
+                    ReadIOAPICRedirectTableRegister(IO_APIC_BASE_ADDR, 2));
+    PutStringAndHex("ISR", *(uint32_t*)(local_apic_base_addr + 0x0100));
+    PutStringAndHex("IRR", *(uint32_t*)(local_apic_base_addr + 0x0200));
+    PutStringAndHex("ESR", *(uint32_t*)(local_apic_base_addr + 0x0280));
   };
 
   if (nfit) {
-    EFIPutCString("NFIT found");
-    EFIPrintStringAndHex(L"NFIT Size", nfit->length);
-    EFIPrintStringAndHex(L"First NFIT Structure Type", nfit->entry[0]);
-    EFIPrintStringAndHex(L"First NFIT Structure Size", nfit->entry[1]);
+    PutString("NFIT found");
+    PutStringAndHex("NFIT Size", nfit->length);
+    PutStringAndHex("First NFIT Structure Type", nfit->entry[0]);
+    PutStringAndHex("First NFIT Structure Size", nfit->entry[1]);
     if (nfit->entry[0] == kSystemPhysicalAddressRangeStructure) {
       ACPI_NFIT_SPARange* spa_range = (ACPI_NFIT_SPARange*)&nfit->entry[0];
-      EFIPrintStringAndHex(L"SPARange Base",
-                           spa_range->system_physical_address_range_base);
-      EFIPrintStringAndHex(L"SPARange Length",
-                           spa_range->system_physical_address_range_length);
-      EFIPrintStringAndHex(L"SPARange Attribute",
-                           spa_range->address_range_memory_mapping_attribute);
-      EFIPrintStringAndHex(L"SPARange TypeGUID[0]",
-                           spa_range->address_range_type_guid[0]);
-      EFIPrintStringAndHex(L"SPARange TypeGUID[1]",
-                           spa_range->address_range_type_guid[1]);
+      PutStringAndHex("SPARange Base",
+                      spa_range->system_physical_address_range_base);
+      PutStringAndHex("SPARange Length",
+                      spa_range->system_physical_address_range_length);
+      PutStringAndHex("SPARange Attribute",
+                      spa_range->address_range_memory_mapping_attribute);
+      PutStringAndHex("SPARange TypeGUID[0]",
+                      spa_range->address_range_type_guid[0]);
+      PutStringAndHex("SPARange TypeGUID[1]",
+                      spa_range->address_range_type_guid[1]);
       uint64_t* p = (uint64_t*)spa_range->system_physical_address_range_base;
-      EFIPrintStringAndHex(L"PMEM Previous value: ", *p);
+      PutStringAndHex("PMEM Previous value: ", *p);
       *p = *p + 3;
-      EFIPrintStringAndHex(L"PMEM value after write: ", *p);
+      PutStringAndHex("PMEM value after write: ", *p);
     }
   }
 
-  // EFIPrintMemoryMap();
   while (1) {
     wchar_t c = EFIGetChar();
     EFIPutChar(c);
