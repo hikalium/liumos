@@ -104,6 +104,17 @@ packed_struct HPET_REGISTER_SPACE {
   HPETTimerRegisterSet timers[32];
 };
 
+// @console.c
+void ResetCursorPosition();
+void PutChar(char c);
+void PutString(const char* s);
+void PutHex64(uint64_t value);
+void PutStringAndHex(const char* s, uint64_t value);
+
+// @draw.c
+void DrawCharacter(char c, int px, int py);
+void DrawRect(int px, int py, int w, int h, uint32_t col);
+
 // @font.gen.c
 extern uint8_t font[0x100][16];
 
