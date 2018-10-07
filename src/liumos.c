@@ -142,12 +142,32 @@ void SetHPETTimer(int timer_index, uint64_t count, uint64_t flags) {
   PutStringAndHex("timer.newconfig", entry->configuration_and_capability);
 }
 
+void InitGDT() {
+  ReadGDTR(&gdtr);
+}
+
+void InitIDT() {
+  ReadIDTR(&idtr);
+
+  ClearIntFlag();
+
+  SetIntHandler(0x03, ReadCSSelector(), 0, 0xf, 0, AsmIntHandler03);
+  SetIntHandler(0x0d, ReadCSSelector(), 0, 0xf, 0, AsmIntHandler0D);
+  SetIntHandler(0x20, ReadCSSelector(), 0, 0xf, 0, AsmIntHandler20);
+  WriteIDTR(&idtr);
+
+  StoreIntFlag();
+}
+
 void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
   InitEFI(system_table);
   EFIClearScreen();
   EFIGetMemoryMap();
 
   PutString("liumOS is booting...\n");
+
+  InitGDT();
+  InitIDT();
 
   ACPI_RSDP* rsdp = EFIGetConfigurationTableByUUID(&EFI_ACPITableGUID);
   ACPI_XSDT* xsdt = rsdp->xsdt;
@@ -157,19 +177,6 @@ void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
 
   int num_of_xsdt_entries = (xsdt->length - ACPI_DESCRIPTION_HEADER_SIZE) >> 3;
   PutStringAndHex("XSDT Table entries", num_of_xsdt_entries);
-
-  ReadGDTR(&gdtr);
-  ReadIDTR(&idtr);
-
-  ClearIntFlag();
-
-  SetIntHandler(0x03, ReadCSSelector(), 0, 0xf, 0, AsmIntHandler03);
-  SetIntHandler(0x0d, ReadCSSelector(), 0, 0xf, 0, AsmIntHandler0D);
-  SetIntHandler(0x20, ReadCSSelector(), 0, 0xf, 0, AsmIntHandler20);
-  WriteIDTR(&idtr);
-  Int03();
-
-  StoreIntFlag();
 
   CPUID cpuid;
   ReadCPUID(&cpuid, 0, 0);
