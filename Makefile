@@ -2,7 +2,7 @@ OVMF=ovmf/bios64.bin
 QEMU=qemu-system-x86_64
 QEMU_ARGS=\
 					 -bios $(OVMF) \
-					 -machine q35,nvdimm -cpu qemu64 \
+					 -machine q35,nvdimm -cpu qemu64 -smp 4 \
 					 -monitor stdio \
 					 -m 8G,slots=2,maxmem=10G \
 					 -drive format=raw,file=fat:rw:mnt -net none

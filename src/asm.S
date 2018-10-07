@@ -49,6 +49,22 @@ Int03:
 	int3
 	ret
 
+.global StoreIntFlag
+StoreIntFlag:
+	sti
+	ret
+
+.global StoreIntFlagAndHalt
+StoreIntFlagAndHalt:
+	sti
+	hlt
+	ret
+
+.global ClearIntFlag
+ClearIntFlag:
+	cli
+	ret
+
 .global ReadCSSelector
 ReadCSSelector:
 	mov rax, 0

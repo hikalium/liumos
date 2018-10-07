@@ -67,6 +67,10 @@ void WriteIDTR(IDTR*);
 
 void Int03(void);
 
+void StoreIntFlag(void);
+void StoreIntFlagAndHalt(void);
+void ClearIntFlag(void);
+
 uint16_t ReadCSSelector(void);
 
 void AsmIntHandler03(void);
@@ -106,6 +110,7 @@ packed_struct HPET_REGISTER_SPACE {
 
 // @console.c
 void ResetCursorPosition();
+void EnableVideoModeForConsole();
 void PutChar(char c);
 void PutString(const char* s);
 void PutChars(const char* s, int n);
@@ -115,6 +120,7 @@ void PutStringAndHex(const char* s, uint64_t value);
 // @draw.c
 void DrawCharacter(char c, int px, int py);
 void DrawRect(int px, int py, int w, int h, uint32_t col);
+void BlockTransfer(int to_x, int to_y, int from_x, int from_y, int w, int h);
 
 // @font.gen.c
 extern uint8_t font[0x100][16];

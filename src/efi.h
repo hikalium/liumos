@@ -199,26 +199,35 @@ struct EFI_GRAPHICS_OUTPUT_BLT_PIXEL {
   unsigned char Reserved;
 };
 
+enum EFI_GRAPHICS_PIXEL_FORMAT {
+  kPixelRedGreenBlueReserved8BitPerColor,
+  kPixelBlueGreenRedReserved8BitPerColor,
+  kPixelBitMask,
+  kPixelBltOnly,
+  kPixelFormatMax
+} pixel_format;
+
 struct EFI_GRAPHICS_OUTPUT_PROTOCOL {
   uint64_t _buf[3];
   struct EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE {
-    unsigned int max_mode;
-    unsigned int mode;
+    uint32_t max_mode;
+    uint32_t mode;
     struct EFI_GRAPHICS_OUTPUT_MODE_INFORMATION {
-      unsigned int version;
-      unsigned int horizontal_resolution;
-      unsigned int vertical_resolution;
-      enum EFI_GRAPHICS_PIXEL_FORMAT {
-        kPixelRedGreenBlueReserved8BitPerColor,
-        kPixelBlueGreenRedReserved8BitPerColor,
-        kPixelBitMask,
-        kPixelBltOnly,
-        kPixelFormatMax
-      } pixel_format;
+      uint32_t version;
+      uint32_t horizontal_resolution;
+      uint32_t vertical_resolution;
+      uint32_t pixel_format;
+      struct {
+        uint32_t red_mask;
+        uint32_t green_mask;
+        uint32_t blue_mask;
+        uint32_t reserved_mask;
+      } pixel_info;
+      uint32_t pixels_per_scan_line;
     } * info;
-    uint64_t size_of_info;
+    EFI_UINTN size_of_info;
     void* frame_buffer_base;
-    uint64_t frame_buffer_size;
+    EFI_UINTN frame_buffer_size;
   } * mode;
 };
 

@@ -7,6 +7,8 @@ HPETRegisterSpace* hpet_registers;
 uint8_t* vram;
 int xsize;
 int ysize;
+int pixel_format;
+int pixels_per_scan_line;
 
 void InitEFI(EFISystemTable* system_table) {
   _system_table = system_table;
@@ -14,9 +16,15 @@ void InitEFI(EFISystemTable* system_table) {
   _system_table->boot_services->LocateProtocol(
       &EFI_GraphicsOutputProtocolGUID, NULL,
       (void**)&efi_graphics_output_protocol);
+}
+
+void InitGraphics() {
   vram = efi_graphics_output_protocol->mode->frame_buffer_base;
   xsize = efi_graphics_output_protocol->mode->info->horizontal_resolution;
   ysize = efi_graphics_output_protocol->mode->info->vertical_resolution;
+  pixel_format = efi_graphics_output_protocol->mode->info->pixel_format;
+  pixels_per_scan_line =
+      efi_graphics_output_protocol->mode->info->pixels_per_scan_line;
 }
 
 _Noreturn void Panic(const char* s) {
@@ -41,7 +49,7 @@ void SendEndOfInterruptToLocalAPIC() {
 int count = 0;
 void IntHandler(uint64_t intcode, InterruptInfo* info) {
   if (intcode == 0x20) {
-    PutStringAndHex("Int20", count);
+    PutString(".");
     count++;
     SendEndOfInterruptToLocalAPIC();
     return;
@@ -51,7 +59,7 @@ void IntHandler(uint64_t intcode, InterruptInfo* info) {
   PutStringAndHex("CS", info->cs);
 
   if (intcode == 0x03) {
-    PutString("!!!! Int3 Trap !!!!\r\n");
+    PutString("!!!! Int3 Trap !!!!\n");
     return;
   }
   Panic("INTHandler not implemented");
@@ -145,9 +153,7 @@ void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
   ACPI_XSDT* xsdt = rsdp->xsdt;
 
   PutStringAndHex("ACPI Table address", (uint64_t)rsdp);
-  PutChars(rsdp->signature, 8);
   PutStringAndHex("XSDT Table address", (uint64_t)xsdt);
-  PutChars(xsdt->signature, 4);
 
   int num_of_xsdt_entries = (xsdt->length - ACPI_DESCRIPTION_HEADER_SIZE) >> 3;
   PutStringAndHex("XSDT Table entries", num_of_xsdt_entries);
@@ -155,20 +161,32 @@ void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
   ReadGDTR(&gdtr);
   ReadIDTR(&idtr);
 
+  ClearIntFlag();
+
   SetIntHandler(0x03, ReadCSSelector(), 0, 0xf, 0, AsmIntHandler03);
   SetIntHandler(0x0d, ReadCSSelector(), 0, 0xf, 0, AsmIntHandler0D);
   SetIntHandler(0x20, ReadCSSelector(), 0, 0xf, 0, AsmIntHandler20);
   WriteIDTR(&idtr);
   Int03();
 
+  StoreIntFlag();
+
   CPUID cpuid;
   ReadCPUID(&cpuid, 0, 0);
   PutStringAndHex("Max CPUID", cpuid.eax);
 
+  InitGraphics();
+  EnableVideoModeForConsole();
+
+  DrawRect(300, 100, 200, 200, 0xffffff);
+  DrawRect(350, 150, 200, 200, 0xff0000);
+  DrawRect(400, 200, 200, 200, 0x00ff00);
+  DrawRect(450, 250, 200, 200, 0x0000ff);
+
   ReadCPUID(&cpuid, 1, 0);
-  if (!(cpuid.eax & CPUID_01_EDX_APIC))
+  if (!(cpuid.edx & CPUID_01_EDX_APIC))
     Panic("APIC not supported");
-  if (!(cpuid.eax & CPUID_01_EDX_MSR))
+  if (!(cpuid.edx & CPUID_01_EDX_MSR))
     Panic("MSR not supported");
 
   ACPI_NFIT* nfit = NULL;
@@ -187,41 +205,19 @@ void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
   if (!madt)
     Panic("MADT not found");
 
-  uint8_t boot_cpu_apic_id = 0xff;
-
   for (int i = 0; i < madt->length - offsetof(ACPI_MADT, entries);
        i += madt->entries[i + 1]) {
     uint8_t type = madt->entries[i];
     if (type == 0) {
-      // PutStringAndHex("APIC Processor ID", madt->entries[i + 2]);
-      boot_cpu_apic_id = madt->entries[i + 2];
-      // PutStringAndHex("  Local APIC ID", madt->entries[i + 3]);
-      // PutStringAndHex("  flags", *(uint32_t*)&madt->entries[i + 4]);
-    } else if (type == 1) {
-      /*
-      PutStringAndHex("IO APIC ID", madt->entries[i + 2]);
-      PutStringAndHex("  Base addr", *(uint32_t*)&madt->entries[i + 4]);
-      PutStringAndHex("  Global system int base",
-                           *(uint32_t*)&madt->entries[i + 8]);
-                           */
+      PutStringAndHex("APIC Processor ID", madt->entries[i + 2]);
+      PutStringAndHex("  Local APIC ID", madt->entries[i + 3]);
+      PutStringAndHex("  flags", *(uint32_t*)&madt->entries[i + 4]);
     } else if (type == 2) {
-      // PutStringAndHex("Bus source", madt->entries[i + 2]);
-      // PutStringAndHex("IRQ source", madt->entries[i + 3]);
-      // PutStringAndHex("  global system int",
-      //                    *(uint32_t*)&madt->entries[i + 4]);
-      /*
-      PutStringAndHex("  flags",
-                           *(uint16_t*)&madt->entries[i + 8]);
-                           */
-      if (madt->entries[i + 3] == 0x00) {
-        PutStringAndHex("  flags", 0x02 & *(uint16_t*)&madt->entries[i + 8]);
-        PutStringAndHex("  flags", 0x08 & *(uint16_t*)&madt->entries[i + 8]);
-      }
+      PutStringAndHex("IRQ source", madt->entries[i + 3]);
+      PutStringAndHex("  global system int", *(uint32_t*)&madt->entries[i + 4]);
+      PutStringAndHex("  flags", *(uint16_t*)&madt->entries[i + 8]);
     }
   }
-
-  if (boot_cpu_apic_id == 0xff)
-    Panic("Boot CPU APIC ID cannot be retrieved");
 
   Disable8259PIC();
 
@@ -234,11 +230,14 @@ void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
   PutStringAndHex("VER", *(uint32_t*)(local_apic_base_addr + 0x30));
   PutStringAndHex("IO APIC ID", ReadIOAPICRegister(IO_APIC_BASE_ADDR, 0) >> 24);
   PutStringAndHex("IO APIC VER", ReadIOAPICRegister(IO_APIC_BASE_ADDR, 1));
-  PutStringAndHex("IOREDTBL[2]",
-                  ReadIOAPICRedirectTableRegister(IO_APIC_BASE_ADDR, 2));
 
-  WriteIOAPICRedirectTableRegister(IO_APIC_BASE_ADDR, 2,
-                                   ((uint64_t)boot_cpu_apic_id << 56) | 0x20);
+  uint64_t redirect_table =
+      ReadIOAPICRedirectTableRegister(IO_APIC_BASE_ADDR, 2);
+  PutStringAndHex("IOREDTBL[2]", redirect_table);
+  redirect_table &= 0x00fffffffffe0000UL;
+  redirect_table |=
+      ((uint64_t)GetLocalAPICID(local_apic_base_addr) << 56) | 0x20;
+  WriteIOAPICRedirectTableRegister(IO_APIC_BASE_ADDR, 2, redirect_table);
   PutStringAndHex("IOREDTBL[2]",
                   ReadIOAPICRedirectTableRegister(IO_APIC_BASE_ADDR, 2));
   if (!hpet)
@@ -246,6 +245,9 @@ void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
 
   hpet_registers = hpet->base_address.address;
   uint64_t general_config = hpet_registers->general_configuration;
+  uint64_t count_per_femtosecond =
+      hpet_registers->general_capabilities_and_id >> 32;
+  PutStringAndHex("count_per_femtosecond", count_per_femtosecond);
   PutStringAndHex("geneal cap", hpet_registers->general_capabilities_and_id);
   PutStringAndHex("geneal configuration", general_config);
   general_config |= 1;
@@ -255,14 +257,18 @@ void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
                   hpet_registers->general_configuration);
 
   count = 0;
-  SetHPETTimer(0, HPET_TICK_PER_SEC * 1, HPET_MODE_PERIODIC | HPET_INT_ENABLE);
+  SetHPETTimer(0, 1e15 / count_per_femtosecond * 0.1,
+               HPET_MODE_PERIODIC | HPET_INT_ENABLE);
 
   SetHPETTimer(1, HPET_TICK_PER_SEC * 100, HPET_MODE_PERIODIC);
 
   hpet_registers->main_counter_value = 0;
+  PutStringAndHex("main_counter_value", hpet_registers->main_counter_value);
+  PutStringAndHex("main_counter_value", hpet_registers->main_counter_value);
 
-  while (1)
-    ;
+  while (1) {
+    StoreIntFlagAndHalt();
+  }
 
   while (1) {
     PutStringAndHex("counter", hpet_registers->main_counter_value);

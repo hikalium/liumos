@@ -5,17 +5,33 @@ extern int xsize;
 extern int ysize;
 
 int cursor_x, cursor_y;
+bool use_vram;
 
 void ResetCursorPosition() {
   cursor_x = 0;
   cursor_y = 0;
 }
 
+void EnableVideoModeForConsole() {
+  if (!vram)
+    return;
+  use_vram = true;
+}
+
 void PutChar(char c) {
+  if (!use_vram) {
+    if (c == '\n') {
+      EFIPutChar('\r');
+      EFIPutChar('\n');
+      return;
+    }
+    EFIPutChar(c);
+    return;
+  }
+  ClearIntFlag();
   if (c == '\n') {
     cursor_y += 16;
     cursor_x = 0;
-
   } else {
     DrawCharacter(c, cursor_x, cursor_y);
     cursor_x += 8;
@@ -25,16 +41,11 @@ void PutChar(char c) {
     cursor_x = 0;
   }
   if (cursor_y + 16 > ysize) {
-    for (int y = 0; y < cursor_y - 16; y++) {
-      for (int x = 0; x < xsize; x++) {
-        for (int i = 0; i < 4; i++) {
-          vram[4 * (y * xsize + x) + i] = vram[4 * ((y + 16) * xsize + x) + i];
-        }
-      }
-    }
+    BlockTransfer(0, 0, 0, 16, xsize, ysize - 16);
     DrawRect(0, cursor_y - 16, xsize, 16, 0x000000);
     cursor_y -= 16;
   }
+  StoreIntFlag();
 }
 
 void PutString(const char* s) {
