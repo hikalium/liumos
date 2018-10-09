@@ -1,15 +1,13 @@
 #include "liumos.h"
+uint8_t* vram;
+int xsize;
+int ysize;
+int pixels_per_scan_line;
 
 GDTR gdtr;
 IDTR idtr;
 HPETRegisterSpace* hpet_registers;
 uint64_t hpet_count_per_femtosecond;
-
-uint8_t* vram;
-int xsize;
-int ysize;
-int pixel_format;
-int pixels_per_scan_line;
 
 void InitEFI(EFISystemTable* system_table) {
   _system_table = system_table;
@@ -20,15 +18,15 @@ void InitEFI(EFISystemTable* system_table) {
 }
 
 void InitGraphics() {
-  vram = efi_graphics_output_protocol->mode->frame_buffer_base;
+  vram = static_cast<uint8_t*>(
+      efi_graphics_output_protocol->mode->frame_buffer_base);
   xsize = efi_graphics_output_protocol->mode->info->horizontal_resolution;
   ysize = efi_graphics_output_protocol->mode->info->vertical_resolution;
-  pixel_format = efi_graphics_output_protocol->mode->info->pixel_format;
   pixels_per_scan_line =
       efi_graphics_output_protocol->mode->info->pixels_per_scan_line;
 }
 
-_Noreturn void Panic(const char* s) {
+[[noreturn]] void Panic(const char* s) {
   PutString("!!!! PANIC !!!!\r\n");
   PutString(s);
   for (;;) {
@@ -47,11 +45,11 @@ void SendEndOfInterruptToLocalAPIC() {
   *GetLocalAPICRegisterAddr(0xB0) = 0;
 }
 
-int count = 0;
+extern "C" {
+
 void IntHandler(uint64_t intcode, InterruptInfo* info) {
   if (intcode == 0x20) {
     PutString(".");
-    count++;
     SendEndOfInterruptToLocalAPIC();
     return;
   }
@@ -64,6 +62,7 @@ void IntHandler(uint64_t intcode, InterruptInfo* info) {
     return;
   }
   Panic("INTHandler not implemented");
+}
 }
 
 void PrintIDTGateDescriptor(IDTGateDescriptor* desc) {
@@ -195,7 +194,8 @@ void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
   InitGDT();
   InitIDT();
 
-  ACPI_RSDP* rsdp = EFIGetConfigurationTableByUUID(&EFI_ACPITableGUID);
+  ACPI_RSDP* rsdp = static_cast<ACPI_RSDP*>(
+      EFIGetConfigurationTableByUUID(&EFI_ACPITableGUID));
   ACPI_XSDT* xsdt = rsdp->xsdt;
 
   int num_of_xsdt_entries = (xsdt->length - ACPI_DESCRIPTION_HEADER_SIZE) >> 3;
@@ -220,12 +220,13 @@ void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
   ACPI_MADT* madt = NULL;
 
   for (int i = 0; i < num_of_xsdt_entries; i++) {
-    if (IsEqualStringWithSize(xsdt->entry[i], "NFIT", 4))
-      nfit = xsdt->entry[i];
-    if (IsEqualStringWithSize(xsdt->entry[i], "HPET", 4))
-      hpet = xsdt->entry[i];
-    if (IsEqualStringWithSize(xsdt->entry[i], "APIC", 4))
-      madt = xsdt->entry[i];
+    const char* signature = static_cast<const char*>(xsdt->entry[i]);
+    if (IsEqualStringWithSize(signature, "NFIT", 4))
+      nfit = static_cast<ACPI_NFIT*>(xsdt->entry[i]);
+    if (IsEqualStringWithSize(signature, "HPET", 4))
+      hpet = static_cast<ACPI_HPET*>(xsdt->entry[i]);
+    if (IsEqualStringWithSize(signature, "APIC", 4))
+      madt = static_cast<ACPI_MADT*>(xsdt->entry[i]);
   }
 
   if (!madt)
@@ -264,10 +265,9 @@ void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
   if (!hpet)
     Panic("HPET table not found");
 
-  hpet_registers = hpet->base_address.address;
+  hpet_registers = static_cast<HPETRegisterSpace*>(hpet->base_address.address);
   InitHPET();
 
-  count = 0;
   SetHPETTimer(0, 1e15 / hpet_count_per_femtosecond * 0.1,
                HPET_MODE_PERIODIC | HPET_INT_ENABLE);
 
@@ -301,7 +301,8 @@ void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
     PutStringAndHex("NFIT Size", nfit->length);
     PutStringAndHex("First NFIT Structure Type", nfit->entry[0]);
     PutStringAndHex("First NFIT Structure Size", nfit->entry[1]);
-    if (nfit->entry[0] == kSystemPhysicalAddressRangeStructure) {
+    if (static_cast<ACPI_NFITStructureType>(nfit->entry[0]) ==
+        ACPI_NFITStructureType::kSystemPhysicalAddressRangeStructure) {
       ACPI_NFIT_SPARange* spa_range = (ACPI_NFIT_SPARange*)&nfit->entry[0];
       PutStringAndHex("SPARange Base",
                       spa_range->system_physical_address_range_base);

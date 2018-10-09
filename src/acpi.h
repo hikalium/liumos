@@ -6,9 +6,6 @@
 #define packed_struct struct __attribute__((__packed__))
 #define ACPI_DESCRIPTION_HEADER_SIZE 36
 
-typedef struct ACPI_ROOT_SYSTEM_DESCRIPTION_POINTER ACPI_RSDP;
-typedef struct ACPI_EXTENDED_SYSTEM_DESCRIPTION_TABLE ACPI_XSDT;
-typedef struct ACPI_NVDIMM_FIRMWARE_INTERFACE_TABLE ACPI_NFIT;
 typedef struct ACPI_NFIT_SYSTEM_PHYSICAL_ADDRESS_RANGE_STRUCTURE
     ACPI_NFIT_SPARange;
 typedef struct ACPI_GENERIC_ADDRESS_STRUCTURE ACPI_GAS;
@@ -16,7 +13,9 @@ typedef struct ACPI_HPET_DESCRIPTION_TABLE ACPI_HPET;
 typedef struct HPET_REGISTER_SPACE HPETRegisterSpace;
 typedef struct ACPI_MULTIPLE_APIC_DESCRIPTION_TABLE ACPI_MADT;
 
-packed_struct ACPI_ROOT_SYSTEM_DESCRIPTION_POINTER {
+struct ACPI_XSDT;
+
+packed_struct ACPI_RSDP {
   char signature[8];
   uint8_t checksum;
   uint8_t oem_id[6];
@@ -28,7 +27,7 @@ packed_struct ACPI_ROOT_SYSTEM_DESCRIPTION_POINTER {
   uint8_t reserved;
 };
 
-packed_struct ACPI_EXTENDED_SYSTEM_DESCRIPTION_TABLE {
+packed_struct ACPI_XSDT {
   char signature[4];
   uint32_t length;
   uint8_t revision;
@@ -38,10 +37,10 @@ packed_struct ACPI_EXTENDED_SYSTEM_DESCRIPTION_TABLE {
   uint32_t oem_revision;
   uint32_t creator_id;
   uint32_t creator_revision;
-  void* entry[];
+  void* entry[1];
 };
 
-enum ACPI_NFITStructureType {
+enum class ACPI_NFITStructureType : int {
   kSystemPhysicalAddressRangeStructure,
   kMemoryDeviceToSystemAddressRangeMapStructure,
   kInterleaveStructure,
@@ -51,7 +50,7 @@ enum ACPI_NFITStructureType {
   kFlushHintAddressStructure,
 };
 
-packed_struct ACPI_NVDIMM_FIRMWARE_INTERFACE_TABLE {
+packed_struct ACPI_NFIT {
   char signature[4];
   uint32_t length;
   uint8_t revision;
@@ -62,7 +61,7 @@ packed_struct ACPI_NVDIMM_FIRMWARE_INTERFACE_TABLE {
   uint32_t creator_id;
   uint32_t creator_revision;
   uint32_t reserved;
-  uint16_t entry[];
+  uint16_t entry[1];
 };
 
 packed_struct ACPI_NFIT_SYSTEM_PHYSICAL_ADDRESS_RANGE_STRUCTURE {
@@ -123,5 +122,5 @@ packed_struct ACPI_MULTIPLE_APIC_DESCRIPTION_TABLE {
 
   uint32_t local_apic_address;
   uint32_t flags;
-  uint8_t entries[];
+  uint8_t entries[1];
 };

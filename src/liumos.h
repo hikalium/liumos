@@ -19,17 +19,11 @@ typedef packed_struct {
 }
 CPUID;
 
-void ReadCPUID(CPUID*, uint32_t eax, uint32_t ecx);
-
-uint64_t ReadMSR(uint32_t);
-
 typedef packed_struct {
   uint16_t limit;
   uint64_t base;
 }
 GDTR;
-
-void ReadGDTR(GDTR*);
 
 typedef packed_struct {
   // uint64_t error_code;
@@ -61,6 +55,13 @@ typedef packed_struct {
   IDTGateDescriptor* base;
 }
 IDTR;
+
+extern "C" {
+void ReadCPUID(CPUID*, uint32_t eax, uint32_t ecx);
+
+uint64_t ReadMSR(uint32_t);
+
+void ReadGDTR(GDTR*);
 
 void ReadIDTR(IDTR*);
 void WriteIDTR(IDTR*);
@@ -107,6 +108,7 @@ packed_struct HPET_REGISTER_SPACE {
   uint64_t reserved04;
   HPETTimerRegisterSet timers[32];
 };
+}
 
 // @console.c
 void ResetCursorPosition();

@@ -42,3 +42,7 @@ clean :
 
 format :
 	make -C src format
+
+commit : format
+	git add .
+	git commit

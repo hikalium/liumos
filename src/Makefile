@@ -7,7 +7,14 @@ CFLAGS= \
 		-fno-stack-protector -fshort-wchar \
 		-mno-red-zone \
 		-nostdlibinc \
-		-Wall -Wpedantic -Wshorten-64-to-32
+		-Wall -Wpedantic -Wshorten-64-to-32 -std=c11
+CXXFLAGS= \
+		-target x86_64-pc-win32-coff \
+		-fno-stack-protector -fshort-wchar \
+		-mno-red-zone \
+		-nostdlibinc \
+		-Wall -Wpedantic -Wshorten-64-to-32 -std=c++14
+
 
 
 OSNAME=${shell uname -s}
@@ -22,12 +29,16 @@ endif
 
 default: BOOTX64.EFI
 
-font.gen.c : font.txt
-	../tools/fontmaker font.txt > font.gen.c
+font.gen.cc : font.txt
+	../tools/fontmaker font.txt > font.gen.cc
 
 %.o : %.c $(HEADERS) Makefile
 	$(CC) $(CFLAGS) \
 		-c -o $*.o $*.c
+
+%.o : %.cc $(HEADERS) Makefile
+	$(CC) $(CXXFLAGS) \
+		-c -o $*.o $*.cc
 
 %.o : %.S Makefile
 	$(CC) $(CFLAGS) \
@@ -46,6 +57,7 @@ clean :
 	-rm *.lib
 	-rm *.o
 	-rm *.gen.c
+	-rm *.gen.cc
 
 format :
-	clang-format -i *.c *.h
+	clang-format -i *.cc *.h

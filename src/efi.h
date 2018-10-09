@@ -205,7 +205,7 @@ enum EFI_GRAPHICS_PIXEL_FORMAT {
   kPixelBitMask,
   kPixelBltOnly,
   kPixelFormatMax
-} pixel_format;
+};
 
 struct EFI_GRAPHICS_OUTPUT_PROTOCOL {
   uint64_t _buf[3];
@@ -269,7 +269,7 @@ struct EFI_FILE_INFO {
   struct EFI_TIME LastAccessTime;
   struct EFI_TIME ModificationTime;
   uint64_t Attribute;
-  unsigned short FileName[];
+  unsigned short FileName[1];
 };
 
 struct EFI_FILE_PROTOCOL {

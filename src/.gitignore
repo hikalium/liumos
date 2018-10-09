@@ -4,3 +4,4 @@
 *.manifest
 *.swp
 *.gen.c
+*.gen.cc
