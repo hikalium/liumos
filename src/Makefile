@@ -1,4 +1,4 @@
-OBJS=asm.o console.o draw.o efi.o efimain.o guid.o liumos.o static.o font.gen.o
+OBJS=asm.o console.o draw.o efi.o efimain.o guid.o hpet.o liumos.o static.o font.gen.o
 HEADERS=$(wildcard *.h)
 OVMF=ovmf/bios64.bin
 QEMU=qemu-system-x86_64

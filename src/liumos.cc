@@ -1,4 +1,6 @@
 #include "liumos.h"
+#include "hpet.h"
+
 uint8_t* vram;
 int xsize;
 int ysize;
@@ -6,8 +8,6 @@ int pixels_per_scan_line;
 
 GDTR gdtr;
 IDTR idtr;
-HPETRegisterSpace* hpet_registers;
-uint64_t hpet_count_per_femtosecond;
 
 void InitEFI(EFISystemTable* system_table) {
   _system_table = system_table;
@@ -128,20 +128,6 @@ void SetIntHandler(int index,
   desc->reserved2 = 0;
 }
 
-void SetHPETTimer(int timer_index, uint64_t count, uint64_t flags) {
-  HPETTimerRegisterSet* entry = &hpet_registers->timers[timer_index];
-  PutStringAndHex("timer.oldconfig", entry->configuration_and_capability);
-  uint64_t config = entry->configuration_and_capability;
-  uint64_t mask =
-      HPET_MODE_PERIODIC | HPET_INT_ENABLE | HPET_INT_TYPE_LEVEL_TRIGGERED;
-  config &= ~mask;
-  config |= mask & flags;
-  config |= HPET_SET_VALUE;
-  entry->configuration_and_capability = config;
-  entry->comparator_value = count;
-  PutStringAndHex("timer.newconfig", entry->configuration_and_capability);
-}
-
 void InitGDT() {
   ReadGDTR(&gdtr);
 }
@@ -167,19 +153,7 @@ void InitIOAPIC(uint64_t local_apic_id) {
   WriteIOAPICRedirectTableRegister(IO_APIC_BASE_ADDR, 2, redirect_table);
 }
 
-void InitHPET() {
-  uint64_t general_config = hpet_registers->general_configuration;
-  hpet_count_per_femtosecond =
-      hpet_registers->general_capabilities_and_id >> 32;
-  PutStringAndHex("count_per_femtosecond", hpet_count_per_femtosecond);
-  PutStringAndHex("geneal cap", hpet_registers->general_capabilities_and_id);
-  PutStringAndHex("geneal configuration", general_config);
-  general_config |= 1;
-  general_config |= (1ULL << 1);
-  hpet_registers->general_configuration = general_config;
-  PutStringAndHex("geneal configuration",
-                  hpet_registers->general_configuration);
-}
+HPET hpet;
 
 void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
   InitEFI(system_table);
@@ -216,7 +190,7 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
     Panic("MSR not supported");
 
   ACPI_NFIT* nfit = nullptr;
-  ACPI_HPET* hpet = nullptr;
+  ACPI_HPET* hpet_table = nullptr;
   ACPI_MADT* madt = nullptr;
 
   for (int i = 0; i < num_of_xsdt_entries; i++) {
@@ -224,7 +198,7 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
     if (IsEqualStringWithSize(signature, "NFIT", 4))
       nfit = static_cast<ACPI_NFIT*>(xsdt->entry[i]);
     if (IsEqualStringWithSize(signature, "HPET", 4))
-      hpet = static_cast<ACPI_HPET*>(xsdt->entry[i]);
+      hpet_table = static_cast<ACPI_HPET*>(xsdt->entry[i]);
     if (IsEqualStringWithSize(signature, "APIC", 4))
       madt = static_cast<ACPI_MADT*>(xsdt->entry[i]);
   }
@@ -262,39 +236,18 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
 
   InitIOAPIC(local_apic_id);
 
-  if (!hpet)
+  if (!hpet_table)
     Panic("HPET table not found");
 
-  hpet_registers = static_cast<HPETRegisterSpace*>(hpet->base_address.address);
-  InitHPET();
+  hpet.Init(
+      static_cast<HPET::RegisterSpace*>(hpet_table->base_address.address));
 
-  SetHPETTimer(0, 1e15 / hpet_count_per_femtosecond * 0.1,
-               HPET_MODE_PERIODIC | HPET_INT_ENABLE);
-
-  SetHPETTimer(1, HPET_TICK_PER_SEC * 100, HPET_MODE_PERIODIC);
-
-  hpet_registers->main_counter_value = 0;
-  PutStringAndHex("main_counter_value", hpet_registers->main_counter_value);
-  PutStringAndHex("main_counter_value", hpet_registers->main_counter_value);
+  hpet.SetTimerMs(0, 100, HPET_MODE_PERIODIC | HPET_INT_ENABLE);
+  hpet.SetTimerMs(1, 1000, HPET_MODE_PERIODIC);
 
   while (1) {
     StoreIntFlagAndHalt();
   }
-
-  while (1) {
-    PutStringAndHex("counter", hpet_registers->main_counter_value);
-    PutStringAndHex("int status", hpet_registers->general_interrupt_status);
-    uint64_t int_status = hpet_registers->general_interrupt_status;
-    int_status |= 1ULL << 0;
-    hpet_registers->general_interrupt_status = int_status;
-    PutStringAndHex("timer[0].comp",
-                    hpet_registers->timers[0].comparator_value);
-    PutStringAndHex("IOREDTBL[2]",
-                    ReadIOAPICRedirectTableRegister(IO_APIC_BASE_ADDR, 2));
-    PutStringAndHex("ISR", *(uint32_t*)(local_apic_base_addr + 0x0100));
-    PutStringAndHex("IRR", *(uint32_t*)(local_apic_base_addr + 0x0200));
-    PutStringAndHex("ESR", *(uint32_t*)(local_apic_base_addr + 0x0280));
-  };
 
   if (nfit) {
     PutString("NFIT found");
