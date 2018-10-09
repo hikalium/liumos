@@ -3,6 +3,7 @@
 GDTR gdtr;
 IDTR idtr;
 HPETRegisterSpace* hpet_registers;
+uint64_t hpet_count_per_femtosecond;
 
 uint8_t* vram;
 int xsize;
@@ -159,10 +160,35 @@ void InitIDT() {
   StoreIntFlag();
 }
 
+void InitIOAPIC(uint64_t local_apic_id) {
+  uint64_t redirect_table =
+      ReadIOAPICRedirectTableRegister(IO_APIC_BASE_ADDR, 2);
+  redirect_table &= 0x00fffffffffe0000UL;
+  redirect_table |= (local_apic_id << 56) | 0x20;
+  WriteIOAPICRedirectTableRegister(IO_APIC_BASE_ADDR, 2, redirect_table);
+}
+
+void InitHPET() {
+  uint64_t general_config = hpet_registers->general_configuration;
+  hpet_count_per_femtosecond =
+      hpet_registers->general_capabilities_and_id >> 32;
+  PutStringAndHex("count_per_femtosecond", hpet_count_per_femtosecond);
+  PutStringAndHex("geneal cap", hpet_registers->general_capabilities_and_id);
+  PutStringAndHex("geneal configuration", general_config);
+  general_config |= 1;
+  general_config |= (1ULL << 1);
+  hpet_registers->general_configuration = general_config;
+  PutStringAndHex("geneal configuration",
+                  hpet_registers->general_configuration);
+}
+
 void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
   InitEFI(system_table);
   EFIClearScreen();
   EFIGetMemoryMap();
+
+  InitGraphics();
+  EnableVideoModeForConsole();
 
   PutString("liumOS is booting...\n");
 
@@ -172,18 +198,11 @@ void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
   ACPI_RSDP* rsdp = EFIGetConfigurationTableByUUID(&EFI_ACPITableGUID);
   ACPI_XSDT* xsdt = rsdp->xsdt;
 
-  PutStringAndHex("ACPI Table address", (uint64_t)rsdp);
-  PutStringAndHex("XSDT Table address", (uint64_t)xsdt);
-
   int num_of_xsdt_entries = (xsdt->length - ACPI_DESCRIPTION_HEADER_SIZE) >> 3;
-  PutStringAndHex("XSDT Table entries", num_of_xsdt_entries);
 
   CPUID cpuid;
   ReadCPUID(&cpuid, 0, 0);
   PutStringAndHex("Max CPUID", cpuid.eax);
-
-  InitGraphics();
-  EnableVideoModeForConsole();
 
   DrawRect(300, 100, 200, 200, 0xffffff);
   DrawRect(350, 150, 200, 200, 0xff0000);
@@ -215,14 +234,20 @@ void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
   for (int i = 0; i < madt->length - offsetof(ACPI_MADT, entries);
        i += madt->entries[i + 1]) {
     uint8_t type = madt->entries[i];
-    if (type == 0) {
-      PutStringAndHex("APIC Processor ID", madt->entries[i + 2]);
-      PutStringAndHex("  Local APIC ID", madt->entries[i + 3]);
-      PutStringAndHex("  flags", *(uint32_t*)&madt->entries[i + 4]);
-    } else if (type == 2) {
-      PutStringAndHex("IRQ source", madt->entries[i + 3]);
-      PutStringAndHex("  global system int", *(uint32_t*)&madt->entries[i + 4]);
-      PutStringAndHex("  flags", *(uint16_t*)&madt->entries[i + 8]);
+    if (type == kProcessorLocalAPICInfo) {
+      PutString("Processor 0x");
+      PutHex64(madt->entries[i + 2]);
+      PutString(" local_apic_id = 0x");
+      PutHex64(madt->entries[i + 3]);
+      PutString(" flags = 0x");
+      PutHex64(madt->entries[i + 4]);
+      PutString("\n");
+    } else if (type == kInterruptSourceOverrideInfo) {
+      PutString("IRQ override: 0x");
+      PutHex64(madt->entries[i + 3]);
+      PutString(" -> 0x");
+      PutHex64(*(uint32_t*)&madt->entries[i + 4]);
+      PutString("\n");
     }
   }
 
@@ -231,40 +256,19 @@ void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
   uint64_t local_apic_base_msr = ReadMSR(0x1b);
   uint64_t local_apic_base_addr =
       (local_apic_base_msr & ((1ULL << MAX_PHY_ADDR_BITS) - 1)) & ~0xfffULL;
-  PutStringAndHex("LOCAL APIC BASE addr", local_apic_base_addr);
-  PutStringAndHex("LOCAL APIC ID", GetLocalAPICID(local_apic_base_addr));
-  PutStringAndHex("ID", *(uint32_t*)(local_apic_base_addr + 0x20));
-  PutStringAndHex("VER", *(uint32_t*)(local_apic_base_addr + 0x30));
-  PutStringAndHex("IO APIC ID", ReadIOAPICRegister(IO_APIC_BASE_ADDR, 0) >> 24);
-  PutStringAndHex("IO APIC VER", ReadIOAPICRegister(IO_APIC_BASE_ADDR, 1));
+  uint64_t local_apic_id = GetLocalAPICID(local_apic_base_addr);
+  PutStringAndHex("LOCAL APIC ID", local_apic_id);
 
-  uint64_t redirect_table =
-      ReadIOAPICRedirectTableRegister(IO_APIC_BASE_ADDR, 2);
-  PutStringAndHex("IOREDTBL[2]", redirect_table);
-  redirect_table &= 0x00fffffffffe0000UL;
-  redirect_table |=
-      ((uint64_t)GetLocalAPICID(local_apic_base_addr) << 56) | 0x20;
-  WriteIOAPICRedirectTableRegister(IO_APIC_BASE_ADDR, 2, redirect_table);
-  PutStringAndHex("IOREDTBL[2]",
-                  ReadIOAPICRedirectTableRegister(IO_APIC_BASE_ADDR, 2));
+  InitIOAPIC(local_apic_id);
+
   if (!hpet)
     Panic("HPET table not found");
 
   hpet_registers = hpet->base_address.address;
-  uint64_t general_config = hpet_registers->general_configuration;
-  uint64_t count_per_femtosecond =
-      hpet_registers->general_capabilities_and_id >> 32;
-  PutStringAndHex("count_per_femtosecond", count_per_femtosecond);
-  PutStringAndHex("geneal cap", hpet_registers->general_capabilities_and_id);
-  PutStringAndHex("geneal configuration", general_config);
-  general_config |= 1;
-  general_config |= (1ULL << 1);
-  hpet_registers->general_configuration = general_config;
-  PutStringAndHex("geneal configuration",
-                  hpet_registers->general_configuration);
+  InitHPET();
 
   count = 0;
-  SetHPETTimer(0, 1e15 / count_per_femtosecond * 0.1,
+  SetHPETTimer(0, 1e15 / hpet_count_per_femtosecond * 0.1,
                HPET_MODE_PERIODIC | HPET_INT_ENABLE);
 
   SetHPETTimer(1, HPET_TICK_PER_SEC * 100, HPET_MODE_PERIODIC);

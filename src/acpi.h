@@ -104,6 +104,12 @@ packed_struct ACPI_HPET_DESCRIPTION_TABLE {
   uint8_t page_protection_and_oem_attribute;
 };
 
+enum ACPI_MADTStructureType {
+  kProcessorLocalAPICInfo,
+  kIOAPICInfo,
+  kInterruptSourceOverrideInfo,
+};
+
 packed_struct ACPI_MULTIPLE_APIC_DESCRIPTION_TABLE {
   char signature[4];
   uint32_t length;
