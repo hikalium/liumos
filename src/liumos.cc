@@ -181,7 +181,7 @@ void InitHPET() {
                   hpet_registers->general_configuration);
 }
 
-void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
+void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
   InitEFI(system_table);
   EFIClearScreen();
   EFIGetMemoryMap();

@@ -51,6 +51,9 @@ void BlockTransfer(int to_x, int to_y, int from_x, int from_y, int w, int h);
 // @font.gen.c
 extern uint8_t font[0x100][16];
 
+// @liumos.c
+void MainForBootProcessor(void* image_handle, EFISystemTable* system_table);
+
 // @static.c
 extern const GUID EFI_ACPITableGUID;
 extern const GUID EFI_GraphicsOutputProtocolGUID;
