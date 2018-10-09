@@ -129,5 +129,5 @@ void* EFIGetConfigurationTableByUUID(const GUID* guid) {
     if (IsEqualGUID(guid, &_system_table->configuration_table[i].vendor_guid))
       return _system_table->configuration_table[i].vendor_table;
   }
-  return NULL;
+  return nullptr;
 }

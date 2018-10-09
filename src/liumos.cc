@@ -11,9 +11,9 @@ uint64_t hpet_count_per_femtosecond;
 
 void InitEFI(EFISystemTable* system_table) {
   _system_table = system_table;
-  _system_table->boot_services->SetWatchdogTimer(0, 0, 0, NULL);
+  _system_table->boot_services->SetWatchdogTimer(0, 0, 0, nullptr);
   _system_table->boot_services->LocateProtocol(
-      &EFI_GraphicsOutputProtocolGUID, NULL,
+      &EFI_GraphicsOutputProtocolGUID, nullptr,
       (void**)&efi_graphics_output_protocol);
 }
 
@@ -215,9 +215,9 @@ void efi_main(void* ImageHandle, struct EFI_SYSTEM_TABLE* system_table) {
   if (!(cpuid.edx & CPUID_01_EDX_MSR))
     Panic("MSR not supported");
 
-  ACPI_NFIT* nfit = NULL;
-  ACPI_HPET* hpet = NULL;
-  ACPI_MADT* madt = NULL;
+  ACPI_NFIT* nfit = nullptr;
+  ACPI_HPET* hpet = nullptr;
+  ACPI_MADT* madt = nullptr;
 
   for (int i = 0; i < num_of_xsdt_entries; i++) {
     const char* signature = static_cast<const char*>(xsdt->entry[i]);

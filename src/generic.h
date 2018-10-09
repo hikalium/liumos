@@ -1,5 +1,6 @@
 #pragma once
 
-#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#define packed_struct struct __attribute__((__packed__))

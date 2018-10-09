@@ -3,7 +3,6 @@
 #include "generic.h"
 #include "guid.h"
 
-#define packed_struct struct __attribute__((__packed__))
 #define ACPI_DESCRIPTION_HEADER_SIZE 36
 
 typedef struct ACPI_NFIT_SYSTEM_PHYSICAL_ADDRESS_RANGE_STRUCTURE
