@@ -242,8 +242,8 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
   hpet.Init(
       static_cast<HPET::RegisterSpace*>(hpet_table->base_address.address));
 
-  hpet.SetTimerMs(0, 100, HPET_MODE_PERIODIC | HPET_INT_ENABLE);
-  hpet.SetTimerMs(1, 1000, HPET_MODE_PERIODIC);
+  hpet.SetTimerMs(
+      0, 100, HPET::TimerConfig::kUsePeriodicMode | HPET::TimerConfig::kEnable);
 
   while (1) {
     StoreIntFlagAndHalt();

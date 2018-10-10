@@ -1,20 +1,51 @@
 #include "generic.h"
 
-#define HPET_TIMER_CONFIG_REGISTER_BASE_OFS 0x100
-#define HPET_TICK_PER_SEC (10UL * 1000 * 1000)
-
-#define HPET_INT_TYPE_LEVEL_TRIGGERED (1UL << 1)
-#define HPET_INT_ENABLE (1UL << 2)
-#define HPET_MODE_PERIODIC (1UL << 3)
-#define HPET_SET_VALUE (1UL << 6)
-
 class HPET {
  public:
+  enum class TimerConfig : uint64_t {
+    kUseLevelTriggeredInterrupt = 1 << 1,
+    kEnable = 1 << 2,
+    kUsePeriodicMode = 1 << 3,
+    kSetComparatorValue = 1 << 6,
+  } configuration_and_capability;
   struct RegisterSpace;
+
   void Init(RegisterSpace* registers);
-  void SetTimerMs(int timer_index, uint64_t milliseconds, uint64_t flags);
+  void SetTimerMs(int timer_index,
+                  uint64_t milliseconds,
+                  HPET::TimerConfig flags);
 
  private:
   RegisterSpace* registers_;
   uint64_t count_per_femtosecond_;
 };
+
+constexpr HPET::TimerConfig operator|=(HPET::TimerConfig& a,
+                                       HPET::TimerConfig b) {
+  a = static_cast<HPET::TimerConfig>(static_cast<uint64_t>(a) |
+                                     static_cast<uint64_t>(b));
+  return a;
+}
+
+constexpr HPET::TimerConfig operator&=(HPET::TimerConfig& a,
+                                       HPET::TimerConfig b) {
+  a = static_cast<HPET::TimerConfig>(static_cast<uint64_t>(a) &
+                                     static_cast<uint64_t>(b));
+  return a;
+}
+
+constexpr HPET::TimerConfig operator|(HPET::TimerConfig a,
+                                      HPET::TimerConfig b) {
+  return static_cast<HPET::TimerConfig>(static_cast<uint64_t>(a) |
+                                        static_cast<uint64_t>(b));
+}
+
+constexpr HPET::TimerConfig operator&(HPET::TimerConfig a,
+                                      HPET::TimerConfig b) {
+  return static_cast<HPET::TimerConfig>(static_cast<uint64_t>(a) &
+                                        static_cast<uint64_t>(b));
+}
+
+constexpr HPET::TimerConfig operator~(HPET::TimerConfig a) {
+  return static_cast<HPET::TimerConfig>(~static_cast<uint64_t>(a));
+}
