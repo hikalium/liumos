@@ -386,7 +386,7 @@ class EFIMemoryMap {
   void Init(void);
   void Print(void);
   int GetNumberOfEntries(void) const {
-    return static_cast<int>(this->bytes_used / this->descriptor_size);
+    return static_cast<int>(bytes_used / descriptor_size);
   }
   const EFIMemoryDescriptor* GetDescriptor(int index) const {
     return reinterpret_cast<const EFIMemoryDescriptor*>(
