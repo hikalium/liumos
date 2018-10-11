@@ -157,7 +157,7 @@ struct EFI_BOOT_SERVICES {
                          uint64_t* ExitDataSize,
                          unsigned short** ExitData);
   uint64_t _buf6[2];
-  uint64_t (*ExitBootServices)(void* ImageHandle, uint64_t MapKey);
+  EFIStatus (*ExitBootServices)(void* image_handle, EFI_UINTN map_key);
   uint64_t _buf7[2];
   uint64_t (*SetWatchdogTimer)(uint64_t Timeout,
                                uint64_t WatchdogCode,
@@ -386,18 +386,19 @@ class EFIMemoryMap {
   void Init(void);
   void Print(void);
   int GetNumberOfEntries(void) const {
-    return static_cast<int>(bytes_used / descriptor_size);
+    return static_cast<int>(bytes_used_ / descriptor_size_);
   }
   const EFIMemoryDescriptor* GetDescriptor(int index) const {
     return reinterpret_cast<const EFIMemoryDescriptor*>(
-        &buf[index * descriptor_size]);
+        &buf_[index * descriptor_size_]);
   }
+  EFI_UINTN GetKey(void) const { return key_; }
 
  private:
-  EFI_UINTN key;
-  EFI_UINTN bytes_used;
-  EFI_UINTN descriptor_size;
-  uint8_t buf[kMemoryMapBufferSize];
+  EFI_UINTN key_;
+  EFI_UINTN bytes_used_;
+  EFI_UINTN descriptor_size_;
+  uint8_t buf_[kMemoryMapBufferSize];
 };
 
 bool IsEqualStringWithSize(const char* s1, const char* s2, int n);
@@ -410,3 +411,5 @@ wchar_t EFIGetChar();
 void EFIPrintHex64(uint64_t value);
 void EFIPrintStringAndHex(const wchar_t* s, uint64_t value);
 void* EFIGetConfigurationTableByUUID(const GUID* guid);
+void EFIGetMemoryMapAndExitBootServices(EFIHandle image_handle,
+                                        EFIMemoryMap& map);

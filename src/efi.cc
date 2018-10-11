@@ -53,10 +53,9 @@ wchar_t EFIGetChar() {
 
 void EFIMemoryMap::Init() {
   uint32_t descriptor_version;
-  this->bytes_used = sizeof(this->buf);
+  bytes_used_ = sizeof(buf_);
   EFIStatus status = _system_table->boot_services->GetMemoryMap(
-      &this->bytes_used, this->buf, &this->key, &this->descriptor_size,
-      &descriptor_version);
+      &bytes_used_, buf_, &key_, &descriptor_size_, &descriptor_version);
   if (status != EFIStatus::kSuccess)
     Panic("Failed to get memory map");
 }
@@ -127,4 +126,17 @@ void* EFIGetConfigurationTableByUUID(const GUID* guid) {
       return _system_table->configuration_table[i].vendor_table;
   }
   return nullptr;
+}
+
+void EFIGetMemoryMapAndExitBootServices(EFIHandle image_handle,
+                                        EFIMemoryMap& map) {
+  EFIStatus status;
+  PutString("Trying to exit EFI boot services..");
+  do {
+    PutString(".");
+    map.Init();
+    status = _system_table->boot_services->ExitBootServices(image_handle,
+                                                            map.GetKey());
+  } while (status != EFIStatus::kSuccess);
+  PutString(" done.\n");
 }

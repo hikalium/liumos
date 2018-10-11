@@ -160,10 +160,9 @@ EFIMemoryMap memory_map;
 void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
   InitEFI(system_table);
   EFIClearScreen();
-  memory_map.Init();
-
   InitGraphics();
   EnableVideoModeForConsole();
+  EFIGetMemoryMapAndExitBootServices(image_handle, memory_map);
 
   PutString("liumOS is booting...\n");
 
@@ -247,7 +246,7 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
   hpet.SetTimerMs(
       0, 100, HPET::TimerConfig::kUsePeriodicMode | HPET::TimerConfig::kEnable);
 
-  memory_map.Print();
+  // memory_map.Print();
 
   while (1) {
     StoreIntFlagAndHalt();
