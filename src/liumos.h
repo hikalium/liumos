@@ -13,6 +13,7 @@ void PutChar(char c);
 void PutString(const char* s);
 void PutChars(const char* s, int n);
 void PutHex64(uint64_t value);
+void PutHex64ZeroFilled(uint64_t value);
 void PutStringAndHex(const char* s, uint64_t value);
 
 // @draw.c

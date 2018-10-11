@@ -86,38 +86,30 @@ void EFIPrintStringAndHex(const wchar_t* s, uint64_t value) {
 }
 
 void EFIMemoryDescriptor::Print() const {
-  PutString(" Type ");
+  PutString("0x");
+  PutHex64ZeroFilled(physical_start);
+  PutString(" - 0x");
+  PutHex64ZeroFilled(physical_start + (number_of_pages << 12));
+  PutString(" Type 0x");
   PutHex64(static_cast<uint64_t>(type));
-  PutString(" Phys ");
-  PutHex64(physical_start);
-  PutString(" Virt ");
+  PutString(" Virt 0x");
   PutHex64(virtual_start);
-  PutString(" NumOfPages ");
-  PutHex64(number_of_pages);
-  PutString(" Attr ");
+  PutString(" Attr 0x");
   PutHex64(attribute);
+  PutString(" (0x");
+  PutHex64(number_of_pages);
+  PutString(" pages)");
 }
 
 void EFIMemoryMap::Print() {
   PutStringAndHex("Map entries", GetNumberOfEntries());
   for (int i = 0; i < GetNumberOfEntries(); i++) {
     const EFIMemoryDescriptor* desc = GetDescriptor(i);
-    PutString("#");
-    PutHex64(i);
+    if (desc->type != EFIMemoryType::kConventionalMemory)
+      continue;
     desc->Print();
     PutString("\n");
   }
-  /*
-  PutString("NV Map entries:\n");
-  for (int i = 0; i < map.number_of_entries; i++) {
-    if (!(map.entries[i].attribute & EFI_MEMORY_NV))
-      continue;
-    PutString("#");
-    PutHex64(i);
-    map.entries[i].Print();
-    PutString("\n");
-  }
-  */
 }
 
 void* EFIGetConfigurationTableByUUID(const GUID* guid) {

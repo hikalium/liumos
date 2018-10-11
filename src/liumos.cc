@@ -27,7 +27,7 @@ void InitGraphics() {
 }
 
 [[noreturn]] void Panic(const char* s) {
-  PutString("!!!! PANIC !!!!\r\n");
+  PutString("!!!! PANIC !!!!\n");
   PutString(s);
   for (;;) {
   }
@@ -49,7 +49,7 @@ extern "C" {
 
 void IntHandler(uint64_t intcode, InterruptInfo* info) {
   if (intcode == 0x20) {
-    PutString(".");
+    // PutString(".");
     SendEndOfInterruptToLocalAPIC();
     return;
   }
@@ -155,9 +155,115 @@ void InitIOAPIC(uint64_t local_apic_id) {
 
 HPET hpet;
 
-EFIMemoryMap memory_map;
+void __assert(const char* expr_str, const char* file, int line) {
+  PutString("Assertion failed: ");
+  PutString(expr_str);
+  PutString(" at ");
+  PutString(file);
+  PutString(":");
+  PutString("\n");
+  Panic("halt...");
+}
+
+#define assert(expr) \
+  ((void)((expr) || (__assert(#expr, __FILE__, __LINE__), 0)))
+
+inline void* operator new(size_t, void* where) {
+  return where;
+}
+
+class PhysicalPageAllocator {
+ public:
+  PhysicalPageAllocator() : head_(nullptr) {}
+  void FreePages(void* phys_addr, uint64_t num_of_pages);
+  void* AllocPages(int num_of_pages);
+  void Print();
+
+ private:
+  class FreeInfo {
+   public:
+    FreeInfo(uint64_t num_of_pages, FreeInfo* next)
+        : num_of_pages_(num_of_pages), next_(next) {}
+    FreeInfo* GetNext() const { return next_; }
+    void* ProvidePages(int num_of_req_pages) {
+      if (!CanProvidePages(num_of_req_pages))
+        return nullptr;
+      num_of_pages_ -= num_of_req_pages;
+      return reinterpret_cast<void*>(reinterpret_cast<uint64_t>(this) +
+                                     (num_of_pages_ << 12));
+    }
+
+    void Print() {
+      uint64_t physical_start = reinterpret_cast<uint64_t>(this);
+      PutString("[ 0x");
+      PutHex64ZeroFilled(physical_start);
+      PutString(" - 0x");
+      PutHex64ZeroFilled(physical_start + (num_of_pages_ << 12));
+      PutString(" ) = 0x");
+      PutHex64(num_of_pages_);
+      PutString(" pages\n");
+    }
+
+   private:
+    bool CanProvidePages(int num_of_req_pages) const {
+      return num_of_req_pages < num_of_pages_;
+    }
+    uint64_t num_of_pages_;
+    FreeInfo* next_;
+  };
+  FreeInfo* head_;
+};
+
+void PhysicalPageAllocator::Print() {
+  FreeInfo* info = head_;
+  PutString("Free lists:\n");
+  while (info) {
+    info->Print();
+    info = info->GetNext();
+  }
+  PutString("Free lists end\n");
+}
+
+void PhysicalPageAllocator::FreePages(void* phys_addr, uint64_t num_of_pages) {
+  assert(phys_addr != nullptr);
+  assert(num_of_pages > 0);
+  assert((reinterpret_cast<uint64_t>(phys_addr) & 0xfff) == 0);
+
+  FreeInfo* info = reinterpret_cast<FreeInfo*>(phys_addr);
+  head_ = new (info) FreeInfo(num_of_pages, head_);
+}
+
+void* PhysicalPageAllocator::AllocPages(int num_of_pages) {
+  FreeInfo* info = head_;
+  void* addr = nullptr;
+  while (info) {
+    addr = info->ProvidePages(num_of_pages);
+    if (addr)
+      return addr;
+  }
+  Panic("Cannot allocate pages");
+}
+
+void InitMemoryManagement(EFIMemoryMap& map, PhysicalPageAllocator& allocator) {
+  PutStringAndHex("Map entries", map.GetNumberOfEntries());
+  int available_pages = 0;
+  for (int i = 0; i < map.GetNumberOfEntries(); i++) {
+    const EFIMemoryDescriptor* desc = map.GetDescriptor(i);
+    if (desc->type != EFIMemoryType::kConventionalMemory)
+      continue;
+    desc->Print();
+    PutString("\n");
+    available_pages += desc->number_of_pages;
+    allocator.FreePages(reinterpret_cast<void*>(desc->physical_start),
+                        desc->number_of_pages);
+  }
+  PutStringAndHex("Available memory (KiB)", available_pages * 4);
+}
 
 void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
+  EFIMemoryMap memory_map;
+  PhysicalPageAllocator page_allocator;
+
   InitEFI(system_table);
   EFIClearScreen();
   InitGraphics();
@@ -246,7 +352,12 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
   hpet.SetTimerMs(
       0, 100, HPET::TimerConfig::kUsePeriodicMode | HPET::TimerConfig::kEnable);
 
-  // memory_map.Print();
+  new (&page_allocator) PhysicalPageAllocator();
+  InitMemoryManagement(memory_map, page_allocator);
+  page_allocator.Print();
+  void* addr = page_allocator.AllocPages(3);
+  PutStringAndHex("addr", reinterpret_cast<uint64_t>(addr));
+  page_allocator.Print();
 
   while (1) {
     StoreIntFlagAndHalt();

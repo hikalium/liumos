@@ -109,7 +109,7 @@ struct EFI_RUNTIME_SERVICES {
                        void*);
 };
 
-packed_struct EFIMemoryDescriptor {
+struct EFIMemoryDescriptor {
   EFIMemoryType type;
   uint64_t physical_start;
   uint64_t virtual_start;

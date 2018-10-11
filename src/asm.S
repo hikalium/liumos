@@ -117,3 +117,10 @@ Disable8259PIC:
 	out 0xa1, al
 	out 0x21, al
 	ret
+
+// https://docs.microsoft.com/en-us/windows/desktop/devnotes/-win32-chkstk
+.global __chkstk
+__chkstk:
+	// do nothing
+	ret
+
