@@ -5,6 +5,13 @@
 
 #define EFI_MEMORY_NV 0x8000
 
+typedef uint64_t EFI_UINTN;
+typedef void* EFIHandle;
+
+enum class EFIStatus : EFI_UINTN {
+  kSuccess,
+};
+
 typedef enum {
   EfiResetCold,
   EfiResetWarm,
@@ -12,28 +19,26 @@ typedef enum {
   EfiResetPlatformSpecific
 } EFIResetType;
 
-typedef enum {
-  EfiReservedMemoryType,
-  EfiLoaderCode,
-  EfiLoaderData,
-  EfiBootServicesCode,
-  EfiBootServicesData,
-  EfiRuntimeServicesCode,
-  EfiRuntimeServicesData,
-  EfiConventionalMemory,
-  EfiUnusableMemory,
-  EfiACPIReclaimMemory,
-  EfiACPIMemoryNVS,
-  EfiMemoryMappedIO,
-  EfiMemoryMappedIOPortSpace,
-  EfiPalCode,
-  EfiMaxMemoryType
-} EFIMemoryType;
+enum class EFIMemoryType : uint32_t {
+  kReserved,
+  kLoaderCode,
+  kLoaderData,
+  kBootServicesCode,
+  kBootServicesData,
+  kRuntimeServicesCode,
+  kRuntimeServicesData,
+  kConventionalMemory,
+  kUnusableMemory,
+  kACPIReclaimMemory,
+  kACPIMemoryNVS,
+  kMemoryMappedIO,
+  kMemoryMappedIOPortSpace,
+  kPalCode,
+  kPersistentMemory,
+  kMaxMemoryType
+};
 
 typedef enum { TimerCancel, TimerPeriodic, TimerRelative } EFITimerDelay;
-
-typedef uint64_t EFI_UINTN;
-typedef void* EFIHandle;
 
 typedef struct EFI_CONFIGURATION_TABLE EFIConfigurationTable;
 typedef struct EFI_TABLE_HEADER EFITableHeader;
@@ -41,7 +46,6 @@ typedef struct EFI_INPUT_KEY EFIInputKey;
 typedef struct EFI_SIMPLE_TEXT_INPUT_PROTOCOL EFISimpleTextInputProtocol;
 typedef struct EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL EFISimpleTextOutputProtocol;
 typedef struct EFI_RUNTIME_SERVICES EFIRuntimeServices;
-typedef struct EFI_MEMORY_DESCRIPTOR EFIMemoryDescriptor;
 typedef struct EFI_DEVICE_PATH_PROTOCOL EFIDevicePathProtocol;
 typedef struct EFI_BOOT_SERVICES EFIBootServices;
 typedef struct EFI_SYSTEM_TABLE EFISystemTable;
@@ -105,12 +109,14 @@ struct EFI_RUNTIME_SERVICES {
                        void*);
 };
 
-struct EFI_MEMORY_DESCRIPTOR {
-  unsigned int type;
+packed_struct EFIMemoryDescriptor {
+  EFIMemoryType type;
   uint64_t physical_start;
   uint64_t virtual_start;
   uint64_t number_of_pages;
   uint64_t attribute;
+
+  void Print(void) const;
 };
 
 struct EFI_DEVICE_PATH_PROTOCOL {
@@ -123,11 +129,11 @@ struct EFI_BOOT_SERVICES {
   char _buf1[24];
   uint64_t _buf2[2];
   uint64_t _buf3[2];
-  uint64_t (*GetMemoryMap)(uint64_t* memory_map_size,
-                           EFIMemoryDescriptor*,
-                           uint64_t* map_key,
-                           uint64_t* descriptor_size,
-                           uint32_t* descriptor_version);
+  EFIStatus (*GetMemoryMap)(EFI_UINTN* memory_map_size,
+                            uint8_t*,
+                            EFI_UINTN* map_key,
+                            EFI_UINTN* descriptor_size,
+                            uint32_t* descriptor_version);
   uint64_t (*AllocatePool)(EFIMemoryType, uint64_t, void**);
   uint64_t (*FreePool)(void* Buffer);
   uint64_t (*CreateEvent)(unsigned int Type,
@@ -374,6 +380,26 @@ struct EFI_DEVICE_PATH_UTILITIES_PROTOCOL {
 extern EFISystemTable* _system_table;
 extern EFIGraphicsOutputProtocol* efi_graphics_output_protocol;
 
+const int kMemoryMapBufferSize = 4096;
+class EFIMemoryMap {
+ public:
+  void Init(void);
+  void Print(void);
+  int GetNumberOfEntries(void) const {
+    return static_cast<int>(this->bytes_used / this->descriptor_size);
+  }
+  const EFIMemoryDescriptor* GetDescriptor(int index) const {
+    return reinterpret_cast<const EFIMemoryDescriptor*>(
+        &buf[index * descriptor_size]);
+  }
+
+ private:
+  EFI_UINTN key;
+  EFI_UINTN bytes_used;
+  EFI_UINTN descriptor_size;
+  uint8_t buf[kMemoryMapBufferSize];
+};
+
 bool IsEqualStringWithSize(const char* s1, const char* s2, int n);
 void EFIClearScreen();
 void EFIPutChar(wchar_t c);
@@ -381,9 +407,6 @@ void EFIPutString(const wchar_t* s);
 void EFIPutCString(const char* s);
 void EFIPutnCString(const char* s, int n);
 wchar_t EFIGetChar();
-void EFIGetMemoryMap();
 void EFIPrintHex64(uint64_t value);
 void EFIPrintStringAndHex(const wchar_t* s, uint64_t value);
-void EFIPrintMemoryDescriptor(EFIMemoryDescriptor* desc);
-void EFIPrintMemoryMap();
 void* EFIGetConfigurationTableByUUID(const GUID* guid);

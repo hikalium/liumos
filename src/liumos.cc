@@ -155,10 +155,12 @@ void InitIOAPIC(uint64_t local_apic_id) {
 
 HPET hpet;
 
+EFIMemoryMap memory_map;
+
 void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
   InitEFI(system_table);
   EFIClearScreen();
-  EFIGetMemoryMap();
+  memory_map.Init();
 
   InitGraphics();
   EnableVideoModeForConsole();
@@ -244,6 +246,8 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
 
   hpet.SetTimerMs(
       0, 100, HPET::TimerConfig::kUsePeriodicMode | HPET::TimerConfig::kEnable);
+
+  memory_map.Print();
 
   while (1) {
     StoreIntFlagAndHalt();

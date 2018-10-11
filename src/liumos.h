@@ -24,6 +24,7 @@ void BlockTransfer(int to_x, int to_y, int from_x, int from_y, int w, int h);
 extern uint8_t font[0x100][16];
 
 // @liumos.c
+[[noreturn]] void Panic(const char* s);
 void MainForBootProcessor(void* image_handle, EFISystemTable* system_table);
 
 // @static.c
