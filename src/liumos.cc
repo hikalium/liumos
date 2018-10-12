@@ -58,8 +58,7 @@ void IntHandler(uint64_t intcode, InterruptInfo* info) {
   PutStringAndHex("CS", info->cs);
 
   if (intcode == 0x03) {
-    PutString("!!!! Int3 Trap !!!!\n");
-    return;
+    Panic("Int3 Trap");
   }
   Panic("INTHandler not implemented");
 }
@@ -111,13 +110,13 @@ void WriteIOAPICRedirectTableRegister(uint64_t io_apic_base_addr,
 void SetIntHandler(int index,
                    uint8_t segm_desc,
                    uint8_t ist,
-                   uint8_t type,
+                   IDTType type,
                    uint8_t dpl,
                    void (*handler)()) {
   IDTGateDescriptor* desc = &idtr.base[index];
   desc->segment_descriptor = segm_desc;
   desc->interrupt_stack_table = ist;
-  desc->type = type;
+  desc->type = static_cast<int>(type);
   desc->descriptor_privilege_level = dpl;
   desc->present = 1;
   desc->offset_low = (uint64_t)handler & 0xffff;
@@ -137,9 +136,10 @@ void InitIDT() {
 
   ClearIntFlag();
 
-  SetIntHandler(0x03, ReadCSSelector(), 0, 0xf, 0, AsmIntHandler03);
-  SetIntHandler(0x0d, ReadCSSelector(), 0, 0xf, 0, AsmIntHandler0D);
-  SetIntHandler(0x20, ReadCSSelector(), 0, 0xf, 0, AsmIntHandler20);
+  uint16_t cs = ReadCSSelector();
+  SetIntHandler(0x03, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler03);
+  SetIntHandler(0x0d, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler0D);
+  SetIntHandler(0x20, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler20);
   WriteIDTR(&idtr);
 
   StoreIntFlag();
@@ -260,6 +260,13 @@ void InitMemoryManagement(EFIMemoryMap& map, PhysicalPageAllocator& allocator) {
   PutStringAndHex("Available memory (KiB)", available_pages * 4);
 }
 
+void SubTask() {
+  while (1) {
+    StoreIntFlagAndHalt();
+    PutString("BootProcessor\n");
+  }
+}
+
 void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
   EFIMemoryMap memory_map;
   PhysicalPageAllocator page_allocator;
@@ -359,8 +366,11 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
   PutStringAndHex("addr", reinterpret_cast<uint64_t>(addr));
   page_allocator.Print();
 
+  Int03();
+
   while (1) {
     StoreIntFlagAndHalt();
+    PutString("BootProcessor\n");
   }
 
   if (nfit) {

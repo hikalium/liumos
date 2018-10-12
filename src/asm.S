@@ -93,11 +93,29 @@ IntHandlerWrapper:
 	pop rcx
 	iretq
 
+IntHandlerWrapperWithNoErrorCode:
+	push rax
+	push rdx
+	push r8
+	push r9
+	push r10
+	push r11
+	lea rdx, [rsp + 6 * 8]
+	call IntHandler
+	pop r11
+	pop r10
+	pop r9
+	pop r8
+	pop rdx
+	pop rax
+	pop rcx
+	iretq
+
 .global AsmIntHandler03
 AsmIntHandler03:
 	push rcx
 	mov rcx, 0x03
-	jmp IntHandlerWrapper
+	jmp IntHandlerWrapperWithNoErrorCode
 
 .global AsmIntHandler0D
 AsmIntHandler0D:
@@ -109,7 +127,7 @@ AsmIntHandler0D:
 AsmIntHandler20:
 	push rcx
 	mov rcx, 0x20
-	jmp IntHandlerWrapper
+	jmp IntHandlerWrapperWithNoErrorCode
 
 .global Disable8259PIC
 Disable8259PIC:

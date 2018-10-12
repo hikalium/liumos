@@ -5,31 +5,33 @@ extern "C" {
 #define MAX_PHY_ADDR_BITS 36
 #define IO_APIC_BASE_ADDR 0xfec00000
 
-typedef packed_struct {
+packed_struct CPUID {
   uint32_t eax;
   uint32_t ebx;
   uint32_t ecx;
   uint32_t edx;
-}
-CPUID;
+};
 
-typedef packed_struct {
+packed_struct GDTR {
   uint16_t limit;
   uint64_t base;
-}
-GDTR;
+};
 
-typedef packed_struct {
-  // uint64_t error_code;
+packed_struct InterruptInfo {
+  uint64_t error_code;
   uint64_t rip;
   uint64_t cs;
   uint64_t eflags;
   uint64_t rsp;
   uint64_t ss;
-}
-InterruptInfo;
+};
 
-typedef packed_struct {
+enum class IDTType {
+  kInterruptGate = 0xE,
+  kTrapGate = 0xF,
+};
+
+packed_struct IDTGateDescriptor {
   uint16_t offset_low;
   uint16_t segment_descriptor;
   unsigned interrupt_stack_table : 3;
@@ -41,14 +43,12 @@ typedef packed_struct {
   unsigned offset_mid : 16;
   uint32_t offset_high;
   uint32_t reserved2;
-}
-IDTGateDescriptor;
+};
 
-typedef packed_struct {
+packed_struct IDTR {
   uint16_t limit;
   IDTGateDescriptor* base;
-}
-IDTR;
+};
 
 void ReadCPUID(CPUID*, uint32_t eax, uint32_t ecx);
 
