@@ -71,63 +71,121 @@ ReadCSSelector:
 	mov ax, cs
 	ret
 
-.global IntHandler
+ContextSwitch:
+	// r8: InterruptInfo*
+	// rax: ContextSwitchRequest*
+	mov rcx, [rax]	// Context *from
+	mov rdx, [rax + 8]	// Context *to
+	// save InterruptInfo(rip, cs, eflags, rsp, ss)
+	mov rax, [r8]
+	mov [rcx], rax
+	mov rax, [r8 + 8]
+	mov [rcx + 8], rax
+	mov rax, [r8 + 16]
+	mov [rcx + 16], rax
+	mov rax, [r8 + 24]
+	mov [rcx + 24], rax
+	mov rax, [r8 + 32]
+	mov [rcx + 32], rax
+	// save scratch registers (already pushed on stack)
+	pop qword ptr [rcx + 40]
+	pop qword ptr [rcx + 48]
+	pop qword ptr [rcx + 56]
+	pop qword ptr [rcx + 64]
+	pop qword ptr [rcx + 72]
+	pop qword ptr [rcx + 80]
+	pop qword ptr [rcx + 88]
+	// save rest of general registers (alive on registers)
+	mov [rcx + 96], rbx
+	mov [rcx + 104], rbp
+	mov [rcx + 112], rsi
+	mov [rcx + 120], rdi
+	mov [rcx + 128], r12
+	mov [rcx + 136], r13
+	mov [rcx + 142], r14
+	mov [rcx + 150], r15
+	// restore InterruptInfo to interrupt stack(rip, cs, eflags, rsp, ss)
+	mov rax, [rdx]
+	mov [r8], rax
+	mov rax, [rdx + 8]
+	mov [r8 + 8], rax
+	mov rax, [rdx + 16]
+	mov [r8 + 16], rax
+	mov rax, [rdx + 24]
+	mov [r8 + 24], rax
+	mov rax, [rdx + 32]
+	mov [r8 + 32], rax
+	// restore scratch registers to stack
+	push qword ptr [rdx + 88]
+	push qword ptr [rdx + 80]
+	push qword ptr [rdx + 72]
+	push qword ptr [rdx + 64]
+	push qword ptr [rdx + 56]
+	push qword ptr [rdx + 48]
+	push qword ptr [rdx + 40]
+	// save rest of general registers (alive on registers)
+	mov rbx, [rdx + 96]
+	mov rbp, [rdx + 104]
+	mov rsi, [rdx + 112]
+	mov rdi, [rdx + 120]
+	mov r12, [rdx + 128]
+	mov r13, [rdx + 136]
+	mov r14, [rdx + 142]
+	mov r15, [rdx + 150]
+	jmp RestoreScratchRegistersAndIRET
 
-// The registers Rax, Rcx Rdx R8, R9, R10, R11, and XMM0-XMM5 are volatile
+.global IntHandler
+// The registers Rax, Rcx, Rdx, R8, R9, R10, R11, and XMM0-XMM5 are volatile
 // TODO: Save xmm registers
 IntHandlerWrapper:
 	push rax
-	push rdx
-	push r8
 	push r9
 	push r10
 	push r11
-	lea rdx, [rsp + 7 * 8]
-	call IntHandler
-	pop r11
-	pop r10
-	pop r9
-	pop r8
-	pop rdx
-	pop rax
-	pop rcx
-	iretq
 
-IntHandlerWrapperWithNoErrorCode:
-	push rax
-	push rdx
 	push r8
-	push r9
-	push r10
-	push r11
-	lea rdx, [rsp + 6 * 8]
 	call IntHandler
+	pop r8
+
+	cmp rax, 0
+	jnz	ContextSwitch
+RestoreScratchRegistersAndIRET:
 	pop r11
 	pop r10
 	pop r9
+	pop rax
 	pop r8
 	pop rdx
-	pop rax
 	pop rcx
 	iretq
 
 .global AsmIntHandler03
 AsmIntHandler03:
 	push rcx
+	push rdx
+	push r8
 	mov rcx, 0x03
-	jmp IntHandlerWrapperWithNoErrorCode
+	lea r8, [rsp + 8 * 3]
+	jmp IntHandlerWrapper
 
 .global AsmIntHandler0D
 AsmIntHandler0D:
 	push rcx
+	push rdx
+	push r8
 	mov rcx, 0x0D
+	mov rdx, [rsp + 8 * 3]
+	lea r8, [rsp + 8 * 4]
 	jmp IntHandlerWrapper
 
 .global AsmIntHandler20
 AsmIntHandler20:
 	push rcx
+	push rdx
+	push r8
 	mov rcx, 0x20
-	jmp IntHandlerWrapperWithNoErrorCode
+	lea r8, [rsp + 8 * 3]
+	jmp IntHandlerWrapper
 
 .global Disable8259PIC
 Disable8259PIC:

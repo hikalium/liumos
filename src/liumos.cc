@@ -47,11 +47,45 @@ void SendEndOfInterruptToLocalAPIC() {
 
 extern "C" {
 
-void IntHandler(uint64_t intcode, InterruptInfo* info) {
+typedef packed_struct {
+  InterruptInfo int_info;
+  // scratch registers
+  uint64_t r11;
+  uint64_t r10;
+  uint64_t r9;
+  uint64_t rax;
+  uint64_t r8;
+  uint64_t rdx;
+  uint64_t rcx;
+  // rest of general registers
+  uint64_t rbx;
+  uint64_t rbp;
+  uint64_t rsi;
+  uint64_t rdi;
+  uint64_t r12;
+  uint64_t r13;
+  uint64_t r14;
+  uint64_t r15;
+}
+CPUContext;
+
+typedef packed_struct {
+  CPUContext* from;
+  CPUContext* to;
+}
+ContextSwitchRequest;
+
+ContextSwitchRequest context_switch_request;
+CPUContext context;
+
+ContextSwitchRequest* IntHandler(uint64_t intcode,
+                                 uint64_t error_code,
+                                 InterruptInfo* info) {
   if (intcode == 0x20) {
-    // PutString(".");
     SendEndOfInterruptToLocalAPIC();
-    return;
+    context_switch_request.from = &context;
+    context_switch_request.to = &context;
+    return &context_switch_request;
   }
   PutStringAndHex("Int#", intcode);
   PutStringAndHex("RIP", info->rip);
@@ -365,8 +399,6 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
   void* addr = page_allocator.AllocPages(3);
   PutStringAndHex("addr", reinterpret_cast<uint64_t>(addr));
   page_allocator.Print();
-
-  Int03();
 
   while (1) {
     StoreIntFlagAndHalt();
