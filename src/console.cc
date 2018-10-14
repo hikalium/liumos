@@ -100,3 +100,7 @@ void PutStringAndHex(const char* s, uint64_t value) {
   PutHex64(value);
   PutString("\n");
 }
+
+void PutStringAndHex(const char* s, void* value) {
+  PutStringAndHex(s, reinterpret_cast<uint64_t>(value));
+}

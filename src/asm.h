@@ -14,7 +14,7 @@ packed_struct CPUID {
 
 packed_struct GDTR {
   uint16_t limit;
-  uint64_t base;
+  uint64_t* base;
 };
 
 packed_struct InterruptInfo {
@@ -51,7 +51,13 @@ packed_struct IDTR {
 
 void ReadCPUID(CPUID*, uint32_t eax, uint32_t ecx);
 
-uint64_t ReadMSR(uint32_t);
+enum class MSRIndex : uint32_t {
+  kLocalAPICBase = 0x1b,
+  kKernelGSBase = 0xC0000102,
+};
+
+uint64_t ReadMSR(MSRIndex);
+void WriteMSR(MSRIndex, uint64_t);
 
 void ReadGDTR(GDTR*);
 

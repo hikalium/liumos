@@ -6,7 +6,6 @@ int xsize;
 int ysize;
 int pixels_per_scan_line;
 
-GDTR gdtr;
 IDTR idtr;
 
 void InitEFI(EFISystemTable* system_table) {
@@ -34,7 +33,7 @@ void InitGraphics() {
 }
 
 uint32_t* GetLocalAPICRegisterAddr(uint64_t offset) {
-  uint64_t local_apic_base_msr = ReadMSR(0x1b);
+  uint64_t local_apic_base_msr = ReadMSR(MSRIndex::kLocalAPICBase);
   return (
       uint32_t*)(((local_apic_base_msr & ((1ULL << MAX_PHY_ADDR_BITS) - 1)) &
                   ~0xfffULL) +
@@ -161,8 +160,24 @@ void SetIntHandler(int index,
   desc->reserved2 = 0;
 }
 
-void InitGDT() {
-  ReadGDTR(&gdtr);
+class GDT {
+ public:
+  GDT() {
+    ReadGDTR(&gdtr_);
+    PutStringAndHex("GDT base", gdtr_.base);
+    PutStringAndHex("GDT limit", gdtr_.limit);
+    Print();
+  }
+  void Print(void);
+
+ private:
+  GDTR gdtr_;
+};
+
+void GDT::Print() {
+  for (int i = 0; i < 10; i++) {
+    PutStringAndHex("ent", gdtr_.base[i]);
+  }
 }
 
 void InitIDT() {
@@ -301,6 +316,8 @@ void SubTask() {
   }
 }
 
+GDT global_desc_table;
+
 void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
   EFIMemoryMap memory_map;
   PhysicalPageAllocator page_allocator;
@@ -313,7 +330,7 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
 
   PutString("liumOS is booting...\n");
 
-  InitGDT();
+  new (&global_desc_table) GDT();
   InitIDT();
 
   ACPI_RSDP* rsdp = static_cast<ACPI_RSDP*>(
@@ -376,7 +393,7 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
 
   Disable8259PIC();
 
-  uint64_t local_apic_base_msr = ReadMSR(0x1b);
+  uint64_t local_apic_base_msr = ReadMSR(MSRIndex::kLocalAPICBase);
   uint64_t local_apic_base_addr =
       (local_apic_base_msr & ((1ULL << MAX_PHY_ADDR_BITS) - 1)) & ~0xfffULL;
   uint64_t local_apic_id = GetLocalAPICID(local_apic_base_addr);
@@ -395,14 +412,12 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
 
   new (&page_allocator) PhysicalPageAllocator();
   InitMemoryManagement(memory_map, page_allocator);
-  page_allocator.Print();
   void* addr = page_allocator.AllocPages(3);
-  PutStringAndHex("addr", reinterpret_cast<uint64_t>(addr));
-  page_allocator.Print();
+  PutStringAndHex("alloc addr", reinterpret_cast<uint64_t>(addr));
 
   while (1) {
     StoreIntFlagAndHalt();
-    PutString("BootProcessor\n");
+    // PutString("BootProcessor\n");
   }
 
   if (nfit) {

@@ -29,6 +29,13 @@ ReadMSR:
 	or	rax, rdx
 	ret
 
+.global WriteMSR
+WriteMSR: // WriteMSR(rcx: msr_index, rdx: data)
+	mov rax, rdx
+	shr rdx, 32
+	wrmsr
+	ret
+
 .global ReadGDTR
 ReadGDTR:
 	sgdt [rcx]
