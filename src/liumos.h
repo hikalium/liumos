@@ -54,6 +54,35 @@ inline void* operator new(size_t, void* where) {
 [[noreturn]] void Panic(const char* s);
 void MainForBootProcessor(void* image_handle, EFISystemTable* system_table);
 
+// @palloc.c
+class PhysicalPageAllocator {
+ public:
+  PhysicalPageAllocator() : head_(nullptr) {}
+  void FreePages(void* phys_addr, uint64_t num_of_pages);
+  void* AllocPages(int num_of_pages);
+  void Print();
+
+ private:
+  class FreeInfo {
+   public:
+    FreeInfo(uint64_t num_of_pages, FreeInfo* next)
+        : num_of_pages_(num_of_pages), next_(next) {}
+    FreeInfo* GetNext() const { return next_; }
+    void* ProvidePages(int num_of_req_pages);
+    void Print();
+
+   private:
+    bool CanProvidePages(int num_of_req_pages) const {
+      return num_of_req_pages < num_of_pages_;
+    }
+
+    uint64_t num_of_pages_;
+    FreeInfo* next_;
+  };
+
+  FreeInfo* head_;
+};
+
 // @static.c
 extern const GUID EFI_ACPITableGUID;
 extern const GUID EFI_GraphicsOutputProtocolGUID;
