@@ -45,4 +45,5 @@ format :
 
 commit : format
 	git add .
+	git diff HEAD~
 	git commit

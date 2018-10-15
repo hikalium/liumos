@@ -32,20 +32,14 @@ void InitGraphics() {
   }
 }
 
-uint32_t* GetLocalAPICRegisterAddr(uint64_t offset) {
-  uint64_t local_apic_base_msr = ReadMSR(MSRIndex::kLocalAPICBase);
-  return (
-      uint32_t*)(((local_apic_base_msr & ((1ULL << MAX_PHY_ADDR_BITS) - 1)) &
-                  ~0xfffULL) +
-                 offset);
-}
-
 void SendEndOfInterruptToLocalAPIC() {
-  *GetLocalAPICRegisterAddr(0xB0) = 0;
+  *(uint32_t*)(((ReadMSR(MSRIndex::kLocalAPICBase) &
+                 ((1ULL << MAX_PHY_ADDR_BITS) - 1)) &
+                ~0xfffULL) +
+               0xB0) = 0;
 }
 
 extern "C" {
-
 typedef packed_struct {
   InterruptInfo int_info;
   // scratch registers
@@ -106,10 +100,6 @@ void PrintIDTGateDescriptor(IDTGateDescriptor* desc) {
   PutStringAndHex("desc.type", desc->type);
   PutStringAndHex("desc.DPL", desc->descriptor_privilege_level);
   PutStringAndHex("desc.present", desc->present);
-}
-
-uint8_t GetLocalAPICID(uint64_t local_apic_base_addr) {
-  return *(uint32_t*)(local_apic_base_addr + 0x20) >> 24;
 }
 
 uint32_t ReadIOAPICRegister(uint64_t io_apic_base_addr, uint8_t reg_index) {
@@ -309,6 +299,24 @@ void InitMemoryManagement(EFIMemoryMap& map, PhysicalPageAllocator& allocator) {
   PutStringAndHex("Available memory (KiB)", available_pages * 4);
 }
 
+class LocalAPIC {
+ public:
+  LocalAPIC() {
+    uint64_t base_msr = ReadMSR(MSRIndex::kLocalAPICBase);
+    base_addr_ = (base_msr & ((1ULL << MAX_PHY_ADDR_BITS) - 1)) & ~0xfffULL;
+    id_ = *GetRegisterAddr(0x20) >> 24;
+  }
+  uint8_t GetID() { return id_; }
+
+ private:
+  uint32_t* GetRegisterAddr(uint64_t offset) {
+    return (uint32_t*)(base_addr_ + offset);
+  }
+
+  uint64_t base_addr_;
+  uint8_t id_;
+};
+
 void SubTask() {
   while (1) {
     StoreIntFlagAndHalt();
@@ -319,6 +327,7 @@ void SubTask() {
 GDT global_desc_table;
 
 void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
+  LocalAPIC local_apic;
   EFIMemoryMap memory_map;
   PhysicalPageAllocator page_allocator;
 
@@ -353,6 +362,8 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
     Panic("APIC not supported");
   if (!(cpuid.edx & CPUID_01_EDX_MSR))
     Panic("MSR not supported");
+
+  new (&local_apic) LocalAPIC();
 
   ACPI_NFIT* nfit = nullptr;
   ACPI_HPET* hpet_table = nullptr;
@@ -393,10 +404,7 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
 
   Disable8259PIC();
 
-  uint64_t local_apic_base_msr = ReadMSR(MSRIndex::kLocalAPICBase);
-  uint64_t local_apic_base_addr =
-      (local_apic_base_msr & ((1ULL << MAX_PHY_ADDR_BITS) - 1)) & ~0xfffULL;
-  uint64_t local_apic_id = GetLocalAPICID(local_apic_base_addr);
+  uint64_t local_apic_id = local_apic.GetID();
   PutStringAndHex("LOCAL APIC ID", local_apic_id);
 
   InitIOAPIC(local_apic_id);
