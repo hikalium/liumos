@@ -8,6 +8,13 @@ int pixels_per_scan_line;
 
 IDTR idtr;
 
+[[noreturn]] void Panic(const char* s) {
+  PutString("!!!! PANIC !!!!\n");
+  PutString(s);
+  for (;;) {
+  }
+}
+
 void InitEFI(EFISystemTable* system_table) {
   _system_table = system_table;
   _system_table->boot_services->SetWatchdogTimer(0, 0, 0, nullptr);
@@ -23,13 +30,6 @@ void InitGraphics() {
   ysize = efi_graphics_output_protocol->mode->info->vertical_resolution;
   pixels_per_scan_line =
       efi_graphics_output_protocol->mode->info->pixels_per_scan_line;
-}
-
-[[noreturn]] void Panic(const char* s) {
-  PutString("!!!! PANIC !!!!\n");
-  PutString(s);
-  for (;;) {
-  }
 }
 
 void SendEndOfInterruptToLocalAPIC() {
@@ -148,26 +148,6 @@ void SetIntHandler(int index,
   desc->reserved0 = 0;
   desc->reserved1 = 0;
   desc->reserved2 = 0;
-}
-
-class GDT {
- public:
-  GDT() {
-    ReadGDTR(&gdtr_);
-    PutStringAndHex("GDT base", gdtr_.base);
-    PutStringAndHex("GDT limit", gdtr_.limit);
-    Print();
-  }
-  void Print(void);
-
- private:
-  GDTR gdtr_;
-};
-
-void GDT::Print() {
-  for (int i = 0; i < 10; i++) {
-    PutStringAndHex("ent", gdtr_.base[i]);
-  }
 }
 
 void InitIDT() {

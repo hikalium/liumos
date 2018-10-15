@@ -25,6 +25,21 @@ void BlockTransfer(int to_x, int to_y, int from_x, int from_y, int w, int h);
 // @font.gen.c
 extern uint8_t font[0x100][16];
 
+// @gdt.c
+class GDT {
+ public:
+  GDT() {
+    ReadGDTR(&gdtr_);
+    PutStringAndHex("GDT base", gdtr_.base);
+    PutStringAndHex("GDT limit", gdtr_.limit);
+    Print();
+  }
+  void Print(void);
+
+ private:
+  GDTR gdtr_;
+};
+
 // @liumos.c
 [[noreturn]] void Panic(const char* s);
 void MainForBootProcessor(void* image_handle, EFISystemTable* system_table);
