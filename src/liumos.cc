@@ -8,13 +8,6 @@ int pixels_per_scan_line;
 
 IDTR idtr;
 
-[[noreturn]] void Panic(const char* s) {
-  PutString("!!!! PANIC !!!!\n");
-  PutString(s);
-  for (;;) {
-  }
-}
-
 void InitEFI(EFISystemTable* system_table) {
   _system_table = system_table;
   _system_table->boot_services->SetWatchdogTimer(0, 0, 0, nullptr);
@@ -173,23 +166,6 @@ void InitIOAPIC(uint64_t local_apic_id) {
 }
 
 HPET hpet;
-
-void __assert(const char* expr_str, const char* file, int line) {
-  PutString("Assertion failed: ");
-  PutString(expr_str);
-  PutString(" at ");
-  PutString(file);
-  PutString(":");
-  PutString("\n");
-  Panic("halt...");
-}
-
-#define assert(expr) \
-  ((void)((expr) || (__assert(#expr, __FILE__, __LINE__), 0)))
-
-inline void* operator new(size_t, void* where) {
-  return where;
-}
 
 class PhysicalPageAllocator {
  public:
