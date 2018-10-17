@@ -6,6 +6,16 @@
 #include "generic.h"
 #include "guid.h"
 
+/*
+class SpinLock {
+  public:
+  SpinLock() : lock_(0){};
+  void Lock(){}
+  private:
+  volatile uint64_t lock_;
+};
+*/
+
 // @console.c
 void ResetCursorPosition();
 void EnableVideoModeForConsole();

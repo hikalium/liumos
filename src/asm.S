@@ -78,6 +78,27 @@ ReadCSSelector:
 	mov ax, cs
 	ret
 
+.global ReadSSSelector
+ReadSSSelector:
+	mov rax, 0
+	mov ax, ss
+	ret
+
+.global CompareAndSwap
+CompareAndSwap:
+	// rcx: target addr
+	// rdx: expected value
+	// r8: new value
+	mov rax, r8
+	cmpxchg [rcx], r8
+	ret
+
+.global SwapGS
+SwapGS:
+	swapgs
+	ret
+
+
 ContextSwitch:
 	// r8: InterruptInfo*
 	// rax: ContextSwitchRequest*
@@ -151,7 +172,9 @@ IntHandlerWrapper:
 	push r11
 
 	push r8
+	swapgs
 	call IntHandler
+	swapgs
 	pop r8
 
 	cmp rax, 0

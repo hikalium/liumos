@@ -71,6 +71,10 @@ void StoreIntFlagAndHalt(void);
 void ClearIntFlag(void);
 
 uint16_t ReadCSSelector(void);
+uint16_t ReadSSSelector(void);
+
+uint64_t CompareAndSwap(uint64_t*, uint64_t);
+void SwapGS(void);
 
 void AsmIntHandler03(void);
 void AsmIntHandler0D(void);

@@ -32,8 +32,7 @@ void SendEndOfInterruptToLocalAPIC() {
                0xB0) = 0;
 }
 
-extern "C" {
-typedef packed_struct {
+packed_struct CPUContext {
   InterruptInfo int_info;
   // scratch registers
   uint64_t r11;
@@ -52,25 +51,105 @@ typedef packed_struct {
   uint64_t r13;
   uint64_t r14;
   uint64_t r15;
-}
-CPUContext;
+};
 
-typedef packed_struct {
+class ExecutionContext {
+ public:
+  enum class Status {
+    kNotScheduled,
+    kSleeping,
+    kRunning,
+  };
+  ExecutionContext(uint64_t id,
+                   void (*rip)(),
+                   uint16_t cs,
+                   void* rsp,
+                   uint16_t ss)
+      : id_(id), status_(Status::kNotScheduled) {
+    cpu_context_.int_info.rip = reinterpret_cast<uint64_t>(rip);
+    cpu_context_.int_info.cs = cs;
+    cpu_context_.int_info.rsp = reinterpret_cast<uint64_t>(rsp);
+    cpu_context_.int_info.ss = ss;
+    cpu_context_.int_info.eflags = 0x202;
+  }
+  uint64_t GetID() { return id_; };
+  int GetSchedulerIndex() const { return scheduler_index_; };
+  void SetSchedulerIndex(int scheduler_index) {
+    scheduler_index_ = scheduler_index;
+  };
+  CPUContext* GetCPUContext() { return &cpu_context_; };
+  Status GetStatus() const { return status_; };
+  void SetStatus(Status status) { status_ = status; };
+
+ private:
+  uint64_t id_;
+  int scheduler_index_;
+  Status status_;
+  CPUContext cpu_context_;
+};
+
+class Scheduler {
+ public:
+  Scheduler(ExecutionContext* root_context) : number_of_contexts_(0) {
+    RegisterExecutionContext(root_context);
+    WriteMSR(MSRIndex::kKernelGSBase, reinterpret_cast<uint64_t>(root_context));
+    SwapGS();
+    root_context->SetStatus(ExecutionContext::Status::kSleeping);
+  }
+  void RegisterExecutionContext(ExecutionContext* context) {
+    assert(number_of_contexts_ < kNumberOfContexts);
+    assert(context->GetStatus() == ExecutionContext::Status::kNotScheduled);
+    contexts_[number_of_contexts_] = context;
+    context->SetSchedulerIndex(number_of_contexts_);
+    number_of_contexts_++;
+
+    context->SetStatus(ExecutionContext::Status::kSleeping);
+  }
+  ExecutionContext* SwitchContext(ExecutionContext* current_context) {
+    const int base_index = current_context->GetSchedulerIndex();
+    for (int i = 1; i < number_of_contexts_; i++) {
+      ExecutionContext* context =
+          contexts_[(base_index + i) % number_of_contexts_];
+      if (context->GetStatus() == ExecutionContext::Status::kSleeping) {
+        current_context->SetStatus(ExecutionContext::Status::kSleeping);
+        context->SetStatus(ExecutionContext::Status::kRunning);
+        return context;
+      }
+    }
+    return nullptr;
+  }
+
+ private:
+  const static int kNumberOfContexts = 16;
+  ExecutionContext* contexts_[kNumberOfContexts];
+  int number_of_contexts_;
+};
+
+Scheduler* scheduler;
+
+packed_struct ContextSwitchRequest {
   CPUContext* from;
   CPUContext* to;
-}
-ContextSwitchRequest;
+};
 
 ContextSwitchRequest context_switch_request;
-CPUContext context;
 
-ContextSwitchRequest* IntHandler(uint64_t intcode,
-                                 uint64_t error_code,
-                                 InterruptInfo* info) {
+extern "C" ContextSwitchRequest* IntHandler(uint64_t intcode,
+                                            uint64_t error_code,
+                                            InterruptInfo* info) {
   if (intcode == 0x20) {
     SendEndOfInterruptToLocalAPIC();
-    context_switch_request.from = &context;
-    context_switch_request.to = &context;
+    uint64_t kernel_gs_base = ReadMSR(MSRIndex::kKernelGSBase);
+    ExecutionContext* current_context =
+        reinterpret_cast<ExecutionContext*>(kernel_gs_base);
+    ExecutionContext* next_context = scheduler->SwitchContext(current_context);
+    if (!next_context) {
+      // no need to switching context.
+      return nullptr;
+    }
+    context_switch_request.from = current_context->GetCPUContext();
+    context_switch_request.to = next_context->GetCPUContext();
+    WriteMSR(MSRIndex::kKernelGSBase, reinterpret_cast<uint64_t>(next_context));
     return &context_switch_request;
   }
   PutStringAndHex("Int#", intcode);
@@ -81,7 +160,6 @@ ContextSwitchRequest* IntHandler(uint64_t intcode,
     Panic("Int3 Trap");
   }
   Panic("INTHandler not implemented");
-}
 }
 
 void PrintIDTGateDescriptor(IDTGateDescriptor* desc) {
@@ -146,15 +224,11 @@ void SetIntHandler(int index,
 void InitIDT() {
   ReadIDTR(&idtr);
 
-  ClearIntFlag();
-
   uint16_t cs = ReadCSSelector();
   SetIntHandler(0x03, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler03);
   SetIntHandler(0x0d, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler0D);
   SetIntHandler(0x20, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler20);
   WriteIDTR(&idtr);
-
-  StoreIntFlag();
 }
 
 void InitIOAPIC(uint64_t local_apic_id) {
@@ -202,9 +276,10 @@ class LocalAPIC {
 };
 
 void SubTask() {
+  int count = 0;
   while (1) {
     StoreIntFlagAndHalt();
-    PutString("BootProcessor\n");
+    PutStringAndHex("SubContext!", count++);
   }
 }
 
@@ -223,8 +298,14 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
 
   PutString("liumOS is booting...\n");
 
+  ClearIntFlag();
+
   new (&global_desc_table) GDT();
   InitIDT();
+
+  ExecutionContext root_context(1, NULL, 0, NULL, 0);
+  Scheduler scheduler_(&root_context);
+  scheduler = &scheduler_;
 
   ACPI_RSDP* rsdp = static_cast<ACPI_RSDP*>(
       EFIGetConfigurationTableByUUID(&EFI_ACPITableGUID));
@@ -304,12 +385,22 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
 
   new (&page_allocator) PhysicalPageAllocator();
   InitMemoryManagement(memory_map, page_allocator);
-  void* addr = page_allocator.AllocPages(3);
-  PutStringAndHex("alloc addr", reinterpret_cast<uint64_t>(addr));
+  const int kNumOfStackPages = 3;
+  void* sub_context_stack_base = page_allocator.AllocPages(kNumOfStackPages);
+  void* sub_context_rsp = reinterpret_cast<void*>(
+      reinterpret_cast<uint64_t>(sub_context_stack_base) +
+      kNumOfStackPages * (1 << 12));
+  PutStringAndHex("alloc addr", sub_context_stack_base);
 
+  ExecutionContext sub_context(2, SubTask, ReadCSSelector(), sub_context_rsp,
+                               ReadSSSelector());
+  scheduler->RegisterExecutionContext(&sub_context);
+
+  int count = 0;
   while (1) {
     StoreIntFlagAndHalt();
-    // PutString("BootProcessor\n");
+    ClearIntFlag();
+    PutStringAndHex("RootContext", count += 2);
   }
 
   if (nfit) {

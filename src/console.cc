@@ -28,7 +28,6 @@ void PutChar(char c) {
     EFIPutChar(c);
     return;
   }
-  ClearIntFlag();
   if (c == '\n') {
     cursor_y += 16;
     cursor_x = 0;
@@ -45,7 +44,6 @@ void PutChar(char c) {
     DrawRect(0, cursor_y - 16, xsize, 16, 0x000000);
     cursor_y -= 16;
   }
-  StoreIntFlag();
 }
 
 void PutString(const char* s) {
