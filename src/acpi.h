@@ -13,7 +13,7 @@ typedef struct ACPI_MULTIPLE_APIC_DESCRIPTION_TABLE ACPI_MADT;
 
 struct ACPI_XSDT;
 
-packed_struct ACPI_RSDP {
+packed_struct ACPI_RSDT {
   char signature[8];
   uint8_t checksum;
   uint8_t oem_id[6];

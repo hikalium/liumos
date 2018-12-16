@@ -307,9 +307,9 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
   Scheduler scheduler_(&root_context);
   scheduler = &scheduler_;
 
-  ACPI_RSDP* rsdp = static_cast<ACPI_RSDP*>(
+  ACPI_RSDT* rsdt = static_cast<ACPI_RSDT*>(
       EFIGetConfigurationTableByUUID(&EFI_ACPITableGUID));
-  ACPI_XSDT* xsdt = rsdp->xsdt;
+  ACPI_XSDT* xsdt = rsdt->xsdt;
 
   int num_of_xsdt_entries = (xsdt->length - ACPI_DESCRIPTION_HEADER_SIZE) >> 3;
 
