@@ -56,6 +56,13 @@ Int03:
 	int3
 	ret
 
+.global ReadIOPort8
+ReadIOPort8:
+  mov edx, ecx
+  xor rax, rax
+  in al, dx
+  ret
+
 .global StoreIntFlag
 StoreIntFlag:
 	sti
@@ -214,6 +221,15 @@ AsmIntHandler20:
 	push rdx
 	push r8
 	mov rcx, 0x20
+	lea r8, [rsp + 8 * 3]
+	jmp IntHandlerWrapper
+
+.global AsmIntHandler21
+AsmIntHandler21:
+	push rcx
+	push rdx
+	push r8
+	mov rcx, 0x21
 	lea r8, [rsp + 8 * 3]
 	jmp IntHandlerWrapper
 

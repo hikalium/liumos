@@ -152,6 +152,12 @@ extern "C" ContextSwitchRequest* IntHandler(uint64_t intcode,
     WriteMSR(MSRIndex::kKernelGSBase, reinterpret_cast<uint64_t>(next_context));
     return &context_switch_request;
   }
+  if (intcode == 0x21) {
+    SendEndOfInterruptToLocalAPIC();
+    uint8_t data = ReadIOPort8(0x0060);
+    PutStringAndHex("INT #0x21: ", data);
+    return NULL;
+  }
   PutStringAndHex("Int#", intcode);
   PutStringAndHex("RIP", info->rip);
   PutStringAndHex("CS", info->cs);
@@ -228,15 +234,24 @@ void InitIDT() {
   SetIntHandler(0x03, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler03);
   SetIntHandler(0x0d, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler0D);
   SetIntHandler(0x20, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler20);
+  SetIntHandler(0x21, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler21);
   WriteIDTR(&idtr);
 }
 
-void InitIOAPIC(uint64_t local_apic_id) {
+void SetInterruptRedirection(uint64_t local_apic_id,
+                             int from_irq_num,
+                             int to_vector_index) {
   uint64_t redirect_table =
-      ReadIOAPICRedirectTableRegister(IO_APIC_BASE_ADDR, 2);
+      ReadIOAPICRedirectTableRegister(IO_APIC_BASE_ADDR, from_irq_num);
   redirect_table &= 0x00fffffffffe0000UL;
-  redirect_table |= (local_apic_id << 56) | 0x20;
-  WriteIOAPICRedirectTableRegister(IO_APIC_BASE_ADDR, 2, redirect_table);
+  redirect_table |= (local_apic_id << 56) | to_vector_index;
+  WriteIOAPICRedirectTableRegister(IO_APIC_BASE_ADDR, from_irq_num,
+                                   redirect_table);
+}
+
+void InitIOAPIC(uint64_t local_apic_id) {
+  SetInterruptRedirection(local_apic_id, 2, 0x20);
+  SetInterruptRedirection(local_apic_id, 1, 0x21);
 }
 
 HPET hpet;
@@ -394,13 +409,13 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
 
   ExecutionContext sub_context(2, SubTask, ReadCSSelector(), sub_context_rsp,
                                ReadSSSelector());
-  scheduler->RegisterExecutionContext(&sub_context);
+  // scheduler->RegisterExecutionContext(&sub_context);
 
   int count = 0;
   while (1) {
     StoreIntFlagAndHalt();
     ClearIntFlag();
-    PutStringAndHex("RootContext", count += 2);
+    // PutStringAndHex("RootContext", count += 2);
   }
 
   if (nfit) {

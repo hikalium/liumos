@@ -66,6 +66,8 @@ void WriteIDTR(IDTR*);
 
 void Int03(void);
 
+uint8_t ReadIOPort8(uint16_t);
+
 void StoreIntFlag(void);
 void StoreIntFlagAndHalt(void);
 void ClearIntFlag(void);
@@ -79,6 +81,7 @@ void SwapGS(void);
 void AsmIntHandler03(void);
 void AsmIntHandler0D(void);
 void AsmIntHandler20(void);
+void AsmIntHandler21(void);
 
 void Disable8259PIC(void);
 }
