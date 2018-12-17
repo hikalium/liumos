@@ -411,15 +411,8 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
                                ReadSSSelector());
   // scheduler->RegisterExecutionContext(&sub_context);
 
-  int count = 0;
-  while (1) {
-    StoreIntFlagAndHalt();
-    ClearIntFlag();
-    // PutStringAndHex("RootContext", count += 2);
-  }
-
   if (nfit) {
-    PutString("NFIT found");
+    PutString("NFIT found\n");
     PutStringAndHex("NFIT Size", nfit->length);
     PutStringAndHex("First NFIT Structure Type", nfit->entry[0]);
     PutStringAndHex("First NFIT Structure Size", nfit->entry[1]);
@@ -436,15 +429,24 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
                       spa_range->address_range_type_guid[0]);
       PutStringAndHex("SPARange TypeGUID[1]",
                       spa_range->address_range_type_guid[1]);
+
       uint64_t* p = (uint64_t*)spa_range->system_physical_address_range_base;
+      PutStringAndHex("\nPointer in PMEM Region: ", p);
       PutStringAndHex("PMEM Previous value: ", *p);
-      *p = *p + 3;
+      (*p)++;
       PutStringAndHex("PMEM value after write: ", *p);
+
+      uint64_t* q = reinterpret_cast<uint64_t*>(page_allocator.AllocPages(1));
+      PutStringAndHex("\nPointer in DRAM Region: ", q);
+      PutStringAndHex("DRAM Previous value: ", *q);
+      (*q)++;
+      PutStringAndHex("DRAM value after write: ", *q);
     }
   }
 
   while (1) {
-    wchar_t c = EFIGetChar();
-    EFIPutChar(c);
-  };
+    StoreIntFlagAndHalt();
+    ClearIntFlag();
+    // PutStringAndHex("RootContext", count += 2);
+  }
 }

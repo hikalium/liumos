@@ -27,12 +27,12 @@ tools : .FORCE
 pmem.img :
 	qemu-img create $@ 2G
 
-run : src/BOOTX64.EFI
+run_nopmem : src/BOOTX64.EFI
 	mkdir -p mnt/EFI/BOOT
 	cp src/BOOTX64.EFI mnt/EFI/BOOT/
 	$(QEMU) $(QEMU_ARGS)
 	
-run_pmem : src/BOOTX64.EFI pmem.img
+run : src/BOOTX64.EFI pmem.img
 	mkdir -p mnt/EFI/BOOT
 	cp src/BOOTX64.EFI mnt/EFI/BOOT/
 	$(QEMU) $(QEMU_ARGS_PMEM)
