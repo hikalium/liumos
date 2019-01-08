@@ -37,6 +37,9 @@ run : src/BOOTX64.EFI pmem.img
 	cp src/BOOTX64.EFI mnt/EFI/BOOT/
 	$(QEMU) $(QEMU_ARGS_PMEM)
 
+unittest :
+	make -C src unittest
+
 clean :
 	make -C src clean
 
