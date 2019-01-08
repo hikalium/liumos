@@ -1,5 +1,7 @@
 #pragma once
 
+#include "generic.h"
+
 extern "C" {
 
 #define CPUID_01_EDX_APIC (1 << 9)
