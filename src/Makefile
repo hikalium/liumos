@@ -28,7 +28,7 @@ CXXFLAGS_FOR_TEST= \
 OSNAME=${shell uname -s}
 ifeq ($(OSNAME),Darwin)
 	LLVM_PREFIX:=$(shell brew --prefix llvm)
-	CC:=$(LLVM_PREFIX)/bin/clang
+	CC:=$(LLVM_PREFIX)/bin/clang -I/usr/local/opt/llvm/include
 	LD:=$(LLVM_PREFIX)/bin/lld-link
 else
 	CC?=clang
@@ -53,7 +53,7 @@ font.gen.cc : font.txt
 		-c -o $*.o $*.S
 
 test_% : %_test.cc Makefile
-	@$(CC) -o $*_test.bin $*_test.cc -DLIUMOS_TEST $(CXXFLAGS_FOR_TEST)
+	@$(CXX) -o $*_test.bin $*_test.cc -DLIUMOS_TEST $(CXXFLAGS_FOR_TEST)
 	@./$*_test.bin
 
 BOOTX64.EFI : $(OBJS) $(HEADERS) Makefile
@@ -73,6 +73,7 @@ clean :
 	-rm *.o
 	-rm *.gen.c
 	-rm *.gen.cc
+	-rm *.bin
 
 format :
 	clang-format -i *.cc *.h

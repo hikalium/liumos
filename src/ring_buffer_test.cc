@@ -2,7 +2,7 @@
 
 #ifdef LIUMOS_TEST
 
-#include <assert.h>
+#include <cassert>
 #include <stdio.h>
 
 int main() {
