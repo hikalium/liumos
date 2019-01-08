@@ -1,3 +1,5 @@
+#pragma once
+
 extern "C" {
 
 #define CPUID_01_EDX_APIC (1 << 9)

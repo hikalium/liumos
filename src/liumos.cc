@@ -1,5 +1,8 @@
 #include "liumos.h"
+#include "cpu_context.h"
+#include "execution_context.h"
 #include "hpet.h"
+#include "scheduler.h"
 
 uint8_t* vram;
 int xsize;
@@ -31,99 +34,6 @@ void SendEndOfInterruptToLocalAPIC() {
                 ~0xfffULL) +
                0xB0) = 0;
 }
-
-packed_struct CPUContext {
-  InterruptInfo int_info;
-  // scratch registers
-  uint64_t r11;
-  uint64_t r10;
-  uint64_t r9;
-  uint64_t rax;
-  uint64_t r8;
-  uint64_t rdx;
-  uint64_t rcx;
-  // rest of general registers
-  uint64_t rbx;
-  uint64_t rbp;
-  uint64_t rsi;
-  uint64_t rdi;
-  uint64_t r12;
-  uint64_t r13;
-  uint64_t r14;
-  uint64_t r15;
-};
-
-class ExecutionContext {
- public:
-  enum class Status {
-    kNotScheduled,
-    kSleeping,
-    kRunning,
-  };
-  ExecutionContext(uint64_t id,
-                   void (*rip)(),
-                   uint16_t cs,
-                   void* rsp,
-                   uint16_t ss)
-      : id_(id), status_(Status::kNotScheduled) {
-    cpu_context_.int_info.rip = reinterpret_cast<uint64_t>(rip);
-    cpu_context_.int_info.cs = cs;
-    cpu_context_.int_info.rsp = reinterpret_cast<uint64_t>(rsp);
-    cpu_context_.int_info.ss = ss;
-    cpu_context_.int_info.eflags = 0x202;
-  }
-  uint64_t GetID() { return id_; };
-  int GetSchedulerIndex() const { return scheduler_index_; };
-  void SetSchedulerIndex(int scheduler_index) {
-    scheduler_index_ = scheduler_index;
-  };
-  CPUContext* GetCPUContext() { return &cpu_context_; };
-  Status GetStatus() const { return status_; };
-  void SetStatus(Status status) { status_ = status; };
-
- private:
-  uint64_t id_;
-  int scheduler_index_;
-  Status status_;
-  CPUContext cpu_context_;
-};
-
-class Scheduler {
- public:
-  Scheduler(ExecutionContext* root_context) : number_of_contexts_(0) {
-    RegisterExecutionContext(root_context);
-    WriteMSR(MSRIndex::kKernelGSBase, reinterpret_cast<uint64_t>(root_context));
-    SwapGS();
-    root_context->SetStatus(ExecutionContext::Status::kSleeping);
-  }
-  void RegisterExecutionContext(ExecutionContext* context) {
-    assert(number_of_contexts_ < kNumberOfContexts);
-    assert(context->GetStatus() == ExecutionContext::Status::kNotScheduled);
-    contexts_[number_of_contexts_] = context;
-    context->SetSchedulerIndex(number_of_contexts_);
-    number_of_contexts_++;
-
-    context->SetStatus(ExecutionContext::Status::kSleeping);
-  }
-  ExecutionContext* SwitchContext(ExecutionContext* current_context) {
-    const int base_index = current_context->GetSchedulerIndex();
-    for (int i = 1; i < number_of_contexts_; i++) {
-      ExecutionContext* context =
-          contexts_[(base_index + i) % number_of_contexts_];
-      if (context->GetStatus() == ExecutionContext::Status::kSleeping) {
-        current_context->SetStatus(ExecutionContext::Status::kSleeping);
-        context->SetStatus(ExecutionContext::Status::kRunning);
-        return context;
-      }
-    }
-    return nullptr;
-  }
-
- private:
-  const static int kNumberOfContexts = 16;
-  ExecutionContext* contexts_[kNumberOfContexts];
-  int number_of_contexts_;
-};
 
 Scheduler* scheduler;
 
