@@ -5,3 +5,4 @@
 *.swp
 *.gen.c
 *.gen.cc
+*.bin

@@ -2,20 +2,28 @@ OBJS=asm.o console.o draw.o efi.o efimain.o gdt.o generic.o guid.o hpet.o liumos
 HEADERS=$(wildcard *.h)
 OVMF=ovmf/bios64.bin
 QEMU=qemu-system-x86_64
+
+CLANG_WARNINGS = \
+		-Wall -Wpedantic -Wextra -Wconditional-uninitialized -Wshorten-64-to-32
+CXX_STD = -std=c++14
+		
+
 CFLAGS= \
 		-target x86_64-pc-win32-coff \
 		-fno-stack-protector -fshort-wchar \
 		-mno-red-zone \
 		-nostdlibinc \
-		-Wall -Wpedantic -Wshorten-64-to-32 -std=c11
+		$(CLANG_WARNINGS) -std=c11
+
 CXXFLAGS= \
 		-target x86_64-pc-win32-coff \
 		-fno-stack-protector -fshort-wchar \
 		-mno-red-zone \
 		-nostdlibinc \
-		-Wall -Wpedantic -Wshorten-64-to-32 -std=c++14
+		$(CLANG_WARNINGS) $(CXX_STD)
 
-
+CXXFLAGS_FOR_TEST= \
+		$(CLANG_WARNINGS) $(CXX_STD)
 
 OSNAME=${shell uname -s}
 ifeq ($(OSNAME),Darwin)
@@ -44,6 +52,10 @@ font.gen.cc : font.txt
 	$(CC) $(CFLAGS) \
 		-c -o $*.o $*.S
 
+test_% : %_test.cc Makefile
+	@clang -o $*_test.bin $*_test.cc -DLIUMOS_TEST $(CXXFLAGS_FOR_TEST)
+	@./$*_test.bin
+
 BOOTX64.EFI : $(OBJS) $(HEADERS) Makefile
 	$(LD) \
 		-subsystem:efi_application -nodefaultlib \
@@ -51,6 +63,9 @@ BOOTX64.EFI : $(OBJS) $(HEADERS) Makefile
 
 run:
 	make -C .. run
+
+unittest:
+	make test_ring_buffer
 
 clean :
 	-rm *.EFI
@@ -61,3 +76,4 @@ clean :
 
 format :
 	clang-format -i *.cc *.h
+
