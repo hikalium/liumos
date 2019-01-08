@@ -28,8 +28,8 @@ CXXFLAGS_FOR_TEST= \
 OSNAME=${shell uname -s}
 ifeq ($(OSNAME),Darwin)
 	LLVM_PREFIX:=$(shell brew --prefix llvm)
-	CC?=$(LLVM_PREFIX)/bin/clang
-	LD?=$(LLVM_PREFIX)/bin/lld-link	
+	CC:=$(LLVM_PREFIX)/bin/clang
+	LD:=$(LLVM_PREFIX)/bin/lld-link
 else
 	CC?=clang
 	LD?=lld-link-4.0

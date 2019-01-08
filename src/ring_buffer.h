@@ -1,6 +1,6 @@
-#include "liumos.h"
+#include <cstdint>
 
-template <typename T, size_t n>
+template <typename T, unsigned int n>
 class RingBuffer {
  public:
   RingBuffer() : readp_(0), writep_(0) {}
