@@ -13,7 +13,7 @@ jobs:
                     apt-key add llvm-snapshot.gpg.key &&
                     apt-add-repository "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-6.0 main" &&
                     apt-get update &&
-                    apt-get install -y clang-6.0
+                    apt-get install -y clang-6.0 lld-6.0
             - run:
                 name: Run unit test
-                command: make unittest CC=clang-6.0
+                command: make unittest CC=clang-6.0 LD=lld-link-6.0
