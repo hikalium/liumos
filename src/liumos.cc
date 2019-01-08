@@ -137,6 +137,7 @@ ContextSwitchRequest context_switch_request;
 extern "C" ContextSwitchRequest* IntHandler(uint64_t intcode,
                                             uint64_t error_code,
                                             InterruptInfo* info) {
+  (void)error_code;
   if (intcode == 0x20) {
     SendEndOfInterruptToLocalAPIC();
     uint64_t kernel_gs_base = ReadMSR(MSRIndex::kKernelGSBase);
@@ -362,7 +363,7 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
   if (!madt)
     Panic("MADT not found");
 
-  for (int i = 0; i < madt->length - offsetof(ACPI_MADT, entries);
+  for (int i = 0; i < (int)(madt->length - offsetof(ACPI_MADT, entries));
        i += madt->entries[i + 1]) {
     uint8_t type = madt->entries[i];
     if (type == kProcessorLocalAPICInfo) {

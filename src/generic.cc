@@ -12,7 +12,8 @@ void __assert(const char* expr_str, const char* file, int line) {
   PutString(expr_str);
   PutString(" at ");
   PutString(file);
-  PutString(":");
+  PutString(":0x");
+  PutHex64(line);
   PutString("\n");
   Panic("halt...");
 }

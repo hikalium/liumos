@@ -82,7 +82,7 @@ class PhysicalPageAllocator {
     void Print();
 
    private:
-    bool CanProvidePages(int num_of_req_pages) const {
+    bool CanProvidePages(uint64_t num_of_req_pages) const {
       return num_of_req_pages < num_of_pages_;
     }
 

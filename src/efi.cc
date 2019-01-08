@@ -113,7 +113,7 @@ void EFIMemoryMap::Print() {
 }
 
 void* EFIGetConfigurationTableByUUID(const GUID* guid) {
-  for (int i = 0; i < _system_table->number_of_table_entries; i++) {
+  for (int i = 0; i < (int)_system_table->number_of_table_entries; i++) {
     if (IsEqualGUID(guid, &_system_table->configuration_table[i].vendor_guid))
       return _system_table->configuration_table[i].vendor_table;
   }
