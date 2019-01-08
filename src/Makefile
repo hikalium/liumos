@@ -53,7 +53,7 @@ font.gen.cc : font.txt
 		-c -o $*.o $*.S
 
 test_% : %_test.cc Makefile
-	$(CC)++ -o $*_test.bin $*_test.cc -DLIUMOS_TEST $(CXXFLAGS_FOR_TEST) \
+	$(CC) -o $*_test.bin $*_test.cc -DLIUMOS_TEST $(CXXFLAGS_FOR_TEST) \
 		-I/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include \
 		-Wno-nullability-completeness -Wno-nullability-extension
 	@./$*_test.bin
