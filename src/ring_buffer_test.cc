@@ -2,8 +2,8 @@
 
 #ifdef LIUMOS_TEST
 
-#include <cassert>
 #include <stdio.h>
+#include <cassert>
 
 int main() {
   RingBuffer<int, 4> rbuf;

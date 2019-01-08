@@ -28,7 +28,7 @@ CXXFLAGS_FOR_TEST= \
 OSNAME=${shell uname -s}
 ifeq ($(OSNAME),Darwin)
 	LLVM_PREFIX:=$(shell brew --prefix llvm)
-	CC:=$(LLVM_PREFIX)/bin/clang -I/usr/local/opt/llvm/include
+	CC:=$(LLVM_PREFIX)/bin/clang
 	LD:=$(LLVM_PREFIX)/bin/lld-link
 else
 	CC?=clang
@@ -53,7 +53,9 @@ font.gen.cc : font.txt
 		-c -o $*.o $*.S
 
 test_% : %_test.cc Makefile
-	@$(CXX) -o $*_test.bin $*_test.cc -DLIUMOS_TEST $(CXXFLAGS_FOR_TEST)
+	$(CC)++ -o $*_test.bin $*_test.cc -DLIUMOS_TEST $(CXXFLAGS_FOR_TEST) \
+		-I/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include \
+		-Wno-nullability-completeness -Wno-nullability-extension
 	@./$*_test.bin
 
 BOOTX64.EFI : $(OBJS) $(HEADERS) Makefile
