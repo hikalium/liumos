@@ -53,7 +53,7 @@ font.gen.cc : font.txt
 		-c -o $*.o $*.S
 
 test_% : %_test.cc Makefile
-	@clang -o $*_test.bin $*_test.cc -DLIUMOS_TEST $(CXXFLAGS_FOR_TEST)
+	@$(CC) -o $*_test.bin $*_test.cc -DLIUMOS_TEST $(CXXFLAGS_FOR_TEST)
 	@./$*_test.bin
 
 BOOTX64.EFI : $(OBJS) $(HEADERS) Makefile
