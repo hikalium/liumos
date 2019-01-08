@@ -25,6 +25,10 @@ CXXFLAGS= \
 CXXFLAGS_FOR_TEST= \
 		$(CLANG_WARNINGS) $(CXX_STD)
 
+OSX_STD_HEADER_INCLUDE_FLAGS= \
+		-I/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include \
+		-I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include
+
 OSNAME=${shell uname -s}
 ifeq ($(OSNAME),Darwin)
 	LLVM_PREFIX:=$(shell brew --prefix llvm)
@@ -54,8 +58,7 @@ font.gen.cc : font.txt
 
 test_% : %_test.cc Makefile
 	$(CC) -o $*_test.bin $*_test.cc -DLIUMOS_TEST $(CXXFLAGS_FOR_TEST) \
-		-I/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include \
-		-Wno-nullability-completeness -Wno-nullability-extension
+		$(OSX_STD_HEADER_INCLUDE_FLAGS) -Wno-nullability-completeness -Wno-nullability-extension
 	@./$*_test.bin
 
 BOOTX64.EFI : $(OBJS) $(HEADERS) Makefile
