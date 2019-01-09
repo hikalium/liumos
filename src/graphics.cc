@@ -1,9 +1,18 @@
 #include "liumos.h"
 
-extern uint8_t* vram;
-extern int xsize;
-extern int ysize;
-extern int pixels_per_scan_line;
+uint8_t* vram;
+int xsize;
+int ysize;
+int pixels_per_scan_line;
+
+void InitGraphics() {
+  vram = static_cast<uint8_t*>(
+      efi_graphics_output_protocol->mode->frame_buffer_base);
+  xsize = efi_graphics_output_protocol->mode->info->horizontal_resolution;
+  ysize = efi_graphics_output_protocol->mode->info->vertical_resolution;
+  pixels_per_scan_line =
+      efi_graphics_output_protocol->mode->info->pixels_per_scan_line;
+}
 
 void DrawCharacter(char c, int px, int py) {
   if (!vram)

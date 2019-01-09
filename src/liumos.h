@@ -49,11 +49,6 @@ void PutHex64ZeroFilled(uint64_t value);
 void PutStringAndHex(const char* s, uint64_t value);
 void PutStringAndHex(const char* s, void* value);
 
-// @draw.c
-void DrawCharacter(char c, int px, int py);
-void DrawRect(int px, int py, int w, int h, uint32_t col);
-void BlockTransfer(int to_x, int to_y, int from_x, int from_y, int w, int h);
-
 // @font.gen.c
 extern uint8_t font[0x100][16];
 
@@ -81,6 +76,12 @@ void __assert(const char* expr_str, const char* file, int line);
 inline void* operator new(size_t, void* where) {
   return where;
 }
+
+// @graphics.cc
+void InitGraphics();
+void DrawCharacter(char c, int px, int py);
+void DrawRect(int px, int py, int w, int h, uint32_t col);
+void BlockTransfer(int to_x, int to_y, int from_x, int from_y, int w, int h);
 
 // @liumos.c
 [[noreturn]] void Panic(const char* s);
