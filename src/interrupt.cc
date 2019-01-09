@@ -1,15 +1,15 @@
 #include "liumos.h"
 #include "scheduler.h"
 
-IDTR idtr;
-
-Scheduler* scheduler;
-
 packed_struct ContextSwitchRequest {
   CPUContext* from;
   CPUContext* to;
 };
 
+Scheduler* scheduler;
+RingBuffer<uint8_t, 16> keycode_buffer;
+
+IDTR idtr;
 ContextSwitchRequest context_switch_request;
 
 extern "C" ContextSwitchRequest* IntHandler(uint64_t intcode,
@@ -33,8 +33,7 @@ extern "C" ContextSwitchRequest* IntHandler(uint64_t intcode,
   }
   if (intcode == 0x21) {
     SendEndOfInterruptToLocalAPIC();
-    uint8_t data = ReadIOPort8(0x0060);
-    PutStringAndHex("INT #0x21: ", data);
+    keycode_buffer.Push(ReadIOPort8(0x0060));
     return NULL;
   }
   PutStringAndHex("Int#", intcode);
@@ -80,6 +79,8 @@ void SetIntHandler(int index,
 
 void InitIDT() {
   ReadIDTR(&idtr);
+
+  new (&keycode_buffer) RingBuffer<uint8_t, 16>();
 
   uint16_t cs = ReadCSSelector();
   SetIntHandler(0x03, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler03);

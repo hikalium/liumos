@@ -178,6 +178,9 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
   while (1) {
     StoreIntFlagAndHalt();
     ClearIntFlag();
+    while (!keycode_buffer.IsEmpty()) {
+      PutStringAndHex("(main)INT #0x21: ", keycode_buffer.Pop());
+    }
     // PutStringAndHex("RootContext", count += 2);
   }
 }

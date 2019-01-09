@@ -10,7 +10,7 @@ QEMU=qemu-system-x86_64
 
 CLANG_WARNINGS = \
 		-Wall -Wpedantic -Wextra -Wconditional-uninitialized -Wshorten-64-to-32
-CXX_STD = -std=c++14
+CXX_STD = -std=c++17
 		
 
 CFLAGS= \

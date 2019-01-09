@@ -1,6 +1,4 @@
 #pragma once
-#include <cstdint>
-
 template <typename T, unsigned int n>
 class RingBuffer {
  public:
