@@ -33,7 +33,7 @@ extern "C" ContextSwitchRequest* IntHandler(uint64_t intcode,
   }
   if (intcode == 0x21) {
     SendEndOfInterruptToLocalAPIC();
-    keycode_buffer.Push(ReadIOPort8(0x0060));
+    keycode_buffer.Push(ReadIOPort8(kIOPortKeyboardData));
     return NULL;
   }
   PutStringAndHex("Int#", intcode);

@@ -31,6 +31,8 @@ void SubTask() {
 
 GDT global_desc_table;
 
+uint16_t ParseKeyCode(uint8_t keycode);
+
 void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
   LocalAPIC local_apic;
   EFIMemoryMap memory_map;
@@ -179,7 +181,8 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
     StoreIntFlagAndHalt();
     ClearIntFlag();
     while (!keycode_buffer.IsEmpty()) {
-      PutStringAndHex("(main)INT #0x21: ", keycode_buffer.Pop());
+      uint8_t keycode = keycode_buffer.Pop();
+      ParseKeyCode(keycode);
     }
     // PutStringAndHex("RootContext", count += 2);
   }

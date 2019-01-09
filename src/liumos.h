@@ -84,6 +84,9 @@ void DrawCharacter(char c, int px, int py);
 void DrawRect(int px, int py, int w, int h, uint32_t col);
 void BlockTransfer(int to_x, int to_y, int from_x, int from_y, int w, int h);
 
+// @keyboard.cc
+const uint16_t kIOPortKeyboardData = 0x0060;
+
 // @liumos.c
 [[noreturn]] void Panic(const char* s);
 void MainForBootProcessor(void* image_handle, EFISystemTable* system_table);
