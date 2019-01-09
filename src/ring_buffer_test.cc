@@ -8,7 +8,9 @@
 int main() {
   RingBuffer<int, 4> rbuf;
 
+  assert(rbuf.IsEmpty());
   rbuf.Push(3);
+  assert(!rbuf.IsEmpty());
   rbuf.Push(5);
   rbuf.Push(7);
   rbuf.Push(11);
@@ -17,7 +19,9 @@ int main() {
   rbuf.Push(17);
   assert(rbuf.Pop() == 5);
   assert(rbuf.Pop() == 7);
+  assert(!rbuf.IsEmpty());
   assert(rbuf.Pop() == 17);
+  assert(rbuf.IsEmpty());
   assert(rbuf.Pop() == 0);
 
   puts("PASS");
