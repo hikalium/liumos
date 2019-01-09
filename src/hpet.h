@@ -1,3 +1,4 @@
+#pragma once
 #include "generic.h"
 
 class HPET {

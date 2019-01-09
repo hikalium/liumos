@@ -1,6 +1,7 @@
 OBJS=apic.o asm.o console.o \
 		 efi.o efimain.o \
-		 gdt.o generic.o graphics.o guid.o hpet.o \
+		 gdt.o generic.o graphics.o guid.o \
+		 hpet.o interrupt.o \
 		 liumos.o palloc.o scheduler.o static.o \
 		 font.gen.o
 HEADERS=$(wildcard *.h)

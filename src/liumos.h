@@ -5,6 +5,7 @@
 #include "efi.h"
 #include "generic.h"
 #include "guid.h"
+#include "interrupt.h"
 
 /*
 class SpinLock {
