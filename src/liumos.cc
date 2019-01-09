@@ -28,13 +28,6 @@ void InitGraphics() {
       efi_graphics_output_protocol->mode->info->pixels_per_scan_line;
 }
 
-void SendEndOfInterruptToLocalAPIC() {
-  *(uint32_t*)(((ReadMSR(MSRIndex::kLocalAPICBase) &
-                 ((1ULL << MAX_PHY_ADDR_BITS) - 1)) &
-                ~0xfffULL) +
-               0xB0) = 0;
-}
-
 Scheduler* scheduler;
 
 packed_struct ContextSwitchRequest {
@@ -90,34 +83,6 @@ void PrintIDTGateDescriptor(IDTGateDescriptor* desc) {
   PutStringAndHex("desc.present", desc->present);
 }
 
-uint32_t ReadIOAPICRegister(uint64_t io_apic_base_addr, uint8_t reg_index) {
-  *(uint32_t volatile*)(io_apic_base_addr) = (uint32_t)reg_index;
-  return *(uint32_t volatile*)(io_apic_base_addr + 0x10);
-}
-
-void WriteIOAPICRegister(uint64_t io_apic_base_addr,
-                         uint8_t reg_index,
-                         uint32_t value) {
-  *(uint32_t volatile*)(io_apic_base_addr) = (uint32_t)reg_index;
-  *(uint32_t volatile*)(io_apic_base_addr + 0x10) = value;
-}
-
-uint64_t ReadIOAPICRedirectTableRegister(uint64_t io_apic_base_addr,
-                                         uint8_t irq_index) {
-  return (uint64_t)ReadIOAPICRegister(io_apic_base_addr, 0x10 + irq_index * 2) |
-         ((uint64_t)ReadIOAPICRegister(io_apic_base_addr,
-                                       0x10 + irq_index * 2 + 1)
-          << 32);
-}
-
-void WriteIOAPICRedirectTableRegister(uint64_t io_apic_base_addr,
-                                      uint8_t irq_index,
-                                      uint64_t value) {
-  WriteIOAPICRegister(io_apic_base_addr, 0x10 + irq_index * 2, (uint32_t)value);
-  WriteIOAPICRegister(io_apic_base_addr, 0x10 + irq_index * 2 + 1,
-                      (uint32_t)(value >> 32));
-}
-
 void SetIntHandler(int index,
                    uint8_t segm_desc,
                    uint8_t ist,
@@ -147,22 +112,6 @@ void InitIDT() {
   SetIntHandler(0x20, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler20);
   SetIntHandler(0x21, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler21);
   WriteIDTR(&idtr);
-}
-
-void SetInterruptRedirection(uint64_t local_apic_id,
-                             int from_irq_num,
-                             int to_vector_index) {
-  uint64_t redirect_table =
-      ReadIOAPICRedirectTableRegister(IO_APIC_BASE_ADDR, from_irq_num);
-  redirect_table &= 0x00fffffffffe0000UL;
-  redirect_table |= (local_apic_id << 56) | to_vector_index;
-  WriteIOAPICRedirectTableRegister(IO_APIC_BASE_ADDR, from_irq_num,
-                                   redirect_table);
-}
-
-void InitIOAPIC(uint64_t local_apic_id) {
-  SetInterruptRedirection(local_apic_id, 2, 0x20);
-  SetInterruptRedirection(local_apic_id, 1, 0x21);
 }
 
 HPET hpet;

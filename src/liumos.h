@@ -16,6 +16,10 @@ class SpinLock {
 };
 */
 
+// @apic.cc
+void SendEndOfInterruptToLocalAPIC();
+void InitIOAPIC(uint64_t local_apic_id);
+
 // @console.c
 void ResetCursorPosition();
 void EnableVideoModeForConsole();
