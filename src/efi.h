@@ -413,3 +413,4 @@ void EFIPrintStringAndHex(const wchar_t* s, uint64_t value);
 void* EFIGetConfigurationTableByUUID(const GUID* guid);
 void EFIGetMemoryMapAndExitBootServices(EFIHandle image_handle,
                                         EFIMemoryMap& map);
+void InitEFI(EFISystemTable* system_table);

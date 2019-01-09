@@ -11,14 +11,6 @@ int pixels_per_scan_line;
 
 IDTR idtr;
 
-void InitEFI(EFISystemTable* system_table) {
-  _system_table = system_table;
-  _system_table->boot_services->SetWatchdogTimer(0, 0, 0, nullptr);
-  _system_table->boot_services->LocateProtocol(
-      &EFI_GraphicsOutputProtocolGUID, nullptr,
-      (void**)&efi_graphics_output_protocol);
-}
-
 void InitGraphics() {
   vram = static_cast<uint8_t*>(
       efi_graphics_output_protocol->mode->frame_buffer_base);

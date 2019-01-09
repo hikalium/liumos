@@ -132,3 +132,11 @@ void EFIGetMemoryMapAndExitBootServices(EFIHandle image_handle,
   } while (status != EFIStatus::kSuccess);
   PutString(" done.\n");
 }
+
+void InitEFI(EFISystemTable* system_table) {
+  _system_table = system_table;
+  _system_table->boot_services->SetWatchdogTimer(0, 0, 0, nullptr);
+  _system_table->boot_services->LocateProtocol(
+      &EFI_GraphicsOutputProtocolGUID, nullptr,
+      (void**)&efi_graphics_output_protocol);
+}
