@@ -132,24 +132,6 @@ void InitMemoryManagement(EFIMemoryMap& map, PhysicalPageAllocator& allocator) {
   PutStringAndHex("Available memory (KiB)", available_pages * 4);
 }
 
-class LocalAPIC {
- public:
-  LocalAPIC() {
-    uint64_t base_msr = ReadMSR(MSRIndex::kLocalAPICBase);
-    base_addr_ = (base_msr & ((1ULL << MAX_PHY_ADDR_BITS) - 1)) & ~0xfffULL;
-    id_ = *GetRegisterAddr(0x20) >> 24;
-  }
-  uint8_t GetID() { return id_; }
-
- private:
-  uint32_t* GetRegisterAddr(uint64_t offset) {
-    return (uint32_t*)(base_addr_ + offset);
-  }
-
-  uint64_t base_addr_;
-  uint8_t id_;
-};
-
 void SubTask() {
   int count = 0;
   while (1) {

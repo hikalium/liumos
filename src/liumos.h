@@ -17,6 +17,24 @@ class SpinLock {
 */
 
 // @apic.cc
+class LocalAPIC {
+ public:
+  LocalAPIC() {
+    uint64_t base_msr = ReadMSR(MSRIndex::kLocalAPICBase);
+    base_addr_ = (base_msr & ((1ULL << MAX_PHY_ADDR_BITS) - 1)) & ~0xfffULL;
+    id_ = *GetRegisterAddr(0x20) >> 24;
+  }
+  uint8_t GetID() { return id_; }
+
+ private:
+  uint32_t* GetRegisterAddr(uint64_t offset) {
+    return (uint32_t*)(base_addr_ + offset);
+  }
+
+  uint64_t base_addr_;
+  uint8_t id_;
+};
+
 void SendEndOfInterruptToLocalAPIC();
 void InitIOAPIC(uint64_t local_apic_id);
 
