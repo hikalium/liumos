@@ -4,6 +4,7 @@
 #include "hpet.h"
 
 HPET hpet;
+ACPI_NFIT* nfit;
 
 void InitMemoryManagement(EFIMemoryMap& map, PhysicalPageAllocator& allocator) {
   PutStringAndHex("Map entries", map.GetNumberOfEntries());
@@ -71,6 +72,38 @@ bool IsEqualString(const char* a, const char* b) {
   }
   return false;
 }
+namespace ConsoleCommand {
+void TestNFIT() {
+  if (!nfit) {
+    PutString("NFIT not found\n");
+    return;
+  }
+  PutString("NFIT found\n");
+  PutStringAndHex("NFIT Size", nfit->length);
+  PutStringAndHex("First NFIT Structure Type", nfit->entry[0]);
+  PutStringAndHex("First NFIT Structure Size", nfit->entry[1]);
+  if (static_cast<ACPI_NFITStructureType>(nfit->entry[0]) ==
+      ACPI_NFITStructureType::kSystemPhysicalAddressRangeStructure) {
+    ACPI_NFIT_SPARange* spa_range = (ACPI_NFIT_SPARange*)&nfit->entry[0];
+    PutStringAndHex("SPARange Base",
+                    spa_range->system_physical_address_range_base);
+    PutStringAndHex("SPARange Length",
+                    spa_range->system_physical_address_range_length);
+    PutStringAndHex("SPARange Attribute",
+                    spa_range->address_range_memory_mapping_attribute);
+    PutStringAndHex("SPARange TypeGUID[0]",
+                    spa_range->address_range_type_guid[0]);
+    PutStringAndHex("SPARange TypeGUID[1]",
+                    spa_range->address_range_type_guid[1]);
+
+    uint64_t* p = (uint64_t*)spa_range->system_physical_address_range_base;
+    PutStringAndHex("\nPointer in PMEM Region: ", p);
+    PutStringAndHex("PMEM Previous value: ", *p);
+    (*p)++;
+    PutStringAndHex("PMEM value after write: ", *p);
+  }
+}
+}  // namespace ConsoleCommand
 
 void WaitAndProcessCommand(TextBox& tbox) {
   PutString("> ");
@@ -88,6 +121,8 @@ void WaitAndProcessCommand(TextBox& tbox) {
         const char* line = tbox.GetRecordedString();
         if (IsEqualString(line, "hello")) {
           PutString("Hello, world!\n");
+        } else if (IsEqualString(line, "test nfit")) {
+          ConsoleCommand::TestNFIT();
         } else {
           PutString("Command not found: ");
           PutString(tbox.GetRecordedString());
@@ -145,7 +180,6 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
 
   new (&local_apic) LocalAPIC();
 
-  ACPI_NFIT* nfit = nullptr;
   ACPI_HPET* hpet_table = nullptr;
   ACPI_MADT* madt = nullptr;
 
@@ -210,39 +244,6 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
   ExecutionContext sub_context(2, SubTask, ReadCSSelector(), sub_context_rsp,
                                ReadSSSelector());
   // scheduler->RegisterExecutionContext(&sub_context);
-
-  if (nfit) {
-    PutString("NFIT found\n");
-    PutStringAndHex("NFIT Size", nfit->length);
-    PutStringAndHex("First NFIT Structure Type", nfit->entry[0]);
-    PutStringAndHex("First NFIT Structure Size", nfit->entry[1]);
-    if (static_cast<ACPI_NFITStructureType>(nfit->entry[0]) ==
-        ACPI_NFITStructureType::kSystemPhysicalAddressRangeStructure) {
-      ACPI_NFIT_SPARange* spa_range = (ACPI_NFIT_SPARange*)&nfit->entry[0];
-      PutStringAndHex("SPARange Base",
-                      spa_range->system_physical_address_range_base);
-      PutStringAndHex("SPARange Length",
-                      spa_range->system_physical_address_range_length);
-      PutStringAndHex("SPARange Attribute",
-                      spa_range->address_range_memory_mapping_attribute);
-      PutStringAndHex("SPARange TypeGUID[0]",
-                      spa_range->address_range_type_guid[0]);
-      PutStringAndHex("SPARange TypeGUID[1]",
-                      spa_range->address_range_type_guid[1]);
-
-      uint64_t* p = (uint64_t*)spa_range->system_physical_address_range_base;
-      PutStringAndHex("\nPointer in PMEM Region: ", p);
-      PutStringAndHex("PMEM Previous value: ", *p);
-      (*p)++;
-      PutStringAndHex("PMEM value after write: ", *p);
-
-      uint64_t* q = reinterpret_cast<uint64_t*>(page_allocator.AllocPages(1));
-      PutStringAndHex("\nPointer in DRAM Region: ", q);
-      PutStringAndHex("DRAM Previous value: ", *q);
-      (*q)++;
-      PutStringAndHex("DRAM value after write: ", *q);
-    }
-  }
 
   TextBox console_text_box;
   while (1) {
