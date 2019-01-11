@@ -33,6 +33,73 @@ GDT global_desc_table;
 
 uint16_t ParseKeyCode(uint8_t keycode);
 
+class TextBox {
+ public:
+  TextBox() : buf_used_(0), is_recording_enabled_(false) {}
+  void putc(uint16_t keyid) {
+    if (!(keyid & KeyID::kMaskBreak) && !(keyid & KeyID::kMaskExtended)) {
+      if (is_recording_enabled_) {
+        if (buf_used_ >= kSizeOfBuffer)
+          return;
+        buf_[buf_used_++] = (uint8_t)keyid;
+        buf_[buf_used_] = 0;
+      }
+      PutChar(keyid);
+    }
+  }
+  void StartRecording() {
+    buf_used_ = 0;
+    buf_[buf_used_] = 0;
+    is_recording_enabled_ = true;
+  }
+  void StopRecording() { is_recording_enabled_ = false; }
+  const char* GetRecordedString() { return buf_; }
+
+ private:
+  constexpr static int kSizeOfBuffer = 16;
+  char buf_[kSizeOfBuffer + 1];
+  int buf_used_;
+  bool is_recording_enabled_;
+};
+
+bool IsEqualString(const char* a, const char* b) {
+  while (*a == *b) {
+    if (*a == 0)
+      return true;
+    a++;
+    b++;
+  }
+  return false;
+}
+
+void WaitAndProcessCommand(TextBox& tbox) {
+  PutString("> ");
+  tbox.StartRecording();
+  while (1) {
+    StoreIntFlagAndHalt();
+    ClearIntFlag();
+    while (!keycode_buffer.IsEmpty()) {
+      uint16_t keyid = ParseKeyCode(keycode_buffer.Pop());
+      if (!keyid && keyid & KeyID::kMaskBreak)
+        continue;
+      if (keyid == KeyID::kEnter) {
+        tbox.StopRecording();
+        tbox.putc('\n');
+        const char* line = tbox.GetRecordedString();
+        if (IsEqualString(line, "hello")) {
+          PutString("Hello, world!\n");
+        } else {
+          PutString("Command not found: ");
+          PutString(tbox.GetRecordedString());
+          tbox.putc('\n');
+        }
+        return;
+      }
+      tbox.putc(keyid);
+    }
+  }
+}
+
 void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
   LocalAPIC local_apic;
   EFIMemoryMap memory_map;
@@ -177,16 +244,8 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
     }
   }
 
+  TextBox console_text_box;
   while (1) {
-    StoreIntFlagAndHalt();
-    ClearIntFlag();
-    while (!keycode_buffer.IsEmpty()) {
-      uint8_t keycode = keycode_buffer.Pop();
-      uint16_t keyid = ParseKeyCode(keycode);
-      if (!(keyid & kKeyIDMaskBreak) && !(keyid & kKeyIDMaskExtended)) {
-        PutChar(keyid);
-      }
-    }
-    // PutStringAndHex("RootContext", count += 2);
+    WaitAndProcessCommand(console_text_box);
   }
 }
