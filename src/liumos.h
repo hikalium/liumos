@@ -85,7 +85,10 @@ void DrawRect(int px, int py, int w, int h, uint32_t col);
 void BlockTransfer(int to_x, int to_y, int from_x, int from_y, int w, int h);
 
 // @keyboard.cc
-const uint16_t kIOPortKeyboardData = 0x0060;
+constexpr uint16_t kIOPortKeyboardData = 0x0060;
+
+constexpr uint16_t kKeyIDMaskBreak = 0x80;
+constexpr uint16_t kKeyIDMaskExtended = 0x8000;
 
 // @liumos.c
 [[noreturn]] void Panic(const char* s);

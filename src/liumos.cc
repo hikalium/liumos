@@ -182,7 +182,10 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
     ClearIntFlag();
     while (!keycode_buffer.IsEmpty()) {
       uint8_t keycode = keycode_buffer.Pop();
-      ParseKeyCode(keycode);
+      uint16_t keyid = ParseKeyCode(keycode);
+      if (!(keyid & kKeyIDMaskBreak) && !(keyid & kKeyIDMaskExtended)) {
+        PutChar(keyid);
+      }
     }
     // PutStringAndHex("RootContext", count += 2);
   }
