@@ -73,7 +73,7 @@ bool IsEqualString(const char* a, const char* b) {
   return false;
 }
 namespace ConsoleCommand {
-void TestNFIT() {
+void ShowNFIT() {
   if (!nfit) {
     PutString("NFIT not found\n");
     return;
@@ -121,8 +121,8 @@ void WaitAndProcessCommand(TextBox& tbox) {
         const char* line = tbox.GetRecordedString();
         if (IsEqualString(line, "hello")) {
           PutString("Hello, world!\n");
-        } else if (IsEqualString(line, "test nfit")) {
-          ConsoleCommand::TestNFIT();
+        } else if (IsEqualString(line, "show nfit")) {
+          ConsoleCommand::ShowNFIT();
         } else {
           PutString("Command not found: ");
           PutString(tbox.GetRecordedString());
