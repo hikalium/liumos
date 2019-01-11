@@ -8,6 +8,7 @@ ACPI_NFIT* nfit;
 ACPI_MADT* madt;
 ACPI_HPET* hpet_table;
 ACPI_RSDT* rsdt;
+GDT global_desc_table;
 
 void InitMemoryManagement(EFIMemoryMap& map, PhysicalPageAllocator& allocator) {
   PutStringAndHex("Map entries", map.GetNumberOfEntries());
@@ -32,8 +33,6 @@ void SubTask() {
     PutStringAndHex("SubContext!", count++);
   }
 }
-
-GDT global_desc_table;
 
 uint16_t ParseKeyCode(uint8_t keycode);
 
@@ -108,7 +107,7 @@ void WaitAndProcessCommand(TextBox& tbox) {
   }
 }
 
-void DetectTablesOnXADT() {
+void DetectTablesOnXSDT() {
   assert(rsdt);
   ACPI_XSDT* xsdt = rsdt->xsdt;
   const int num_of_xsdt_entries =
@@ -168,7 +167,7 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
   if (!(cpuid.edx & CPUID_01_EDX_MSR))
     Panic("MSR not supported");
 
-  DetectTablesOnXADT();
+  DetectTablesOnXSDT();
 
   new (&local_apic) LocalAPIC();
   Disable8259PIC();
