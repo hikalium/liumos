@@ -5,6 +5,7 @@
 
 HPET hpet;
 ACPI_NFIT* nfit;
+ACPI_MADT* madt;
 
 void InitMemoryManagement(EFIMemoryMap& map, PhysicalPageAllocator& allocator) {
   PutStringAndHex("Map entries", map.GetNumberOfEntries());
@@ -91,6 +92,8 @@ void WaitAndProcessCommand(TextBox& tbox) {
           PutString("Hello, world!\n");
         } else if (IsEqualString(line, "show nfit")) {
           ConsoleCommand::ShowNFIT();
+        } else if (IsEqualString(line, "show madt")) {
+          ConsoleCommand::ShowMADT();
         } else {
           PutString("Command not found: ");
           PutString(tbox.GetRecordedString());
@@ -149,7 +152,6 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
   new (&local_apic) LocalAPIC();
 
   ACPI_HPET* hpet_table = nullptr;
-  ACPI_MADT* madt = nullptr;
 
   for (int i = 0; i < num_of_xsdt_entries; i++) {
     const char* signature = static_cast<const char*>(xsdt->entry[i]);
@@ -163,26 +165,6 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
 
   if (!madt)
     Panic("MADT not found");
-
-  for (int i = 0; i < (int)(madt->length - offsetof(ACPI_MADT, entries));
-       i += madt->entries[i + 1]) {
-    uint8_t type = madt->entries[i];
-    if (type == kProcessorLocalAPICInfo) {
-      PutString("Processor 0x");
-      PutHex64(madt->entries[i + 2]);
-      PutString(" local_apic_id = 0x");
-      PutHex64(madt->entries[i + 3]);
-      PutString(" flags = 0x");
-      PutHex64(madt->entries[i + 4]);
-      PutString("\n");
-    } else if (type == kInterruptSourceOverrideInfo) {
-      PutString("IRQ override: 0x");
-      PutHex64(madt->entries[i + 3]);
-      PutString(" -> 0x");
-      PutHex64(*(uint32_t*)&madt->entries[i + 4]);
-      PutString("\n");
-    }
-  }
 
   Disable8259PIC();
 

@@ -33,4 +33,26 @@ void ShowNFIT() {
   }
 }
 
+void ShowMADT() {
+  for (int i = 0; i < (int)(madt->length - offsetof(ACPI_MADT, entries));
+       i += madt->entries[i + 1]) {
+    uint8_t type = madt->entries[i];
+    if (type == kProcessorLocalAPICInfo) {
+      PutString("Processor 0x");
+      PutHex64(madt->entries[i + 2]);
+      PutString(" local_apic_id = 0x");
+      PutHex64(madt->entries[i + 3]);
+      PutString(" flags = 0x");
+      PutHex64(madt->entries[i + 4]);
+      PutString("\n");
+    } else if (type == kInterruptSourceOverrideInfo) {
+      PutString("IRQ override: 0x");
+      PutHex64(madt->entries[i + 3]);
+      PutString(" -> 0x");
+      PutHex64(*(uint32_t*)&madt->entries[i + 4]);
+      PutString("\n");
+    }
+  }
+}
+
 }  // namespace ConsoleCommand
