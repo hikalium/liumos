@@ -2,7 +2,7 @@ OBJS=apic.o asm.o console.o console_command.o \
 		 efi.o efimain.o \
 		 gdt.o generic.o graphics.o guid.o \
 		 hpet.o interrupt.o keyboard.o\
-		 liumos.o palloc.o scheduler.o static.o \
+		 liumos.o phys_page_allocator.o scheduler.o static.o \
 		 font.gen.o
 HEADERS=$(wildcard *.h)
 OVMF=ovmf/bios64.bin
