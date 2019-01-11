@@ -54,6 +54,7 @@ void PutStringAndHex(const char* s, void* value);
 namespace ConsoleCommand {
 void ShowNFIT(void);
 void ShowMADT(void);
+void ShowEFIMemoryMap(void);
 }  // namespace ConsoleCommand
 
 // @font.gen.c
@@ -151,7 +152,8 @@ constexpr uint16_t kUnknown = KeyID::kMaskExtended | 0x007f;
 // @liumos.c
 extern ACPI_NFIT* nfit;
 extern ACPI_MADT* madt;
-[[noreturn]] void Panic(const char* s);
+extern EFIMemoryMap efi_memory_map;
+
 void MainForBootProcessor(void* image_handle, EFISystemTable* system_table);
 
 // @palloc.c

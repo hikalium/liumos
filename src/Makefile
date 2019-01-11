@@ -18,7 +18,8 @@ CFLAGS= \
 		-fno-stack-protector -fshort-wchar \
 		-mno-red-zone \
 		-nostdlibinc \
-		$(CLANG_WARNINGS) -std=c11
+		$(CLANG_WARNINGS) -std=c11 \
+		-Imusl_supplement -Imusl/include
 
 CXXFLAGS= \
 		-target x86_64-pc-win32-coff \

@@ -3,22 +3,21 @@
 #include "execution_context.h"
 #include "hpet.h"
 
-HPET hpet;
 ACPI_NFIT* nfit;
 ACPI_MADT* madt;
+EFIMemoryMap efi_memory_map;
+
+HPET hpet;
 ACPI_HPET* hpet_table;
 ACPI_RSDT* rsdt;
 GDT global_desc_table;
 
 void InitMemoryManagement(EFIMemoryMap& map, PhysicalPageAllocator& allocator) {
-  PutStringAndHex("Map entries", map.GetNumberOfEntries());
   int available_pages = 0;
   for (int i = 0; i < map.GetNumberOfEntries(); i++) {
     const EFIMemoryDescriptor* desc = map.GetDescriptor(i);
     if (desc->type != EFIMemoryType::kConventionalMemory)
       continue;
-    desc->Print();
-    PutString("\n");
     available_pages += desc->number_of_pages;
     allocator.FreePages(reinterpret_cast<void*>(desc->physical_start),
                         desc->number_of_pages);
@@ -95,6 +94,8 @@ void WaitAndProcessCommand(TextBox& tbox) {
           ConsoleCommand::ShowNFIT();
         } else if (IsEqualString(line, "show madt")) {
           ConsoleCommand::ShowMADT();
+        } else if (IsEqualString(line, "show mmap")) {
+          ConsoleCommand::ShowEFIMemoryMap();
         } else {
           PutString("Command not found: ");
           PutString(tbox.GetRecordedString());
@@ -129,16 +130,15 @@ void DetectTablesOnXSDT() {
 
 void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
   LocalAPIC local_apic;
-  EFIMemoryMap memory_map;
   PhysicalPageAllocator page_allocator;
 
   InitEFI(system_table);
   EFIClearScreen();
   InitGraphics();
   EnableVideoModeForConsole();
-  EFIGetMemoryMapAndExitBootServices(image_handle, memory_map);
+  EFIGetMemoryMapAndExitBootServices(image_handle, efi_memory_map);
 
-  PutString("liumOS is booting...\n");
+  PutString("\nliumOS is booting...\n\n");
 
   ClearIntFlag();
 
@@ -184,7 +184,7 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
       0, 100, HPET::TimerConfig::kUsePeriodicMode | HPET::TimerConfig::kEnable);
 
   new (&page_allocator) PhysicalPageAllocator();
-  InitMemoryManagement(memory_map, page_allocator);
+  InitMemoryManagement(efi_memory_map, page_allocator);
   const int kNumOfStackPages = 3;
   void* sub_context_stack_base = page_allocator.AllocPages(kNumOfStackPages);
   void* sub_context_rsp = reinterpret_cast<void*>(
