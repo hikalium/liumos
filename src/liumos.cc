@@ -6,6 +6,8 @@
 HPET hpet;
 ACPI_NFIT* nfit;
 ACPI_MADT* madt;
+ACPI_HPET* hpet_table;
+ACPI_RSDT* rsdt;
 
 void InitMemoryManagement(EFIMemoryMap& map, PhysicalPageAllocator& allocator) {
   PutStringAndHex("Map entries", map.GetNumberOfEntries());
@@ -106,6 +108,26 @@ void WaitAndProcessCommand(TextBox& tbox) {
   }
 }
 
+void DetectTablesOnXADT() {
+  assert(rsdt);
+  ACPI_XSDT* xsdt = rsdt->xsdt;
+  const int num_of_xsdt_entries =
+      (xsdt->length - ACPI_DESCRIPTION_HEADER_SIZE) >> 3;
+  for (int i = 0; i < num_of_xsdt_entries; i++) {
+    const char* signature = static_cast<const char*>(xsdt->entry[i]);
+    if (IsEqualStringWithSize(signature, "NFIT", 4))
+      nfit = static_cast<ACPI_NFIT*>(xsdt->entry[i]);
+    if (IsEqualStringWithSize(signature, "HPET", 4))
+      hpet_table = static_cast<ACPI_HPET*>(xsdt->entry[i]);
+    if (IsEqualStringWithSize(signature, "APIC", 4))
+      madt = static_cast<ACPI_MADT*>(xsdt->entry[i]);
+  }
+  if (!madt)
+    Panic("MADT not found");
+  if (!hpet_table)
+    Panic("HPET table not found");
+}
+
 void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
   LocalAPIC local_apic;
   EFIMemoryMap memory_map;
@@ -128,11 +150,8 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
   Scheduler scheduler_(&root_context);
   scheduler = &scheduler_;
 
-  ACPI_RSDT* rsdt = static_cast<ACPI_RSDT*>(
+  rsdt = static_cast<ACPI_RSDT*>(
       EFIGetConfigurationTableByUUID(&EFI_ACPITableGUID));
-  ACPI_XSDT* xsdt = rsdt->xsdt;
-
-  int num_of_xsdt_entries = (xsdt->length - ACPI_DESCRIPTION_HEADER_SIZE) >> 3;
 
   CPUID cpuid;
   ReadCPUID(&cpuid, 0, 0);
@@ -149,32 +168,15 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
   if (!(cpuid.edx & CPUID_01_EDX_MSR))
     Panic("MSR not supported");
 
+  DetectTablesOnXADT();
+
   new (&local_apic) LocalAPIC();
-
-  ACPI_HPET* hpet_table = nullptr;
-
-  for (int i = 0; i < num_of_xsdt_entries; i++) {
-    const char* signature = static_cast<const char*>(xsdt->entry[i]);
-    if (IsEqualStringWithSize(signature, "NFIT", 4))
-      nfit = static_cast<ACPI_NFIT*>(xsdt->entry[i]);
-    if (IsEqualStringWithSize(signature, "HPET", 4))
-      hpet_table = static_cast<ACPI_HPET*>(xsdt->entry[i]);
-    if (IsEqualStringWithSize(signature, "APIC", 4))
-      madt = static_cast<ACPI_MADT*>(xsdt->entry[i]);
-  }
-
-  if (!madt)
-    Panic("MADT not found");
-
   Disable8259PIC();
 
   uint64_t local_apic_id = local_apic.GetID();
   PutStringAndHex("LOCAL APIC ID", local_apic_id);
 
   InitIOAPIC(local_apic_id);
-
-  if (!hpet_table)
-    Panic("HPET table not found");
 
   hpet.Init(
       static_cast<HPET::RegisterSpace*>(hpet_table->base_address.address));
