@@ -40,23 +40,12 @@ enum class EFIMemoryType : uint32_t {
 
 typedef enum { TimerCancel, TimerPeriodic, TimerRelative } EFITimerDelay;
 
-typedef struct EFI_CONFIGURATION_TABLE EFIConfigurationTable;
-typedef struct EFI_TABLE_HEADER EFITableHeader;
-typedef struct EFI_INPUT_KEY EFIInputKey;
-typedef struct EFI_SIMPLE_TEXT_INPUT_PROTOCOL EFISimpleTextInputProtocol;
-typedef struct EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL EFISimpleTextOutputProtocol;
-typedef struct EFI_RUNTIME_SERVICES EFIRuntimeServices;
-typedef struct EFI_DEVICE_PATH_PROTOCOL EFIDevicePathProtocol;
-typedef struct EFI_BOOT_SERVICES EFIBootServices;
-typedef struct EFI_SYSTEM_TABLE EFISystemTable;
-typedef struct EFI_GRAPHICS_OUTPUT_PROTOCOL EFIGraphicsOutputProtocol;
-
-struct EFI_CONFIGURATION_TABLE {
+struct EFIConfigurationTable {
   GUID vendor_guid;
   void* vendor_table;
 };
 
-struct EFI_TABLE_HEADER {
+struct EFITableHeader {
   uint64_t signature;
   uint32_t revision;
   uint32_t header_size;
@@ -64,18 +53,18 @@ struct EFI_TABLE_HEADER {
   uint32_t reserved;
 };
 
-struct EFI_INPUT_KEY {
+struct EFIInputKey {
   uint16_t ScanCode;
   wchar_t UnicodeChar;
 };
 
-struct EFI_SIMPLE_TEXT_INPUT_PROTOCOL {
+struct EFISimpleTextInputProtocol {
   uint64_t _buf;
   uint64_t (*ReadKeyStroke)(EFISimpleTextInputProtocol*, EFIInputKey*);
   void* wait_for_key;
 };
 
-struct EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL {
+struct EFISimpleTextOutputProtocol {
   uint64_t _buf;
   uint64_t (*output_string)(EFISimpleTextOutputProtocol*, const wchar_t*);
   uint64_t (*test_string)(EFISimpleTextOutputProtocol*, wchar_t*);
@@ -97,7 +86,7 @@ struct EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL {
   } * Mode;
 };
 
-struct EFI_RUNTIME_SERVICES {
+struct EFIRuntimeServices {
   char _buf_rs1[24];
   uint64_t _buf_rs2[4];
   uint64_t _buf_rs3[2];
@@ -119,13 +108,13 @@ struct EFIMemoryDescriptor {
   void Print(void) const;
 };
 
-struct EFI_DEVICE_PATH_PROTOCOL {
+struct EFIDevicePathProtocol {
   unsigned char Type;
   unsigned char SubType;
   unsigned char Length[2];
 };
 
-struct EFI_BOOT_SERVICES {
+struct EFIBootServices {
   char _buf1[24];
   uint64_t _buf2[2];
   uint64_t _buf3[2];
@@ -182,7 +171,7 @@ struct EFI_BOOT_SERVICES {
   uint64_t _buf12;
 };
 
-struct EFI_SYSTEM_TABLE {
+struct EFISystemTable {
   EFITableHeader header;
   wchar_t* firmware_vendor;
   uint32_t firmware_revision;
@@ -198,13 +187,6 @@ struct EFI_SYSTEM_TABLE {
   EFIConfigurationTable* configuration_table;
 };
 
-struct EFI_GRAPHICS_OUTPUT_BLT_PIXEL {
-  unsigned char Blue;
-  unsigned char Green;
-  unsigned char Red;
-  unsigned char Reserved;
-};
-
 enum EFI_GRAPHICS_PIXEL_FORMAT {
   kPixelRedGreenBlueReserved8BitPerColor,
   kPixelBlueGreenRedReserved8BitPerColor,
@@ -213,12 +195,12 @@ enum EFI_GRAPHICS_PIXEL_FORMAT {
   kPixelFormatMax
 };
 
-struct EFI_GRAPHICS_OUTPUT_PROTOCOL {
+struct EFIGraphicsOutputProtocol {
   uint64_t _buf[3];
-  struct EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE {
+  struct {
     uint32_t max_mode;
     uint32_t mode;
-    struct EFI_GRAPHICS_OUTPUT_MODE_INFORMATION {
+    struct {
       uint32_t version;
       uint32_t horizontal_resolution;
       uint32_t vertical_resolution;
@@ -308,14 +290,14 @@ struct EFI_SIMPLE_FILE_SYSTEM_PROTOCOL {
                          struct EFI_FILE_PROTOCOL** Root);
 };
 
-struct EFI_KEY_STATE {
+struct EFIKeyState {
   unsigned int KeyShiftState;
   unsigned char KeyToggleState;
 };
 
 struct EFI_KEY_DATA {
-  struct EFI_INPUT_KEY Key;
-  struct EFI_KEY_STATE KeyState;
+  struct EFIInputKey Key;
+  struct EFIKeyState KeyState;
 };
 
 struct EFI_SIMPLE_TEXT_INPUT_EX_PROTOCOL {
