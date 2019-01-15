@@ -39,15 +39,26 @@ class TextBox {
  public:
   TextBox() : buf_used_(0), is_recording_enabled_(false) {}
   void putc(uint16_t keyid) {
-    if (!(keyid & KeyID::kMaskBreak) && !(keyid & KeyID::kMaskExtended)) {
+    if (keyid & KeyID::kMaskBreak)
+      return;
+    if (keyid == KeyID::kBackspace) {
       if (is_recording_enabled_) {
-        if (buf_used_ >= kSizeOfBuffer)
+        if (buf_used_ == 0)
           return;
-        buf_[buf_used_++] = (uint8_t)keyid;
-        buf_[buf_used_] = 0;
+        buf_[--buf_used_] = 0;
       }
-      PutChar(keyid);
+      PutChar('\b');
+      return;
     }
+    if (keyid & KeyID::kMaskExtended)
+      return;
+    if (is_recording_enabled_) {
+      if (buf_used_ >= kSizeOfBuffer)
+        return;
+      buf_[buf_used_++] = (uint8_t)keyid;
+      buf_[buf_used_] = 0;
+    }
+    PutChar(keyid);
   }
   void StartRecording() {
     buf_used_ = 0;

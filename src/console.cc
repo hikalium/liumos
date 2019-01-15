@@ -31,6 +31,8 @@ void PutChar(char c) {
   if (c == '\n') {
     cursor_y += 16;
     cursor_x = 0;
+  } else if (c == '\b') {
+    cursor_x -= 8;
   } else {
     DrawCharacter(c, cursor_x, cursor_y);
     cursor_x += 8;
@@ -38,6 +40,12 @@ void PutChar(char c) {
   if (cursor_x > xsize) {
     cursor_y += 16;
     cursor_x = 0;
+  } else if (cursor_x < 0) {
+    cursor_y -= 16;
+    cursor_x = (xsize - 8) & ~7;
+  }
+  if (c == '\b') {
+    DrawRect(cursor_x, cursor_y, 8, 16, 0x000000);
   }
   if (cursor_y + 16 > ysize) {
     BlockTransfer(0, 0, 0, 16, xsize, ysize - 16);
