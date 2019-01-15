@@ -9,7 +9,6 @@ EFIMemoryMap efi_memory_map;
 
 HPET hpet;
 ACPI_HPET* hpet_table;
-ACPI_RSDT* rsdt;
 GDT global_desc_table;
 
 void InitMemoryManagement(EFIMemoryMap& map, PhysicalPageAllocator& allocator) {
@@ -159,9 +158,6 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
   ExecutionContext root_context(1, NULL, 0, NULL, 0);
   Scheduler scheduler_(&root_context);
   scheduler = &scheduler_;
-
-  rsdt = static_cast<ACPI_RSDT*>(
-      EFIGetConfigurationTableByUUID(&EFI_ACPITableGUID));
 
   CPUID cpuid;
   ReadCPUID(&cpuid, 0, 0);

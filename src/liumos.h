@@ -184,7 +184,3 @@ class PhysicalPageAllocator {
 
   FreeInfo* head_;
 };
-
-// @static.c
-extern const GUID EFI_ACPITableGUID;
-extern const GUID EFI_GraphicsOutputProtocolGUID;

@@ -379,6 +379,7 @@ struct EFI_DEVICE_PATH_UTILITIES_PROTOCOL {
 
 extern EFISystemTable* _system_table;
 extern EFIGraphicsOutputProtocol* efi_graphics_output_protocol;
+extern ACPI_RSDT* rsdt;
 
 const int kMemoryMapBufferSize = 4096;
 class EFIMemoryMap {
