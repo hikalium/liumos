@@ -3,6 +3,10 @@
 EFISystemTable* _system_table;
 EFIGraphicsOutputProtocol* efi_graphics_output_protocol;
 
+const GUID EFI_ACPITableGUID = {0x11d3e4f18868e871, 0x81883cc7800022bc};
+const GUID EFI_GraphicsOutputProtocolGUID = {0x4a3823dc9042a9de,
+                                             0x6a5180d0de7afb96};
+
 bool IsEqualStringWithSize(const char* s1, const char* s2, int n) {
   for (int i = 0; i < n; i++) {
     if (s1[i] != s2[i])
