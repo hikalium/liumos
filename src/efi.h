@@ -86,6 +86,60 @@ struct EFISimpleTextOutputProtocol {
   } * Mode;
 };
 
+struct EFITime {
+  uint16_t Year;   // 1900 – 9999
+  uint8_t Month;   // 1 – 12
+  uint8_t Day;     // 1 – 31
+  uint8_t Hour;    // 0 – 23
+  uint8_t Minute;  // 0 – 59
+  uint8_t Second;  // 0 – 59
+  uint8_t Pad1;
+  uint32_t Nanosecond;  // 0 – 999,999,999
+  uint16_t TimeZone;    // -1440 to 1440 or 2047
+  uint8_t Daylight;
+  uint8_t Pad2;
+};
+
+struct EFIFileInfo {
+  uint64_t Size;
+  uint64_t FileSize;
+  uint64_t PhysicalSize;
+  EFITime CreateTime;
+  EFITime LastAccessTime;
+  EFITime ModificationTime;
+  uint64_t Attribute;
+  wchar_t file_name[1];
+};
+
+enum EFIFileProtocolModes : uint64_t {
+  kRead = 1,
+};
+
+struct EFIFileProtocol {
+  uint64_t revision;
+  EFIStatus (*Open)(EFIFileProtocol* self,
+                    EFIFileProtocol** new_handle,
+                    const wchar_t* rel_path,
+                    EFIFileProtocolModes mode,
+                    uint64_t attr);
+  EFIStatus (*Close)();
+  EFIStatus (*Delete)();
+  EFIStatus (*Read)(EFIFileProtocol* self,
+                    EFI_UINTN* buffer_size,
+                    uint8_t* buffer);
+  uint64_t (*Write)();
+  uint64_t _buf3[2];
+  uint64_t (*GetInfo)();
+  uint64_t _buf4;
+  uint64_t (*Flush)();
+};
+
+struct EFISimpleFileSystemProtocol {
+  uint64_t Revision;
+  EFIStatus (*OpenVolume)(EFISimpleFileSystemProtocol* self,
+                          EFIFileProtocol** Root);
+};
+
 struct EFIRuntimeServices {
   char _buf_rs1[24];
   uint64_t _buf_rs2[4];
@@ -235,61 +289,6 @@ struct EFI_SIMPLE_POINTER_PROTOCOL {
   void* WaitForInput;
 };
 
-struct EFI_TIME {
-  unsigned short Year;   // 1900 – 9999
-  unsigned char Month;   // 1 – 12
-  unsigned char Day;     // 1 – 31
-  unsigned char Hour;    // 0 – 23
-  unsigned char Minute;  // 0 – 59
-  unsigned char Second;  // 0 – 59
-  unsigned char Pad1;
-  unsigned int Nanosecond;  // 0 – 999,999,999
-  unsigned short TimeZone;  // -1440 to 1440 or 2047
-  unsigned char Daylight;
-  unsigned char Pad2;
-};
-
-struct EFI_FILE_INFO {
-  uint64_t Size;
-  uint64_t FileSize;
-  uint64_t PhysicalSize;
-  struct EFI_TIME CreateTime;
-  struct EFI_TIME LastAccessTime;
-  struct EFI_TIME ModificationTime;
-  uint64_t Attribute;
-  unsigned short FileName[1];
-};
-
-struct EFI_FILE_PROTOCOL {
-  uint64_t _buf;
-  uint64_t (*Open)(struct EFI_FILE_PROTOCOL* This,
-                   struct EFI_FILE_PROTOCOL** NewHandle,
-                   unsigned short* FileName,
-                   uint64_t OpenMode,
-                   uint64_t Attributes);
-  uint64_t (*Close)(struct EFI_FILE_PROTOCOL* This);
-  uint64_t _buf2;
-  uint64_t (*Read)(struct EFI_FILE_PROTOCOL* This,
-                   uint64_t* BufferSize,
-                   void* Buffer);
-  uint64_t (*Write)(struct EFI_FILE_PROTOCOL* This,
-                    uint64_t* BufferSize,
-                    void* Buffer);
-  uint64_t _buf3[2];
-  uint64_t (*GetInfo)(struct EFI_FILE_PROTOCOL* This,
-                      GUID* InformationType,
-                      uint64_t* BufferSize,
-                      void* Buffer);
-  uint64_t _buf4;
-  uint64_t (*Flush)(struct EFI_FILE_PROTOCOL* This);
-};
-
-struct EFI_SIMPLE_FILE_SYSTEM_PROTOCOL {
-  uint64_t Revision;
-  uint64_t (*OpenVolume)(struct EFI_SIMPLE_FILE_SYSTEM_PROTOCOL* This,
-                         struct EFI_FILE_PROTOCOL** Root);
-};
-
 struct EFIKeyState {
   unsigned int KeyShiftState;
   unsigned char KeyToggleState;
@@ -362,6 +361,7 @@ struct EFI_DEVICE_PATH_UTILITIES_PROTOCOL {
 extern EFISystemTable* _system_table;
 extern EFIGraphicsOutputProtocol* efi_graphics_output_protocol;
 extern ACPI_RSDT* rsdt;
+extern EFISimpleFileSystemProtocol* efi_simple_fs;
 
 const int kMemoryMapBufferSize = 4096;
 class EFIMemoryMap {

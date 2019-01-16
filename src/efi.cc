@@ -3,6 +3,7 @@
 EFISystemTable* _system_table;
 EFIGraphicsOutputProtocol* efi_graphics_output_protocol;
 ACPI_RSDT* rsdt;
+EFISimpleFileSystemProtocol* efi_simple_fs;
 
 static const GUID EFI_ACPITableGUID = {
     0x8868e871,
@@ -14,6 +15,11 @@ static const GUID EFI_GraphicsOutputProtocolGUID = {
     0x23dc,
     0x4a38,
     {0x96, 0xfb, 0x7a, 0xde, 0xd0, 0x80, 0x51, 0x6a}};
+static const GUID EFI_SimpleFileSystemProtocolGUID = {
+    0x0964e5b22,
+    0x6459,
+    0x11d2,
+    {0x8e, 0x39, 0x00, 0xa0, 0xc9, 0x69, 0x72, 0x3b}};
 
 bool IsEqualStringWithSize(const char* s1, const char* s2, int n) {
   for (int i = 0; i < n; i++) {
@@ -151,6 +157,9 @@ void InitEFI(EFISystemTable* system_table) {
   _system_table->boot_services->LocateProtocol(
       &EFI_GraphicsOutputProtocolGUID, nullptr,
       (void**)&efi_graphics_output_protocol);
+  _system_table->boot_services->LocateProtocol(
+      &EFI_SimpleFileSystemProtocolGUID, nullptr, (void**)&efi_simple_fs);
+  assert(efi_simple_fs);
   rsdt = static_cast<ACPI_RSDT*>(
       EFIGetConfigurationTableByUUID(&EFI_ACPITableGUID));
   assert(rsdt);

@@ -35,6 +35,7 @@ run_nopmem : src/BOOTX64.EFI
 run : src/BOOTX64.EFI pmem.img
 	mkdir -p mnt/EFI/BOOT
 	cp src/BOOTX64.EFI mnt/EFI/BOOT/
+	cp dist/logo.ppm mnt/
 	$(QEMU) $(QEMU_ARGS_PMEM)
 
 unittest :

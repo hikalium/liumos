@@ -138,6 +138,104 @@ void DetectTablesOnXSDT() {
     Panic("HPET table not found");
 }
 
+uint8_t buf[1024 * 1024];
+
+EFI_UINTN ReadDirEntry(EFIFileProtocol* file) {
+  EFI_UINTN buf_size = sizeof(buf);
+  if (file->Read(file, &buf_size, buf) != EFIStatus::kSuccess) {
+    PutString("Read failed\n");
+    return 0;
+  }
+  EFIFileInfo* file_info = reinterpret_cast<EFIFileInfo*>(buf);
+  for (int i = 0; i < (int)((buf_size - offsetof(EFIFileInfo, file_name)) /
+                            sizeof(wchar_t));
+       i++) {
+    PutChar(file_info->file_name[i]);
+  }
+  PutChar('\n');
+  return buf_size;
+}
+
+void OpenLogoFile(EFIFileProtocol* root) {
+  EFIFileProtocol* logo_file;
+  EFIStatus status = root->Open(root, &logo_file, L"logo.ppm", kRead, 0);
+  if (status != EFIStatus::kSuccess)
+    Panic("Failed to open logo file");
+  EFI_UINTN buf_size = sizeof(buf);
+  if (logo_file->Read(logo_file, &buf_size, buf) != EFIStatus::kSuccess) {
+    PutString("Read failed\n");
+    return;
+  }
+  if (buf[0] != 'P' || buf[1] != '3') {
+    PutString("Not supported logo type (PPM 'P3' is supported)\n");
+    return;
+  }
+  bool in_line_comment = false;
+  bool is_num_read = false;
+  int width = 0;
+  int height = 0;
+  int max_pixel_value = 0;
+  uint32_t rgb = 0;
+  uint32_t tmp = 0;
+  int channel_count = 0;
+  int x = 0, y = 0;
+  for (int i = 3; i < (int)buf_size; i++) {
+    uint8_t c = buf[i];
+    if (in_line_comment) {
+      if (c != '\n')
+        continue;
+      in_line_comment = false;
+      continue;
+    }
+    if (c == '#') {
+      in_line_comment = true;
+      continue;
+    }
+    if ('0' <= c && c <= '9') {
+      is_num_read = true;
+      tmp *= 10;
+      tmp += (uint32_t)c - '0';
+      continue;
+    }
+    if (!is_num_read)
+      continue;
+    is_num_read = false;
+    if (!width) {
+      width = tmp;
+      PutStringAndHex("width", width);
+    } else if (!height) {
+      height = tmp;
+      PutStringAndHex("height", height);
+    } else if (!max_pixel_value) {
+      max_pixel_value = tmp;
+      assert(max_pixel_value == 255);
+    } else {
+      rgb <<= 8;
+      rgb |= tmp;
+      channel_count++;
+      if (channel_count == 3) {
+        channel_count = 0;
+        DrawRect(xsize - width + x++, y, 1, 1, rgb);
+        if (x >= width) {
+          x = 0;
+          y++;
+        }
+      }
+    }
+    tmp = 0;
+  }
+}
+
+void ReadFilesFromEFISimpleFileSystem() {
+  EFIFileProtocol* root;
+  EFIStatus status = efi_simple_fs->OpenVolume(efi_simple_fs, &root);
+  if (status != EFIStatus::kSuccess)
+    Panic("Get file protocol failed.");
+  while (ReadDirEntry(root))
+    ;
+  OpenLogoFile(root);
+}
+
 void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
   LocalAPIC local_apic;
   PhysicalPageAllocator page_allocator;
@@ -146,6 +244,7 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
   EFIClearScreen();
   InitGraphics();
   EnableVideoModeForConsole();
+  ReadFilesFromEFISimpleFileSystem();
   EFIGetMemoryMapAndExitBootServices(image_handle, efi_memory_map);
 
   PutString("\nliumOS is booting...\n\n");
@@ -154,7 +253,6 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
 
   new (&global_desc_table) GDT();
   InitIDT();
-
   ExecutionContext root_context(1, NULL, 0, NULL, 0);
   Scheduler scheduler_(&root_context);
   scheduler = &scheduler_;
@@ -162,11 +260,6 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
   CPUID cpuid;
   ReadCPUID(&cpuid, 0, 0);
   PutStringAndHex("Max CPUID", cpuid.eax);
-
-  DrawRect(300, 100, 200, 200, 0xffffff);
-  DrawRect(350, 150, 200, 200, 0xff0000);
-  DrawRect(400, 200, 200, 200, 0x00ff00);
-  DrawRect(450, 250, 200, 200, 0x0000ff);
 
   ReadCPUID(&cpuid, 1, 0);
   if (!(cpuid.edx & CPUID_01_EDX_APIC))

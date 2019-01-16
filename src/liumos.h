@@ -86,6 +86,7 @@ inline void* operator new(size_t, void* where) {
 }
 
 // @graphics.cc
+extern int xsize;
 void InitGraphics();
 void DrawCharacter(char c, int px, int py);
 void DrawRect(int px, int py, int w, int h, uint32_t col);
