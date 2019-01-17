@@ -387,5 +387,6 @@ void PutChar(wchar_t c);
 wchar_t GetChar();
 void* GetConfigurationTableByUUID(const GUID* guid);
 void GetMemoryMapAndExitBootServices(Handle image_handle, MemoryMap& map);
+EFI::FileProtocol* OpenFile(const wchar_t* path);
 void Init(SystemTable* system_table);
 }  // namespace EFI

@@ -124,27 +124,8 @@ void WaitAndProcessCommand(TextBox& tbox) {
 
 uint8_t buf[1024 * 1024];
 
-EFI::UINTN ReadDirEntry(EFI::FileProtocol* file) {
-  EFI::UINTN buf_size = sizeof(buf);
-  if (file->Read(file, &buf_size, buf) != EFI::Status::kSuccess) {
-    PutString("Read failed\n");
-    return 0;
-  }
-  EFI::FileInfo* file_info = reinterpret_cast<EFI::FileInfo*>(buf);
-  for (int i = 0; i < (int)((buf_size - offsetof(EFI::FileInfo, file_name)) /
-                            sizeof(wchar_t));
-       i++) {
-    PutChar(file_info->file_name[i]);
-  }
-  PutChar('\n');
-  return buf_size;
-}
-
-void OpenLogoFile(EFI::FileProtocol* root) {
-  EFI::FileProtocol* logo_file;
-  EFI::Status status = root->Open(root, &logo_file, L"logo.ppm", EFI::kRead, 0);
-  if (status != EFI::Status::kSuccess)
-    Panic("Failed to open logo file");
+void OpenAndPrintLogoFile() {
+  EFI::FileProtocol* logo_file = EFI::OpenFile(L"logo.ppm");
   EFI::UINTN buf_size = sizeof(buf);
   if (logo_file->Read(logo_file, &buf_size, buf) != EFI::Status::kSuccess) {
     PutString("Read failed\n");
@@ -186,10 +167,8 @@ void OpenLogoFile(EFI::FileProtocol* root) {
     is_num_read = false;
     if (!width) {
       width = tmp;
-      PutStringAndHex("width", width);
     } else if (!height) {
       height = tmp;
-      PutStringAndHex("height", height);
     } else if (!max_pixel_value) {
       max_pixel_value = tmp;
       assert(max_pixel_value == 255);
@@ -211,13 +190,7 @@ void OpenLogoFile(EFI::FileProtocol* root) {
 }
 
 void ReadFilesFromEFISimpleFileSystem() {
-  EFI::FileProtocol* root;
-  EFI::Status status = EFI::simple_fs->OpenVolume(EFI::simple_fs, &root);
-  if (status != EFI::Status::kSuccess)
-    Panic("Get file protocol failed.");
-  while (ReadDirEntry(root))
-    ;
-  OpenLogoFile(root);
+  OpenAndPrintLogoFile();
 }
 
 void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {

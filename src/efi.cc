@@ -4,6 +4,8 @@ EFI::SystemTable* EFI::system_table;
 EFI::GraphicsOutputProtocol* EFI::graphics_output_protocol;
 EFI::SimpleFileSystemProtocol* EFI::simple_fs;
 
+static EFI::FileProtocol* root_file;
+
 static const GUID kACPITableGUID = {
     0x8868e871,
     0xe4f1,
@@ -99,6 +101,14 @@ void EFI::GetMemoryMapAndExitBootServices(Handle image_handle,
   PutString(" done.\n");
 }
 
+EFI::FileProtocol* EFI::OpenFile(const wchar_t* path) {
+  EFI::FileProtocol* file = nullptr;
+  EFI::Status status = root_file->Open(root_file, &file, path, EFI::kRead, 0);
+  if (status != EFI::Status::kSuccess || !file)
+    Panic("Failed to open file");
+  return file;
+}
+
 void EFI::Init(SystemTable* system_table) {
   EFI::system_table = system_table;
   EFI::system_table->boot_services->SetWatchdogTimer(0, 0, 0, nullptr);
@@ -110,4 +120,6 @@ void EFI::Init(SystemTable* system_table) {
   ACPI::rsdt = static_cast<ACPI::RSDT*>(
       EFI::GetConfigurationTableByUUID(&kACPITableGUID));
   assert(ACPI::rsdt);
+  EFI::Status status = EFI::simple_fs->OpenVolume(EFI::simple_fs, &root_file);
+  assert(status == EFI::Status::kSuccess);
 }
