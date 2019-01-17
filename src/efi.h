@@ -385,9 +385,6 @@ bool IsEqualStringWithSize(const char* s1, const char* s2, int n);
 namespace ConOut {
 void ClearScreen();
 void PutChar(wchar_t c);
-void PutString(const wchar_t* s);
-void PutCString(const char* s);
-void PutnCString(const char* s, int n);
 };  // namespace ConOut
 
 wchar_t GetChar();

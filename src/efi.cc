@@ -34,31 +34,11 @@ void EFI::ConOut::ClearScreen() {
   EFI::system_table->con_out->clear_screen(EFI::system_table->con_out);
 }
 
-void EFI::ConOut::PutString(const wchar_t* s) {
-  EFI::system_table->con_out->output_string(EFI::system_table->con_out, s);
-}
-
 void EFI::ConOut::PutChar(wchar_t c) {
   wchar_t buf[2];
   buf[0] = c;
   buf[1] = 0;
   EFI::system_table->con_out->output_string(EFI::system_table->con_out, buf);
-}
-
-void EFI::ConOut::PutCString(const char* s) {
-  while (*s) {
-    PutChar(*s);
-    s++;
-  }
-}
-
-void EFI::ConOut::PutnCString(const char* s, int n) {
-  wchar_t buf[2];
-  buf[1] = 0;
-  for (int i = 0; i < n; i++) {
-    buf[0] = s[i];
-    EFI::system_table->con_out->output_string(EFI::system_table->con_out, buf);
-  }
 }
 
 wchar_t EFI::GetChar() {
