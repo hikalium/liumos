@@ -3,8 +3,9 @@
 #include "generic.h"
 #include "guid.h"
 
-constexpr int kDescriptionHeaderSize = 36;
 namespace ACPI {
+
+constexpr int kDescriptionHeaderSize = 36;
 
 struct XSDT;
 
