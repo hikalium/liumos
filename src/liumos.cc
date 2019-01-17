@@ -126,6 +126,9 @@ uint8_t buf[1024 * 1024];
 
 void OpenAndPrintLogoFile() {
   EFI::FileProtocol* logo_file = EFI::OpenFile(L"logo.ppm");
+  EFI::FileInfo info;
+  EFI::ReadFileInfo(logo_file, &info);
+  PutStringAndHex("File size", info.file_size);
   EFI::UINTN buf_size = sizeof(buf);
   if (logo_file->Read(logo_file, &buf_size, buf) != EFI::Status::kSuccess) {
     PutString("Read failed\n");

@@ -100,15 +100,17 @@ struct Time {
   uint8_t Pad2;
 };
 
+constexpr int kFileNameSize = 32;
+
 struct FileInfo {
-  uint64_t Size;
-  uint64_t FileSize;
-  uint64_t PhysicalSize;
-  Time CreateTime;
-  Time LastAccessTime;
-  Time ModificationTime;
-  uint64_t Attribute;
-  wchar_t file_name[1];
+  uint64_t size;
+  uint64_t file_size;
+  uint64_t physical_size;
+  Time create_time;
+  Time last_access_time;
+  Time modification_time;
+  uint64_t attr;
+  wchar_t file_name[kFileNameSize];
 };
 
 enum FileProtocolModes : uint64_t {
@@ -127,7 +129,10 @@ struct FileProtocol {
   Status (*Read)(FileProtocol* self, UINTN* buffer_size, uint8_t* buffer);
   uint64_t (*Write)();
   uint64_t _buf3[2];
-  uint64_t (*GetInfo)();
+  Status (*GetInfo)(FileProtocol* self,
+                    const GUID* type,
+                    UINTN* buffer_size,
+                    uint8_t* buffer);
   uint64_t _buf4;
   uint64_t (*Flush)();
 };
@@ -388,5 +393,6 @@ wchar_t GetChar();
 void* GetConfigurationTableByUUID(const GUID* guid);
 void GetMemoryMapAndExitBootServices(Handle image_handle, MemoryMap& map);
 EFI::FileProtocol* OpenFile(const wchar_t* path);
+void ReadFileInfo(FileProtocol* file, FileInfo* info);
 void Init(SystemTable* system_table);
 }  // namespace EFI

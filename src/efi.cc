@@ -21,6 +21,11 @@ static const GUID kSimpleFileSystemProtocolGUID = {
     0x6459,
     0x11d2,
     {0x8e, 0x39, 0x00, 0xa0, 0xc9, 0x69, 0x72, 0x3b}};
+static const GUID kFileInfoGUID = {
+    0x09576e92,
+    0x6d3f,
+    0x11d2,
+    {0x8e, 0x39, 0x00, 0xa0, 0xc9, 0x69, 0x72, 0x3b}};
 
 void EFI::ConOut::ClearScreen() {
   EFI::system_table->con_out->clear_screen(EFI::system_table->con_out);
@@ -107,6 +112,14 @@ EFI::FileProtocol* EFI::OpenFile(const wchar_t* path) {
   if (status != EFI::Status::kSuccess || !file)
     Panic("Failed to open file");
   return file;
+}
+
+void EFI::ReadFileInfo(EFI::FileProtocol* file, EFI::FileInfo* info) {
+  UINTN buf_size = sizeof(FileInfo);
+  EFI::Status status = file->GetInfo(file, &kFileInfoGUID, &buf_size,
+                                     reinterpret_cast<uint8_t*>(info));
+  if (status != EFI::Status::kSuccess)
+    Panic("Failed to read file info");
 }
 
 void EFI::Init(SystemTable* system_table) {
