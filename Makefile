@@ -12,6 +12,8 @@ QEMU_ARGS_PMEM=\
 					 -object memory-backend-file,id=mem1,share=on,mem-path=pmem.img,size=2G \
 					 -device nvdimm,id=nvdimm1,memdev=mem1
 
+APPS=app/hello/hello.bin
+
 ifdef SSH_CONNECTION
 QEMU_ARGS+= -vnc :5,password
 endif
@@ -27,15 +29,24 @@ tools : .FORCE
 pmem.img :
 	qemu-img create $@ 2G
 
-run_nopmem : src/BOOTX64.EFI
+app/% :
+	make -C $(dir $@)
+
+run_nopmem : src/BOOTX64.EFI $(APPS)
+	mkdir -p mnt/
+	-rm -r mnt/*
 	mkdir -p mnt/EFI/BOOT
 	cp src/BOOTX64.EFI mnt/EFI/BOOT/
+	cp $(APPS) mnt/
 	$(QEMU) $(QEMU_ARGS)
 	
-run : src/BOOTX64.EFI pmem.img
+run : src/BOOTX64.EFI pmem.img $(APPS)
+	mkdir -p mnt/
+	-rm -r mnt/*
 	mkdir -p mnt/EFI/BOOT
 	cp src/BOOTX64.EFI mnt/EFI/BOOT/
 	cp dist/logo.ppm mnt/
+	cp $(APPS) mnt/
 	$(QEMU) $(QEMU_ARGS_PMEM)
 
 unittest :
