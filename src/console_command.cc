@@ -3,6 +3,7 @@
 namespace ConsoleCommand {
 
 void ShowNFIT() {
+  using namespace ACPI;
   if (!nfit) {
     PutString("NFIT not found\n");
     return;
@@ -11,9 +12,9 @@ void ShowNFIT() {
   PutStringAndHex("NFIT Size", nfit->length);
   PutStringAndHex("First NFIT Structure Type", nfit->entry[0]);
   PutStringAndHex("First NFIT Structure Size", nfit->entry[1]);
-  if (static_cast<ACPI_NFITStructureType>(nfit->entry[0]) ==
-      ACPI_NFITStructureType::kSystemPhysicalAddressRangeStructure) {
-    ACPI_NFIT_SPARange* spa_range = (ACPI_NFIT_SPARange*)&nfit->entry[0];
+  if (static_cast<NFITStructureType>(nfit->entry[0]) ==
+      NFITStructureType::kSystemPhysicalAddressRangeStructure) {
+    NFIT_SPARange* spa_range = (NFIT_SPARange*)&nfit->entry[0];
     PutStringAndHex("SPARange Base",
                     spa_range->system_physical_address_range_base);
     PutStringAndHex("SPARange Length",
@@ -34,7 +35,8 @@ void ShowNFIT() {
 }
 
 void ShowMADT() {
-  for (int i = 0; i < (int)(madt->length - offsetof(ACPI_MADT, entries));
+  using namespace ACPI;
+  for (int i = 0; i < (int)(madt->length - offsetof(MADT, entries));
        i += madt->entries[i + 1]) {
     uint8_t type = madt->entries[i];
     if (type == kProcessorLocalAPICInfo) {

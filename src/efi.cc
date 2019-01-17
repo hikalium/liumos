@@ -1,7 +1,5 @@
 #include "liumos.h"
 
-ACPI_RSDT* EFI::rsdt;
-
 EFI::SystemTable* EFI::system_table;
 EFI::GraphicsOutputProtocol* EFI::graphics_output_protocol;
 EFI::SimpleFileSystemProtocol* EFI::simple_fs;
@@ -109,7 +107,7 @@ void EFI::Init(SystemTable* system_table) {
   EFI::system_table->boot_services->LocateProtocol(
       &kSimpleFileSystemProtocolGUID, nullptr, (void**)&simple_fs);
   assert(simple_fs);
-  rsdt = static_cast<ACPI_RSDT*>(
+  ACPI::rsdt = static_cast<ACPI::RSDT*>(
       EFI::GetConfigurationTableByUUID(&kACPITableGUID));
-  assert(rsdt);
+  assert(ACPI::rsdt);
 }

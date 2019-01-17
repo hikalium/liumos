@@ -1,4 +1,4 @@
-OBJS=apic.o asm.o console.o console_command.o \
+OBJS= acpi.o apic.o asm.o console.o console_command.o \
 		 efi.o efimain.o \
 		 gdt.o generic.o graphics.o guid.o \
 		 hpet.o interrupt.o keyboard.o\

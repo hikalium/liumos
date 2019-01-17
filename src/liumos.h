@@ -103,8 +103,6 @@ int strncmp(const char* s1, const char* s2, size_t n);
 // @liumos.c
 class PhysicalPageAllocator;
 
-extern ACPI_NFIT* nfit;
-extern ACPI_MADT* madt;
 extern EFI::MemoryMap efi_memory_map;
 extern PhysicalPageAllocator* page_allocator;
 

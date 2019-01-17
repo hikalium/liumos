@@ -378,7 +378,6 @@ class MemoryMap {
 extern SystemTable* system_table;
 extern GraphicsOutputProtocol* graphics_output_protocol;
 extern SimpleFileSystemProtocol* simple_fs;
-extern ACPI_RSDT* rsdt;
 
 namespace ConOut {
 void ClearScreen();

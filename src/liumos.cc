@@ -3,13 +3,10 @@
 #include "execution_context.h"
 #include "hpet.h"
 
-ACPI_NFIT* nfit;
-ACPI_MADT* madt;
 EFI::MemoryMap efi_memory_map;
 PhysicalPageAllocator* page_allocator;
 
 HPET hpet;
-ACPI_HPET* hpet_table;
 GDT global_desc_table;
 
 PhysicalPageAllocator page_allocator_;
@@ -123,26 +120,6 @@ void WaitAndProcessCommand(TextBox& tbox) {
       tbox.putc(keyid);
     }
   }
-}
-
-void DetectTablesOnXSDT() {
-  assert(EFI::rsdt);
-  ACPI_XSDT* xsdt = EFI::rsdt->xsdt;
-  const int num_of_xsdt_entries =
-      (xsdt->length - ACPI_DESCRIPTION_HEADER_SIZE) >> 3;
-  for (int i = 0; i < num_of_xsdt_entries; i++) {
-    const char* signature = static_cast<const char*>(xsdt->entry[i]);
-    if (strncmp(signature, "NFIT", 4) == 0)
-      nfit = static_cast<ACPI_NFIT*>(xsdt->entry[i]);
-    if (strncmp(signature, "HPET", 4) == 0)
-      hpet_table = static_cast<ACPI_HPET*>(xsdt->entry[i]);
-    if (strncmp(signature, "APIC", 4) == 0)
-      madt = static_cast<ACPI_MADT*>(xsdt->entry[i]);
-  }
-  if (!madt)
-    Panic("MADT not found");
-  if (!hpet_table)
-    Panic("HPET table not found");
 }
 
 uint8_t buf[1024 * 1024];
@@ -273,7 +250,7 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   if (!(cpuid.edx & CPUID_01_EDX_MSR))
     Panic("MSR not supported");
 
-  DetectTablesOnXSDT();
+  ACPI::DetectTables();
 
   new (&local_apic) LocalAPIC();
   Disable8259PIC();
@@ -284,7 +261,7 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   InitIOAPIC(local_apic_id);
 
   hpet.Init(
-      static_cast<HPET::RegisterSpace*>(hpet_table->base_address.address));
+      static_cast<HPET::RegisterSpace*>(ACPI::hpet->base_address.address));
 
   hpet.SetTimerMs(
       0, 100, HPET::TimerConfig::kUsePeriodicMode | HPET::TimerConfig::kEnable);
