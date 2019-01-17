@@ -5,7 +5,7 @@
 
 ACPI_NFIT* nfit;
 ACPI_MADT* madt;
-EFIMemoryMap efi_memory_map;
+EFI::MemoryMap efi_memory_map;
 PhysicalPageAllocator* page_allocator;
 
 HPET hpet;
@@ -14,13 +14,13 @@ GDT global_desc_table;
 
 PhysicalPageAllocator page_allocator_;
 
-void InitMemoryManagement(EFIMemoryMap& map) {
+void InitMemoryManagement(EFI::MemoryMap& map) {
   page_allocator = &page_allocator_;
   new (page_allocator) PhysicalPageAllocator();
   int available_pages = 0;
   for (int i = 0; i < map.GetNumberOfEntries(); i++) {
-    const EFIMemoryDescriptor* desc = map.GetDescriptor(i);
-    if (desc->type != EFIMemoryType::kConventionalMemory)
+    const EFI::MemoryDescriptor* desc = map.GetDescriptor(i);
+    if (desc->type != EFI::MemoryType::kConventionalMemory)
       continue;
     available_pages += desc->number_of_pages;
     page_allocator->FreePages(reinterpret_cast<void*>(desc->physical_start),
@@ -126,17 +126,17 @@ void WaitAndProcessCommand(TextBox& tbox) {
 }
 
 void DetectTablesOnXSDT() {
-  assert(rsdt);
-  ACPI_XSDT* xsdt = rsdt->xsdt;
+  assert(EFI::rsdt);
+  ACPI_XSDT* xsdt = EFI::rsdt->xsdt;
   const int num_of_xsdt_entries =
       (xsdt->length - ACPI_DESCRIPTION_HEADER_SIZE) >> 3;
   for (int i = 0; i < num_of_xsdt_entries; i++) {
     const char* signature = static_cast<const char*>(xsdt->entry[i]);
-    if (IsEqualStringWithSize(signature, "NFIT", 4))
+    if (EFI::IsEqualStringWithSize(signature, "NFIT", 4))
       nfit = static_cast<ACPI_NFIT*>(xsdt->entry[i]);
-    if (IsEqualStringWithSize(signature, "HPET", 4))
+    if (EFI::IsEqualStringWithSize(signature, "HPET", 4))
       hpet_table = static_cast<ACPI_HPET*>(xsdt->entry[i]);
-    if (IsEqualStringWithSize(signature, "APIC", 4))
+    if (EFI::IsEqualStringWithSize(signature, "APIC", 4))
       madt = static_cast<ACPI_MADT*>(xsdt->entry[i]);
   }
   if (!madt)
@@ -147,14 +147,14 @@ void DetectTablesOnXSDT() {
 
 uint8_t buf[1024 * 1024];
 
-EFI_UINTN ReadDirEntry(EFIFileProtocol* file) {
-  EFI_UINTN buf_size = sizeof(buf);
-  if (file->Read(file, &buf_size, buf) != EFIStatus::kSuccess) {
+EFI::UINTN ReadDirEntry(EFI::FileProtocol* file) {
+  EFI::UINTN buf_size = sizeof(buf);
+  if (file->Read(file, &buf_size, buf) != EFI::Status::kSuccess) {
     PutString("Read failed\n");
     return 0;
   }
-  EFIFileInfo* file_info = reinterpret_cast<EFIFileInfo*>(buf);
-  for (int i = 0; i < (int)((buf_size - offsetof(EFIFileInfo, file_name)) /
+  EFI::FileInfo* file_info = reinterpret_cast<EFI::FileInfo*>(buf);
+  for (int i = 0; i < (int)((buf_size - offsetof(EFI::FileInfo, file_name)) /
                             sizeof(wchar_t));
        i++) {
     PutChar(file_info->file_name[i]);
@@ -163,13 +163,13 @@ EFI_UINTN ReadDirEntry(EFIFileProtocol* file) {
   return buf_size;
 }
 
-void OpenLogoFile(EFIFileProtocol* root) {
-  EFIFileProtocol* logo_file;
-  EFIStatus status = root->Open(root, &logo_file, L"logo.ppm", kRead, 0);
-  if (status != EFIStatus::kSuccess)
+void OpenLogoFile(EFI::FileProtocol* root) {
+  EFI::FileProtocol* logo_file;
+  EFI::Status status = root->Open(root, &logo_file, L"logo.ppm", EFI::kRead, 0);
+  if (status != EFI::Status::kSuccess)
     Panic("Failed to open logo file");
-  EFI_UINTN buf_size = sizeof(buf);
-  if (logo_file->Read(logo_file, &buf_size, buf) != EFIStatus::kSuccess) {
+  EFI::UINTN buf_size = sizeof(buf);
+  if (logo_file->Read(logo_file, &buf_size, buf) != EFI::Status::kSuccess) {
     PutString("Read failed\n");
     return;
   }
@@ -234,24 +234,24 @@ void OpenLogoFile(EFIFileProtocol* root) {
 }
 
 void ReadFilesFromEFISimpleFileSystem() {
-  EFIFileProtocol* root;
-  EFIStatus status = efi_simple_fs->OpenVolume(efi_simple_fs, &root);
-  if (status != EFIStatus::kSuccess)
+  EFI::FileProtocol* root;
+  EFI::Status status = EFI::simple_fs->OpenVolume(EFI::simple_fs, &root);
+  if (status != EFI::Status::kSuccess)
     Panic("Get file protocol failed.");
   while (ReadDirEntry(root))
     ;
   OpenLogoFile(root);
 }
 
-void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
+void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   LocalAPIC local_apic;
 
-  InitEFI(system_table);
-  EFIClearScreen();
+  EFI::Init(system_table);
+  EFI::ConOut::ClearScreen();
   InitGraphics();
   EnableVideoModeForConsole();
   ReadFilesFromEFISimpleFileSystem();
-  EFIGetMemoryMapAndExitBootServices(image_handle, efi_memory_map);
+  EFI::GetMemoryMapAndExitBootServices(image_handle, efi_memory_map);
 
   PutString("\nliumOS is booting...\n\n");
 

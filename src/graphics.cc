@@ -7,11 +7,11 @@ int pixels_per_scan_line;
 
 void InitGraphics() {
   vram = static_cast<uint8_t*>(
-      efi_graphics_output_protocol->mode->frame_buffer_base);
-  xsize = efi_graphics_output_protocol->mode->info->horizontal_resolution;
-  ysize = efi_graphics_output_protocol->mode->info->vertical_resolution;
+      EFI::graphics_output_protocol->mode->frame_buffer_base);
+  xsize = EFI::graphics_output_protocol->mode->info->horizontal_resolution;
+  ysize = EFI::graphics_output_protocol->mode->info->vertical_resolution;
   pixels_per_scan_line =
-      efi_graphics_output_protocol->mode->info->pixels_per_scan_line;
+      EFI::graphics_output_protocol->mode->info->pixels_per_scan_line;
 }
 
 void DrawCharacter(char c, int px, int py) {

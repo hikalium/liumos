@@ -102,10 +102,10 @@ class PhysicalPageAllocator;
 
 extern ACPI_NFIT* nfit;
 extern ACPI_MADT* madt;
-extern EFIMemoryMap efi_memory_map;
+extern EFI::MemoryMap efi_memory_map;
 extern PhysicalPageAllocator* page_allocator;
 
-void MainForBootProcessor(void* image_handle, EFISystemTable* system_table);
+void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table);
 
 // @phys_page_allocator.cc
 class PhysicalPageAllocator {

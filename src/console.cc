@@ -21,11 +21,11 @@ void EnableVideoModeForConsole() {
 void PutChar(char c) {
   if (!use_vram) {
     if (c == '\n') {
-      EFIPutChar('\r');
-      EFIPutChar('\n');
+      EFI::ConOut::PutChar('\r');
+      EFI::ConOut::PutChar('\n');
       return;
     }
-    EFIPutChar(c);
+    EFI::ConOut::PutChar(c);
     return;
   }
   if (c == '\n') {

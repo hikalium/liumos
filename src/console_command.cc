@@ -58,7 +58,7 @@ void ShowMADT() {
 void ShowEFIMemoryMap() {
   PutStringAndHex("Map entries", efi_memory_map.GetNumberOfEntries());
   for (int i = 0; i < efi_memory_map.GetNumberOfEntries(); i++) {
-    const EFIMemoryDescriptor* desc = efi_memory_map.GetDescriptor(i);
+    const EFI::MemoryDescriptor* desc = efi_memory_map.GetDescriptor(i);
     desc->Print();
     PutString("\n");
   }
