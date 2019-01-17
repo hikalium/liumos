@@ -55,6 +55,7 @@ namespace ConsoleCommand {
 void ShowNFIT(void);
 void ShowMADT(void);
 void ShowEFIMemoryMap(void);
+void Free(void);
 }  // namespace ConsoleCommand
 
 // @font.gen.c
@@ -151,13 +152,16 @@ constexpr uint16_t kUnknown = KeyID::kMaskExtended | 0x007f;
 }  // namespace KeyID
 
 // @liumos.c
+class PhysicalPageAllocator;
+
 extern ACPI_NFIT* nfit;
 extern ACPI_MADT* madt;
 extern EFIMemoryMap efi_memory_map;
+extern PhysicalPageAllocator* page_allocator;
 
 void MainForBootProcessor(void* image_handle, EFISystemTable* system_table);
 
-// @palloc.c
+// @phys_page_allocator.cc
 class PhysicalPageAllocator {
  public:
   PhysicalPageAllocator() : head_(nullptr) {}

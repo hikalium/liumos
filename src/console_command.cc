@@ -64,4 +64,8 @@ void ShowEFIMemoryMap() {
   }
 }
 
+void Free() {
+  page_allocator->Print();
+}
+
 }  // namespace ConsoleCommand

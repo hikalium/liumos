@@ -6,20 +6,25 @@
 ACPI_NFIT* nfit;
 ACPI_MADT* madt;
 EFIMemoryMap efi_memory_map;
+PhysicalPageAllocator* page_allocator;
 
 HPET hpet;
 ACPI_HPET* hpet_table;
 GDT global_desc_table;
 
-void InitMemoryManagement(EFIMemoryMap& map, PhysicalPageAllocator& allocator) {
+PhysicalPageAllocator page_allocator_;
+
+void InitMemoryManagement(EFIMemoryMap& map) {
+  page_allocator = &page_allocator_;
+  new (page_allocator) PhysicalPageAllocator();
   int available_pages = 0;
   for (int i = 0; i < map.GetNumberOfEntries(); i++) {
     const EFIMemoryDescriptor* desc = map.GetDescriptor(i);
     if (desc->type != EFIMemoryType::kConventionalMemory)
       continue;
     available_pages += desc->number_of_pages;
-    allocator.FreePages(reinterpret_cast<void*>(desc->physical_start),
-                        desc->number_of_pages);
+    page_allocator->FreePages(reinterpret_cast<void*>(desc->physical_start),
+                              desc->number_of_pages);
   }
   PutStringAndHex("Available memory (KiB)", available_pages * 4);
 }
@@ -106,6 +111,8 @@ void WaitAndProcessCommand(TextBox& tbox) {
           ConsoleCommand::ShowMADT();
         } else if (IsEqualString(line, "show mmap")) {
           ConsoleCommand::ShowEFIMemoryMap();
+        } else if (IsEqualString(line, "free")) {
+          ConsoleCommand::Free();
         } else {
           PutString("Command not found: ");
           PutString(tbox.GetRecordedString());
@@ -238,7 +245,6 @@ void ReadFilesFromEFISimpleFileSystem() {
 
 void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
   LocalAPIC local_apic;
-  PhysicalPageAllocator page_allocator;
 
   InitEFI(system_table);
   EFIClearScreen();
@@ -284,9 +290,9 @@ void MainForBootProcessor(void* image_handle, EFISystemTable* system_table) {
       0, 100, HPET::TimerConfig::kUsePeriodicMode | HPET::TimerConfig::kEnable);
 
   new (&page_allocator) PhysicalPageAllocator();
-  InitMemoryManagement(efi_memory_map, page_allocator);
+  InitMemoryManagement(efi_memory_map);
   const int kNumOfStackPages = 3;
-  void* sub_context_stack_base = page_allocator.AllocPages(kNumOfStackPages);
+  void* sub_context_stack_base = page_allocator->AllocPages(kNumOfStackPages);
   void* sub_context_rsp = reinterpret_cast<void*>(
       reinterpret_cast<uint64_t>(sub_context_stack_base) +
       kNumOfStackPages * (1 << 12));

@@ -89,3 +89,6 @@ clean :
 format :
 	clang-format -i *.cc *.h
 
+commit :
+	make -C .. commit
+
