@@ -122,6 +122,15 @@ void EFI::ReadFileInfo(EFI::FileProtocol* file, EFI::FileInfo* info) {
     Panic("Failed to read file info");
 }
 
+void* EFI::AllocatePages(UINTN pages) {
+  void* mem;
+  Status status = EFI::system_table->boot_services->AllocatePages(
+      AllocateType::kAnyPages, MemoryType::kLoaderData, pages, &mem);
+  if (status != EFI::Status::kSuccess)
+    Panic("Failed to alloc pages");
+  return mem;
+}
+
 void EFI::Init(SystemTable* system_table) {
   EFI::system_table = system_table;
   EFI::system_table->boot_services->SetWatchdogTimer(0, 0, 0, nullptr);

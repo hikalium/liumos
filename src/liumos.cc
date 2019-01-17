@@ -122,18 +122,25 @@ void WaitAndProcessCommand(TextBox& tbox) {
   }
 }
 
-uint8_t buf[1024 * 1024];
+constexpr uint64_t kPageSizeExponent = 12;
+constexpr uint64_t kPageSize = 1 << kPageSizeExponent;
+inline uint64_t ByteSizeToPageSize(uint64_t byte_size) {
+  return (byte_size + kPageSize - 1) >> kPageSizeExponent;
+}
 
 void OpenAndPrintLogoFile() {
   EFI::FileProtocol* logo_file = EFI::OpenFile(L"logo.ppm");
   EFI::FileInfo info;
   EFI::ReadFileInfo(logo_file, &info);
   PutStringAndHex("File size", info.file_size);
-  EFI::UINTN buf_size = sizeof(buf);
+  EFI::UINTN buf_size = info.file_size;
+  uint8_t* buf = reinterpret_cast<uint8_t*>(
+      EFI::AllocatePages(ByteSizeToPageSize(buf_size)));
   if (logo_file->Read(logo_file, &buf_size, buf) != EFI::Status::kSuccess) {
     PutString("Read failed\n");
     return;
   }
+  assert(buf_size == info.file_size);
   if (buf[0] != 'P' || buf[1] != '3') {
     PutString("Not supported logo type (PPM 'P3' is supported)\n");
     return;

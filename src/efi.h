@@ -170,10 +170,18 @@ struct DevicePathProtocol {
   unsigned char Length[2];
 };
 
+enum class AllocateType : UINTN {
+  kAnyPages,
+  kMaxAddress,
+  kAddress,
+};
+
 struct BootServices {
   char _buf1[24];
-  uint64_t _buf2[2];
-  uint64_t _buf3[2];
+  Status (*RaiseTPL)();
+  Status (*RestoreTPL)();
+  Status (*AllocatePages)(AllocateType, MemoryType, UINTN pages, void** mem);
+  Status (*FreePages)();
   Status (*GetMemoryMap)(UINTN* memory_map_size,
                          uint8_t*,
                          UINTN* map_key,
@@ -394,5 +402,6 @@ void* GetConfigurationTableByUUID(const GUID* guid);
 void GetMemoryMapAndExitBootServices(Handle image_handle, MemoryMap& map);
 EFI::FileProtocol* OpenFile(const wchar_t* path);
 void ReadFileInfo(FileProtocol* file, FileInfo* info);
+void* AllocatePages(UINTN pages);
 void Init(SystemTable* system_table);
 }  // namespace EFI
