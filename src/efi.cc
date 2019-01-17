@@ -22,14 +22,6 @@ static const GUID kSimpleFileSystemProtocolGUID = {
     0x11d2,
     {0x8e, 0x39, 0x00, 0xa0, 0xc9, 0x69, 0x72, 0x3b}};
 
-bool EFI::IsEqualStringWithSize(const char* s1, const char* s2, int n) {
-  for (int i = 0; i < n; i++) {
-    if (s1[i] != s2[i])
-      return false;
-  }
-  return true;
-}
-
 void EFI::ConOut::ClearScreen() {
   EFI::system_table->con_out->clear_screen(EFI::system_table->con_out);
 }

@@ -132,11 +132,11 @@ void DetectTablesOnXSDT() {
       (xsdt->length - ACPI_DESCRIPTION_HEADER_SIZE) >> 3;
   for (int i = 0; i < num_of_xsdt_entries; i++) {
     const char* signature = static_cast<const char*>(xsdt->entry[i]);
-    if (EFI::IsEqualStringWithSize(signature, "NFIT", 4))
+    if (strncmp(signature, "NFIT", 4) == 0)
       nfit = static_cast<ACPI_NFIT*>(xsdt->entry[i]);
-    if (EFI::IsEqualStringWithSize(signature, "HPET", 4))
+    if (strncmp(signature, "HPET", 4) == 0)
       hpet_table = static_cast<ACPI_HPET*>(xsdt->entry[i]);
-    if (EFI::IsEqualStringWithSize(signature, "APIC", 4))
+    if (strncmp(signature, "APIC", 4) == 0)
       madt = static_cast<ACPI_MADT*>(xsdt->entry[i]);
   }
   if (!madt)

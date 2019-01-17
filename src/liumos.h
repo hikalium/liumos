@@ -97,6 +97,9 @@ void BlockTransfer(int to_x, int to_y, int from_x, int from_y, int w, int h);
 // @keyboard.cc
 constexpr uint16_t kIOPortKeyboardData = 0x0060;
 
+// @libfunc.cc
+int strncmp(const char* s1, const char* s2, size_t n);
+
 // @liumos.c
 class PhysicalPageAllocator;
 

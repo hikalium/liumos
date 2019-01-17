@@ -380,8 +380,6 @@ extern GraphicsOutputProtocol* graphics_output_protocol;
 extern SimpleFileSystemProtocol* simple_fs;
 extern ACPI_RSDT* rsdt;
 
-bool IsEqualStringWithSize(const char* s1, const char* s2, int n);
-
 namespace ConOut {
 void ClearScreen();
 void PutChar(wchar_t c);
