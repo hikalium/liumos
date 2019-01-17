@@ -7,3 +7,4 @@
 *.gen.cc
 *.bin
 *.out
+*.gen.mk

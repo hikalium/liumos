@@ -35,17 +35,9 @@ OSX_STD_HEADER_INCLUDE_FLAGS= \
 		-I/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include \
 		-I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include
 
-OSNAME=${shell uname -s}
-ifeq ($(OSNAME),Darwin)
-	LLVM_PREFIX:=$(shell brew --prefix llvm)
-	CC:=$(LLVM_PREFIX)/bin/clang
-	LD:=$(LLVM_PREFIX)/bin/lld-link
-else
-	CC?=clang
-	LD?=lld-link-4.0
-endif
-
 default: BOOTX64.EFI
+
+include ../common.mk
 
 font.gen.cc : font.txt
 	../tools/fontmaker font.txt > font.gen.cc
@@ -91,4 +83,8 @@ format :
 
 commit :
 	make -C .. commit
+
+print_cc :
+	@echo "$(CC) $(LD)"
+
 
