@@ -59,6 +59,10 @@ void ShowEFIMemoryMap(void);
 void Free(void);
 }  // namespace ConsoleCommand
 
+// @elf.cc
+class File;
+void ParseELFFile(File& logo_file);
+
 // @file.cc
 class File {
  public:
