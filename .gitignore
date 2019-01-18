@@ -3,3 +3,4 @@ mnt/
 .DS_Store
 *.img
 *.bin
+*.swp

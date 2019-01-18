@@ -4,7 +4,7 @@ OBJS= acpi.o apic.o asm.o console.o console_command.o \
 		 hpet.o interrupt.o keyboard.o\
 		 libfunc.o liumos.o phys_page_allocator.o scheduler.o \
 		 font.gen.o
-HEADERS=$(wildcard *.h)
+HEADERS=$(wildcard *.h) lib/musl/include/elf.h
 OVMF=ovmf/bios64.bin
 QEMU=qemu-system-x86_64
 
@@ -12,7 +12,6 @@ CLANG_WARNINGS = \
 		-Wall -Wpedantic -Wextra -Wconditional-uninitialized -Wshorten-64-to-32
 CXX_STD = -std=c++17
 		
-
 CFLAGS= \
 		-target x86_64-pc-win32-coff \
 		-fno-stack-protector -fshort-wchar \
