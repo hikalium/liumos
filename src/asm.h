@@ -55,8 +55,25 @@ packed_struct IDTR {
 
 void ReadCPUID(CPUID*, uint32_t eax, uint32_t ecx);
 
+packed_struct IA32_EFER_BITS {
+  unsigned syscall_enable : 1;
+  unsigned reserved0 : 7;
+  unsigned LME : 1;
+  unsigned reserved1 : 1;
+  unsigned LMA : 1;
+  unsigned NXE : 1;
+};
+
+packed_struct IA32_EFER {
+  union {
+    uint64_t data;
+    IA32_EFER_BITS bits;
+  };
+};
+
 enum class MSRIndex : uint32_t {
   kLocalAPICBase = 0x1b,
+  kEFER = 0xC0000080,
   kKernelGSBase = 0xC0000102,
 };
 

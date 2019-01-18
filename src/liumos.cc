@@ -313,6 +313,14 @@ void ReadFilesFromEFISimpleFileSystem() {
   OpenAndPrintELFFile();
 }
 
+void InitPaging() {
+  IA32_EFER efer;
+  efer.data = ReadMSR(MSRIndex::kEFER);
+  if (!efer.bits.LME)
+    Panic("IA32_EFER.LME not enabled.");
+  PutString("4-level paging enabled.\n");
+}
+
 void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   LocalAPIC local_apic;
   GDT gdt;
@@ -330,6 +338,7 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
 
   gdt.Init();
   InitIDT();
+  InitPaging();
   ExecutionContext root_context(1, NULL, 0, NULL, 0);
   Scheduler scheduler_(&root_context);
   scheduler = &scheduler_;
