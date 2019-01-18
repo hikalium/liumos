@@ -64,6 +64,7 @@ uint64_t ReadMSR(MSRIndex);
 void WriteMSR(MSRIndex, uint64_t);
 
 void ReadGDTR(GDTR*);
+void WriteGDTR(GDTR*);
 
 void ReadIDTR(IDTR*);
 void WriteIDTR(IDTR*);
@@ -78,6 +79,10 @@ void ClearIntFlag(void);
 
 uint16_t ReadCSSelector(void);
 uint16_t ReadSSSelector(void);
+
+void WriteCSSelector(uint16_t);
+void WriteSSSelector(uint16_t);
+void WriteDataAndExtraSegmentSelectors(uint16_t);
 
 uint64_t CompareAndSwap(uint64_t*, uint64_t);
 void SwapGS(void);

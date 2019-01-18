@@ -41,6 +41,11 @@ ReadGDTR:
 	sgdt [rcx]
 	ret
 
+.global WriteGDTR
+WriteGDTR:
+	lgdt [rcx]
+	ret
+
 .global ReadIDTR
 ReadIDTR:
 	sidt [rcx]
@@ -89,6 +94,31 @@ ReadCSSelector:
 ReadSSSelector:
 	mov rax, 0
 	mov ax, ss
+	ret
+
+.global WriteCSSelector
+WriteCSSelector:
+	# The MOV instruction CANNOT be used to load the CS register
+	# use far-jump instead.
+	lea rax, [rip + LWriteCSSelector_end]
+	push cx
+	push rax
+	ljmp [rsp]
+LWriteCSSelector_end:
+	add rsp, 8 + 2
+	ret
+
+.global WriteSSSelector
+WriteSSSelector:
+	mov ss, cx
+	ret
+
+.global WriteDataAndExtraSegmentSelectors
+WriteDataAndExtraSegmentSelectors:
+	mov ds, cx
+	mov es, cx
+	mov fs, cx
+	mov gs, cx
 	ret
 
 .global CompareAndSwap

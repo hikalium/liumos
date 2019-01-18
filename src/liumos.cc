@@ -7,7 +7,6 @@ EFI::MemoryMap efi_memory_map;
 PhysicalPageAllocator* page_allocator;
 
 HPET hpet;
-GDT global_desc_table;
 
 PhysicalPageAllocator page_allocator_;
 
@@ -316,6 +315,7 @@ void ReadFilesFromEFISimpleFileSystem() {
 
 void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   LocalAPIC local_apic;
+  GDT gdt;
 
   EFI::Init(system_table);
   EFI::ConOut::ClearScreen();
@@ -328,7 +328,7 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
 
   ClearIntFlag();
 
-  new (&global_desc_table) GDT();
+  gdt.Init();
   InitIDT();
   ExecutionContext root_context(1, NULL, 0, NULL, 0);
   Scheduler scheduler_(&root_context);
