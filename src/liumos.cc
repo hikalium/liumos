@@ -10,6 +10,8 @@ HPET hpet;
 
 PhysicalPageAllocator page_allocator_;
 
+File hello_bin_file;
+
 void InitMemoryManagement(EFI::MemoryMap& map) {
   page_allocator = &page_allocator_;
   new (page_allocator) PhysicalPageAllocator();
@@ -121,47 +123,9 @@ void WaitAndProcessCommand(TextBox& tbox) {
   }
 }
 
-constexpr uint64_t kPageSizeExponent = 12;
-constexpr uint64_t kPageSize = 1 << kPageSizeExponent;
-inline uint64_t ByteSizeToPageSize(uint64_t byte_size) {
-  return (byte_size + kPageSize - 1) >> kPageSizeExponent;
-}
-
-class File {
- public:
-  File(const wchar_t* file_name) {
-    for (int i = 0; i < kFileNameSize; i++) {
-      file_name_[i] = (char)file_name[i];
-      if (!file_name[i])
-        break;
-    }
-    file_name_[kFileNameSize] = 0;
-    EFI::FileProtocol* file = EFI::OpenFile(file_name);
-    EFI::FileInfo info;
-    EFI::ReadFileInfo(file, &info);
-    EFI::UINTN buf_size = info.file_size;
-    buf_pages_ = reinterpret_cast<uint8_t*>(
-        EFI::AllocatePages(ByteSizeToPageSize(buf_size)));
-    if (file->Read(file, &buf_size, buf_pages_) != EFI::Status::kSuccess) {
-      PutString("Read failed\n");
-      return;
-    }
-    assert(buf_size == info.file_size);
-    file_size_ = info.file_size;
-    return;
-  }
-  const uint8_t* GetBuf() { return buf_pages_; }
-  uint64_t GetFileSize() { return file_size_; }
-
- private:
-  static constexpr int kFileNameSize = 16;
-  char file_name_[kFileNameSize + 1];
-  uint64_t file_size_;
-  uint8_t* buf_pages_;
-};
-
 void OpenAndPrintLogoFile() {
-  File logo_file(L"logo.ppm");
+  File logo_file;
+  logo_file.LoadFromEFISimpleFS(L"logo.ppm");
   const uint8_t* buf = logo_file.GetBuf();
   uint64_t buf_size = logo_file.GetFileSize();
   if (buf[0] != 'P' || buf[1] != '3') {
@@ -223,8 +187,7 @@ void OpenAndPrintLogoFile() {
 }
 
 #include "lib/musl/include/elf.h"
-void OpenAndPrintELFFile() {
-  File logo_file(L"hello.bin");
+void ParseELFFile(File& logo_file) {
   const uint8_t* buf = logo_file.GetBuf();
   uint64_t buf_size = logo_file.GetFileSize();
   PutString("Loading ELF...\n");
@@ -308,11 +271,6 @@ void OpenAndPrintELFFile() {
   PutStringAndHex("Entry Point", ehdr->e_entry);
 }
 
-void ReadFilesFromEFISimpleFileSystem() {
-  OpenAndPrintLogoFile();
-  OpenAndPrintELFFile();
-}
-
 void InitPaging() {
   IA32_EFER efer;
   efer.data = ReadMSR(MSRIndex::kEFER);
@@ -329,7 +287,8 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   EFI::ConOut::ClearScreen();
   InitGraphics();
   EnableVideoModeForConsole();
-  ReadFilesFromEFISimpleFileSystem();
+  OpenAndPrintLogoFile();
+  hello_bin_file.LoadFromEFISimpleFS(L"hello.bin");
   EFI::GetMemoryMapAndExitBootServices(image_handle, efi_memory_map);
 
   PutString("\nliumOS is booting...\n\n");

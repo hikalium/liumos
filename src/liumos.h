@@ -59,6 +59,20 @@ void ShowEFIMemoryMap(void);
 void Free(void);
 }  // namespace ConsoleCommand
 
+// @file.cc
+class File {
+ public:
+  void LoadFromEFISimpleFS(const wchar_t* file_name);
+  const uint8_t* GetBuf() { return buf_pages_; }
+  uint64_t GetFileSize() { return file_size_; }
+
+ private:
+  static constexpr int kFileNameSize = 16;
+  char file_name_[kFileNameSize + 1];
+  uint64_t file_size_;
+  uint8_t* buf_pages_;
+};
+
 // @font.gen.c
 extern uint8_t font[0x100][16];
 
@@ -119,6 +133,12 @@ constexpr uint16_t kIOPortKeyboardData = 0x0060;
 int strncmp(const char* s1, const char* s2, size_t n);
 
 // @liumos.c
+constexpr uint64_t kPageSizeExponent = 12;
+constexpr uint64_t kPageSize = 1 << kPageSizeExponent;
+inline uint64_t ByteSizeToPageSize(uint64_t byte_size) {
+  return (byte_size + kPageSize - 1) >> kPageSizeExponent;
+}
+
 class PhysicalPageAllocator;
 
 extern EFI::MemoryMap efi_memory_map;
