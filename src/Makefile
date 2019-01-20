@@ -41,6 +41,9 @@ include ../common.mk
 font.gen.cc : font.txt
 	../tools/fontmaker font.txt > font.gen.cc
 
+lib/musl/include/%.h : lib/musl/include/Makefile
+	make -C lib/musl/include/ $*.h
+
 %.o : %.c $(HEADERS) Makefile
 	$(CC) $(CFLAGS) \
 		-c -o $*.o $*.c
