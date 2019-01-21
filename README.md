@@ -10,12 +10,8 @@ A toy operating system supports UEFI boot.
 
 - Tested on 10.13.6
 
-Install following packages via [Homebrew](https://brew.sh/).
-- qemu (for qemu-system-x86_64)
-- llvm (for clang, lld-link)
-
 ```
-brew install qemu llvm
+brew install qemu llvm FiloSottile/musl-cross/musl-cross
 ```
 
 ### Ubuntu 18.04
