@@ -1,10 +1,5 @@
 #include "liumos.h"
 
-IA_PT* IA_PDE::GetPTAddr() {
-  return reinterpret_cast<IA_PT*>(data & ((1ULL << kMaxPhyAddr) - 1) &
-                                  ~((1ULL << 12) - 1));
-}
-
 void IA_PDT::Print() {
   for (int i = 0; i < kNumOfPDE; i++) {
     if (!entries[i].IsPresent())
@@ -18,11 +13,6 @@ void IA_PDT::Print() {
     }
     PutStringAndHex(" addr", entries[i].GetPTAddr());
   }
-}
-
-IA_PDT* IA_PDPTE::GetPDTAddr() {
-  return reinterpret_cast<IA_PDT*>(data & ((1ULL << kMaxPhyAddr) - 1) &
-                                   ~((1ULL << 12) - 1));
 }
 
 void IA_PDPT::Print() {
@@ -39,11 +29,6 @@ void IA_PDPT::Print() {
     IA_PDT* pdt = entries[i].GetPDTAddr();
     pdt->Print();
   }
-}
-
-IA_PDPT* IA_PML4E::GetPDPTAddr() {
-  return reinterpret_cast<IA_PDPT*>(data & ((1ULL << kMaxPhyAddr) - 1) &
-                                    ~((1ULL << 12) - 1));
 }
 
 void IA_PML4::Print() {

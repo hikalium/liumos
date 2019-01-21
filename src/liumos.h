@@ -117,9 +117,6 @@ class GDT {
 // @generic.h
 
 [[noreturn]] void Panic(const char* s);
-void __assert(const char* expr_str, const char* file, int line);
-#define assert(expr) \
-  ((void)((expr) || (__assert(#expr, __FILE__, __LINE__), 0)))
 inline void* operator new(size_t, void* where) {
   return where;
 }
