@@ -5,6 +5,7 @@
 
 EFI::MemoryMap efi_memory_map;
 PhysicalPageAllocator* page_allocator;
+int kMaxPhyAddr;
 
 HPET hpet;
 
@@ -194,6 +195,15 @@ void InitPaging() {
   if (!efer.bits.LME)
     Panic("IA32_EFER.LME not enabled.");
   PutString("4-level paging enabled.\n");
+  IA32_MaxPhyAddr max_phy_addr_msr;
+  max_phy_addr_msr.data = ReadMSR(MSRIndex::kMaxPhyAddr);
+  kMaxPhyAddr = max_phy_addr_msr.bits.physical_address_bits;
+  if (!max_phy_addr_msr.bits.physical_address_bits) {
+    PutString("CPUID function 80000008H not supported.\n");
+    PutString("Assuming Physical address bits = 36\n");
+    kMaxPhyAddr = 36;
+  }
+  PutStringAndHex("kMaxPhyAddr", kMaxPhyAddr);
 }
 
 void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {

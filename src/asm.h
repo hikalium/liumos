@@ -71,8 +71,21 @@ packed_struct IA32_EFER {
   };
 };
 
+packed_struct IA32_MaxPhyAddr_BITS {
+  uint8_t physical_address_bits;
+  uint8_t linear_address_bits;
+};
+
+packed_struct IA32_MaxPhyAddr {
+  union {
+    uint64_t data;
+    IA32_MaxPhyAddr_BITS bits;
+  };
+};
+
 enum class MSRIndex : uint32_t {
   kLocalAPICBase = 0x1b,
+  kMaxPhyAddr = 0x80000008,
   kEFER = 0xC0000080,
   kKernelGSBase = 0xC0000102,
 };
