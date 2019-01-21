@@ -195,6 +195,7 @@ void InitPaging() {
   if (!efer.bits.LME)
     Panic("IA32_EFER.LME not enabled.");
   PutString("4-level paging enabled.\n");
+
   IA32_MaxPhyAddr max_phy_addr_msr;
   max_phy_addr_msr.data = ReadMSR(MSRIndex::kMaxPhyAddr);
   kMaxPhyAddr = max_phy_addr_msr.bits.physical_address_bits;
@@ -204,6 +205,11 @@ void InitPaging() {
     kMaxPhyAddr = 36;
   }
   PutStringAndHex("kMaxPhyAddr", kMaxPhyAddr);
+
+  IA_CR3 cr3;
+  cr3.data = ReadCR3();
+  IA_PML4* pml4 = cr3.GetPML4Addr();
+  PutStringAndHex("PML4", pml4);
 }
 
 void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {

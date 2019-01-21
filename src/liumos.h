@@ -7,6 +7,7 @@
 #include "guid.h"
 #include "interrupt.h"
 #include "keyid.h"
+#include "paging.h"
 
 /*
 class SpinLock {
@@ -147,6 +148,7 @@ class PhysicalPageAllocator;
 
 extern EFI::MemoryMap efi_memory_map;
 extern PhysicalPageAllocator* page_allocator;
+extern int kMaxPhyAddr;
 
 void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table);
 

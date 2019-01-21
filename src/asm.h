@@ -83,6 +83,25 @@ packed_struct IA32_MaxPhyAddr {
   };
 };
 
+packed_struct IA_CR3_BITS {
+  uint64_t ignored0 : 3;
+  uint64_t PWT : 1;
+  uint64_t PCD : 1;
+  uint64_t ignored1 : 7;
+  uint64_t pml4_addr : 52;
+};
+
+struct IA_PML4;
+packed_struct IA_CR3 {
+  union {
+    uint64_t data;
+    IA_CR3_BITS bits;
+  };
+  IA_PML4* GetPML4Addr() {
+    return reinterpret_cast<IA_PML4*>(bits.pml4_addr << 12);
+  }
+};
+
 enum class MSRIndex : uint32_t {
   kLocalAPICBase = 0x1b,
   kMaxPhyAddr = 0x80000008,
@@ -113,6 +132,8 @@ uint16_t ReadSSSelector(void);
 void WriteCSSelector(uint16_t);
 void WriteSSSelector(uint16_t);
 void WriteDataAndExtraSegmentSelectors(uint16_t);
+
+uint64_t ReadCR3(void);
 
 uint64_t CompareAndSwap(uint64_t*, uint64_t);
 void SwapGS(void);

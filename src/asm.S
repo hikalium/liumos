@@ -121,6 +121,11 @@ WriteDataAndExtraSegmentSelectors:
 	mov gs, cx
 	ret
 
+.global ReadCR3
+ReadCR3:
+	mov rax, cr3
+	ret
+
 .global CompareAndSwap
 CompareAndSwap:
 	// rcx: target addr
