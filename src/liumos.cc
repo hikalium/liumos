@@ -210,6 +210,21 @@ void InitPaging() {
   cr3.data = ReadCR3();
   IA_PML4* pml4 = cr3.GetPML4Addr();
   PutStringAndHex("PML4", pml4);
+
+  const EFI::MemoryDescriptor* loader_code_desc = nullptr;
+  for (int i = 0; i < efi_memory_map.GetNumberOfEntries(); i++) {
+    const EFI::MemoryDescriptor* desc = efi_memory_map.GetDescriptor(i);
+    if (desc->type != EFI::MemoryType::kLoaderCode)
+      continue;
+    assert(!loader_code_desc);
+    loader_code_desc = desc;
+  }
+  loader_code_desc->Print();
+  PutChar('\n');
+  PutStringAndHex("InitPaging", reinterpret_cast<uint64_t>(InitPaging));
+  assert(loader_code_desc->number_of_pages < (1 << 9));
+  constexpr uint64_t kKernelBaseAddr = 0xFFFF'FFFF'0000'0000;
+  *reinterpret_cast<uint8_t*>(kKernelBaseAddr) = 1;
 }
 
 void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {

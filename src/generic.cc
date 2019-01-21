@@ -3,8 +3,7 @@
 [[noreturn]] void Panic(const char* s) {
   PutString("!!!! PANIC !!!!\n");
   PutString(s);
-  for (;;) {
-  }
+  Die();
 }
 
 void __assert(const char* expr_str, const char* file, int line) {

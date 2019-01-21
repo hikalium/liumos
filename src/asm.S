@@ -84,6 +84,12 @@ ClearIntFlag:
 	cli
 	ret
 
+.global Die
+Die:
+	cli
+	hlt
+	jmp Die
+
 .global ReadCSSelector
 ReadCSSelector:
 	mov rax, 0
@@ -246,7 +252,17 @@ AsmIntHandler0D:
 	push rdx
 	push r8
 	mov rcx, 0x0D
-	mov rdx, [rsp + 8 * 3]
+	mov rdx, [rsp + 8 * 3] // error_code
+	lea r8, [rsp + 8 * 4]
+	jmp IntHandlerWrapper
+
+.global AsmIntHandler0E
+AsmIntHandler0E:
+	push rcx
+	push rdx
+	push r8
+	mov rcx, 0x0E
+	mov rdx, [rsp + 8 * 3] // error_code
 	lea r8, [rsp + 8 * 4]
 	jmp IntHandlerWrapper
 

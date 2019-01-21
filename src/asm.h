@@ -125,6 +125,7 @@ uint8_t ReadIOPort8(uint16_t);
 void StoreIntFlag(void);
 void StoreIntFlagAndHalt(void);
 void ClearIntFlag(void);
+[[noreturn]] void Die(void);
 
 uint16_t ReadCSSelector(void);
 uint16_t ReadSSSelector(void);
@@ -140,6 +141,7 @@ void SwapGS(void);
 
 void AsmIntHandler03(void);
 void AsmIntHandler0D(void);
+void AsmIntHandler0E(void);
 void AsmIntHandler20(void);
 void AsmIntHandler21(void);
 

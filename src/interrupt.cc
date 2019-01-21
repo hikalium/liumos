@@ -43,6 +43,12 @@ extern "C" ContextSwitchRequest* IntHandler(uint64_t intcode,
   if (intcode == 0x03) {
     Panic("Int3 Trap");
   }
+  if (intcode == 0x0D) {
+    Panic("General Protection Fault");
+  }
+  if (intcode == 0x0E) {
+    Panic("Page Fault");
+  }
   Panic("INTHandler not implemented");
 }
 
@@ -85,6 +91,7 @@ void InitIDT() {
   uint16_t cs = ReadCSSelector();
   SetIntHandler(0x03, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler03);
   SetIntHandler(0x0d, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler0D);
+  SetIntHandler(0x0e, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler0E);
   SetIntHandler(0x20, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler20);
   SetIntHandler(0x21, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler21);
   WriteIDTR(&idtr);
