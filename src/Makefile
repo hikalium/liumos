@@ -27,6 +27,13 @@ CXXFLAGS= \
 		-nostdlibinc \
 		$(CLANG_WARNINGS) $(CXX_STD)
 
+CFLAGS_ELF= \
+		-target x86_64-unknown-none-elf \
+		-fno-stack-protector -fshort-wchar \
+		-mno-red-zone \
+		-nostdlibinc \
+		$(CLANG_WARNINGS) $(CXX_STD)
+
 CXXFLAGS_FOR_TEST= \
 		$(CLANG_WARNINGS) $(CXX_STD)
 
@@ -62,7 +69,7 @@ test_% : %_test.cc Makefile
 	@./$*_test.bin
 
 BOOTX64.EFI : $(OBJS) $(HEADERS) Makefile
-	$(LD) \
+	$(LLD_LINK) \
 		-subsystem:efi_application -nodefaultlib \
 		-entry:efi_main $(OBJS) -out:$@
 
@@ -83,6 +90,7 @@ clean :
 
 format :
 	clang-format -i *.cc *.h
+	make -C kernel format
 
 commit :
 	make -C .. commit

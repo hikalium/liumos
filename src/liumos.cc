@@ -12,6 +12,7 @@ HPET hpet;
 PhysicalPageAllocator page_allocator_;
 
 File hello_bin_file;
+File liumos_elf_file;
 
 void InitMemoryManagement(EFI::MemoryMap& map) {
   page_allocator = &page_allocator_;
@@ -119,6 +120,8 @@ void WaitAndProcessCommand(TextBox& tbox) {
           ConsoleCommand::Free();
         } else if (IsEqualString(line, "hello.bin")) {
           ParseELFFile(hello_bin_file);
+        } else if (IsEqualString(line, "liumos.elf")) {
+          ParseELFFile(liumos_elf_file);
         } else {
           PutString("Command not found: ");
           PutString(tbox.GetRecordedString());
@@ -204,6 +207,7 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   EnableVideoModeForConsole();
   OpenAndPrintLogoFile();
   hello_bin_file.LoadFromEFISimpleFS(L"hello.bin");
+  liumos_elf_file.LoadFromEFISimpleFS(L"LIUMOS.ELF");
   EFI::GetMemoryMapAndExitBootServices(image_handle, efi_memory_map);
 
   PutString("\nliumOS is booting...\n\n");

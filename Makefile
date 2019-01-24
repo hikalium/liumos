@@ -32,21 +32,26 @@ pmem.img :
 app/% :
 	make -C $(dir $@)
 
-run_nopmem : src/BOOTX64.EFI $(APPS)
+src/kernel/LIUMOS.ELF :
+	make -C src/kernel LIUMOS.ELF
+
+run_nopmem : src/BOOTX64.EFI $(APPS) src/kernel/LIUMOS.ELF
 	mkdir -p mnt/
 	-rm -r mnt/*
 	mkdir -p mnt/EFI/BOOT
 	cp src/BOOTX64.EFI mnt/EFI/BOOT/
 	cp $(APPS) mnt/
+	cp src/kernel/LIUMOS.ELF mnt/LIUMOS.ELF
 	$(QEMU) $(QEMU_ARGS)
 	
-run : src/BOOTX64.EFI pmem.img $(APPS)
+run : src/BOOTX64.EFI pmem.img $(APPS) src/kernel/LIUMOS.ELF
 	mkdir -p mnt/
 	-rm -r mnt/*
 	mkdir -p mnt/EFI/BOOT
 	cp src/BOOTX64.EFI mnt/EFI/BOOT/
 	cp dist/logo.ppm mnt/
 	cp $(APPS) mnt/
+	cp src/kernel/LIUMOS.ELF mnt/LIUMOS.ELF
 	$(QEMU) $(QEMU_ARGS_PMEM)
 
 unittest :
@@ -54,6 +59,7 @@ unittest :
 
 clean :
 	make -C src clean
+	make -C src/kernel clean
 
 format :
 	make -C src format
