@@ -19,7 +19,7 @@ include ../../common.mk
 
 %.o : %.cc $(HEADERS) Makefile
 	$(CC) $(CFLAGS) \
-		-c -fPIC -o $*.o $*.cc
+		-g -c -fPIC -o $*.o $*.cc
 
 LIUMOS.ELF : $(OBJS) kernel.ld Makefile
 	$(LD_LLD) -o $@ -e ELFEntry -T kernel.ld $(OBJS)
