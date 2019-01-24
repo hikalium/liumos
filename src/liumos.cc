@@ -29,10 +29,15 @@ void InitMemoryManagement(EFI::MemoryMap& map) {
 }
 
 void SubTask() {
-  int count = 0;
+  StoreIntFlag();
+  uint32_t col = 0xff0000;
+  int x = 0;
+  int move_width = 128;
   while (1) {
+    DrawRect(xsize - 20 - move_width, 10, 20 + move_width, 20, 0xffffff);
+    DrawRect(xsize - 20 - move_width + x, 10, 20, 20, col);
+    x = (x + 4) & 127;
     StoreIntFlagAndHalt();
-    PutStringAndHex("SubContext!", count++);
   }
 }
 
@@ -323,7 +328,7 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
 
   ExecutionContext sub_context(2, SubTask, ReadCSSelector(), sub_context_rsp,
                                ReadSSSelector());
-  // scheduler->RegisterExecutionContext(&sub_context);
+  scheduler->RegisterExecutionContext(&sub_context);
 
   TextBox console_text_box;
   while (1) {
