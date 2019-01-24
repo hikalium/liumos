@@ -9,15 +9,7 @@
 #include "keyid.h"
 #include "paging.h"
 
-/*
-class SpinLock {
-  public:
-  SpinLock() : lock_(0){};
-  void Lock(){}
-  private:
-  volatile uint64_t lock_;
-};
-*/
+constexpr uint64_t kKernelBaseAddr = 0xFFFF'FFFF'0000'0000;
 
 // @apic.cc
 class LocalAPIC {
@@ -58,6 +50,7 @@ void ShowNFIT(void);
 void ShowMADT(void);
 void ShowEFIMemoryMap(void);
 void Free(void);
+void CheckWrite(void);
 }  // namespace ConsoleCommand
 
 // @elf.cc

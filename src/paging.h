@@ -345,3 +345,5 @@ packed_struct IA_PML4 {
     return old_ent;
   }
 };
+
+void InitPaging(void);
