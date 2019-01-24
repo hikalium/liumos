@@ -57,7 +57,7 @@ lib/musl/include/%.h : lib/musl/include/Makefile
 		-c -o $*.o $*.S
 
 test_% : %_test.cc Makefile
-	$(CC) -o $*_test.bin $*_test.cc -DLIUMOS_TEST $(CXXFLAGS_FOR_TEST) \
+	$(CC) -g -o $*_test.bin $*_test.cc -DLIUMOS_TEST $(CXXFLAGS_FOR_TEST) \
 		$(OSX_STD_HEADER_INCLUDE_FLAGS) -Wno-nullability-completeness -Wno-nullability-extension
 	@./$*_test.bin
 

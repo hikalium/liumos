@@ -12,7 +12,67 @@ constexpr uint64_t kPageAttrUser = 0b00100;
 constexpr uint64_t kPageAttrWriteThrough = 0b01000;
 constexpr uint64_t kPageAttrCacheDisable = 0b10000;
 
-packed_struct IA_PT;
+packed_struct IA_PT_BITS {
+  uint64_t is_present : 1;
+  uint64_t is_writable : 1;
+  uint64_t is_accessible_from_user_mode : 1;
+  uint64_t page_level_write_through : 1;
+  uint64_t page_level_cache_disable : 1;
+  uint64_t is_accessed : 1;
+  uint64_t ignored0 : 1;
+  uint64_t PAT : 1;
+  uint64_t ignored1 : 4;
+  uint64_t page_table_addr_and_reserved : 40;
+  uint64_t ignored2 : 11;
+  uint64_t is_execute_disabled : 1;
+};
+static_assert(sizeof(IA_PT_BITS) == 8);
+
+packed_struct IA_PTE {
+  union {
+    uint64_t data;
+    IA_PT_BITS bits;
+  };
+  bool IsPresent() { return bits.is_present; }
+  uint64_t GetPageBaseAddr(void) {
+    const uint64_t addr_mask =
+        (((1ULL << kMaxPhyAddr) - 1) & ~((1ULL << 12) - 1));
+    return data & addr_mask;
+  }
+  void SetPageBaseAddr(uint64_t paddr, uint64_t attr) {
+    assert((paddr & ((1ULL << 12) - 1)) == 0);
+    const uint64_t addr_mask =
+        (((1ULL << kMaxPhyAddr) - 1) & ~((1ULL << 12) - 1));
+    data &= ~(addr_mask | kPageAttrMask);
+    data |= (paddr & addr_mask) | attr;
+  }
+};
+
+packed_struct IA_PT {
+  static constexpr int kNumOfPTE = (1 << 9);
+  static constexpr int kIndexShift = 21;
+  static constexpr int kIndexMask = kNumOfPTE - 1;
+  static constexpr int kOffsetMask = (1ULL << kIndexShift) - 1;
+  IA_PTE entries[kNumOfPTE];
+  inline int addr2index(uint64_t addr) {
+    return (addr >> kIndexShift) & kIndexMask;
+  }
+  void Print();
+  void ClearMapping() {
+    for (int i = 0; i < kNumOfPTE; i++) {
+      reinterpret_cast<uint64_t*>(entries)[i] = 0;
+    }
+  }
+  uint64_t v2p(uint64_t vaddr) {
+    IA_PTE& pte = entries[addr2index(vaddr)];
+    if (!pte.IsPresent())
+      return kAddrCannotTranslate;
+    return (pte.GetPageBaseAddr()) | (vaddr & kOffsetMask);
+  };
+  void SetPageBaseForAddr(uint64_t vaddr, uint64_t paddr, uint64_t attr) {
+    entries[addr2index(vaddr)].SetPageBaseAddr(paddr, attr);
+  }
+};
 
 packed_struct IA_PDE_2MB_PAGE_BITS {
   uint64_t is_present : 1;
@@ -56,17 +116,25 @@ packed_struct IA_PDE {
     IA_PDE_BITS bits;
   };
   bool IsPresent() { return bits.is_present; }
-  bool Is2MBPage() { return bits.is_2mb_page; }
-  IA_PT* GetPTAddr() {
+  bool IsPage() { return bits.is_2mb_page; }
+  IA_PT* GetTableAddr() {
+    if (IsPage())
+      return nullptr;
     return reinterpret_cast<IA_PT*>(data & ((1ULL << kMaxPhyAddr) - 1) &
                                     ~((1ULL << 12) - 1));
   }
-  uint64_t Get2MBPageAddr(void) {
+  void SetTableAddr(IA_PT * table, uint64_t attr) {
+    const uint64_t addr_mask =
+        (((1ULL << kMaxPhyAddr) - 1) & ~((1ULL << 12) - 1));
+    assert((reinterpret_cast<uint64_t>(table) & ~addr_mask) == 0);
+    data = reinterpret_cast<uint64_t>(table) | attr;
+  }
+  uint64_t GetPageBaseAddr(void) {
     const uint64_t addr_mask =
         (((1ULL << kMaxPhyAddr) - 1) & ~((1ULL << 21) - 1));
     return data & addr_mask;
   }
-  void Set2MBPageAddr(uint64_t paddr, uint64_t attr) {
+  void SetPageBaseAddr(uint64_t paddr, uint64_t attr) {
     assert((paddr & ((1ULL << 21) - 1)) == 0);
     const uint64_t addr_mask =
         (((1ULL << kMaxPhyAddr) - 1) & ~((1ULL << 21) - 1));
@@ -95,13 +163,19 @@ packed_struct IA_PDT {
     IA_PDE& pde = entries[addr2index(vaddr)];
     if (!pde.IsPresent())
       return kAddrCannotTranslate;
-    if (pde.Is2MBPage())
-      return (pde.Get2MBPageAddr()) | (vaddr & kOffsetMask);
-    return 0;
+    if (pde.IsPage())
+      return (pde.GetPageBaseAddr()) | (vaddr & kOffsetMask);
+    return pde.GetTableAddr()->v2p(vaddr);
   };
-  void Set2MBPageForAddr(uint64_t vaddr, uint64_t paddr, uint64_t attr) {
+  void SetPageBaseForAddr(uint64_t vaddr, uint64_t paddr, uint64_t attr) {
     IA_PDE& pde = entries[addr2index(vaddr)];
-    pde.Set2MBPageAddr(paddr, attr);
+    pde.SetPageBaseAddr(paddr, attr);
+  }
+  IA_PT* SetTableBaseForAddr(uint64_t addr, IA_PT * new_ent, uint64_t attr) {
+    IA_PDE& pde = entries[addr2index(addr)];
+    IA_PT* old_ent = pde.GetTableAddr();
+    pde.SetTableAddr(new_ent, attr);
+    return old_ent;
   }
 };
 
@@ -147,18 +221,20 @@ packed_struct IA_PDPTE {
     IA_PDPTE_BITS bits;
   };
   bool IsPresent() { return bits.is_present; }
-  bool Is1GBPage() { return bits.is_1gb_page; }
-  IA_PDT* GetPDTAddr() {
+  bool IsPage() { return bits.is_1gb_page; }
+  IA_PDT* GetTableAddr() {
+    if (IsPage())
+      return nullptr;
     return reinterpret_cast<IA_PDT*>(data & ((1ULL << kMaxPhyAddr) - 1) &
                                      ~((1ULL << 12) - 1));
   }
-  void SetPDTAddr(IA_PDT * pdpt, uint64_t attr) {
+  void SetTableAddr(IA_PDT * pdpt, uint64_t attr) {
     const uint64_t addr_mask =
         (((1ULL << kMaxPhyAddr) - 1) & ~((1ULL << 12) - 1));
     assert((reinterpret_cast<uint64_t>(pdpt) & ~addr_mask) == 0);
     data = reinterpret_cast<uint64_t>(pdpt) | attr;
   }
-  void Set1GBPageAddr(uint64_t paddr, uint64_t attr) {
+  void SetPageAddr(uint64_t paddr, uint64_t attr) {
     assert((paddr & ((1ULL << 30) - 1)) == 0);
     const uint64_t addr_mask =
         (((1ULL << kMaxPhyAddr) - 1) & ~((1ULL << 30) - 1));
@@ -166,7 +242,7 @@ packed_struct IA_PDPTE {
     data |= (paddr & addr_mask) | attr;
     bits.is_1gb_page = 1;
   }
-  uint64_t Get1GBPageAddr(void) {
+  uint64_t GetPageAddr(void) {
     const uint64_t addr_mask =
         (((1ULL << kMaxPhyAddr) - 1) & ~((1ULL << 30) - 1));
     return data & addr_mask;
@@ -191,18 +267,18 @@ packed_struct IA_PDPT {
     IA_PDPTE& pdpte = entries[addr2index(vaddr)];
     if (!pdpte.IsPresent())
       return kAddrCannotTranslate;
-    if (pdpte.Is1GBPage())
-      return (pdpte.Get1GBPageAddr()) | (vaddr & ((1ULL << 30) - 1));
-    return pdpte.GetPDTAddr()->v2p(vaddr);
+    if (pdpte.IsPage())
+      return (pdpte.GetPageAddr()) | (vaddr & ((1ULL << 30) - 1));
+    return pdpte.GetTableAddr()->v2p(vaddr);
   };
-  void Set1GBPageForAddr(uint64_t vaddr, uint64_t paddr, uint64_t attr) {
+  void SetPageBaseForAddr(uint64_t vaddr, uint64_t paddr, uint64_t attr) {
     IA_PDPTE& pdpte = entries[addr2index(vaddr)];
-    pdpte.Set1GBPageAddr(paddr, attr);
+    pdpte.SetPageAddr(paddr, attr);
   }
-  IA_PDT* SetPDTForAddr(uint64_t addr, IA_PDT * new_ent, uint64_t attr) {
+  IA_PDT* SetTableBaseForAddr(uint64_t addr, IA_PDT * new_ent, uint64_t attr) {
     IA_PDPTE& pdpte = entries[addr2index(addr)];
-    IA_PDT* old_ent = pdpte.GetPDTAddr();
-    pdpte.SetPDTAddr(new_ent, attr);
+    IA_PDT* old_ent = pdpte.GetTableAddr();
+    pdpte.SetTableAddr(new_ent, attr);
     return old_ent;
   }
 
@@ -230,11 +306,11 @@ packed_struct IA_PML4E {
     IA_PML4E_BITS bits;
   };
   bool IsPresent() { return bits.is_present; }
-  IA_PDPT* GetPDPTAddr() {
+  IA_PDPT* GetTableAddr() {
     return reinterpret_cast<IA_PDPT*>(data & ((1ULL << kMaxPhyAddr) - 1) &
                                       ~((1ULL << 12) - 1));
   }
-  void SetPDPTAddr(IA_PDPT * pdpt, uint64_t attr) {
+  void SetTableAddr(IA_PDPT * pdpt, uint64_t attr) {
     const uint64_t addr_mask =
         (((1ULL << kMaxPhyAddr) - 1) & ~((1ULL << 12) - 1));
     data &= ~(addr_mask | kPageAttrMask);
@@ -255,16 +331,16 @@ packed_struct IA_PML4 {
     IA_PML4E& pml4e = entries[(addr >> 39) & ((1 << 9) - 1)];
     if (!pml4e.IsPresent())
       return kAddrCannotTranslate;
-    return pml4e.GetPDPTAddr()->v2p(addr);
+    return pml4e.GetTableAddr()->v2p(addr);
   };
-  IA_PDPT* GetPDPTForAddr(uint64_t addr) {
+  IA_PDPT* GetPageBaseForAddr(uint64_t addr) {
     IA_PML4E& pml4e = entries[(addr >> 39) & ((1 << 9) - 1)];
-    return pml4e.GetPDPTAddr();
+    return pml4e.GetTableAddr();
   }
-  IA_PDPT* SetPDPTForAddr(uint64_t addr, IA_PDPT * new_ent, uint64_t attr) {
+  IA_PDPT* SetPageBaseForAddr(uint64_t addr, IA_PDPT * new_ent, uint64_t attr) {
     IA_PML4E& pml4e = entries[(addr >> 39) & ((1 << 9) - 1)];
-    IA_PDPT* old_ent = pml4e.GetPDPTAddr();
-    pml4e.SetPDPTAddr(new_ent, attr);
+    IA_PDPT* old_ent = pml4e.GetTableAddr();
+    pml4e.SetTableAddr(new_ent, attr);
     return old_ent;
   }
 };

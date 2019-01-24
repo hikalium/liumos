@@ -10,43 +10,64 @@ int kMaxPhyAddr = 36;
 alignas(4096) IA_PML4 pml4;
 alignas(4096) IA_PDPT pdpt;
 alignas(4096) IA_PDT pdt;
+alignas(4096) IA_PT pt;
 
 void Test1GBPageMapping() {
   pml4.ClearMapping();
   pdpt.ClearMapping();
-  constexpr uint64_t k1GBPageMapVirtBase = 0;
-  constexpr uint64_t k1GBPageMapPhysBase = 1ULL << 30;
-  assert(pml4.v2p(k1GBPageMapVirtBase) == kAddrCannotTranslate);
-  pml4.SetPDPTForAddr(k1GBPageMapVirtBase, &pdpt, kPageAttrPresent);
-  assert(pml4.v2p(k1GBPageMapVirtBase) == kAddrCannotTranslate);
-  assert(pml4.GetPDPTForAddr(k1GBPageMapVirtBase) == &pdpt);
-  pdpt.Set1GBPageForAddr(k1GBPageMapVirtBase, k1GBPageMapPhysBase,
-                         kPageAttrPresent);
-  assert(pml4.v2p(k1GBPageMapVirtBase) == k1GBPageMapPhysBase);
-  pdpt.Set1GBPageForAddr(k1GBPageMapVirtBase, k1GBPageMapPhysBase, 0);
-  assert(pml4.v2p(k1GBPageMapVirtBase) == kAddrCannotTranslate);
+  constexpr uint64_t k1GBPageVirtBase = 0;
+  constexpr uint64_t k1GBPagePhysBase = 1ULL << 30;
+  assert(pml4.v2p(k1GBPageVirtBase) == kAddrCannotTranslate);
+  pml4.SetPageBaseForAddr(k1GBPageVirtBase, &pdpt, kPageAttrPresent);
+  assert(pml4.v2p(k1GBPageVirtBase) == kAddrCannotTranslate);
+  assert(pml4.GetPageBaseForAddr(k1GBPageVirtBase) == &pdpt);
+  pdpt.SetPageBaseForAddr(k1GBPageVirtBase, k1GBPagePhysBase, kPageAttrPresent);
+  assert(pml4.v2p(k1GBPageVirtBase) == k1GBPagePhysBase);
+  pdpt.SetPageBaseForAddr(k1GBPageVirtBase, k1GBPagePhysBase, 0);
+  assert(pml4.v2p(k1GBPageVirtBase) == kAddrCannotTranslate);
 }
+
 void Test2MBPageMapping() {
   pml4.ClearMapping();
   pdpt.ClearMapping();
   pdt.ClearMapping();
-  constexpr uint64_t k2MBPageMapVirtBase = (2ULL << 21) + (1ULL << 30);
-  constexpr uint64_t k2MBPageMapPhysBase = 1ULL << 21;
-  assert(pml4.v2p(k2MBPageMapVirtBase) == kAddrCannotTranslate);
-  pml4.SetPDPTForAddr(k2MBPageMapVirtBase, &pdpt, kPageAttrPresent);
-  assert(pml4.v2p(k2MBPageMapVirtBase) == kAddrCannotTranslate);
-  pdpt.SetPDTForAddr(k2MBPageMapVirtBase, &pdt, kPageAttrPresent);
-  assert(pml4.v2p(k2MBPageMapVirtBase) == kAddrCannotTranslate);
-  pdt.Set2MBPageForAddr(k2MBPageMapVirtBase, k2MBPageMapPhysBase,
-                        kPageAttrPresent);
-  assert(pml4.v2p(k2MBPageMapVirtBase) == k2MBPageMapPhysBase);
-  pdt.Set2MBPageForAddr(k2MBPageMapVirtBase, k2MBPageMapPhysBase, 0);
-  assert(pml4.v2p(k2MBPageMapVirtBase) == kAddrCannotTranslate);
+  constexpr uint64_t k2MBPageVirtBase = (2ULL << 21) + (1ULL << 30);
+  constexpr uint64_t k2MBPagePhysBase = 1ULL << 21;
+  assert(pml4.v2p(k2MBPageVirtBase) == kAddrCannotTranslate);
+  pml4.SetPageBaseForAddr(k2MBPageVirtBase, &pdpt, kPageAttrPresent);
+  assert(pml4.v2p(k2MBPageVirtBase) == kAddrCannotTranslate);
+  pdpt.SetTableBaseForAddr(k2MBPageVirtBase, &pdt, kPageAttrPresent);
+  assert(pml4.v2p(k2MBPageVirtBase) == kAddrCannotTranslate);
+  pdt.SetPageBaseForAddr(k2MBPageVirtBase, k2MBPagePhysBase, kPageAttrPresent);
+  assert(pml4.v2p(k2MBPageVirtBase) == k2MBPagePhysBase);
+  pdt.SetPageBaseForAddr(k2MBPageVirtBase, k2MBPagePhysBase, 0);
+  assert(pml4.v2p(k2MBPageVirtBase) == kAddrCannotTranslate);
+}
+
+void Test4KBPageMapping() {
+  pml4.ClearMapping();
+  pdpt.ClearMapping();
+  pdt.ClearMapping();
+  pt.ClearMapping();
+  constexpr uint64_t k4KBPageVirtBase = (2ULL << 21) + (1ULL << 30);
+  constexpr uint64_t k4KBPagePhysBase = 1ULL << 21;
+  assert(pml4.v2p(k4KBPageVirtBase) == kAddrCannotTranslate);
+  pml4.SetPageBaseForAddr(k4KBPageVirtBase, &pdpt, kPageAttrPresent);
+  assert(pml4.v2p(k4KBPageVirtBase) == kAddrCannotTranslate);
+  pdpt.SetTableBaseForAddr(k4KBPageVirtBase, &pdt, kPageAttrPresent);
+  assert(pml4.v2p(k4KBPageVirtBase) == kAddrCannotTranslate);
+  pdt.SetTableBaseForAddr(k4KBPageVirtBase, &pt, kPageAttrPresent);
+  assert(pml4.v2p(k4KBPageVirtBase) == kAddrCannotTranslate);
+  pt.SetPageBaseForAddr(k4KBPageVirtBase, k4KBPagePhysBase, kPageAttrPresent);
+  assert(pml4.v2p(k4KBPageVirtBase) == k4KBPagePhysBase);
+  pt.SetPageBaseForAddr(k4KBPageVirtBase, k4KBPagePhysBase, 0);
+  assert(pml4.v2p(k4KBPageVirtBase) == kAddrCannotTranslate);
 }
 
 int main() {
   Test1GBPageMapping();
   Test2MBPageMapping();
+  Test4KBPageMapping();
   puts("PASS");
   return 0;
 }

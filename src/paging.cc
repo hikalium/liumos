@@ -7,11 +7,11 @@ void IA_PDT::Print() {
     PutString("PDT[");
     PutHex64(i);
     PutString("]:\n");
-    if (entries[i].Is2MBPage()) {
+    if (entries[i].IsPage()) {
       PutString(" 2MB Page\n");
       continue;
     }
-    PutStringAndHex(" addr", entries[i].GetPTAddr());
+    PutStringAndHex(" addr", entries[i].GetTableAddr());
   }
 }
 
@@ -22,11 +22,11 @@ void IA_PDPT::Print() {
     PutString("PDPT[");
     PutHex64(i);
     PutString("]:\n");
-    if (entries[i].Is1GBPage()) {
+    if (entries[i].IsPage()) {
       PutString(" 1GB Page\n");
       continue;
     }
-    IA_PDT* pdt = entries[i].GetPDTAddr();
+    IA_PDT* pdt = entries[i].GetTableAddr();
     pdt->Print();
   }
 }
@@ -38,7 +38,7 @@ void IA_PML4::Print() {
     PutString("PML4[");
     PutHex64(i);
     PutString("]:\n");
-    IA_PDPT* pdpt = entries[i].GetPDPTAddr();
+    IA_PDPT* pdpt = entries[i].GetTableAddr();
     pdpt->Print();
   }
 }
