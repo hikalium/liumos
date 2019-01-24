@@ -333,11 +333,12 @@ packed_struct IA_PML4 {
       return kAddrCannotTranslate;
     return pml4e.GetTableAddr()->v2p(addr);
   };
-  IA_PDPT* GetPageBaseForAddr(uint64_t addr) {
+  IA_PDPT* GetTableBaseForAddr(uint64_t addr) {
     IA_PML4E& pml4e = entries[(addr >> 39) & ((1 << 9) - 1)];
     return pml4e.GetTableAddr();
   }
-  IA_PDPT* SetPageBaseForAddr(uint64_t addr, IA_PDPT * new_ent, uint64_t attr) {
+  IA_PDPT* SetTableBaseForAddr(uint64_t addr, IA_PDPT * new_ent,
+                               uint64_t attr) {
     IA_PML4E& pml4e = entries[(addr >> 39) & ((1 << 9) - 1)];
     IA_PDPT* old_ent = pml4e.GetTableAddr();
     pml4e.SetTableAddr(new_ent, attr);

@@ -132,6 +132,11 @@ ReadCR3:
 	mov rax, cr3
 	ret
 
+.global WriteCR3
+WriteCR3:
+	mov cr3, rcx
+	ret
+
 .global CompareAndSwap
 CompareAndSwap:
 	// rcx: target addr

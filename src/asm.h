@@ -135,6 +135,7 @@ void WriteSSSelector(uint16_t);
 void WriteDataAndExtraSegmentSelectors(uint16_t);
 
 uint64_t ReadCR3(void);
+void WriteCR3(uint64_t);
 
 uint64_t CompareAndSwap(uint64_t*, uint64_t);
 void SwapGS(void);

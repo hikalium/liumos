@@ -18,9 +18,9 @@ void Test1GBPageMapping() {
   constexpr uint64_t k1GBPageVirtBase = 0;
   constexpr uint64_t k1GBPagePhysBase = 1ULL << 30;
   assert(pml4.v2p(k1GBPageVirtBase) == kAddrCannotTranslate);
-  pml4.SetPageBaseForAddr(k1GBPageVirtBase, &pdpt, kPageAttrPresent);
+  pml4.SetTableBaseForAddr(k1GBPageVirtBase, &pdpt, kPageAttrPresent);
+  assert(pml4.GetTableBaseForAddr(k1GBPageVirtBase) == &pdpt);
   assert(pml4.v2p(k1GBPageVirtBase) == kAddrCannotTranslate);
-  assert(pml4.GetPageBaseForAddr(k1GBPageVirtBase) == &pdpt);
   pdpt.SetPageBaseForAddr(k1GBPageVirtBase, k1GBPagePhysBase, kPageAttrPresent);
   assert(pml4.v2p(k1GBPageVirtBase) == k1GBPagePhysBase);
   pdpt.SetPageBaseForAddr(k1GBPageVirtBase, k1GBPagePhysBase, 0);
@@ -34,7 +34,7 @@ void Test2MBPageMapping() {
   constexpr uint64_t k2MBPageVirtBase = (2ULL << 21) + (1ULL << 30);
   constexpr uint64_t k2MBPagePhysBase = 1ULL << 21;
   assert(pml4.v2p(k2MBPageVirtBase) == kAddrCannotTranslate);
-  pml4.SetPageBaseForAddr(k2MBPageVirtBase, &pdpt, kPageAttrPresent);
+  pml4.SetTableBaseForAddr(k2MBPageVirtBase, &pdpt, kPageAttrPresent);
   assert(pml4.v2p(k2MBPageVirtBase) == kAddrCannotTranslate);
   pdpt.SetTableBaseForAddr(k2MBPageVirtBase, &pdt, kPageAttrPresent);
   assert(pml4.v2p(k2MBPageVirtBase) == kAddrCannotTranslate);
@@ -52,7 +52,7 @@ void Test4KBPageMapping() {
   constexpr uint64_t k4KBPageVirtBase = (2ULL << 21) + (1ULL << 30);
   constexpr uint64_t k4KBPagePhysBase = 1ULL << 21;
   assert(pml4.v2p(k4KBPageVirtBase) == kAddrCannotTranslate);
-  pml4.SetPageBaseForAddr(k4KBPageVirtBase, &pdpt, kPageAttrPresent);
+  pml4.SetTableBaseForAddr(k4KBPageVirtBase, &pdpt, kPageAttrPresent);
   assert(pml4.v2p(k4KBPageVirtBase) == kAddrCannotTranslate);
   pdpt.SetTableBaseForAddr(k4KBPageVirtBase, &pdt, kPageAttrPresent);
   assert(pml4.v2p(k4KBPageVirtBase) == kAddrCannotTranslate);
