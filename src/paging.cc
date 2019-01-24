@@ -123,10 +123,14 @@ void InitPaging() {
   kernel_pdt->SetTableBaseForAddr(kKernelBaseAddr, kernel_pt,
                                   kPageAttrPresent | kPageAttrWritable);
   for (size_t i = 0; i < loader_code_desc->number_of_pages; i++) {
-    kernel_pt->SetPageBaseForAddr(
-        kKernelBaseAddr + (1 << 12) * i,
-        reinterpret_cast<uint64_t>(page_allocator->AllocPages(1)),
-        kPageAttrPresent | kPageAttrWritable);
+    uint8_t* page = reinterpret_cast<uint8_t*>(page_allocator->AllocPages(1));
+    memcpy(page,
+           reinterpret_cast<uint8_t*>(loader_code_desc->physical_start +
+                                      i * (1 << 12)),
+           (1 << 12));
+    kernel_pt->SetPageBaseForAddr(kKernelBaseAddr + (1 << 12) * i,
+                                  reinterpret_cast<uint64_t>(page),
+                                  kPageAttrPresent | kPageAttrWritable);
   }
   WriteCR3(reinterpret_cast<uint64_t>(kernel_pml4));
 }

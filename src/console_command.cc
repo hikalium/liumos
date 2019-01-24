@@ -70,9 +70,4 @@ void Free() {
   page_allocator->Print();
 }
 
-void CheckWrite() {
-  *reinterpret_cast<uint8_t*>(kKernelBaseAddr) = 1;
-  PutString("OK\n");
-}
-
 }  // namespace ConsoleCommand

@@ -34,7 +34,6 @@ void SubTask() {
   int x = 0;
   int move_width = 128;
   while (1) {
-    *reinterpret_cast<uint8_t*>(kKernelBaseAddr) = 1;
     DrawRect(xsize - 20 - move_width, 10, 20 + move_width, 20, 0xffffff);
     DrawRect(xsize - 20 - move_width + x, 10, 20, 20, col);
     x = (x + 4) & 127;
@@ -116,8 +115,6 @@ void WaitAndProcessCommand(TextBox& tbox) {
           ConsoleCommand::ShowMADT();
         } else if (IsEqualString(line, "show mmap")) {
           ConsoleCommand::ShowEFIMemoryMap();
-        } else if (IsEqualString(line, "check write")) {
-          ConsoleCommand::CheckWrite();
         } else if (IsEqualString(line, "free")) {
           ConsoleCommand::Free();
         } else if (IsEqualString(line, "hello.bin")) {
@@ -246,7 +243,7 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
       static_cast<HPET::RegisterSpace*>(ACPI::hpet->base_address.address));
 
   hpet.SetTimerMs(
-      0, 100, HPET::TimerConfig::kUsePeriodicMode | HPET::TimerConfig::kEnable);
+      0, 10, HPET::TimerConfig::kUsePeriodicMode | HPET::TimerConfig::kEnable);
 
   const int kNumOfStackPages = 3;
   void* sub_context_stack_base = page_allocator->AllocPages(kNumOfStackPages);

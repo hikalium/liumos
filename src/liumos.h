@@ -50,7 +50,6 @@ void ShowNFIT(void);
 void ShowMADT(void);
 void ShowEFIMemoryMap(void);
 void Free(void);
-void CheckWrite(void);
 }  // namespace ConsoleCommand
 
 // @elf.cc
@@ -126,6 +125,7 @@ constexpr uint16_t kIOPortKeyboardData = 0x0060;
 
 // @libfunc.cc
 int strncmp(const char* s1, const char* s2, size_t n);
+void* memcpy(void* dst, const void* src, size_t n);
 
 // @liumos.c
 constexpr uint64_t kPageSizeExponent = 12;
