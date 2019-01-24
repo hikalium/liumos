@@ -19,10 +19,10 @@ include ../../common.mk
 
 %.o : %.cc $(HEADERS) Makefile
 	$(CC) $(CFLAGS) \
-		-c -o $*.o $*.cc
+		-c -fPIC -o $*.o $*.cc
 
-LIUMOS.ELF : $(OBJS) Makefile
-	$(LD_LLD) -o $@ -e ELFEntry $(OBJS)
+LIUMOS.ELF : $(OBJS) kernel.ld Makefile
+	$(LD_LLD) -o $@ -e ELFEntry -T kernel.ld $(OBJS)
 
 format:
 	clang-format -i *.cc
