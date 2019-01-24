@@ -71,6 +71,7 @@ run:
 
 unittest:
 	make test_ring_buffer
+	make test_paging
 
 clean :
 	-rm *.EFI

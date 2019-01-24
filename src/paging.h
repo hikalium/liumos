@@ -61,12 +61,48 @@ packed_struct IA_PDE {
     return reinterpret_cast<IA_PT*>(data & ((1ULL << kMaxPhyAddr) - 1) &
                                     ~((1ULL << 12) - 1));
   }
+  uint64_t Get2MBPageAddr(void) {
+    const uint64_t addr_mask =
+        (((1ULL << kMaxPhyAddr) - 1) & ~((1ULL << 21) - 1));
+    return data & addr_mask;
+  }
+  void Set2MBPageAddr(uint64_t paddr, uint64_t attr) {
+    assert((paddr & ((1ULL << 21) - 1)) == 0);
+    const uint64_t addr_mask =
+        (((1ULL << kMaxPhyAddr) - 1) & ~((1ULL << 21) - 1));
+    data &= ~(addr_mask | kPageAttrMask);
+    data |= (paddr & addr_mask) | attr;
+    bits.is_2mb_page = 1;
+  }
 };
 
 packed_struct IA_PDT {
   static constexpr int kNumOfPDE = (1 << 9);
+  static constexpr int kIndexShift = 21;
+  static constexpr int kIndexMask = kNumOfPDE - 1;
+  static constexpr int kOffsetMask = (1ULL << kIndexShift) - 1;
   IA_PDE entries[kNumOfPDE];
+  inline int addr2index(uint64_t addr) {
+    return (addr >> kIndexShift) & kIndexMask;
+  }
   void Print();
+  void ClearMapping() {
+    for (int i = 0; i < kNumOfPDE; i++) {
+      reinterpret_cast<uint64_t*>(entries)[i] = 0;
+    }
+  }
+  uint64_t v2p(uint64_t vaddr) {
+    IA_PDE& pde = entries[addr2index(vaddr)];
+    if (!pde.IsPresent())
+      return kAddrCannotTranslate;
+    if (pde.Is2MBPage())
+      return (pde.Get2MBPageAddr()) | (vaddr & kOffsetMask);
+    return 0;
+  };
+  void Set2MBPageForAddr(uint64_t vaddr, uint64_t paddr, uint64_t attr) {
+    IA_PDE& pde = entries[addr2index(vaddr)];
+    pde.Set2MBPageAddr(paddr, attr);
+  }
 };
 
 packed_struct IA_PDPTE_1GB_PAGE_BITS {
@@ -116,6 +152,12 @@ packed_struct IA_PDPTE {
     return reinterpret_cast<IA_PDT*>(data & ((1ULL << kMaxPhyAddr) - 1) &
                                      ~((1ULL << 12) - 1));
   }
+  void SetPDTAddr(IA_PDT * pdpt, uint64_t attr) {
+    const uint64_t addr_mask =
+        (((1ULL << kMaxPhyAddr) - 1) & ~((1ULL << 12) - 1));
+    assert((reinterpret_cast<uint64_t>(pdpt) & ~addr_mask) == 0);
+    data = reinterpret_cast<uint64_t>(pdpt) | attr;
+  }
   void Set1GBPageAddr(uint64_t paddr, uint64_t attr) {
     assert((paddr & ((1ULL << 30) - 1)) == 0);
     const uint64_t addr_mask =
@@ -133,20 +175,38 @@ packed_struct IA_PDPTE {
 
 packed_struct IA_PDPT {
   static constexpr int kNumOfPDPTE = (1 << 9);
+  static constexpr int kIndexMask = kNumOfPDPTE - 1;
+  static constexpr int kIndexShift = 30;
   IA_PDPTE entries[kNumOfPDPTE];
+  inline int addr2index(uint64_t addr) {
+    return (addr >> kIndexShift) & kIndexMask;
+  }
   void Print();
+  void ClearMapping() {
+    for (int i = 0; i < kNumOfPDPTE; i++) {
+      reinterpret_cast<uint64_t*>(entries)[i] = 0;
+    }
+  }
   uint64_t v2p(uint64_t vaddr) {
-    IA_PDPTE& pdpte = entries[(vaddr >> 30) & ((1 << 9) - 1)];
+    IA_PDPTE& pdpte = entries[addr2index(vaddr)];
     if (!pdpte.IsPresent())
       return kAddrCannotTranslate;
     if (pdpte.Is1GBPage())
       return (pdpte.Get1GBPageAddr()) | (vaddr & ((1ULL << 30) - 1));
-    return 0;
+    return pdpte.GetPDTAddr()->v2p(vaddr);
   };
   void Set1GBPageForAddr(uint64_t vaddr, uint64_t paddr, uint64_t attr) {
-    IA_PDPTE& pdpte = entries[(vaddr >> 30) & ((1 << 9) - 1)];
+    IA_PDPTE& pdpte = entries[addr2index(vaddr)];
     pdpte.Set1GBPageAddr(paddr, attr);
   }
+  IA_PDT* SetPDTForAddr(uint64_t addr, IA_PDT * new_ent, uint64_t attr) {
+    IA_PDPTE& pdpte = entries[addr2index(addr)];
+    IA_PDT* old_ent = pdpte.GetPDTAddr();
+    pdpte.SetPDTAddr(new_ent, attr);
+    return old_ent;
+  }
+
+ private:
 };
 
 packed_struct IA_PML4E_BITS {
@@ -186,6 +246,11 @@ packed_struct IA_PML4 {
   static constexpr int kNumOfPML4E = (1 << 9);
   IA_PML4E entries[kNumOfPML4E];
   void Print();
+  void ClearMapping() {
+    for (int i = 0; i < kNumOfPML4E; i++) {
+      reinterpret_cast<uint64_t*>(entries)[i] = 0;
+    }
+  }
   uint64_t v2p(uint64_t addr) {
     IA_PML4E& pml4e = entries[(addr >> 39) & ((1 << 9) - 1)];
     if (!pml4e.IsPresent())
