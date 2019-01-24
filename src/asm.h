@@ -28,6 +28,7 @@ packed_struct InterruptInfo {
   uint64_t rsp;
   uint64_t ss;
 };
+static_assert(sizeof(InterruptInfo) == 40);
 
 enum class IDTType {
   kInterruptGate = 0xE,

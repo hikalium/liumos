@@ -15,12 +15,11 @@ ContextSwitchRequest context_switch_request;
 extern "C" ContextSwitchRequest* IntHandler(uint64_t intcode,
                                             uint64_t error_code,
                                             InterruptInfo* info) {
-  (void)error_code;
+  uint64_t kernel_gs_base = ReadMSR(MSRIndex::kKernelGSBase);
+  ExecutionContext* current_context =
+      reinterpret_cast<ExecutionContext*>(kernel_gs_base);
   if (intcode == 0x20) {
     SendEndOfInterruptToLocalAPIC();
-    uint64_t kernel_gs_base = ReadMSR(MSRIndex::kKernelGSBase);
-    ExecutionContext* current_context =
-        reinterpret_cast<ExecutionContext*>(kernel_gs_base);
     ExecutionContext* next_context = scheduler->SwitchContext(current_context);
     if (!next_context) {
       // no need to switching context.
@@ -39,6 +38,8 @@ extern "C" ContextSwitchRequest* IntHandler(uint64_t intcode,
   PutStringAndHex("Int#", intcode);
   PutStringAndHex("RIP", info->rip);
   PutStringAndHex("CS", info->cs);
+  PutStringAndHex("Error Code", error_code);
+  PutStringAndHex("Context#", current_context->GetID());
 
   if (intcode == 0x03) {
     Panic("Int3 Trap");

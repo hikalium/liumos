@@ -99,7 +99,7 @@ void WaitAndProcessCommand(TextBox& tbox) {
   tbox.StartRecording();
   while (1) {
     StoreIntFlagAndHalt();
-    ClearIntFlag();
+    // ClearIntFlag();
     while (!keycode_buffer.IsEmpty()) {
       uint16_t keyid = ParseKeyCode(keycode_buffer.Pop());
       if (!keyid && keyid & KeyID::kMaskBreak)
@@ -218,7 +218,7 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   new (&page_allocator) PhysicalPageAllocator();
   InitMemoryManagement(efi_memory_map);
   InitPaging();
-  ExecutionContext root_context(1, NULL, 0, NULL, 0);
+  ExecutionContext root_context(1, NULL, 0, NULL, 0, ReadCR3());
   Scheduler scheduler_(&root_context);
   scheduler = &scheduler_;
 
@@ -256,7 +256,8 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   PutStringAndHex("alloc addr", sub_context_stack_base);
 
   ExecutionContext sub_context(2, SubTask, ReadCSSelector(), sub_context_rsp,
-                               ReadSSSelector());
+                               ReadSSSelector(),
+                               reinterpret_cast<uint64_t>(CreatePageTable()));
   scheduler->RegisterExecutionContext(&sub_context);
 
   TextBox console_text_box;

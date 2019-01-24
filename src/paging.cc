@@ -1,5 +1,13 @@
 #include "liumos.h"
 
+IA_PML4* kernel_pml4;
+
+IA_PDPT* direct_map_pdpt;
+
+IA_PDPT* kernel_pdpt;
+IA_PDT* kernel_pdt;
+IA_PT* kernel_pt;
+
 void IA_PDT::Print() {
   for (int i = 0; i < kNumOfPDE; i++) {
     if (!entries[i].IsPresent())
@@ -43,6 +51,14 @@ void IA_PML4::Print() {
   }
 }
 
+IA_PML4* CreatePageTable() {
+  IA_PML4* pml4 = reinterpret_cast<IA_PML4*>(page_allocator->AllocPages(1));
+  pml4->ClearMapping();
+  pml4->SetTableBaseForAddr(0, direct_map_pdpt,
+                            kPageAttrPresent | kPageAttrWritable);
+  return pml4;
+}
+
 void InitPaging() {
   IA32_EFER efer;
   efer.data = ReadMSR(MSRIndex::kEFER);
@@ -81,29 +97,29 @@ void InitPaging() {
   PutStringAndHex("direct map 1gb pages", direct_map_1gb_pages);
   assert(direct_map_1gb_pages < (1 << 9));
   PutStringAndHex("InitPaging", reinterpret_cast<uint64_t>(InitPaging));
-  IA_PML4* kernel_pml4 =
-      reinterpret_cast<IA_PML4*>(page_allocator->AllocPages(1));
+
+  kernel_pml4 = reinterpret_cast<IA_PML4*>(page_allocator->AllocPages(1));
+  direct_map_pdpt = reinterpret_cast<IA_PDPT*>(page_allocator->AllocPages(1));
+  kernel_pdpt = reinterpret_cast<IA_PDPT*>(page_allocator->AllocPages(1));
+  kernel_pdt = reinterpret_cast<IA_PDT*>(page_allocator->AllocPages(1));
+  kernel_pt = reinterpret_cast<IA_PT*>(page_allocator->AllocPages(1));
+
   kernel_pml4->ClearMapping();
-  IA_PDPT* direct_map_pdpt =
-      reinterpret_cast<IA_PDPT*>(page_allocator->AllocPages(1));
   direct_map_pdpt->ClearMapping();
+  kernel_pdpt->ClearMapping();
+  kernel_pdt->ClearMapping();
+  kernel_pt->ClearMapping();
+
   kernel_pml4->SetTableBaseForAddr(0, direct_map_pdpt,
                                    kPageAttrPresent | kPageAttrWritable);
   for (size_t i = 0; i < direct_map_1gb_pages; i++) {
     direct_map_pdpt->SetPageBaseForAddr((1 << 30) * i, (1 << 30) * i,
                                         kPageAttrPresent | kPageAttrWritable);
   }
-  IA_PDPT* kernel_pdpt =
-      reinterpret_cast<IA_PDPT*>(page_allocator->AllocPages(1));
-  kernel_pdpt->ClearMapping();
   kernel_pml4->SetTableBaseForAddr(kKernelBaseAddr, kernel_pdpt,
                                    kPageAttrPresent | kPageAttrWritable);
-  IA_PDT* kernel_pdt = reinterpret_cast<IA_PDT*>(page_allocator->AllocPages(1));
-  kernel_pdt->ClearMapping();
   kernel_pdpt->SetTableBaseForAddr(kKernelBaseAddr, kernel_pdt,
                                    kPageAttrPresent | kPageAttrWritable);
-  IA_PT* kernel_pt = reinterpret_cast<IA_PT*>(page_allocator->AllocPages(1));
-  kernel_pt->ClearMapping();
   kernel_pdt->SetTableBaseForAddr(kKernelBaseAddr, kernel_pt,
                                   kPageAttrPresent | kPageAttrWritable);
   for (size_t i = 0; i < loader_code_desc->number_of_pages; i++) {
@@ -113,5 +129,4 @@ void InitPaging() {
         kPageAttrPresent | kPageAttrWritable);
   }
   WriteCR3(reinterpret_cast<uint64_t>(kernel_pml4));
-  *reinterpret_cast<uint8_t*>(kKernelBaseAddr) = 1;
 }

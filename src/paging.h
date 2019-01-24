@@ -346,4 +346,5 @@ packed_struct IA_PML4 {
   }
 };
 
+IA_PML4* CreatePageTable();
 void InitPaging(void);

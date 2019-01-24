@@ -183,8 +183,8 @@ ContextSwitch:
 	mov [rcx + 120], rdi
 	mov [rcx + 128], r12
 	mov [rcx + 136], r13
-	mov [rcx + 142], r14
-	mov [rcx + 150], r15
+	mov [rcx + 144], r14
+	mov [rcx + 152], r15
 	// restore InterruptInfo to interrupt stack(rip, cs, eflags, rsp, ss)
 	mov rax, [rdx]
 	mov [r8], rax
@@ -211,8 +211,13 @@ ContextSwitch:
 	mov rdi, [rdx + 120]
 	mov r12, [rdx + 128]
 	mov r13, [rdx + 136]
-	mov r14, [rdx + 142]
-	mov r15, [rdx + 150]
+	mov r14, [rdx + 144]
+	mov r15, [rdx + 152]
+	// switch cr3 if necessary
+	mov rax, [rdx + 160]
+	cmp rax, [rcx + 160]
+	je RestoreScratchRegistersAndIRET
+	mov cr3, rax
 	jmp RestoreScratchRegistersAndIRET
 
 .global IntHandler
