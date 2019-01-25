@@ -11,7 +11,7 @@ A toy operating system supports UEFI boot.
 - Tested on 10.13.6
 
 ```
-brew install qemu llvm FiloSottile/musl-cross/musl-cross
+brew install qemu llvm dosfstools FiloSottile/musl-cross/musl-cross
 ```
 
 ### Ubuntu 18.04

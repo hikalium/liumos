@@ -35,16 +35,7 @@ app/% :
 src/kernel/LIUMOS.ELF :
 	make -C src/kernel LIUMOS.ELF
 
-run_nopmem : src/BOOTX64.EFI $(APPS) src/kernel/LIUMOS.ELF
-	mkdir -p mnt/
-	-rm -r mnt/*
-	mkdir -p mnt/EFI/BOOT
-	cp src/BOOTX64.EFI mnt/EFI/BOOT/
-	cp $(APPS) mnt/
-	cp src/kernel/LIUMOS.ELF mnt/LIUMOS.ELF
-	$(QEMU) $(QEMU_ARGS)
-	
-run : src/BOOTX64.EFI pmem.img $(APPS) src/kernel/LIUMOS.ELF
+files : src/BOOTX64.EFI $(APPS) src/kernel/LIUMOS.ELF .FORCE
 	mkdir -p mnt/
 	-rm -r mnt/*
 	mkdir -p mnt/EFI/BOOT
@@ -52,7 +43,20 @@ run : src/BOOTX64.EFI pmem.img $(APPS) src/kernel/LIUMOS.ELF
 	cp dist/logo.ppm mnt/
 	cp $(APPS) mnt/
 	cp src/kernel/LIUMOS.ELF mnt/LIUMOS.ELF
+
+run_nopmem : files .FORCE
+	$(QEMU) $(QEMU_ARGS)
+	
+run : files pmem.img .FORCE
 	$(QEMU) $(QEMU_ARGS_PMEM)
+
+img : files .FORCE
+	dd if=/dev/zero of=liumos.img bs=16384 count=1024
+	/usr/local/Cellar/dosfstools/4.1/sbin/mkfs.vfat liumos.img
+	mkdir -p mnt_img
+	hdiutil attach -mountpoint mnt_img liumos.img
+	cp -r mnt/* mnt_img/
+	hdiutil detach mnt_img
 
 unittest :
 	make -C src unittest
