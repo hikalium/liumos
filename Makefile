@@ -70,5 +70,5 @@ format :
 
 commit : format
 	git add .
-	git diff HEAD
+	git diff HEAD --color=always | less -R
 	git commit

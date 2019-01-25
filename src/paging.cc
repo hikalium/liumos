@@ -66,16 +66,6 @@ void InitPaging() {
     Panic("IA32_EFER.LME not enabled.");
   PutString("4-level paging enabled.\n");
 
-  IA32_MaxPhyAddr max_phy_addr_msr;
-  max_phy_addr_msr.data = ReadMSR(MSRIndex::kMaxPhyAddr);
-  kMaxPhyAddr = max_phy_addr_msr.bits.physical_address_bits;
-  if (!max_phy_addr_msr.bits.physical_address_bits) {
-    PutString("CPUID function 80000008H not supported.\n");
-    PutString("Assuming Physical address bits = 36\n");
-    kMaxPhyAddr = 36;
-  }
-  PutStringAndHex("kMaxPhyAddr", kMaxPhyAddr);
-
   const EFI::MemoryDescriptor* loader_code_desc = nullptr;
   uint64_t direct_mapping_end = 0;
   for (int i = 0; i < efi_memory_map.GetNumberOfEntries(); i++) {

@@ -4,8 +4,9 @@
 
 extern "C" {
 
-#define CPUID_01_EDX_APIC (1 << 9)
-#define CPUID_01_EDX_MSR (1 << 5)
+constexpr uint32_t kCPUID01H_EDXBitAPIC = (1 << 9);
+constexpr uint32_t kCPUID01H_EDXBitMSR = (1 << 5);
+constexpr uint32_t kCPUIDIndexMaxAddr = 0x8000'0008;
 #define MAX_PHY_ADDR_BITS 36
 #define IO_APIC_BASE_ADDR 0xfec00000
 
@@ -53,8 +54,6 @@ packed_struct IDTR {
   uint16_t limit;
   IDTGateDescriptor* base;
 };
-
-void ReadCPUID(CPUID*, uint32_t eax, uint32_t ecx);
 
 packed_struct IA32_EFER_BITS {
   unsigned syscall_enable : 1;
@@ -105,10 +104,11 @@ packed_struct IA_CR3 {
 
 enum class MSRIndex : uint32_t {
   kLocalAPICBase = 0x1b,
-  kMaxPhyAddr = 0x80000008,
   kEFER = 0xC0000080,
   kKernelGSBase = 0xC0000102,
 };
+
+void ReadCPUID(CPUID*, uint32_t eax, uint32_t ecx);
 
 uint64_t ReadMSR(MSRIndex);
 void WriteMSR(MSRIndex, uint64_t);

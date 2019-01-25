@@ -12,7 +12,6 @@ void PhysicalPageAllocator::Print() {
 
 void PhysicalPageAllocator::FreePages(void* phys_addr, uint64_t num_of_pages) {
   // TODO: Impl merge
-  assert(phys_addr != nullptr);
   assert(num_of_pages > 0);
   assert((reinterpret_cast<uint64_t>(phys_addr) & 0xfff) == 0);
 

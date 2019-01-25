@@ -197,6 +197,38 @@ void OpenAndPrintLogoFile() {
   }
 }
 
+void IdentifyCPU() {
+  CPUID cpuid;
+
+  ReadCPUID(&cpuid, 0, 0);
+  const uint32_t kMaxCPUID = cpuid.eax;
+  PutStringAndHex("Max CPUID", kMaxCPUID);
+
+  ReadCPUID(&cpuid, 1, 0);
+  uint8_t cpu_family = ((cpuid.eax >> 16) & 0xff0) | ((cpuid.eax >> 8) & 0xf);
+  uint8_t cpu_model = ((cpuid.eax >> 12) & 0xf0) | ((cpuid.eax >> 4) & 0xf);
+  uint8_t cpu_stepping = cpuid.eax & 0xf;
+  PutStringAndHex("CPU family  ", cpu_family);
+  PutStringAndHex("CPU model   ", cpu_model);
+  PutStringAndHex("CPU stepping", cpu_stepping);
+  if (!(cpuid.edx & kCPUID01H_EDXBitAPIC))
+    Panic("APIC not supported");
+  if (!(cpuid.edx & kCPUID01H_EDXBitMSR))
+    Panic("MSR not supported");
+
+  if (kCPUIDIndexMaxAddr <= kMaxCPUID) {
+    ReadCPUID(&cpuid, kCPUIDIndexMaxAddr, 0);
+    IA32_MaxPhyAddr maxaddr;
+    maxaddr.data = cpuid.eax;
+    kMaxPhyAddr = maxaddr.bits.physical_address_bits;
+  } else {
+    PutString("CPUID function 80000008H not supported.\n");
+    PutString("Assuming Physical address bits = 36\n");
+    kMaxPhyAddr = 36;
+  }
+  PutStringAndHex("kMaxPhyAddr", kMaxPhyAddr);
+}
+
 void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   LocalAPIC local_apic;
   GDT gdt;
@@ -211,9 +243,9 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   EFI::GetMemoryMapAndExitBootServices(image_handle, efi_memory_map);
 
   PutString("\nliumOS is booting...\n\n");
-
   ClearIntFlag();
 
+  IdentifyCPU();
   gdt.Init();
   InitIDT();
   new (&page_allocator) PhysicalPageAllocator();
@@ -222,16 +254,6 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   ExecutionContext root_context(1, NULL, 0, NULL, 0, ReadCR3());
   Scheduler scheduler_(&root_context);
   scheduler = &scheduler_;
-
-  CPUID cpuid;
-  ReadCPUID(&cpuid, 0, 0);
-  PutStringAndHex("Max CPUID", cpuid.eax);
-
-  ReadCPUID(&cpuid, 1, 0);
-  if (!(cpuid.edx & CPUID_01_EDX_APIC))
-    Panic("APIC not supported");
-  if (!(cpuid.edx & CPUID_01_EDX_MSR))
-    Panic("MSR not supported");
 
   ACPI::DetectTables();
 
