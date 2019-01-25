@@ -17,7 +17,9 @@ class LocalAPIC {
   LocalAPIC() {
     uint64_t base_msr = ReadMSR(MSRIndex::kLocalAPICBase);
     base_addr_ = (base_msr & ((1ULL << MAX_PHY_ADDR_BITS) - 1)) & ~0xfffULL;
-    id_ = *GetRegisterAddr(0x20) >> 24;
+    CPUID cpuid;
+    ReadCPUID(&cpuid, kCPUIDIndexXTopology, 0);
+    id_ = cpuid.edx;
   }
   uint8_t GetID() { return id_; }
 

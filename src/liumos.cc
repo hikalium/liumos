@@ -227,6 +227,10 @@ void IdentifyCPU() {
     kMaxPhyAddr = 36;
   }
   PutStringAndHex("kMaxPhyAddr", kMaxPhyAddr);
+
+  assert(kCPUIDIndexXTopology <= kMaxCPUID);
+  ReadCPUID(&cpuid, kCPUIDIndexXTopology, 0);
+  PutStringAndHex("x2APIC ID", cpuid.edx);
 }
 
 void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
@@ -267,10 +271,8 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
 
   hpet.Init(
       static_cast<HPET::RegisterSpace*>(ACPI::hpet->base_address.address));
-
   hpet.SetTimerMs(
       0, 10, HPET::TimerConfig::kUsePeriodicMode | HPET::TimerConfig::kEnable);
-
   const int kNumOfStackPages = 3;
   void* sub_context_stack_base = page_allocator->AllocPages(kNumOfStackPages);
   void* sub_context_rsp = reinterpret_cast<void*>(
