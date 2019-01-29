@@ -50,6 +50,13 @@ run_nopmem : files .FORCE
 run : files pmem.img .FORCE
 	$(QEMU) $(QEMU_ARGS_PMEM)
 
+run_vb_dbg : .FORCE
+	- VBoxManage storageattach liumOS --storagectl SATA --port 0 --medium none
+	- VBoxManage closemedium disk liumos.vdi --delete
+	make liumos.vdi
+	VBoxManage storageattach liumOS --storagectl SATA --port 0 --medium liumos.vdi --type hdd
+	VirtualBoxVM --startvm liumOS --debug
+
 img : files .FORCE
 	dd if=/dev/zero of=liumos.img bs=16384 count=1024
 	/usr/local/Cellar/dosfstools/4.1/sbin/mkfs.vfat liumos.img
@@ -57,6 +64,10 @@ img : files .FORCE
 	hdiutil attach -mountpoint mnt_img liumos.img
 	cp -r mnt/* mnt_img/
 	hdiutil detach mnt_img
+
+liumos.vdi : .FORCE img
+	-rm liumos.vdi
+	vbox-img convert --srcfilename liumos.img --srcformat RAW --dstfilename liumos.vdi --dstformat VDI
 
 unittest :
 	make -C src unittest
