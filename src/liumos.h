@@ -117,6 +117,9 @@ inline void* operator new(size_t, void* where) {
 
 // @graphics.cc
 extern int xsize;
+extern int ysize;
+extern int pixels_per_scan_line;
+extern uint8_t* vram;
 void InitGraphics();
 void DrawCharacter(char c, int px, int py);
 void DrawRect(int px, int py, int w, int h, uint32_t col);

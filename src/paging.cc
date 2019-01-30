@@ -12,11 +12,11 @@ void IA_PDT::Print() {
   for (int i = 0; i < kNumOfPDE; i++) {
     if (!entries[i].IsPresent())
       continue;
-    PutString("PDT[");
+    PutString("  PDT[");
     PutHex64(i);
     PutString("]:\n");
     if (entries[i].IsPage()) {
-      PutString(" 2MB Page\n");
+      PutString("   2MB Page\n");
       continue;
     }
     PutStringAndHex(" addr", entries[i].GetTableAddr());
@@ -27,11 +27,11 @@ void IA_PDPT::Print() {
   for (int i = 0; i < kNumOfPDPTE; i++) {
     if (!entries[i].IsPresent())
       continue;
-    PutString("PDPT[");
+    PutString(" PDPT[");
     PutHex64(i);
     PutString("]:\n");
     if (entries[i].IsPage()) {
-      PutString(" 1GB Page\n");
+      PutString("  1GB Page\n");
       continue;
     }
     IA_PDT* pdt = entries[i].GetTableAddr();
@@ -80,8 +80,19 @@ void InitPaging() {
     loader_code_desc = desc;
   }
   loader_code_desc->Print();
-  assert(loader_code_desc->number_of_pages < (1 << 9));
   PutChar('\n');
+
+  // Adjust direct_mapping_end here
+  // since VRAM region is not appeared in EFIMemoryMap
+  {
+    PutStringAndHex("vram", vram);
+    uint64_t map_end_addr =
+        reinterpret_cast<uint64_t>(vram) + 4 * ysize * pixels_per_scan_line;
+    if (map_end_addr > direct_mapping_end)
+      direct_mapping_end = map_end_addr;
+  }
+
+  assert(loader_code_desc->number_of_pages < (1 << 9));
   PutStringAndHex("map_end_addr", direct_mapping_end);
   uint64_t direct_map_1gb_pages = (direct_mapping_end + (1ULL << 30) - 1) >> 30;
   PutStringAndHex("direct map 1gb pages", direct_map_1gb_pages);
@@ -103,7 +114,7 @@ void InitPaging() {
   kernel_pml4->SetTableBaseForAddr(0, direct_map_pdpt,
                                    kPageAttrPresent | kPageAttrWritable);
   for (size_t i = 0; i < direct_map_1gb_pages; i++) {
-    direct_map_pdpt->SetPageBaseForAddr((1 << 30) * i, (1 << 30) * i,
+    direct_map_pdpt->SetPageBaseForAddr((1ULL << 30) * i, (1ULL << 30) * i,
                                         kPageAttrPresent | kPageAttrWritable);
   }
   kernel_pml4->SetTableBaseForAddr(kKernelBaseAddr, kernel_pdpt,
@@ -122,5 +133,7 @@ void InitPaging() {
                                   reinterpret_cast<uint64_t>(page),
                                   kPageAttrPresent | kPageAttrWritable);
   }
+  // kernel_pml4->Print();
+  PutStringAndHex("CR3", ReadCR3());
   WriteCR3(reinterpret_cast<uint64_t>(kernel_pml4));
 }

@@ -26,6 +26,7 @@ void* PhysicalPageAllocator::AllocPages(int num_of_pages) {
     addr = info->ProvidePages(num_of_pages);
     if (addr)
       return addr;
+    info = info->GetNext();
   }
   Panic("Cannot allocate pages");
 }

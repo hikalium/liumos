@@ -8,3 +8,4 @@
 *.bin
 *.out
 *.gen.mk
+*.dump.txt

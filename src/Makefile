@@ -63,6 +63,9 @@ lib/musl/include/%.h : lib/musl/include/Makefile
 	$(CC) $(CFLAGS) \
 		-c -o $*.o $*.S
 
+%.o.dump.txt : %.o Makefile
+	objdump -d $*.o > $@
+
 test_% : %_test.cc Makefile
 	$(CC) -g -o $*_test.bin $*_test.cc -DLIUMOS_TEST $(CXXFLAGS_FOR_TEST) \
 		$(OSX_STD_HEADER_INCLUDE_FLAGS) -Wno-nullability-completeness -Wno-nullability-extension
@@ -97,5 +100,7 @@ commit :
 
 print_cc :
 	@echo "$(CC) $(LD)"
+
+dump : $(addsuffix .dump.txt, $(OBJS))
 
 
