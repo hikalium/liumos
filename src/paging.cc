@@ -14,9 +14,9 @@ void IA_PDT::Print() {
       continue;
     PutString("  PDT[");
     PutHex64(i);
-    PutString("]:\n");
+    PutString("]:");
     if (entries[i].IsPage()) {
-      PutString("   2MB Page\n");
+      PutString(" 2MB Page\n");
       continue;
     }
     PutStringAndHex(" addr", entries[i].GetTableAddr());
@@ -29,11 +29,12 @@ void IA_PDPT::Print() {
       continue;
     PutString(" PDPT[");
     PutHex64(i);
-    PutString("]:\n");
+    PutString("]:");
     if (entries[i].IsPage()) {
       PutString("  1GB Page\n");
       continue;
     }
+    PutString("\n");
     IA_PDT* pdt = entries[i].GetTableAddr();
     pdt->Print();
   }
@@ -67,7 +68,7 @@ void InitPaging() {
   PutString("4-level paging enabled.\n");
 
   const EFI::MemoryDescriptor* loader_code_desc = nullptr;
-  uint64_t direct_mapping_end = 0;
+  uint64_t direct_mapping_end = 0xffff'ffffULL;
   for (int i = 0; i < efi_memory_map.GetNumberOfEntries(); i++) {
     const EFI::MemoryDescriptor* desc = efi_memory_map.GetDescriptor(i);
     uint64_t map_end_addr =
@@ -111,12 +112,18 @@ void InitPaging() {
   kernel_pdt->ClearMapping();
   kernel_pt->ClearMapping();
 
+  // mapping 1GB pages for real memory & memory mapped IOs
   kernel_pml4->SetTableBaseForAddr(0, direct_map_pdpt,
                                    kPageAttrPresent | kPageAttrWritable);
   for (size_t i = 0; i < direct_map_1gb_pages; i++) {
+    uint64_t page_flags = kPageAttrPresent | kPageAttrWritable;
+    if (i == 3) {
+      page_flags |= kPageAttrCacheDisable | kPageAttrWriteThrough;
+    }
     direct_map_pdpt->SetPageBaseForAddr((1ULL << 30) * i, (1ULL << 30) * i,
-                                        kPageAttrPresent | kPageAttrWritable);
+                                        page_flags);
   }
+
   kernel_pml4->SetTableBaseForAddr(kKernelBaseAddr, kernel_pdpt,
                                    kPageAttrPresent | kPageAttrWritable);
   kernel_pdpt->SetTableBaseForAddr(kKernelBaseAddr, kernel_pdt,
@@ -129,11 +136,11 @@ void InitPaging() {
            reinterpret_cast<uint8_t*>(loader_code_desc->physical_start +
                                       i * (1 << 12)),
            (1 << 12));
+    uint64_t page_flags = kPageAttrPresent | kPageAttrWritable;
     kernel_pt->SetPageBaseForAddr(kKernelBaseAddr + (1 << 12) * i,
-                                  reinterpret_cast<uint64_t>(page),
-                                  kPageAttrPresent | kPageAttrWritable);
+                                  reinterpret_cast<uint64_t>(page), page_flags);
   }
-  // kernel_pml4->Print();
+  kernel_pml4->Print();
   PutStringAndHex("CR3", ReadCR3());
   WriteCR3(reinterpret_cast<uint64_t>(kernel_pml4));
 }
