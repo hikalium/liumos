@@ -14,13 +14,7 @@ constexpr uint64_t kKernelBaseAddr = 0xFFFF'FFFF'0000'0000;
 // @apic.cc
 class LocalAPIC {
  public:
-  LocalAPIC() {
-    uint64_t base_msr = ReadMSR(MSRIndex::kLocalAPICBase);
-    base_addr_ = (base_msr & ((1ULL << MAX_PHY_ADDR_BITS) - 1)) & ~0xfffULL;
-    CPUID cpuid;
-    ReadCPUID(&cpuid, kCPUIDIndexXTopology, 0);
-    id_ = cpuid.edx;
-  }
+  LocalAPIC();
   uint8_t GetID() { return id_; }
 
  private:

@@ -1,8 +1,16 @@
 #include "liumos.h"
 
+LocalAPIC::LocalAPIC() {
+  uint64_t base_msr = ReadMSR(MSRIndex::kLocalAPICBase);
+  base_addr_ = (base_msr & ((1ULL << kMaxPhyAddr) - 1)) & ~0xfffULL;
+  CPUID cpuid;
+  ReadCPUID(&cpuid, kCPUIDIndexXTopology, 0);
+  id_ = cpuid.edx;
+}
+
 void SendEndOfInterruptToLocalAPIC() {
   *(uint32_t*)(((ReadMSR(MSRIndex::kLocalAPICBase) &
-                 ((1ULL << MAX_PHY_ADDR_BITS) - 1)) &
+                 ((1ULL << kMaxPhyAddr) - 1)) &
                 ~0xfffULL) +
                0xB0) = 0;
 }
