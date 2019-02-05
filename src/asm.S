@@ -56,6 +56,11 @@ WriteIDTR:
 	lidt [rcx]
 	ret
 
+.global WriteTaskRegister
+WriteTaskRegister:
+	ltr cx
+	ret
+
 .global Int03
 Int03:
 	int3

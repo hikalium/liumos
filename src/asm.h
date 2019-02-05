@@ -103,6 +103,15 @@ packed_struct IA_CR3 {
   }
 };
 
+packed_struct IA_TSS64 {
+  uint32_t reserved0;
+  uint64_t rsp[3];
+  uint64_t ist[9];
+  uint16_t reserved1;
+  uint16_t io_map_base_addr_ofs;
+};
+static_assert(sizeof(IA_TSS64) == 104);
+
 enum class MSRIndex : uint32_t {
   kLocalAPICBase = 0x1b,
   kEFER = 0xC0000080,
@@ -119,6 +128,8 @@ void WriteGDTR(GDTR*);
 
 void ReadIDTR(IDTR*);
 void WriteIDTR(IDTR*);
+
+void WriteTaskRegister(uint16_t);
 
 void Int03(void);
 

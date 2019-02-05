@@ -249,12 +249,14 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   PutString("\nliumOS is booting...\n\n");
   ClearIntFlag();
 
+  new (&page_allocator) PhysicalPageAllocator();
+  InitMemoryManagement(efi_memory_map);
+
   IdentifyCPU();
   gdt.Init();
   InitIDT();
-  new (&page_allocator) PhysicalPageAllocator();
-  InitMemoryManagement(efi_memory_map);
   InitPaging();
+
   ExecutionContext root_context(1, NULL, 0, NULL, 0, ReadCR3());
   Scheduler scheduler_(&root_context);
   scheduler = &scheduler_;
