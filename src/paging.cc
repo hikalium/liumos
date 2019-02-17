@@ -66,7 +66,9 @@ void InitPaging() {
   if (!efer.bits.LME)
     Panic("IA32_EFER.LME not enabled.");
   PutString("4-level paging enabled.\n");
-
+  // Even if 4-level paging is supported,
+  // whether 1GB pages are supported or not is determined by
+  // CPUID.80000001H:EDX.Page1GB [bit 26] = 1.
   const EFI::MemoryDescriptor* loader_code_desc = nullptr;
   uint64_t direct_mapping_end = 0xffff'ffffULL;
   for (int i = 0; i < efi_memory_map.GetNumberOfEntries(); i++) {
@@ -82,6 +84,8 @@ void InitPaging() {
   }
   loader_code_desc->Print();
   PutChar('\n');
+
+  // for(;;);
 
   // Adjust direct_mapping_end here
   // since VRAM region is not appeared in EFIMemoryMap
@@ -115,15 +119,24 @@ void InitPaging() {
   // mapping 1GB pages for real memory & memory mapped IOs
   kernel_pml4->SetTableBaseForAddr(0, direct_map_pdpt,
                                    kPageAttrPresent | kPageAttrWritable);
-  for (size_t i = 0; i < direct_map_1gb_pages; i++) {
-    uint64_t page_flags = kPageAttrPresent | kPageAttrWritable;
-    if (i == 3) {
-      page_flags |= kPageAttrCacheDisable | kPageAttrWriteThrough;
+  for (uint64_t addr = 0; addr < direct_mapping_end;) {
+    IA_PDT* pdt = reinterpret_cast<IA_PDT*>(page_allocator->AllocPages(1));
+    pdt->ClearMapping();
+    direct_map_pdpt->SetTableBaseForAddr(addr, pdt,
+                                         kPageAttrPresent | kPageAttrWritable);
+    for (int i = 0; i < IA_PDT::kNumOfPDE; i++) {
+      if (addr >= direct_mapping_end)
+        break;
+      uint64_t attr = kPageAttrPresent | kPageAttrWritable;
+      if (i == 3) {
+        attr |= kPageAttrCacheDisable | kPageAttrWriteThrough;
+      }
+      pdt->SetPageBaseForAddr(addr, addr, attr);
+      addr += 2 * 1024 * 1024;
     }
-    direct_map_pdpt->SetPageBaseForAddr((1ULL << 30) * i, (1ULL << 30) * i,
-                                        page_flags);
   }
 
+  /*
   kernel_pml4->SetTableBaseForAddr(kKernelBaseAddr, kernel_pdpt,
                                    kPageAttrPresent | kPageAttrWritable);
   kernel_pdpt->SetTableBaseForAddr(kKernelBaseAddr, kernel_pdt,
@@ -140,7 +153,7 @@ void InitPaging() {
     kernel_pt->SetPageBaseForAddr(kKernelBaseAddr + (1 << 12) * i,
                                   reinterpret_cast<uint64_t>(page), page_flags);
   }
-  kernel_pml4->Print();
+  */
   PutStringAndHex("CR3", ReadCR3());
   WriteCR3(reinterpret_cast<uint64_t>(kernel_pml4));
 }

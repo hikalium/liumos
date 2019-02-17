@@ -53,8 +53,14 @@ void EFI::MemoryMap::Init() {
   bytes_used_ = sizeof(buf_);
   Status status = EFI::system_table->boot_services->GetMemoryMap(
       &bytes_used_, buf_, &key_, &descriptor_size_, &descriptor_version);
-  if (status != Status::kSuccess)
+  if (status == Status::kBufferTooSmall) {
+    PutStringAndHex("Buffer size needed", bytes_used_);
+    Panic("Failed to get memory map (not enough buffer)");
+  }
+  if (status != Status::kSuccess) {
+    PutStringAndHex("status", static_cast<int>(status));
     Panic("Failed to get memory map");
+  }
 }
 
 void EFI::MemoryDescriptor::Print() const {
