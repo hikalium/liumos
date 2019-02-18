@@ -1,14 +1,37 @@
 #include "liumos.h"
 
-LocalAPIC::LocalAPIC() {
+void LocalAPIC::Init(void) {
   uint64_t base_msr = ReadMSR(MSRIndex::kLocalAPICBase);
+
+  if (!(base_msr & kLocalAPICBaseBitAPICEnabled))
+    Panic("APIC not enabled");
+
+  if (cpu_features.x2apic && !(base_msr & kLocalAPICBaseBitx2APICEnabled)) {
+    base_msr |= kLocalAPICBaseBitx2APICEnabled;
+    WriteMSR(MSRIndex::kLocalAPICBase, base_msr);
+    base_msr = ReadMSR(MSRIndex::kLocalAPICBase);
+  }
+
+  PutString("LocalAPIC mode: ");
+  is_x2apic_ = (base_msr & (1 << 10));
+  if (is_x2apic_)
+    PutString("x2APIC");
+  else
+    PutString("xAPIC");
+
   base_addr_ = (base_msr & ((1ULL << kMaxPhyAddr) - 1)) & ~0xfffULL;
   CPUID cpuid;
   ReadCPUID(&cpuid, kCPUIDIndexXTopology, 0);
   id_ = cpuid.edx;
+  PutStringAndHex(" id", id_);
 }
 
-void SendEndOfInterruptToLocalAPIC() {
+void LocalAPIC::SendEndOfInterrupt(void) {
+  if (is_x2apic_) {
+    // WRMSR of a non-zero value causes #GP(0).
+    WriteMSR(MSRIndex::kx2APICEndOfInterrupt, 0);
+    return;
+  }
   *(uint32_t*)(((ReadMSR(MSRIndex::kLocalAPICBase) &
                  ((1ULL << kMaxPhyAddr) - 1)) &
                 ~0xfffULL) +

@@ -15,8 +15,9 @@ constexpr uint64_t kKernelBaseAddr = 0xFFFF'FFFF'0000'0000;
 // @apic.cc
 class LocalAPIC {
  public:
-  LocalAPIC();
+  void Init(void);
   uint8_t GetID() { return id_; }
+  void SendEndOfInterrupt(void);
 
  private:
   uint32_t* GetRegisterAddr(uint64_t offset) {
@@ -25,9 +26,9 @@ class LocalAPIC {
 
   uint64_t base_addr_;
   uint8_t id_;
+  bool is_x2apic_;
 };
 
-void SendEndOfInterruptToLocalAPIC();
 void InitIOAPIC(uint64_t local_apic_id);
 
 // @console.c
@@ -106,6 +107,8 @@ class PhysicalPageAllocator;
 extern EFI::MemoryMap efi_memory_map;
 extern PhysicalPageAllocator* page_allocator;
 extern int kMaxPhyAddr;
+extern LocalAPIC bsp_local_apic;
+extern CPUFeatureSet cpu_features;
 
 void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table);
 

@@ -5,11 +5,18 @@
 extern "C" {
 
 constexpr uint32_t kCPUID01H_EDXBitAPIC = (1 << 9);
+constexpr uint32_t kCPUID01H_ECXBitx2APIC = (1 << 21);
 constexpr uint32_t kCPUID01H_EDXBitMSR = (1 << 5);
 constexpr uint32_t kCPUIDIndexMaxAddr = 0x8000'0008;
 constexpr uint32_t kCPUIDIndexXTopology = 0x0B;
 constexpr uint64_t kIOAPICRegIndexAddr = 0xfec00000;
 constexpr uint64_t kIOAPICRegDataAddr = kIOAPICRegIndexAddr + 0x10;
+constexpr uint64_t kLocalAPICBaseBitAPICEnabled = (1 << 11);
+constexpr uint64_t kLocalAPICBaseBitx2APICEnabled = (1 << 10);
+
+packed_struct CPUFeatureSet {
+  bool x2apic;
+};
 
 packed_struct CPUID {
   uint32_t eax;
@@ -114,6 +121,7 @@ static_assert(sizeof(IA_TSS64) == 104);
 
 enum class MSRIndex : uint32_t {
   kLocalAPICBase = 0x1b,
+  kx2APICEndOfInterrupt = 0x80b,
   kEFER = 0xC0000080,
   kKernelGSBase = 0xC0000102,
 };

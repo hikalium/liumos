@@ -19,7 +19,7 @@ extern "C" ContextSwitchRequest* IntHandler(uint64_t intcode,
   ExecutionContext* current_context =
       reinterpret_cast<ExecutionContext*>(kernel_gs_base);
   if (intcode == 0x20) {
-    SendEndOfInterruptToLocalAPIC();
+    bsp_local_apic.SendEndOfInterrupt();
     ExecutionContext* next_context = scheduler->SwitchContext(current_context);
     if (!next_context) {
       // no need to switching context.
@@ -31,7 +31,7 @@ extern "C" ContextSwitchRequest* IntHandler(uint64_t intcode,
     return &context_switch_request;
   }
   if (intcode == 0x21) {
-    SendEndOfInterruptToLocalAPIC();
+    bsp_local_apic.SendEndOfInterrupt();
     keycode_buffer.Push(ReadIOPort8(kIOPortKeyboardData));
     return NULL;
   }

@@ -6,6 +6,8 @@
 EFI::MemoryMap efi_memory_map;
 PhysicalPageAllocator* page_allocator;
 int kMaxPhyAddr;
+LocalAPIC bsp_local_apic;
+CPUFeatureSet cpu_features;
 
 HPET hpet;
 
@@ -215,6 +217,7 @@ void IdentifyCPU() {
     Panic("APIC not supported");
   if (!(cpuid.edx & kCPUID01H_EDXBitMSR))
     Panic("MSR not supported");
+  cpu_features.x2apic = cpuid.ecx & kCPUID01H_ECXBitx2APIC;
 
   if (kCPUIDIndexMaxAddr <= kMaxCPUID) {
     ReadCPUID(&cpuid, kCPUIDIndexMaxAddr, 0);
@@ -227,14 +230,9 @@ void IdentifyCPU() {
     kMaxPhyAddr = 36;
   }
   PutStringAndHex("kMaxPhyAddr", kMaxPhyAddr);
-
-  assert(kCPUIDIndexXTopology <= kMaxCPUID);
-  ReadCPUID(&cpuid, kCPUIDIndexXTopology, 0);
-  PutStringAndHex("x2APIC ID", cpuid.edx);
 }
 
 void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
-  LocalAPIC local_apic;
   GDT gdt;
 
   EFI::Init(system_table);
@@ -263,13 +261,10 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
 
   ACPI::DetectTables();
 
-  new (&local_apic) LocalAPIC();
+  bsp_local_apic.Init();
   Disable8259PIC();
 
-  uint64_t local_apic_id = local_apic.GetID();
-  PutStringAndHex("LOCAL APIC ID", local_apic_id);
-
-  InitIOAPIC(local_apic_id);
+  InitIOAPIC(bsp_local_apic.GetID());
 
   hpet.Init(
       static_cast<HPET::RegisterSpace*>(ACPI::hpet->base_address.address));
