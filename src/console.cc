@@ -37,7 +37,7 @@ void PutChar(char c) {
     DrawCharacter(c, cursor_x, cursor_y);
     cursor_x += 8;
   }
-  if (cursor_x > xsize) {
+  if (cursor_x >= xsize) {
     cursor_y += 16;
     cursor_x = 0;
   } else if (cursor_x < 0) {
