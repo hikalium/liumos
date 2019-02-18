@@ -24,8 +24,11 @@ void SetSerialForConsole(SerialPort* p) {
 }
 
 void PutChar(char c) {
-  if (serial_port)
+  if (serial_port) {
+    if (c == '\n')
+      serial_port->SendChar('\r');
     serial_port->SendChar(c);
+  }
   if (!use_vram) {
     if (c == '\n') {
       EFI::ConOut::PutChar('\r');

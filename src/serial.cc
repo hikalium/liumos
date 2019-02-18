@@ -21,3 +21,13 @@ void SerialPort::SendChar(char c) {
     ;
   WriteIOPort8(port_, c);
 }
+
+bool SerialPort::IsReceived(void) {
+  return ReadIOPort8(port_ + 5) & 1;
+}
+
+char SerialPort::ReadCharReceived(void) {
+  if (!IsReceived())
+    return 0;
+  return ReadIOPort8(port_);
+}

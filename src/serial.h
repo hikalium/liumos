@@ -6,6 +6,8 @@ class SerialPort {
  public:
   void Init(uint16_t port);
   void SendChar(char c);
+  bool IsReceived(void);
+  char ReadCharReceived(void);
 
  private:
   bool IsTransmitEmpty(void);

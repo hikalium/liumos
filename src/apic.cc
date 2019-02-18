@@ -69,6 +69,6 @@ static void SetInterruptRedirection(uint64_t local_apic_id,
 }
 
 void InitIOAPIC(uint64_t local_apic_id) {
-  SetInterruptRedirection(local_apic_id, 2, 0x20);
-  SetInterruptRedirection(local_apic_id, 1, 0x21);
+  SetInterruptRedirection(local_apic_id, 2, 0x20);  // HPET
+  SetInterruptRedirection(local_apic_id, 1, 0x21);  // KBC
 }

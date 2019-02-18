@@ -97,39 +97,58 @@ bool IsEqualString(const char* a, const char* b) {
   return false;
 }
 
+void ProcessCommand(TextBox& tbox) {
+  const char* line = tbox.GetRecordedString();
+  if (IsEqualString(line, "hello")) {
+    PutString("Hello, world!\n");
+  } else if (IsEqualString(line, "show nfit")) {
+    ConsoleCommand::ShowNFIT();
+  } else if (IsEqualString(line, "show madt")) {
+    ConsoleCommand::ShowMADT();
+  } else if (IsEqualString(line, "show mmap")) {
+    ConsoleCommand::ShowEFIMemoryMap();
+  } else if (IsEqualString(line, "free")) {
+    ConsoleCommand::Free();
+  } else if (IsEqualString(line, "hello.bin")) {
+    ParseELFFile(hello_bin_file);
+  } else if (IsEqualString(line, "liumos.elf")) {
+    ParseELFFile(liumos_elf_file);
+  } else {
+    PutString("Command not found: ");
+    PutString(tbox.GetRecordedString());
+    tbox.putc('\n');
+  }
+}
+
 void WaitAndProcessCommand(TextBox& tbox) {
   PutString("> ");
   tbox.StartRecording();
   while (1) {
     StoreIntFlagAndHalt();
-    // ClearIntFlag();
-    while (!keycode_buffer.IsEmpty()) {
-      uint16_t keyid = ParseKeyCode(keycode_buffer.Pop());
-      if (!keyid && keyid & KeyID::kMaskBreak)
-        continue;
-      if (keyid == KeyID::kEnter) {
+    while (1) {
+      uint16_t keyid;
+      if (!keycode_buffer.IsEmpty()) {
+        keyid = ParseKeyCode(keycode_buffer.Pop());
+        if (!keyid && keyid & KeyID::kMaskBreak)
+          continue;
+        if (keyid == KeyID::kEnter) {
+          keyid = '\n';
+        }
+      } else if (com1.IsReceived()) {
+        keyid = com1.ReadCharReceived();
+        if (keyid == '\n') {
+          continue;
+        }
+        if (keyid == '\r') {
+          keyid = '\n';
+        }
+      } else {
+        break;
+      }
+      if (keyid == '\n') {
         tbox.StopRecording();
         tbox.putc('\n');
-        const char* line = tbox.GetRecordedString();
-        if (IsEqualString(line, "hello")) {
-          PutString("Hello, world!\n");
-        } else if (IsEqualString(line, "show nfit")) {
-          ConsoleCommand::ShowNFIT();
-        } else if (IsEqualString(line, "show madt")) {
-          ConsoleCommand::ShowMADT();
-        } else if (IsEqualString(line, "show mmap")) {
-          ConsoleCommand::ShowEFIMemoryMap();
-        } else if (IsEqualString(line, "free")) {
-          ConsoleCommand::Free();
-        } else if (IsEqualString(line, "hello.bin")) {
-          ParseELFFile(hello_bin_file);
-        } else if (IsEqualString(line, "liumos.elf")) {
-          ParseELFFile(liumos_elf_file);
-        } else {
-          PutString("Command not found: ");
-          PutString(tbox.GetRecordedString());
-          tbox.putc('\n');
-        }
+        ProcessCommand(tbox);
         return;
       }
       tbox.putc(keyid);
@@ -284,8 +303,6 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
                                ReadSSSelector(),
                                reinterpret_cast<uint64_t>(CreatePageTable()));
   scheduler->RegisterExecutionContext(&sub_context);
-
-  ConsoleCommand::ShowMADT();
 
   TextBox console_text_box;
   while (1) {
