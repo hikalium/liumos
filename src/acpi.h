@@ -100,10 +100,12 @@ packed_struct HPET {
 };
 
 enum MADTStructureType {
-  kProcessorLocalAPICInfo = 0,
-  kIOAPICInfo = 1,
-  kInterruptSourceOverrideInfo = 2,
-  kLocalAPICNMIStruct = 4,
+  kProcessorLocalAPICInfo = 0x0,
+  kIOAPICInfo = 0x1,
+  kInterruptSourceOverrideInfo = 0x2,
+  kLocalAPICNMIStruct = 0x4,
+  kProcessorLocalx2APICStruct = 0x9,
+  kLocalx2APICNMIStruct = 0xA,
 };
 
 packed_struct MADT {

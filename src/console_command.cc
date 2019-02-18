@@ -91,6 +91,19 @@ void ShowMADT() {
       PutMPSINTIFlags(madt->entries[i + 3]);
       PutString(" LINT#=0x");
       PutHex64(madt->entries[i + 5]);
+    } else if (type == kProcessorLocalx2APICStruct) {
+      PutString("x2APIC id=0x");
+      PutHex64(*(uint32_t*)&madt->entries[i + 4]);
+      PutString((madt->entries[i + 8] & 1) ? " Enabled" : "Disabled");
+      PutString(" acpi_processor_uid=0x");
+      PutHex64(*(uint32_t*)&madt->entries[i + 12]);
+    } else if (type == kLocalx2APICNMIStruct) {
+      PutString("x2APIC NMI");
+      PutMPSINTIFlags(madt->entries[i + 2]);
+      PutString(" acpi_processor_uid=0x");
+      PutHex64(*(uint32_t*)&madt->entries[i + 4]);
+      PutString(" LINT#=0x");
+      PutHex64(madt->entries[i + 8]);
     }
     PutString("\n");
   }
