@@ -55,7 +55,7 @@ run_vb_dbg : .FORCE
 	- VBoxManage closemedium disk liumos.vdi --delete
 	make liumos.vdi
 	VBoxManage storageattach liumOS --storagectl SATA --port 0 --medium liumos.vdi --type hdd
-	VirtualBoxVM --startvm liumOS --debug
+	VirtualBoxVM --startvm liumOS --dbg
 
 img : files .FORCE
 	dd if=/dev/zero of=liumos.img bs=16384 count=1024
