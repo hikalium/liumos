@@ -73,6 +73,13 @@ ReadIOPort8:
   in al, dx
   ret
 
+.global WriteIOPort8
+WriteIOPort8:
+	mov al, dl
+  mov dx, cx
+  out dx, al
+  ret
+
 .global StoreIntFlag
 StoreIntFlag:
 	sti
@@ -296,6 +303,15 @@ AsmIntHandler21:
 	push rdx
 	push r8
 	mov rcx, 0x21
+	lea r8, [rsp + 8 * 3]
+	jmp IntHandlerWrapper
+
+.global AsmIntHandlerNotImplemented
+AsmIntHandlerNotImplemented:
+	push rcx
+	push rdx
+	push r8
+	mov rcx, 0x100
 	lea r8, [rsp + 8 * 3]
 	jmp IntHandlerWrapper
 

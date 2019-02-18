@@ -9,8 +9,8 @@ packed_struct ContextSwitchRequest {
 Scheduler* scheduler;
 RingBuffer<uint8_t, 16> keycode_buffer;
 
-IDTR idtr;
 ContextSwitchRequest context_switch_request;
+IDTGateDescriptor idt[256];
 
 extern "C" ContextSwitchRequest* IntHandler(uint64_t intcode,
                                             uint64_t error_code,
@@ -70,7 +70,7 @@ void SetIntHandler(int index,
                    IDTType type,
                    uint8_t dpl,
                    void (*handler)()) {
-  IDTGateDescriptor* desc = &idtr.base[index];
+  IDTGateDescriptor* desc = &idt[index];
   desc->segment_descriptor = segm_desc;
   desc->interrupt_stack_table = ist;
   desc->type = static_cast<int>(type);
@@ -85,11 +85,18 @@ void SetIntHandler(int index,
 }
 
 void InitIDT() {
-  ReadIDTR(&idtr);
-
+  uint16_t cs = ReadCSSelector();
   new (&keycode_buffer) RingBuffer<uint8_t, 16>();
 
-  uint16_t cs = ReadCSSelector();
+  IDTR idtr;
+  idtr.limit = sizeof(idt) - 1;
+  idtr.base = idt;
+
+  for (int i = 0; i < 0x100; i++) {
+    SetIntHandler(i, cs, 0, IDTType::kInterruptGate, 0,
+                  AsmIntHandlerNotImplemented);
+  }
+
   SetIntHandler(0x03, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler03);
   SetIntHandler(0x0d, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler0D);
   SetIntHandler(0x0e, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler0E);

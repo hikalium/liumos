@@ -9,6 +9,7 @@
 #include "interrupt.h"
 #include "keyid.h"
 #include "paging.h"
+#include "serial.h"
 
 constexpr uint64_t kKernelBaseAddr = 0xFFFF'FFFF'0000'0000;
 
@@ -34,6 +35,7 @@ void InitIOAPIC(uint64_t local_apic_id);
 // @console.c
 void ResetCursorPosition();
 void EnableVideoModeForConsole();
+void SetSerialForConsole(SerialPort* p);
 void PutChar(char c);
 void PutString(const char* s);
 void PutChars(const char* s, int n);
@@ -109,6 +111,7 @@ extern PhysicalPageAllocator* page_allocator;
 extern int kMaxPhyAddr;
 extern LocalAPIC bsp_local_apic;
 extern CPUFeatureSet cpu_features;
+extern SerialPort com1;
 
 void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table);
 

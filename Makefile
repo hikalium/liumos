@@ -5,7 +5,8 @@ QEMU_ARGS=\
 					 -machine q35,nvdimm -cpu qemu64 -smp 4 \
 					 -monitor stdio \
 					 -m 8G,slots=2,maxmem=10G \
-					 -drive format=raw,file=fat:rw:mnt -net none
+					 -drive format=raw,file=fat:rw:mnt -net none \
+					 -serial tcp::1234,server,nowait
 
 QEMU_ARGS_PMEM=\
 					 $(QEMU_ARGS) \

@@ -8,6 +8,7 @@ PhysicalPageAllocator* page_allocator;
 int kMaxPhyAddr;
 LocalAPIC bsp_local_apic;
 CPUFeatureSet cpu_features;
+SerialPort com1;
 
 HPET hpet;
 
@@ -243,6 +244,8 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   hello_bin_file.LoadFromEFISimpleFS(L"hello.bin");
   liumos_elf_file.LoadFromEFISimpleFS(L"LIUMOS.ELF");
   EFI::GetMemoryMapAndExitBootServices(image_handle, efi_memory_map);
+  com1.Init(kPortCOM1);
+  SetSerialForConsole(&com1);
 
   PutString("\nliumOS is booting...\n\n");
   ClearIntFlag();

@@ -142,6 +142,7 @@ void WriteTaskRegister(uint16_t);
 void Int03(void);
 
 uint8_t ReadIOPort8(uint16_t);
+void WriteIOPort8(uint16_t, uint8_t);
 
 void StoreIntFlag(void);
 void StoreIntFlagAndHalt(void);
@@ -166,6 +167,7 @@ void AsmIntHandler0D(void);
 void AsmIntHandler0E(void);
 void AsmIntHandler20(void);
 void AsmIntHandler21(void);
+void AsmIntHandlerNotImplemented(void);
 
 void Disable8259PIC(void);
 }

@@ -6,6 +6,7 @@ extern int ysize;
 
 int cursor_x, cursor_y;
 bool use_vram;
+SerialPort* serial_port;
 
 void ResetCursorPosition() {
   cursor_x = 0;
@@ -18,7 +19,13 @@ void EnableVideoModeForConsole() {
   use_vram = true;
 }
 
+void SetSerialForConsole(SerialPort* p) {
+  serial_port = p;
+}
+
 void PutChar(char c) {
+  if (serial_port)
+    serial_port->SendChar(c);
   if (!use_vram) {
     if (c == '\n') {
       EFI::ConOut::PutChar('\r');
