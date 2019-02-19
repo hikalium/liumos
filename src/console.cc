@@ -10,7 +10,7 @@ void ResetCursorPosition() {
 }
 
 void EnableVideoModeForConsole() {
-  if (!vram_sheet.GetBuf())
+  if (!screen_sheet)
     return;
   use_vram = true;
 }
@@ -40,23 +40,24 @@ void PutChar(char c) {
   } else if (c == '\b') {
     cursor_x -= 8;
   } else {
-    vram_sheet.DrawCharacter(c, cursor_x, cursor_y);
+    screen_sheet->DrawCharacter(c, cursor_x, cursor_y);
     cursor_x += 8;
   }
-  if (cursor_x >= vram_sheet.GetXSize()) {
+  if (cursor_x >= screen_sheet->GetXSize()) {
     cursor_y += 16;
     cursor_x = 0;
   } else if (cursor_x < 0) {
     cursor_y -= 16;
-    cursor_x = (vram_sheet.GetXSize() - 8) & ~7;
+    cursor_x = (screen_sheet->GetXSize() - 8) & ~7;
   }
   if (c == '\b') {
-    vram_sheet.DrawRect(cursor_x, cursor_y, 8, 16, 0x000000);
+    screen_sheet->DrawRect(cursor_x, cursor_y, 8, 16, 0x000000);
   }
-  if (cursor_y + 16 > vram_sheet.GetYSize()) {
-    vram_sheet.BlockTransfer(0, 0, 0, 16, vram_sheet.GetXSize(),
-                             vram_sheet.GetYSize() - 16);
-    vram_sheet.DrawRect(0, cursor_y - 16, vram_sheet.GetXSize(), 16, 0x000000);
+  if (cursor_y + 16 > screen_sheet->GetYSize()) {
+    screen_sheet->BlockTransfer(0, 0, 0, 16, screen_sheet->GetXSize(),
+                                screen_sheet->GetYSize() - 16);
+    screen_sheet->DrawRect(0, cursor_y - 16, screen_sheet->GetXSize(), 16,
+                           0x000000);
     cursor_y -= 16;
   }
 }

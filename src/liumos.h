@@ -82,8 +82,9 @@ inline void* operator new(size_t, void* where) {
 }
 
 // @graphics.cc
-extern Sheet vram_sheet;
-void InitGraphics();
+extern Sheet* screen_sheet;
+void InitGraphics(void);
+void InitDoubleBuffer(void);
 
 // @keyboard.cc
 constexpr uint16_t kIOPortKeyboardData = 0x0060;
@@ -115,7 +116,18 @@ class PhysicalPageAllocator {
  public:
   PhysicalPageAllocator() : head_(nullptr) {}
   void FreePages(void* phys_addr, uint64_t num_of_pages);
-  void* AllocPages(int num_of_pages);
+  template <typename T>
+  T AllocPages(int num_of_pages) {
+    FreeInfo* info = head_;
+    void* addr = nullptr;
+    while (info) {
+      addr = info->ProvidePages(num_of_pages);
+      if (addr)
+        return reinterpret_cast<T>(addr);
+      info = info->GetNext();
+    }
+    Panic("Cannot allocate pages");
+  }
   void Print();
 
  private:

@@ -14,6 +14,7 @@ HPET hpet;
 
 PhysicalPageAllocator page_allocator_;
 
+File logo_file;
 File hello_bin_file;
 File liumos_elf_file;
 
@@ -38,10 +39,10 @@ void SubTask() {
   int x = 0;
   int move_width = 128;
   while (1) {
-    vram_sheet.DrawRect(vram_sheet.GetXSize() - 20 - move_width, 10,
-                        20 + move_width, 20, 0xffffff);
-    vram_sheet.DrawRect(vram_sheet.GetXSize() - 20 - move_width + x, 10, 20, 20,
-                        col);
+    screen_sheet->DrawRect(screen_sheet->GetXSize() - 20 - move_width, 10,
+                           20 + move_width, 20, 0xffffff);
+    screen_sheet->DrawRect(screen_sheet->GetXSize() - 20 - move_width + x, 10,
+                           20, 20, col);
     x = (x + 4) & 127;
     StoreIntFlagAndHalt();
   }
@@ -158,9 +159,7 @@ void WaitAndProcessCommand(TextBox& tbox) {
   }
 }
 
-void OpenAndPrintLogoFile() {
-  File logo_file;
-  logo_file.LoadFromEFISimpleFS(L"logo.ppm");
+void PrintLogoFile() {
   const uint8_t* buf = logo_file.GetBuf();
   uint64_t buf_size = logo_file.GetFileSize();
   if (buf[0] != 'P' || buf[1] != '3') {
@@ -210,7 +209,8 @@ void OpenAndPrintLogoFile() {
       channel_count++;
       if (channel_count == 3) {
         channel_count = 0;
-        vram_sheet.DrawRect(vram_sheet.GetXSize() - width + x++, y, 1, 1, rgb);
+        screen_sheet->DrawRect(screen_sheet->GetXSize() - width + x++, y, 1, 1,
+                               rgb);
         if (x >= width) {
           x = 0;
           y++;
@@ -259,20 +259,24 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
 
   EFI::Init(system_table);
   EFI::ConOut::ClearScreen();
-  InitGraphics();
-  EnableVideoModeForConsole();
-  OpenAndPrintLogoFile();
+  logo_file.LoadFromEFISimpleFS(L"logo.ppm");
   hello_bin_file.LoadFromEFISimpleFS(L"hello.bin");
   liumos_elf_file.LoadFromEFISimpleFS(L"LIUMOS.ELF");
+  InitGraphics();
+  EnableVideoModeForConsole();
   EFI::GetMemoryMapAndExitBootServices(image_handle, efi_memory_map);
+
   com1.Init(kPortCOM1);
   SetSerialForConsole(&com1);
 
+  PrintLogoFile();
   PutString("\nliumOS is booting...\n\n");
   ClearIntFlag();
 
   new (&page_allocator) PhysicalPageAllocator();
   InitMemoryManagement(efi_memory_map);
+
+  InitDoubleBuffer();
 
   IdentifyCPU();
   gdt.Init();
@@ -295,7 +299,8 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   hpet.SetTimerMs(
       0, 10, HPET::TimerConfig::kUsePeriodicMode | HPET::TimerConfig::kEnable);
   const int kNumOfStackPages = 3;
-  void* sub_context_stack_base = page_allocator->AllocPages(kNumOfStackPages);
+  void* sub_context_stack_base =
+      page_allocator->AllocPages<void*>(kNumOfStackPages);
   void* sub_context_rsp = reinterpret_cast<void*>(
       reinterpret_cast<uint64_t>(sub_context_stack_base) +
       kNumOfStackPages * (1 << 12));

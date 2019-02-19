@@ -53,7 +53,7 @@ void IA_PML4::Print() {
 }
 
 IA_PML4* CreatePageTable() {
-  IA_PML4* pml4 = reinterpret_cast<IA_PML4*>(page_allocator->AllocPages(1));
+  IA_PML4* pml4 = page_allocator->AllocPages<IA_PML4*>(1);
   pml4->ClearMapping();
   pml4->SetTableBaseForAddr(0, direct_map_pdpt,
                             kPageAttrPresent | kPageAttrWritable);
@@ -90,8 +90,8 @@ void InitPaging() {
   // Adjust direct_mapping_end here
   // since VRAM region is not appeared in EFIMemoryMap
   {
-    uint64_t map_end_addr = reinterpret_cast<uint64_t>(vram_sheet.GetBuf()) +
-                            vram_sheet.GetBufSize();
+    uint64_t map_end_addr = reinterpret_cast<uint64_t>(screen_sheet->GetBuf()) +
+                            screen_sheet->GetBufSize();
     if (map_end_addr > direct_mapping_end)
       direct_mapping_end = map_end_addr;
   }
@@ -103,11 +103,11 @@ void InitPaging() {
   assert(direct_map_1gb_pages < (1 << 9));
   PutStringAndHex("InitPaging", reinterpret_cast<uint64_t>(InitPaging));
 
-  kernel_pml4 = reinterpret_cast<IA_PML4*>(page_allocator->AllocPages(1));
-  direct_map_pdpt = reinterpret_cast<IA_PDPT*>(page_allocator->AllocPages(1));
-  kernel_pdpt = reinterpret_cast<IA_PDPT*>(page_allocator->AllocPages(1));
-  kernel_pdt = reinterpret_cast<IA_PDT*>(page_allocator->AllocPages(1));
-  kernel_pt = reinterpret_cast<IA_PT*>(page_allocator->AllocPages(1));
+  kernel_pml4 = page_allocator->AllocPages<IA_PML4*>(1);
+  direct_map_pdpt = page_allocator->AllocPages<IA_PDPT*>(1);
+  kernel_pdpt = page_allocator->AllocPages<IA_PDPT*>(1);
+  kernel_pdt = page_allocator->AllocPages<IA_PDT*>(1);
+  kernel_pt = page_allocator->AllocPages<IA_PT*>(1);
 
   kernel_pml4->ClearMapping();
   direct_map_pdpt->ClearMapping();
@@ -119,7 +119,7 @@ void InitPaging() {
   kernel_pml4->SetTableBaseForAddr(0, direct_map_pdpt,
                                    kPageAttrPresent | kPageAttrWritable);
   for (uint64_t addr = 0; addr < direct_mapping_end;) {
-    IA_PDT* pdt = reinterpret_cast<IA_PDT*>(page_allocator->AllocPages(1));
+    IA_PDT* pdt = page_allocator->AllocPages<IA_PDT*>(1);
     pdt->ClearMapping();
     direct_map_pdpt->SetTableBaseForAddr(addr, pdt,
                                          kPageAttrPresent | kPageAttrWritable);
@@ -143,7 +143,7 @@ void InitPaging() {
   kernel_pdt->SetTableBaseForAddr(kKernelBaseAddr, kernel_pt,
                                   kPageAttrPresent | kPageAttrWritable);
   for (size_t i = 0; i < loader_code_desc->number_of_pages; i++) {
-    uint8_t* page = reinterpret_cast<uint8_t*>(page_allocator->AllocPages(1));
+    uint8_t* page = page_allocator->AllocPages<uint8_t*>(1);
     memcpy(page,
            reinterpret_cast<uint8_t*>(loader_code_desc->physical_start +
                                       i * (1 << 12)),

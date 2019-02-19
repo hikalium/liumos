@@ -102,7 +102,7 @@ void* EFI::GetConfigurationTableByUUID(const GUID* guid) {
 void EFI::GetMemoryMapAndExitBootServices(Handle image_handle,
                                           EFI::MemoryMap& map) {
   EFI::Status status;
-  PutString("Trying to exit  boot services..");
+  PutString("Trying to exit boot services..");
   do {
     PutString(".");
     map.Init();

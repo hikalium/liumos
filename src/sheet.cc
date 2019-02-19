@@ -13,6 +13,7 @@ void Sheet::DrawCharacter(char c, int px, int py) {
       buf_[4 * (y * pixels_per_scan_line_ + x) + 2] = col;
     }
   }
+  Flush(px, py, 8, 16);
 }
 
 void Sheet::DrawRect(int px, int py, int w, int h, uint32_t col) {
@@ -25,6 +26,7 @@ void Sheet::DrawRect(int px, int py, int w, int h, uint32_t col) {
       }
     }
   }
+  Flush(px, py, w, h);
 }
 
 void Sheet::BlockTransfer(int to_x,
@@ -40,6 +42,20 @@ void Sheet::BlockTransfer(int to_x,
             buf_[4 * ((from_y + dy) * pixels_per_scan_line_ + (from_x + dx)) +
                  i];
       }
+    }
+  }
+  Flush(to_x, to_y, w, h);
+}
+
+void Sheet::Flush(int px, int py, int w, int h) {
+  // Assume parent has the same resolution with this sheet
+  if (!parent_)
+    return;
+  for (int y = py; y < py + h; y++) {
+    for (int x = px; x < px + w; x++) {
+      reinterpret_cast<uint32_t*>(
+          parent_->buf_)[y * pixels_per_scan_line_ + x] =
+          reinterpret_cast<uint32_t*>(buf_)[y * pixels_per_scan_line_ + x];
     }
   }
 }

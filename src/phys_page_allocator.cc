@@ -19,18 +19,6 @@ void PhysicalPageAllocator::FreePages(void* phys_addr, uint64_t num_of_pages) {
   head_ = new (info) FreeInfo(num_of_pages, head_);
 }
 
-void* PhysicalPageAllocator::AllocPages(int num_of_pages) {
-  FreeInfo* info = head_;
-  void* addr = nullptr;
-  while (info) {
-    addr = info->ProvidePages(num_of_pages);
-    if (addr)
-      return addr;
-    info = info->GetNext();
-  }
-  Panic("Cannot allocate pages");
-}
-
 void* PhysicalPageAllocator::FreeInfo::ProvidePages(int num_of_req_pages) {
   if (!CanProvidePages(num_of_req_pages))
     return nullptr;

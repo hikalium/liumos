@@ -60,7 +60,7 @@ run_vb_dbg : .FORCE
 
 img : files .FORCE
 	dd if=/dev/zero of=liumos.img bs=16384 count=1024
-	/usr/local/Cellar/dosfstools/4.1/sbin/mkfs.vfat liumos.img
+	/usr/local/Cellar/dosfstools/4.1/sbin/mkfs.*fat liumos.img
 	mkdir -p mnt_img
 	hdiutil attach -mountpoint mnt_img liumos.img
 	cp -r mnt/* mnt_img/
