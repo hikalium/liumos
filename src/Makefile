@@ -2,7 +2,8 @@ OBJS= acpi.o apic.o asm.o console.o console_command.o \
 		 efi.o efimain.o elf.o file.o \
 		 gdt.o generic.o graphics.o guid.o \
 		 hpet.o interrupt.o keyboard.o\
-		 libfunc.o liumos.o paging.o phys_page_allocator.o scheduler.o serial.o \
+		 libfunc.o liumos.o paging.o phys_page_allocator.o \
+		 scheduler.o serial.o sheet.o \
 		 font.gen.o
 HEADERS=$(wildcard *.h) lib/musl/include/elf.h
 OVMF=ovmf/bios64.bin

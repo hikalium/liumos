@@ -1,9 +1,5 @@
 #include "liumos.h"
 
-extern uint8_t* vram;
-extern int xsize;
-extern int ysize;
-
 int cursor_x, cursor_y;
 bool use_vram;
 SerialPort* serial_port;
@@ -14,7 +10,7 @@ void ResetCursorPosition() {
 }
 
 void EnableVideoModeForConsole() {
-  if (!vram)
+  if (!vram_sheet.GetBuf())
     return;
   use_vram = true;
 }
@@ -44,22 +40,23 @@ void PutChar(char c) {
   } else if (c == '\b') {
     cursor_x -= 8;
   } else {
-    DrawCharacter(c, cursor_x, cursor_y);
+    vram_sheet.DrawCharacter(c, cursor_x, cursor_y);
     cursor_x += 8;
   }
-  if (cursor_x >= xsize) {
+  if (cursor_x >= vram_sheet.GetXSize()) {
     cursor_y += 16;
     cursor_x = 0;
   } else if (cursor_x < 0) {
     cursor_y -= 16;
-    cursor_x = (xsize - 8) & ~7;
+    cursor_x = (vram_sheet.GetXSize() - 8) & ~7;
   }
   if (c == '\b') {
-    DrawRect(cursor_x, cursor_y, 8, 16, 0x000000);
+    vram_sheet.DrawRect(cursor_x, cursor_y, 8, 16, 0x000000);
   }
-  if (cursor_y + 16 > ysize) {
-    BlockTransfer(0, 0, 0, 16, xsize, ysize - 16);
-    DrawRect(0, cursor_y - 16, xsize, 16, 0x000000);
+  if (cursor_y + 16 > vram_sheet.GetYSize()) {
+    vram_sheet.BlockTransfer(0, 0, 0, 16, vram_sheet.GetXSize(),
+                             vram_sheet.GetYSize() - 16);
+    vram_sheet.DrawRect(0, cursor_y - 16, vram_sheet.GetXSize(), 16, 0x000000);
     cursor_y -= 16;
   }
 }

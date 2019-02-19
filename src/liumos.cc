@@ -38,8 +38,10 @@ void SubTask() {
   int x = 0;
   int move_width = 128;
   while (1) {
-    DrawRect(xsize - 20 - move_width, 10, 20 + move_width, 20, 0xffffff);
-    DrawRect(xsize - 20 - move_width + x, 10, 20, 20, col);
+    vram_sheet.DrawRect(vram_sheet.GetXSize() - 20 - move_width, 10,
+                        20 + move_width, 20, 0xffffff);
+    vram_sheet.DrawRect(vram_sheet.GetXSize() - 20 - move_width + x, 10, 20, 20,
+                        col);
     x = (x + 4) & 127;
     StoreIntFlagAndHalt();
   }
@@ -208,7 +210,7 @@ void OpenAndPrintLogoFile() {
       channel_count++;
       if (channel_count == 3) {
         channel_count = 0;
-        DrawRect(xsize - width + x++, y, 1, 1, rgb);
+        vram_sheet.DrawRect(vram_sheet.GetXSize() - width + x++, y, 1, 1, rgb);
         if (x >= width) {
           x = 0;
           y++;

@@ -10,6 +10,7 @@
 #include "keyid.h"
 #include "paging.h"
 #include "serial.h"
+#include "sheet.h"
 
 constexpr uint64_t kKernelBaseAddr = 0xFFFF'FFFF'0000'0000;
 
@@ -81,14 +82,8 @@ inline void* operator new(size_t, void* where) {
 }
 
 // @graphics.cc
-extern int xsize;
-extern int ysize;
-extern int pixels_per_scan_line;
-extern uint8_t* vram;
+extern Sheet vram_sheet;
 void InitGraphics();
-void DrawCharacter(char c, int px, int py);
-void DrawRect(int px, int py, int w, int h, uint32_t col);
-void BlockTransfer(int to_x, int to_y, int from_x, int from_y, int w, int h);
 
 // @keyboard.cc
 constexpr uint16_t kIOPortKeyboardData = 0x0060;

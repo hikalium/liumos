@@ -90,9 +90,8 @@ void InitPaging() {
   // Adjust direct_mapping_end here
   // since VRAM region is not appeared in EFIMemoryMap
   {
-    PutStringAndHex("vram", vram);
-    uint64_t map_end_addr =
-        reinterpret_cast<uint64_t>(vram) + 4 * ysize * pixels_per_scan_line;
+    uint64_t map_end_addr = reinterpret_cast<uint64_t>(vram_sheet.GetBuf()) +
+                            vram_sheet.GetBufSize();
     if (map_end_addr > direct_mapping_end)
       direct_mapping_end = map_end_addr;
   }
