@@ -103,6 +103,7 @@ void ShowNFIT() {
           reinterpret_cast<NFIT_InterleaveStructure*>(&nfit->entry[i]);
       PutStringAndHex("Interleave Struct #",
                       interleave->interleave_struct_index);
+      PutStringAndHex("  Line size (in bytes)", interleave->line_size);
       PutString("  Lines = ");
       PutHex64(interleave->num_of_lines_described);
       PutString(" :");
