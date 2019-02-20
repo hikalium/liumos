@@ -228,11 +228,11 @@ packed_struct IA_PDPTE {
     return reinterpret_cast<IA_PDT*>(data & ((1ULL << kMaxPhyAddr) - 1) &
                                      ~((1ULL << 12) - 1));
   }
-  void SetTableAddr(IA_PDT * pdpt, uint64_t attr) {
+  void SetTableAddr(IA_PDT * pdt, uint64_t attr) {
     const uint64_t addr_mask =
         (((1ULL << kMaxPhyAddr) - 1) & ~((1ULL << 12) - 1));
-    assert((reinterpret_cast<uint64_t>(pdpt) & ~addr_mask) == 0);
-    data = reinterpret_cast<uint64_t>(pdpt) | attr;
+    assert((reinterpret_cast<uint64_t>(pdt) & ~addr_mask) == 0);
+    data = reinterpret_cast<uint64_t>(pdt) | attr;
   }
   void SetPageAddr(uint64_t paddr, uint64_t attr) {
     assert((paddr & ((1ULL << 30) - 1)) == 0);

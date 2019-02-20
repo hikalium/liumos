@@ -4,11 +4,14 @@
 
 extern "C" {
 
+namespace CPUIDIndex {
+constexpr uint32_t kXTopology = 0x0B;
+constexpr uint32_t kMaxAddr = 0x8000'0008;
+}  // namespace CPUIDIndex
+
 constexpr uint32_t kCPUID01H_EDXBitAPIC = (1 << 9);
 constexpr uint32_t kCPUID01H_ECXBitx2APIC = (1 << 21);
 constexpr uint32_t kCPUID01H_EDXBitMSR = (1 << 5);
-constexpr uint32_t kCPUIDIndexMaxAddr = 0x8000'0008;
-constexpr uint32_t kCPUIDIndexXTopology = 0x0B;
 constexpr uint64_t kIOAPICRegIndexAddr = 0xfec00000;
 constexpr uint64_t kIOAPICRegDataAddr = kIOAPICRegIndexAddr + 0x10;
 constexpr uint64_t kLocalAPICBaseBitAPICEnabled = (1 << 11);

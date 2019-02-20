@@ -21,7 +21,7 @@ void LocalAPIC::Init(void) {
 
   base_addr_ = (base_msr & ((1ULL << kMaxPhyAddr) - 1)) & ~0xfffULL;
   CPUID cpuid;
-  ReadCPUID(&cpuid, kCPUIDIndexXTopology, 0);
+  ReadCPUID(&cpuid, CPUIDIndex::kXTopology, 0);
   id_ = cpuid.edx;
   PutStringAndHex(" id", id_);
 }

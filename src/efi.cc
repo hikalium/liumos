@@ -54,7 +54,7 @@ void EFI::MemoryMap::Init() {
   Status status = EFI::system_table->boot_services->GetMemoryMap(
       &bytes_used_, buf_, &key_, &descriptor_size_, &descriptor_version);
   if (status == Status::kBufferTooSmall) {
-    PutStringAndHex("Buffer size needed", bytes_used_);
+    PutStringAndHex("\nBuffer size needed", bytes_used_);
     Panic("Failed to get memory map (not enough buffer)");
   }
   if (status != Status::kSuccess) {

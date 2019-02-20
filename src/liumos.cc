@@ -241,8 +241,12 @@ void IdentifyCPU() {
     Panic("MSR not supported");
   cpu_features.x2apic = cpuid.ecx & kCPUID01H_ECXBitx2APIC;
 
-  if (kCPUIDIndexMaxAddr <= kMaxCPUID) {
-    ReadCPUID(&cpuid, kCPUIDIndexMaxAddr, 0);
+  ReadCPUID(&cpuid, 0x8000'0000, 0);
+  const uint32_t kMaxExtendedCPUID = cpuid.eax;
+  PutStringAndHex("Max Extended CPUID", kMaxExtendedCPUID);
+
+  if (CPUIDIndex::kMaxAddr <= kMaxExtendedCPUID) {
+    ReadCPUID(&cpuid, CPUIDIndex::kMaxAddr, 0);
     IA32_MaxPhyAddr maxaddr;
     maxaddr.data = cpuid.eax;
     kMaxPhyAddr = maxaddr.bits.physical_address_bits;

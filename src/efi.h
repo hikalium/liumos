@@ -10,7 +10,7 @@ typedef void* Handle;
 
 enum class Status : UINTN {
   kSuccess = 0x0,
-  kBufferTooSmall = 0x5,
+  kBufferTooSmall = 0x8000'0000'0000'0005,
 };
 
 typedef enum {
@@ -380,7 +380,7 @@ class MemoryMap {
         &buf_[index * descriptor_size_]);
   }
   UINTN GetKey(void) const { return key_; }
-  static constexpr int kBufferSize = 8192;
+  static constexpr int kBufferSize = 0x8000;
 
  private:
   UINTN key_;
