@@ -52,13 +52,13 @@ void ShowNFIT() {
     return;
   }
   PutString("NFIT found\n");
-  PutStringAndHex("NFIT Size", nfit->length);
-  for (int i = 0; i < (int)(madt->length - offsetof(MADT, entries));
-       i += madt->entries[i + 1]) {
-    NFITStructureType type = static_cast<NFITStructureType>(madt->entries[i]);
+  PutStringAndHex("NFIT Size in bytes", nfit->length);
+  for (int i = 0; i < (int)(nfit->length - offsetof(NFIT, entry)) / 2;
+       i += nfit->entry[i + 1] / 2) {
+    NFITStructureType type = static_cast<NFITStructureType>(nfit->entry[i]);
     if (type == NFITStructureType::kSystemPhysicalAddressRangeStructure) {
       NFIT_SPARange* spa_range =
-          reinterpret_cast<NFIT_SPARange*>(&nfit->entry[0]);
+          reinterpret_cast<NFIT_SPARange*>(&nfit->entry[i]);
       PutStringAndHex("SPARange #", spa_range->spa_range_structure_index);
       PutStringAndHex("  Base", spa_range->system_physical_address_range_base);
       PutStringAndHex("  Length",
@@ -66,6 +66,30 @@ void ShowNFIT() {
       ShowNFIT_PrintMemoryMappingAttr(
           spa_range->address_range_memory_mapping_attribute);
       ShowNFIT_PrintMemoryTypeGUID(spa_range);
+    } else if (type == NFITStructureType::kNVDIMMRegionMappingStructure) {
+      NFIT_RegionMapping* rmap =
+          reinterpret_cast<NFIT_RegionMapping*>(&nfit->entry[i]);
+      PutString("Region Mapping\n");
+      PutStringAndHex("  NFIT Device Handle #", rmap->nfit_device_handle);
+      PutStringAndHex("  NVDIMM phys ID", rmap->nvdimm_physical_id);
+      PutStringAndHex("  NVDIMM region ID", rmap->nvdimm_region_id);
+      PutStringAndHex("  SPARange struct index",
+                      rmap->spa_range_structure_index);
+      PutStringAndHex("  ControlRegion struct index",
+                      rmap->nvdimm_control_region_struct_index);
+      PutStringAndHex("  region size", rmap->nvdimm_region_size);
+      PutStringAndHex("  region offset", rmap->region_offset);
+      PutStringAndHex("  NVDIMM phys addr region base",
+                      rmap->nvdimm_physical_address_region_base);
+      PutStringAndHex("  NVDIMM interleave_structure_index",
+                      rmap->interleave_structure_index);
+      PutStringAndHex("  NVDIMM interleave ways", rmap->interleave_ways);
+      PutStringAndHex("  NVDIMM state flags", rmap->nvdimm_state_flags);
+    } else if (type == NFITStructureType::kNVDIMMControlRegionStructure) {
+      NFIT_ControlRegionStruct* ctrl_region =
+          reinterpret_cast<NFIT_ControlRegionStruct*>(&nfit->entry[i]);
+      PutStringAndHex("Control Region Struct #",
+                      ctrl_region->nvdimm_control_region_struct_index);
     } else {
       PutStringAndHex("Unknown entry. type", static_cast<int>(type));
     }

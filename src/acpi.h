@@ -36,7 +36,7 @@ packed_struct XSDT {
 
 enum class NFITStructureType : int {
   kSystemPhysicalAddressRangeStructure,
-  kMemoryDeviceToSystemAddressRangeMapStructure,
+  kNVDIMMRegionMappingStructure,
   kInterleaveStructure,
   kSMBIOSManagementInformationStructure,
   kNVDIMMControlRegionStructure,
@@ -57,6 +57,7 @@ packed_struct NFIT {
   uint32_t reserved;
   uint16_t entry[1];
 };
+static_assert(offsetof(NFIT, entry) == 40);
 
 packed_struct NFIT_SPARange {
   // System Physical Address Range
@@ -70,6 +71,30 @@ packed_struct NFIT_SPARange {
   uint64_t system_physical_address_range_base;
   uint64_t system_physical_address_range_length;
   uint64_t address_range_memory_mapping_attribute;
+};
+
+packed_struct NFIT_RegionMapping {
+  uint16_t type;
+  uint16_t length;
+  uint32_t nfit_device_handle;
+  uint16_t nvdimm_physical_id;
+  uint16_t nvdimm_region_id;
+  uint16_t spa_range_structure_index;
+  uint16_t nvdimm_control_region_struct_index;
+  uint64_t nvdimm_region_size;
+  uint64_t region_offset;
+  uint64_t nvdimm_physical_address_region_base;
+  uint16_t interleave_structure_index;
+  uint16_t interleave_ways;
+  uint16_t nvdimm_state_flags;
+  uint16_t reserved;
+};
+static_assert(sizeof(NFIT_RegionMapping) == 48);
+
+packed_struct NFIT_ControlRegionStruct {
+  uint16_t type;
+  uint16_t length;
+  uint16_t nvdimm_control_region_struct_index;
 };
 
 packed_struct GAS {
