@@ -10,3 +10,4 @@ packed_struct GUID {
 };
 
 bool IsEqualGUID(const GUID* guid1, const GUID* guid2);
+void PutGUID(const GUID* guid);

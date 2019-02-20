@@ -2,6 +2,49 @@
 
 namespace ConsoleCommand {
 
+static const GUID kByteAdressablePersistentMemory = {
+    0x66F0D379,
+    0xB4F3,
+    0x4074,
+    {0xAC, 0x43, 0x0D, 0x33, 0x18, 0xB7, 0x8C, 0xDB}};
+
+static void ShowNFIT_PrintMemoryMappingAttr(uint64_t attr) {
+  PutString("  attr: ");
+  PutHex64(attr);
+  PutString(" =");
+  if (attr & 0x10000)
+    PutString(" MORE_RELIABLE");
+  if (attr & 0x08000)
+    PutString(" NV");
+  if (attr & 0x04000)
+    PutString(" XP");
+  if (attr & 0x02000)
+    PutString(" RP");
+  if (attr & 0x01000)
+    PutString(" WP");
+  if (attr & 0x00010)
+    PutString(" UCE");
+  if (attr & 0x00008)
+    PutString(" WB");
+  if (attr & 0x00004)
+    PutString(" WT");
+  if (attr & 0x00002)
+    PutString(" WC");
+  if (attr & 0x00001)
+    PutString(" UC");
+  PutChar('\n');
+}
+
+static void ShowNFIT_PrintMemoryTypeGUID(ACPI::NFIT_SPARange* spa) {
+  GUID* type_guid = reinterpret_cast<GUID*>(&spa->address_range_type_guid);
+  PutString("  type:");
+  if (IsEqualGUID(type_guid, &kByteAdressablePersistentMemory))
+    PutString(" ByteAddressablePersistentMemory");
+  else
+    PutGUID(type_guid);
+  PutChar('\n');
+}
+
 void ShowNFIT() {
   using namespace ACPI;
   if (!nfit) {
@@ -10,28 +53,24 @@ void ShowNFIT() {
   }
   PutString("NFIT found\n");
   PutStringAndHex("NFIT Size", nfit->length);
-  PutStringAndHex("First NFIT Structure Type", nfit->entry[0]);
-  PutStringAndHex("First NFIT Structure Size", nfit->entry[1]);
-  if (static_cast<NFITStructureType>(nfit->entry[0]) ==
-      NFITStructureType::kSystemPhysicalAddressRangeStructure) {
-    NFIT_SPARange* spa_range = (NFIT_SPARange*)&nfit->entry[0];
-    PutStringAndHex("SPARange Base",
-                    spa_range->system_physical_address_range_base);
-    PutStringAndHex("SPARange Length",
-                    spa_range->system_physical_address_range_length);
-    PutStringAndHex("SPARange Attribute",
-                    spa_range->address_range_memory_mapping_attribute);
-    PutStringAndHex("SPARange TypeGUID[0]",
-                    spa_range->address_range_type_guid[0]);
-    PutStringAndHex("SPARange TypeGUID[1]",
-                    spa_range->address_range_type_guid[1]);
-
-    uint64_t* p = (uint64_t*)spa_range->system_physical_address_range_base;
-    PutStringAndHex("\nPointer in PMEM Region: ", p);
-    PutStringAndHex("PMEM Previous value: ", *p);
-    (*p)++;
-    PutStringAndHex("PMEM value after write: ", *p);
+  for (int i = 0; i < (int)(madt->length - offsetof(MADT, entries));
+       i += madt->entries[i + 1]) {
+    NFITStructureType type = static_cast<NFITStructureType>(madt->entries[i]);
+    if (type == NFITStructureType::kSystemPhysicalAddressRangeStructure) {
+      NFIT_SPARange* spa_range =
+          reinterpret_cast<NFIT_SPARange*>(&nfit->entry[0]);
+      PutStringAndHex("SPARange #", spa_range->spa_range_structure_index);
+      PutStringAndHex("  Base", spa_range->system_physical_address_range_base);
+      PutStringAndHex("  Length",
+                      spa_range->system_physical_address_range_length);
+      ShowNFIT_PrintMemoryMappingAttr(
+          spa_range->address_range_memory_mapping_attribute);
+      ShowNFIT_PrintMemoryTypeGUID(spa_range);
+    } else {
+      PutStringAndHex("Unknown entry. type", static_cast<int>(type));
+    }
   }
+  PutString("NFIT end\n");
 }
 
 void PutMPSINTIFlags(uint8_t flags) {
