@@ -44,6 +44,7 @@ void PutHex64(uint64_t value);
 void PutHex64ZeroFilled(uint64_t value);
 void PutStringAndHex(const char* s, uint64_t value);
 void PutStringAndHex(const char* s, void* value);
+void PutStringAndBool(const char* s, bool cond);
 
 // @console_command.cc
 namespace ConsoleCommand {

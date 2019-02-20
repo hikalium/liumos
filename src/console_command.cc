@@ -8,6 +8,12 @@ static const GUID kByteAdressablePersistentMemory = {
     0x4074,
     {0xAC, 0x43, 0x0D, 0x33, 0x18, 0xB7, 0x8C, 0xDB}};
 
+static const GUID kNVDIMMControlRegion = {
+    0x92F701F6,
+    0x13B4,
+    0x405D,
+    {0x91, 0x0B, 0x29, 0x93, 0x67, 0xE8, 0x23, 0x4C}};
+
 static void ShowNFIT_PrintMemoryMappingAttr(uint64_t attr) {
   PutString("  attr: ");
   PutHex64(attr);
@@ -40,6 +46,8 @@ static void ShowNFIT_PrintMemoryTypeGUID(ACPI::NFIT_SPARange* spa) {
   PutString("  type:");
   if (IsEqualGUID(type_guid, &kByteAdressablePersistentMemory))
     PutString(" ByteAddressablePersistentMemory");
+  else if (IsEqualGUID(type_guid, &kNVDIMMControlRegion))
+    PutString(" NVDIMMControlRegion");
   else
     PutGUID(type_guid);
   PutChar('\n');
@@ -90,6 +98,45 @@ void ShowNFIT() {
           reinterpret_cast<NFIT_ControlRegionStruct*>(&nfit->entry[i]);
       PutStringAndHex("Control Region Struct #",
                       ctrl_region->nvdimm_control_region_struct_index);
+    } else if (type == NFITStructureType::kInterleaveStructure) {
+      NFIT_InterleaveStructure* interleave =
+          reinterpret_cast<NFIT_InterleaveStructure*>(&nfit->entry[i]);
+      PutStringAndHex("Interleave Struct #",
+                      interleave->interleave_struct_index);
+      PutString("  Lines = ");
+      PutHex64(interleave->num_of_lines_described);
+      PutString(" :");
+      for (uint32_t line_index = 0;
+           line_index < interleave->num_of_lines_described; line_index++) {
+        PutString(" +");
+        PutHex64(interleave->line_offsets[line_index]);
+      }
+      PutChar('\n');
+    } else if (type == NFITStructureType::kFlushHintAddressStructure) {
+      NFIT_FlushHintAddressStructure* flush_hint =
+          reinterpret_cast<NFIT_FlushHintAddressStructure*>(&nfit->entry[i]);
+      PutStringAndHex("Flush Hint Addresses for NFIT Device handle",
+                      flush_hint->nfit_device_handle);
+      PutString("  Addrs = ");
+      PutHex64(flush_hint->num_of_flush_hint_addresses);
+      PutString(" :");
+      for (uint32_t index = 0; index < flush_hint->num_of_flush_hint_addresses;
+           index++) {
+        PutString(" @");
+        PutHex64(flush_hint->flush_hint_addresses[index]);
+      }
+      PutChar('\n');
+    } else if (type == NFITStructureType::kPlatformCapabilitiesStructure) {
+      NFIT_PlatformCapabilities* caps =
+          reinterpret_cast<NFIT_PlatformCapabilities*>(&nfit->entry[i]);
+      const int cap_shift = 31 - caps->highest_valid_cap_bit;
+      const uint32_t cap_bits =
+          ((caps->capabilities << cap_shift) & 0xFFFF'FFFFUL) >> cap_shift;
+      PutString("Platform Capabilities\n");
+      PutStringAndBool("  Flush CPU Cache when power loss", cap_bits & 0b001);
+      PutStringAndBool("  Flush Memory Controller when power loss",
+                       cap_bits & 0b010);
+      PutStringAndBool("  Hardware Mirroring Support", cap_bits & 0b100);
     } else {
       PutStringAndHex("Unknown entry. type", static_cast<int>(type));
     }
@@ -157,7 +204,7 @@ void ShowMADT() {
     } else if (type == kProcessorLocalx2APICStruct) {
       PutString("x2APIC id=0x");
       PutHex64(*(uint32_t*)&madt->entries[i + 4]);
-      PutString((madt->entries[i + 8] & 1) ? " Enabled" : "Disabled");
+      PutString((madt->entries[i + 8] & 1) ? " Enabled" : " Disabled");
       PutString(" acpi_processor_uid=0x");
       PutHex64(*(uint32_t*)&madt->entries[i + 12]);
     } else if (type == kLocalx2APICNMIStruct) {

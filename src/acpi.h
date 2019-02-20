@@ -42,6 +42,7 @@ enum class NFITStructureType : int {
   kNVDIMMControlRegionStructure,
   kNVDIMMBlockDataWindowRegionStructure,
   kFlushHintAddressStructure,
+  kPlatformCapabilitiesStructure,
 };
 
 packed_struct NFIT {
@@ -90,6 +91,38 @@ packed_struct NFIT_RegionMapping {
   uint16_t reserved;
 };
 static_assert(sizeof(NFIT_RegionMapping) == 48);
+
+packed_struct NFIT_InterleaveStructure {
+  uint16_t type;
+  uint16_t length;
+  uint16_t interleave_struct_index;
+  uint16_t reserved;
+  uint32_t num_of_lines_described;
+  uint32_t line_size;
+  uint32_t line_offsets[1];
+};
+static_assert(offsetof(NFIT_InterleaveStructure, line_offsets) == 16);
+
+packed_struct NFIT_FlushHintAddressStructure {
+  uint16_t type;
+  uint16_t length;
+  uint32_t nfit_device_handle;
+  uint16_t num_of_flush_hint_addresses;
+  uint16_t reserved[3];
+  uint64_t flush_hint_addresses[1];
+};
+static_assert(offsetof(NFIT_FlushHintAddressStructure, flush_hint_addresses) ==
+              16);
+
+packed_struct NFIT_PlatformCapabilities {
+  uint16_t type;
+  uint16_t length;
+  uint8_t highest_valid_cap_bit;
+  uint8_t reserved0[3];
+  uint32_t capabilities;
+  uint32_t reserved1;
+};
+static_assert(sizeof(NFIT_PlatformCapabilities) == 16);
 
 packed_struct NFIT_ControlRegionStruct {
   uint16_t type;
