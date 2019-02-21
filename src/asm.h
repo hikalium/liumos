@@ -18,7 +18,10 @@ constexpr uint64_t kLocalAPICBaseBitAPICEnabled = (1 << 11);
 constexpr uint64_t kLocalAPICBaseBitx2APICEnabled = (1 << 10);
 
 packed_struct CPUFeatureSet {
+  uint32_t max_cpuid;
+  uint32_t max_extended_cpuid;
   bool x2apic;
+  char brand_string[48];
 };
 
 packed_struct CPUID {

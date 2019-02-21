@@ -227,6 +227,12 @@ void IdentifyCPU() {
   ReadCPUID(&cpuid, 0, 0);
   const uint32_t kMaxCPUID = cpuid.eax;
   PutStringAndHex("Max CPUID", kMaxCPUID);
+  cpu_features.max_cpuid = kMaxCPUID;
+
+  ReadCPUID(&cpuid, 0x8000'0000, 0);
+  const uint32_t kMaxExtendedCPUID = cpuid.eax;
+  PutStringAndHex("Max Extended CPUID", kMaxExtendedCPUID);
+  cpu_features.max_extended_cpuid = kMaxExtendedCPUID;
 
   ReadCPUID(&cpuid, 1, 0);
   uint8_t cpu_family = ((cpuid.eax >> 16) & 0xff0) | ((cpuid.eax >> 8) & 0xf);
@@ -241,9 +247,21 @@ void IdentifyCPU() {
     Panic("MSR not supported");
   cpu_features.x2apic = cpuid.ecx & kCPUID01H_ECXBitx2APIC;
 
-  ReadCPUID(&cpuid, 0x8000'0000, 0);
-  const uint32_t kMaxExtendedCPUID = cpuid.eax;
-  PutStringAndHex("Max Extended CPUID", kMaxExtendedCPUID);
+  if (0x8000'0004 <= kMaxExtendedCPUID) {
+    for (int i = 0; i < 3; i++) {
+      ReadCPUID(&cpuid, 0x8000'0002 + i, 0);
+      *reinterpret_cast<uint32_t*>(&cpu_features.brand_string[i * 16 + 0]) =
+          cpuid.eax;
+      *reinterpret_cast<uint32_t*>(&cpu_features.brand_string[i * 16 + 4]) =
+          cpuid.ebx;
+      *reinterpret_cast<uint32_t*>(&cpu_features.brand_string[i * 16 + 8]) =
+          cpuid.ecx;
+      *reinterpret_cast<uint32_t*>(&cpu_features.brand_string[i * 16 + 12]) =
+          cpuid.edx;
+    }
+    PutString(cpu_features.brand_string);
+    PutChar('\n');
+  }
 
   if (CPUIDIndex::kMaxAddr <= kMaxExtendedCPUID) {
     ReadCPUID(&cpuid, CPUIDIndex::kMaxAddr, 0);
