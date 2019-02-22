@@ -50,6 +50,7 @@ void PutStringAndBool(const char* s, bool cond);
 namespace ConsoleCommand {
 void ShowNFIT(void);
 void ShowMADT(void);
+void ShowSRAT(void);
 void ShowEFIMemoryMap(void);
 void Free(void);
 }  // namespace ConsoleCommand

@@ -220,6 +220,51 @@ void ShowMADT() {
   }
 }
 
+void ShowSRAT() {
+  using namespace ACPI;
+  if (!srat) {
+    PutString("SRAT not found.\n");
+    return;
+  }
+  PutString("SRAT found.\n");
+  for (int i = 0; i < (int)(srat->length - offsetof(SRAT, entry));
+       i += srat->entry[i + 1]) {
+    uint8_t type = srat->entry[i];
+    PutString("SRAT(type=0x");
+    PutHex64(type);
+    PutString(") ");
+
+    if (type == SRAT::kEntryTypeLAPICAffinity) {
+      SRAT::LAPICAffinity* e =
+          reinterpret_cast<SRAT::LAPICAffinity*>(&srat->entry[i]);
+      PutString("LAPIC Affinity id=0x");
+      PutHex64(e->apic_id);
+      const uint32_t proximity_domain = e->proximity_domain_low |
+                                        (e->proximity_domain_high[0] << 8) |
+                                        (e->proximity_domain_high[1] << 16) |
+                                        (e->proximity_domain_high[2] << 24);
+      PutString(" proximity_domain=0x");
+      PutHex64(proximity_domain);
+    } else if (type == SRAT::kEntryTypeMemoryAffinity) {
+      SRAT::MemoryAffinity* e =
+          reinterpret_cast<SRAT::MemoryAffinity*>(&srat->entry[i]);
+      PutString("Memory Affinity [");
+      PutHex64ZeroFilled(e->base_address);
+      PutString(", ");
+      PutHex64ZeroFilled(e->base_address + e->size);
+      PutString(")\n  proximity_domain=0x");
+      PutHex64(e->proximity_domain);
+      if (e->flags & 1)
+        PutString(" Enabled");
+      if (e->flags & 2)
+        PutString(" Hot-pluggable");
+      if (e->flags & 4)
+        PutString(" Non-volatile");
+    }
+    PutString("\n");
+  }
+}
+
 void ShowEFIMemoryMap() {
   PutStringAndHex("Map entries", efi_memory_map.GetNumberOfEntries());
   for (int i = 0; i < efi_memory_map.GetNumberOfEntries(); i++) {

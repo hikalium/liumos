@@ -130,6 +130,48 @@ packed_struct NFIT_ControlRegionStruct {
   uint16_t nvdimm_control_region_struct_index;
 };
 
+packed_struct SRAT {
+  static const uint8_t kEntryTypeLAPICAffinity = 0x00;
+  packed_struct LAPICAffinity {
+    uint8_t type;
+    uint8_t length;
+    uint8_t proximity_domain_low;
+    uint8_t apic_id;
+    uint32_t flags;
+    uint8_t local_sapic_eid;
+    uint8_t proximity_domain_high[3];
+    uint32_t clock_domain;
+  };
+  static_assert(sizeof(LAPICAffinity) == 16);
+
+  static const uint8_t kEntryTypeMemoryAffinity = 0x01;
+  packed_struct MemoryAffinity {
+    uint8_t type;
+    uint8_t length;
+    uint32_t proximity_domain;
+    uint16_t reserved0;
+    uint64_t base_address;
+    uint64_t size;
+    uint32_t reserved1;
+    uint32_t flags;
+    uint64_t reserved2;
+  };
+  static_assert(sizeof(MemoryAffinity) == 40);
+
+  char signature[4];
+  uint32_t length;
+  uint8_t revision;
+  uint8_t checksum;
+  uint8_t oem_id[6];
+  uint64_t oem_table_id;
+  uint32_t oem_revision;
+  uint32_t creator_id;
+  uint32_t creator_revision;
+  uint32_t reserved[3];
+  uint8_t entry[1];
+};
+static_assert(offsetof(SRAT, entry) == 48);
+
 packed_struct GAS {
   // Generic Address Structure
   uint8_t address_space_id;
@@ -187,6 +229,7 @@ extern RSDT* rsdt;
 extern MADT* madt;
 extern HPET* hpet;
 extern NFIT* nfit;
+extern SRAT* srat;
 
 void DetectTables();
 }  // namespace ACPI

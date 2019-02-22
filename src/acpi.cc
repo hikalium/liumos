@@ -4,6 +4,7 @@ ACPI::RSDT* ACPI::rsdt;
 ACPI::NFIT* ACPI::nfit;
 ACPI::MADT* ACPI::madt;
 ACPI::HPET* ACPI::hpet;
+ACPI::SRAT* ACPI::srat;
 
 void ACPI::DetectTables() {
   assert(rsdt);
@@ -17,6 +18,8 @@ void ACPI::DetectTables() {
       hpet = static_cast<HPET*>(xsdt->entry[i]);
     if (strncmp(signature, "APIC", 4) == 0)
       madt = static_cast<MADT*>(xsdt->entry[i]);
+    if (strncmp(signature, "SRAT", 4) == 0)
+      srat = static_cast<SRAT*>(xsdt->entry[i]);
   }
   if (!madt)
     Panic("MADT not found");
