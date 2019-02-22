@@ -246,16 +246,13 @@ void ShowSRAT() {
     return;
   }
   PutString("SRAT found.\n");
-  for (int i = 0; i < (int)(srat->length - offsetof(SRAT, entry));
-       i += srat->entry[i + 1]) {
-    uint8_t type = srat->entry[i];
+  for (auto& it : *srat) {
     PutString("SRAT(type=0x");
-    PutHex64(type);
+    PutHex64(it.type);
     PutString(") ");
 
-    if (type == SRAT::kEntryTypeLAPICAffinity) {
-      SRAT::LAPICAffinity* e =
-          reinterpret_cast<SRAT::LAPICAffinity*>(&srat->entry[i]);
+    if (it.type == SRAT::Entry::kTypeLAPICAffinity) {
+      SRAT::LAPICAffinity* e = reinterpret_cast<SRAT::LAPICAffinity*>(&it);
       PutString("LAPIC Affinity id=0x");
       PutHex64(e->apic_id);
       const uint32_t proximity_domain = e->proximity_domain_low |
@@ -264,9 +261,8 @@ void ShowSRAT() {
                                         (e->proximity_domain_high[2] << 24);
       PutString(" proximity_domain=0x");
       PutHex64(proximity_domain);
-    } else if (type == SRAT::kEntryTypeMemoryAffinity) {
-      SRAT::MemoryAffinity* e =
-          reinterpret_cast<SRAT::MemoryAffinity*>(&srat->entry[i]);
+    } else if (it.type == SRAT::Entry::kTypeMemoryAffinity) {
+      SRAT::MemoryAffinity* e = reinterpret_cast<SRAT::MemoryAffinity*>(&it);
       PutString("Memory Affinity [");
       PutHex64ZeroFilled(e->base_address);
       PutString(", ");
@@ -279,9 +275,8 @@ void ShowSRAT() {
         PutString(" Hot-pluggable");
       if (e->flags & 4)
         PutString(" Non-volatile");
-    } else if (type == SRAT::kEntryTypeLx2APICAffinity) {
-      SRAT::Lx2APICAffinity* e =
-          reinterpret_cast<SRAT::Lx2APICAffinity*>(&srat->entry[i]);
+    } else if (it.type == SRAT::Entry::kTypeLx2APICAffinity) {
+      SRAT::Lx2APICAffinity* e = reinterpret_cast<SRAT::Lx2APICAffinity*>(&it);
       PutString("Lx2APIC Affinity id=0x");
       PutHex64(e->x2apic_id);
       PutString(" proximity_domain=0x");

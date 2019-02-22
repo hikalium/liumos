@@ -131,10 +131,33 @@ packed_struct NFIT_ControlRegionStruct {
 };
 
 packed_struct SRAT {
-  static const uint8_t kEntryTypeLAPICAffinity = 0x00;
-  packed_struct LAPICAffinity {
+  packed_struct Entry {
+    static const uint8_t kTypeLAPICAffinity = 0x00;
+    static const uint8_t kTypeMemoryAffinity = 0x01;
+    static const uint8_t kTypeLx2APICAffinity = 0x02;
+
     uint8_t type;
     uint8_t length;
+  };
+
+  class Iterator {
+   public:
+    Iterator(Entry* e) : current_(e){};
+    void operator++() {
+      current_ = reinterpret_cast<Entry*>(reinterpret_cast<uint64_t>(current_) +
+                                          current_->length);
+    }
+    Entry& operator*() { return *current_; }
+    friend bool operator!=(const Iterator& lhs, const Iterator& rhs) {
+      return lhs.current_ != rhs.current_;
+    }
+
+   private:
+    Entry* current_;
+  };
+
+  packed_struct LAPICAffinity {
+    Entry entry;
     uint8_t proximity_domain_low;
     uint8_t apic_id;
     uint32_t flags;
@@ -144,10 +167,8 @@ packed_struct SRAT {
   };
   static_assert(sizeof(LAPICAffinity) == 16);
 
-  static const uint8_t kEntryTypeMemoryAffinity = 0x01;
   packed_struct MemoryAffinity {
-    uint8_t type;
-    uint8_t length;
+    Entry entry;
     uint32_t proximity_domain;
     uint16_t reserved0;
     uint64_t base_address;
@@ -158,10 +179,8 @@ packed_struct SRAT {
   };
   static_assert(sizeof(MemoryAffinity) == 40);
 
-  static const uint8_t kEntryTypeLx2APICAffinity = 0x02;
   packed_struct Lx2APICAffinity {
-    uint8_t type;
-    uint8_t length;
+    Entry entry;
     uint16_t reserved0;
     uint32_t proximity_domain;
     uint32_t x2apic_id;
@@ -181,7 +200,13 @@ packed_struct SRAT {
   uint32_t creator_id;
   uint32_t creator_revision;
   uint32_t reserved[3];
-  uint8_t entry[1];
+  Entry entry[1];
+
+  Iterator begin() { return Iterator(entry); }
+  Iterator end() {
+    return Iterator(
+        reinterpret_cast<Entry*>(reinterpret_cast<uint64_t>(this) + length));
+  }
 };
 static_assert(offsetof(SRAT, entry) == 48);
 
