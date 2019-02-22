@@ -61,3 +61,9 @@ void HPET::SetTimerMs(int timer_index,
 uint64_t HPET::ReadMainCounterValue() {
   return registers_->main_counter_value;
 }
+
+void HPET::BusyWait(uint64_t ms) {
+  uint64_t count = 1e12 * ms / femtosecond_per_count_ + ReadMainCounterValue();
+  while (ReadMainCounterValue() < count)
+    ;
+}

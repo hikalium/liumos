@@ -17,6 +17,7 @@ class HPET {
                   HPET::TimerConfig flags);
   uint64_t ReadMainCounterValue();
   uint64_t GetFemtosecndPerCount() { return femtosecond_per_count_; };
+  void BusyWait(uint64_t ms);
 
  private:
   RegisterSpace* registers_;

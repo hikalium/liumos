@@ -21,6 +21,7 @@ class Sheet {
   uint8_t* GetBuf() { return buf_; }
   void DrawCharacter(char c, int px, int py);
   void DrawRect(int px, int py, int w, int h, uint32_t);
+  void DrawRectWithoutFlush(int px, int py, int w, int h, uint32_t);
   void BlockTransfer(int to_x, int to_y, int from_x, int from_y, int w, int h);
   void Flush(int px, int py, int w, int h);
 

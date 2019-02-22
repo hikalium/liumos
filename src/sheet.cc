@@ -16,7 +16,7 @@ void Sheet::DrawCharacter(char c, int px, int py) {
   Flush(px, py, 8, 16);
 }
 
-void Sheet::DrawRect(int px, int py, int w, int h, uint32_t col) {
+void Sheet::DrawRectWithoutFlush(int px, int py, int w, int h, uint32_t col) {
   if (!buf_)
     return;
   for (int y = py; y < py + h; y++) {
@@ -26,6 +26,9 @@ void Sheet::DrawRect(int px, int py, int w, int h, uint32_t col) {
       }
     }
   }
+}
+void Sheet::DrawRect(int px, int py, int w, int h, uint32_t col) {
+  DrawRectWithoutFlush(px, py, w, h, col);
   Flush(px, py, w, h);
 }
 
