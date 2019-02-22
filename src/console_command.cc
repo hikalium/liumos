@@ -53,6 +53,25 @@ static void ShowNFIT_PrintMemoryTypeGUID(ACPI::NFIT_SPARange* spa) {
   PutChar('\n');
 }
 
+void ShowXSDT() {
+  using namespace ACPI;
+  XSDT* xsdt = rsdt->xsdt;
+  const int num_of_xsdt_entries = (xsdt->length - kDescriptionHeaderSize) >> 3;
+
+  PutString("Found 0x");
+  PutHex64(num_of_xsdt_entries);
+  PutString(" XSDT entries found:");
+  for (int i = 0; i < num_of_xsdt_entries; i++) {
+    const char* signature = static_cast<const char*>(xsdt->entry[i]);
+    PutChar(' ');
+    PutChar(signature[0]);
+    PutChar(signature[1]);
+    PutChar(signature[2]);
+    PutChar(signature[3]);
+  }
+  PutString("\n");
+}
+
 void ShowNFIT() {
   using namespace ACPI;
   if (!nfit) {
@@ -310,6 +329,8 @@ void Process(TextBox& tbox) {
   const char* line = tbox.GetRecordedString();
   if (IsEqualString(line, "hello")) {
     PutString("Hello, world!\n");
+  } else if (IsEqualString(line, "show xsdt")) {
+    ShowXSDT();
   } else if (IsEqualString(line, "show nfit")) {
     ShowNFIT();
   } else if (IsEqualString(line, "show madt")) {
