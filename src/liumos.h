@@ -1,6 +1,7 @@
 #pragma once
 
 #include "acpi.h"
+#include "apic.h"
 #include "asm.h"
 #include "efi.h"
 #include "gdt.h"
@@ -14,25 +15,6 @@
 #include "text_box.h"
 
 constexpr uint64_t kKernelBaseAddr = 0xFFFF'FFFF'0000'0000;
-
-// @apic.cc
-class LocalAPIC {
- public:
-  void Init(void);
-  uint8_t GetID() { return id_; }
-  void SendEndOfInterrupt(void);
-
- private:
-  uint32_t* GetRegisterAddr(uint64_t offset) {
-    return (uint32_t*)(base_addr_ + offset);
-  }
-
-  uint64_t base_addr_;
-  uint8_t id_;
-  bool is_x2apic_;
-};
-
-void InitIOAPIC(uint64_t local_apic_id);
 
 // @console.c
 void ResetCursorPosition();

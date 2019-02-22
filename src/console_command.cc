@@ -279,6 +279,13 @@ void ShowSRAT() {
         PutString(" Hot-pluggable");
       if (e->flags & 4)
         PutString(" Non-volatile");
+    } else if (type == SRAT::kEntryTypeLx2APICAffinity) {
+      SRAT::Lx2APICAffinity* e =
+          reinterpret_cast<SRAT::Lx2APICAffinity*>(&srat->entry[i]);
+      PutString("Lx2APIC Affinity id=0x");
+      PutHex64(e->x2apic_id);
+      PutString(" proximity_domain=0x");
+      PutHex64(e->proximity_domain);
     }
     PutString("\n");
   }

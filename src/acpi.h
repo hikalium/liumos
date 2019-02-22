@@ -158,6 +158,19 @@ packed_struct SRAT {
   };
   static_assert(sizeof(MemoryAffinity) == 40);
 
+  static const uint8_t kEntryTypeLx2APICAffinity = 0x02;
+  packed_struct Lx2APICAffinity {
+    uint8_t type;
+    uint8_t length;
+    uint16_t reserved0;
+    uint32_t proximity_domain;
+    uint32_t x2apic_id;
+    uint32_t flags;
+    uint32_t clock_domain;
+    uint32_t reserved1;
+  };
+  static_assert(sizeof(Lx2APICAffinity) == 24);
+
   char signature[4];
   uint32_t length;
   uint8_t revision;
