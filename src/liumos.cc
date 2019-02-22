@@ -110,6 +110,8 @@ void ProcessCommand(TextBox& tbox) {
     ConsoleCommand::ShowMADT();
   } else if (IsEqualString(line, "show srat")) {
     ConsoleCommand::ShowSRAT();
+  } else if (IsEqualString(line, "show slit")) {
+    ConsoleCommand::ShowSLIT();
   } else if (IsEqualString(line, "show mmap")) {
     ConsoleCommand::ShowEFIMemoryMap();
   } else if (IsEqualString(line, "free")) {

@@ -265,6 +265,24 @@ void ShowSRAT() {
   }
 }
 
+void ShowSLIT() {
+  using namespace ACPI;
+  if (!slit) {
+    PutString("SLIT not found.\n");
+    return;
+  }
+  PutString("SLIT found.\n");
+  PutStringAndHex("num_of_system_localities", slit->num_of_system_localities);
+  for (uint64_t y = 0; y < slit->num_of_system_localities; y++) {
+    for (uint64_t x = 0; x < slit->num_of_system_localities; x++) {
+      if (x)
+        PutString(", ");
+      PutHex64(slit->entry[y * slit->num_of_system_localities + x]);
+    }
+    PutString("\n");
+  }
+}
+
 void ShowEFIMemoryMap() {
   PutStringAndHex("Map entries", efi_memory_map.GetNumberOfEntries());
   for (int i = 0; i < efi_memory_map.GetNumberOfEntries(); i++) {

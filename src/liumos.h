@@ -51,6 +51,7 @@ namespace ConsoleCommand {
 void ShowNFIT(void);
 void ShowMADT(void);
 void ShowSRAT(void);
+void ShowSLIT(void);
 void ShowEFIMemoryMap(void);
 void Free(void);
 }  // namespace ConsoleCommand

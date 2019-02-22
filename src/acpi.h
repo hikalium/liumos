@@ -172,6 +172,21 @@ packed_struct SRAT {
 };
 static_assert(offsetof(SRAT, entry) == 48);
 
+packed_struct SLIT {
+  char signature[4];
+  uint32_t length;
+  uint8_t revision;
+  uint8_t checksum;
+  uint8_t oem_id[6];
+  uint64_t oem_table_id;
+  uint32_t oem_revision;
+  uint32_t creator_id;
+  uint32_t creator_revision;
+  uint64_t num_of_system_localities;
+  uint8_t entry[1];
+};
+static_assert(offsetof(SLIT, entry) == 44);
+
 packed_struct GAS {
   // Generic Address Structure
   uint8_t address_space_id;
@@ -230,6 +245,7 @@ extern MADT* madt;
 extern HPET* hpet;
 extern NFIT* nfit;
 extern SRAT* srat;
+extern SLIT* slit;
 
 void DetectTables();
 }  // namespace ACPI
