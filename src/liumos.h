@@ -11,6 +11,7 @@
 #include "paging.h"
 #include "serial.h"
 #include "sheet.h"
+#include "text_box.h"
 
 constexpr uint64_t kKernelBaseAddr = 0xFFFF'FFFF'0000'0000;
 
@@ -54,6 +55,7 @@ void ShowSRAT(void);
 void ShowSLIT(void);
 void ShowEFIMemoryMap(void);
 void Free(void);
+void Process(TextBox& tbox);
 }  // namespace ConsoleCommand
 
 // @elf.cc
@@ -111,6 +113,8 @@ extern int kMaxPhyAddr;
 extern LocalAPIC bsp_local_apic;
 extern CPUFeatureSet cpu_features;
 extern SerialPort com1;
+extern File hello_bin_file;
+extern File liumos_elf_file;
 
 void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table);
 

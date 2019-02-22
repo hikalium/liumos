@@ -296,4 +296,41 @@ void Free() {
   page_allocator->Print();
 }
 
+bool IsEqualString(const char* a, const char* b) {
+  while (*a == *b) {
+    if (*a == 0)
+      return true;
+    a++;
+    b++;
+  }
+  return false;
+}
+
+void Process(TextBox& tbox) {
+  const char* line = tbox.GetRecordedString();
+  if (IsEqualString(line, "hello")) {
+    PutString("Hello, world!\n");
+  } else if (IsEqualString(line, "show nfit")) {
+    ShowNFIT();
+  } else if (IsEqualString(line, "show madt")) {
+    ShowMADT();
+  } else if (IsEqualString(line, "show srat")) {
+    ShowSRAT();
+  } else if (IsEqualString(line, "show slit")) {
+    ShowSLIT();
+  } else if (IsEqualString(line, "show mmap")) {
+    ShowEFIMemoryMap();
+  } else if (IsEqualString(line, "free")) {
+    Free();
+  } else if (IsEqualString(line, "hello.bin")) {
+    ParseELFFile(hello_bin_file);
+  } else if (IsEqualString(line, "liumos.elf")) {
+    ParseELFFile(liumos_elf_file);
+  } else {
+    PutString("Command not found: ");
+    PutString(tbox.GetRecordedString());
+    tbox.putc('\n');
+  }
+}
+
 }  // namespace ConsoleCommand

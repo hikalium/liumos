@@ -9,14 +9,14 @@ int kMaxPhyAddr;
 LocalAPIC bsp_local_apic;
 CPUFeatureSet cpu_features;
 SerialPort com1;
+File hello_bin_file;
+File liumos_elf_file;
 
 HPET hpet;
 
 PhysicalPageAllocator page_allocator_;
 
 File logo_file;
-File hello_bin_file;
-File liumos_elf_file;
 
 void InitMemoryManagement(EFI::MemoryMap& map) {
   page_allocator = &page_allocator_;
@@ -50,83 +50,6 @@ void SubTask() {
 
 uint16_t ParseKeyCode(uint8_t keycode);
 
-class TextBox {
- public:
-  TextBox() : buf_used_(0), is_recording_enabled_(false) {}
-  void putc(uint16_t keyid) {
-    if (keyid & KeyID::kMaskBreak)
-      return;
-    if (keyid == KeyID::kBackspace) {
-      if (is_recording_enabled_) {
-        if (buf_used_ == 0)
-          return;
-        buf_[--buf_used_] = 0;
-      }
-      PutChar('\b');
-      return;
-    }
-    if (keyid & KeyID::kMaskExtended)
-      return;
-    if (is_recording_enabled_) {
-      if (buf_used_ >= kSizeOfBuffer)
-        return;
-      buf_[buf_used_++] = (uint8_t)keyid;
-      buf_[buf_used_] = 0;
-    }
-    PutChar(keyid);
-  }
-  void StartRecording() {
-    buf_used_ = 0;
-    buf_[buf_used_] = 0;
-    is_recording_enabled_ = true;
-  }
-  void StopRecording() { is_recording_enabled_ = false; }
-  const char* GetRecordedString() { return buf_; }
-
- private:
-  constexpr static int kSizeOfBuffer = 16;
-  char buf_[kSizeOfBuffer + 1];
-  int buf_used_;
-  bool is_recording_enabled_;
-};
-
-bool IsEqualString(const char* a, const char* b) {
-  while (*a == *b) {
-    if (*a == 0)
-      return true;
-    a++;
-    b++;
-  }
-  return false;
-}
-
-void ProcessCommand(TextBox& tbox) {
-  const char* line = tbox.GetRecordedString();
-  if (IsEqualString(line, "hello")) {
-    PutString("Hello, world!\n");
-  } else if (IsEqualString(line, "show nfit")) {
-    ConsoleCommand::ShowNFIT();
-  } else if (IsEqualString(line, "show madt")) {
-    ConsoleCommand::ShowMADT();
-  } else if (IsEqualString(line, "show srat")) {
-    ConsoleCommand::ShowSRAT();
-  } else if (IsEqualString(line, "show slit")) {
-    ConsoleCommand::ShowSLIT();
-  } else if (IsEqualString(line, "show mmap")) {
-    ConsoleCommand::ShowEFIMemoryMap();
-  } else if (IsEqualString(line, "free")) {
-    ConsoleCommand::Free();
-  } else if (IsEqualString(line, "hello.bin")) {
-    ParseELFFile(hello_bin_file);
-  } else if (IsEqualString(line, "liumos.elf")) {
-    ParseELFFile(liumos_elf_file);
-  } else {
-    PutString("Command not found: ");
-    PutString(tbox.GetRecordedString());
-    tbox.putc('\n');
-  }
-}
-
 void WaitAndProcessCommand(TextBox& tbox) {
   PutString("> ");
   tbox.StartRecording();
@@ -155,7 +78,7 @@ void WaitAndProcessCommand(TextBox& tbox) {
       if (keyid == '\n') {
         tbox.StopRecording();
         tbox.putc('\n');
-        ProcessCommand(tbox);
+        ConsoleCommand::Process(tbox);
         return;
       }
       tbox.putc(keyid);

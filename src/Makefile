@@ -3,7 +3,7 @@ OBJS= acpi.o apic.o asm.o console.o console_command.o \
 		 gdt.o generic.o graphics.o guid.o \
 		 hpet.o interrupt.o keyboard.o\
 		 libfunc.o liumos.o paging.o phys_page_allocator.o \
-		 scheduler.o serial.o sheet.o \
+		 scheduler.o serial.o sheet.o text_box.o \
 		 font.gen.o
 HEADERS=$(wildcard *.h) lib/musl/include/elf.h
 OVMF=ovmf/bios64.bin
