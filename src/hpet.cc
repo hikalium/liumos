@@ -35,7 +35,7 @@ constexpr GeneralConfig operator|=(GeneralConfig& a, GeneralConfig b) {
 
 void HPET::Init(HPET::RegisterSpace* registers) {
   registers_ = registers;
-  count_per_femtosecond_ = registers->general_capabilities_and_id >> 32;
+  femtosecond_per_count_ = registers->general_capabilities_and_id >> 32;
   GeneralConfig general_config = registers->general_configuration;
   general_config |= GeneralConfig::kUseLegacyReplacementRouting;
   general_config |= GeneralConfig::kEnable;
@@ -45,7 +45,7 @@ void HPET::Init(HPET::RegisterSpace* registers) {
 void HPET::SetTimerMs(int timer_index,
                       uint64_t milliseconds,
                       TimerConfig flags) {
-  uint64_t count = 1e12 * milliseconds / count_per_femtosecond_;
+  uint64_t count = 1e12 * milliseconds / femtosecond_per_count_;
   TimerRegister* entry = &registers_->timers[timer_index];
   TimerConfig config = entry->configuration_and_capability;
   TimerConfig mask = TimerConfig::kUseLevelTriggeredInterrupt |
@@ -56,4 +56,8 @@ void HPET::SetTimerMs(int timer_index,
   entry->configuration_and_capability = config;
   entry->comparator_value = count;
   registers_->main_counter_value = 0;
+}
+
+uint64_t HPET::ReadMainCounterValue() {
+  return registers_->main_counter_value;
 }

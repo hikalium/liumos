@@ -327,6 +327,83 @@ bool IsEqualString(const char* a, const char* b) {
   return false;
 }
 
+void label(uint64_t i) {
+  PutString("0x");
+  PutHex64(i);
+  PutString(",");
+}
+
+uint64_t get_seconds() {
+  return hpet.ReadMainCounterValue();
+}
+
+void TestMem() {
+  constexpr uint64_t kRangeMin = 1ULL << 10;
+  constexpr uint64_t kRangeMax = 1ULL << 24;
+  uint64_t nextstep, i, index;
+  uint64_t csize, stride;
+  uint64_t steps, tsteps;
+  uint64_t sec0, sec1, sec;
+  constexpr uint64_t kDurationTick = 0x800000;
+  int* array = nullptr;
+  array = page_allocator->AllocPages<int*>(
+      (sizeof(int) * kRangeMax + kPageSize - 1) >> kPageSizeExponent);
+
+  PutString(" ,");
+  for (stride = 1; stride <= kRangeMax / 2; stride = stride * 2)
+    label(stride * sizeof(int));
+  PutString("\n");
+
+  for (csize = kRangeMin; csize <= kRangeMax; csize = csize * 2) {
+    label(csize * sizeof(int));
+    for (stride = 1; stride <= csize / 2; stride = stride * 2) {
+      for (index = 0; index < csize; index = index + stride) {
+        array[index] = (int)(index + stride);
+      }
+      array[index - stride] = 0;
+
+      steps = 0.0;
+      nextstep = 0;
+      sec0 = get_seconds();
+      do {
+        for (i = stride; i != 0; i = i - 1) {
+          nextstep = 0;
+          do
+            nextstep = array[nextstep];
+          while (nextstep != 0);
+        }
+        steps = steps + 1.0;
+        sec1 = get_seconds();
+      } while ((sec1 - sec0) < kDurationTick);  // originary 20.0
+      sec = sec1 - sec0;
+
+      tsteps = 0.0;
+      sec0 = get_seconds();
+      do {
+        for (i = stride; i != 0; i = i - 1) {
+          index = 0;
+          do
+            index = index + stride;
+          while (index < csize);
+        }
+        tsteps = tsteps + 1.0;
+        sec1 = get_seconds();
+      } while (tsteps < steps);
+      sec = sec - (sec1 - sec0);
+      // loadtime = (sec * 1e9) / (steps * csize);
+      PutString("0x");
+      PutHex64(sec * hpet.GetFemtosecndPerCount() / (steps * csize) / 1000);
+      // pico second?
+      PutString(", ");
+    };
+    PutString("\n");
+  };
+}
+
+void Time() {
+  PutStringAndHex("HPET main counter", hpet.ReadMainCounterValue());
+}
+
 void Process(TextBox& tbox) {
   const char* line = tbox.GetRecordedString();
   if (IsEqualString(line, "hello")) {
@@ -343,8 +420,12 @@ void Process(TextBox& tbox) {
     ShowSLIT();
   } else if (IsEqualString(line, "show mmap")) {
     ShowEFIMemoryMap();
+  } else if (IsEqualString(line, "test mem")) {
+    TestMem();
   } else if (IsEqualString(line, "free")) {
     Free();
+  } else if (IsEqualString(line, "time")) {
+    Time();
   } else if (IsEqualString(line, "hello.bin")) {
     ParseELFFile(hello_bin_file);
   } else if (IsEqualString(line, "liumos.elf")) {

@@ -15,10 +15,12 @@ class HPET {
   void SetTimerMs(int timer_index,
                   uint64_t milliseconds,
                   HPET::TimerConfig flags);
+  uint64_t ReadMainCounterValue();
+  uint64_t GetFemtosecndPerCount() { return femtosecond_per_count_; };
 
  private:
   RegisterSpace* registers_;
-  uint64_t count_per_femtosecond_;
+  uint64_t femtosecond_per_count_;
 };
 
 constexpr HPET::TimerConfig operator|=(HPET::TimerConfig& a,

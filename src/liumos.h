@@ -7,6 +7,7 @@
 #include "gdt.h"
 #include "generic.h"
 #include "guid.h"
+#include "hpet.h"
 #include "interrupt.h"
 #include "keyid.h"
 #include "paging.h"
@@ -37,6 +38,7 @@ void ShowSRAT(void);
 void ShowSLIT(void);
 void ShowEFIMemoryMap(void);
 void Free(void);
+void Time(void);
 void Process(TextBox& tbox);
 }  // namespace ConsoleCommand
 
@@ -97,6 +99,7 @@ extern CPUFeatureSet cpu_features;
 extern SerialPort com1;
 extern File hello_bin_file;
 extern File liumos_elf_file;
+extern HPET hpet;
 
 void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table);
 

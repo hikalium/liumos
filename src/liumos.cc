@@ -11,7 +11,6 @@ CPUFeatureSet cpu_features;
 SerialPort com1;
 File hello_bin_file;
 File liumos_elf_file;
-
 HPET hpet;
 
 PhysicalPageAllocator page_allocator_;
