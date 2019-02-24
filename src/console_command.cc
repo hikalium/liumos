@@ -343,8 +343,8 @@ void TestMem() {
   uint64_t nextstep, i, index;
   uint64_t csize, stride;
   uint64_t steps, tsteps;
-  uint64_t sec0, sec1, sec;
-  constexpr uint64_t kDurationTick = 0x800000;
+  uint64_t sec0, sec1, tick_sum_with_mem_read, tick_sum_without_mem_read;
+  uint64_t kDurationTick = (uint64_t)0.1 * 1e15 / hpet.GetFemtosecndPerCount();
   int* array = nullptr;
   array = page_allocator->AllocPages<int*>(
       (sizeof(int) * kRangeMax + kPageSize - 1) >> kPageSizeExponent);
@@ -362,7 +362,9 @@ void TestMem() {
       }
       array[index - stride] = 0;
 
-      steps = 0.0;
+      // measure time spent on (reading data from memory) + (loop, instrs,
+      // etc...)
+      steps = 0;
       nextstep = 0;
       sec0 = get_seconds();
       do {
@@ -372,12 +374,13 @@ void TestMem() {
             nextstep = array[nextstep];
           while (nextstep != 0);
         }
-        steps = steps + 1.0;
+        steps = steps + 1;
         sec1 = get_seconds();
       } while ((sec1 - sec0) < kDurationTick);  // originary 20.0
-      sec = sec1 - sec0;
+      tick_sum_with_mem_read = sec1 - sec0;
 
-      tsteps = 0.0;
+      // measure time spent on (loop, instrs, etc...) only
+      tsteps = 0;
       sec0 = get_seconds();
       do {
         for (i = stride; i != 0; i = i - 1) {
@@ -386,14 +389,23 @@ void TestMem() {
             index = index + stride;
           while (index < csize);
         }
-        tsteps = tsteps + 1.0;
+        tsteps = tsteps + 1;
         sec1 = get_seconds();
       } while (tsteps < steps);
-      sec = sec - (sec1 - sec0);
-      // loadtime = (sec * 1e9) / (steps * csize);
+      tick_sum_without_mem_read = sec1 - sec0;
+
+      // avoid negative value
+      if (tick_sum_without_mem_read >= tick_sum_with_mem_read) {
+        tick_sum_without_mem_read = tick_sum_with_mem_read;
+      }
+
+      const uint64_t tick_sum_of_mem_read =
+          tick_sum_with_mem_read - tick_sum_without_mem_read;
+      const uint64_t pico_second_per_mem_read = tick_sum_of_mem_read *
+                                                hpet.GetFemtosecndPerCount() /
+                                                (steps * csize) / 1000;
       PutString("0x");
-      PutHex64(sec * hpet.GetFemtosecndPerCount() / (steps * csize) / 1000);
-      // pico second?
+      PutHex64(pico_second_per_mem_read > 0 ? pico_second_per_mem_read : 1);
       PutString(", ");
     };
     PutString("\n");
@@ -420,6 +432,8 @@ void Process(TextBox& tbox) {
     ShowSLIT();
   } else if (IsEqualString(line, "show mmap")) {
     ShowEFIMemoryMap();
+  } else if (IsEqualString(line, "show hpet")) {
+    hpet.Print();
   } else if (IsEqualString(line, "test mem")) {
     TestMem();
   } else if (IsEqualString(line, "free")) {
@@ -430,6 +444,17 @@ void Process(TextBox& tbox) {
     ParseELFFile(hello_bin_file);
   } else if (IsEqualString(line, "liumos.elf")) {
     ParseELFFile(liumos_elf_file);
+  } else if (IsEqualString(line, "help")) {
+    PutString("hello: Nothing to say.\n");
+    PutString("show xsdt: Print XSDT Entries\n");
+    PutString("show nfit: Print NFIT Entries\n");
+    PutString("show madt: Print MADT Entries\n");
+    PutString("show srat: Print SRAT Entries\n");
+    PutString("show slit: Print SLIT Entries\n");
+    PutString("show mmap: Print UEFI MemoryMap\n");
+    PutString("test mem: Test memory access \n");
+    PutString("free: show memory free entries\n");
+    PutString("time: show HPET main counter value\n");
   } else {
     PutString("Command not found: ");
     PutString(tbox.GetRecordedString());

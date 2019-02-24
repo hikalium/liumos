@@ -1,4 +1,4 @@
-#include "hpet.h"
+#include "liumos.h"
 
 using TimerConfig = HPET::TimerConfig;
 
@@ -9,13 +9,22 @@ packed_struct TimerRegister {
   uint64_t reserved;
 };
 
+namespace GeneralConfigBits {
+constexpr uint64_t kEnable = 1 << 0;
+constexpr uint64_t kUseLegacyReplacementRouting = 1 << 1;
+};  // namespace GeneralConfigBits
+
+namespace GeneralCapabilityBits {
+constexpr uint64_t kMainCounterSupports64bit = 1 << 13;
+uint8_t GetNumOfTimers(uint64_t cap) {
+  return (cap >> 8) & 0b11111;
+}
+};  // namespace GeneralCapabilityBits
+
 packed_struct HPET::RegisterSpace {
   uint64_t general_capabilities_and_id;
   uint64_t reserved00;
-  enum class GeneralConfig : uint64_t {
-    kEnable = 1 << 0,
-    kUseLegacyReplacementRouting = 1 << 1,
-  } general_configuration;
+  uint64_t general_configuration;
   uint64_t reserved01;
   uint64_t general_interrupt_status;
   uint64_t reserved02;
@@ -25,20 +34,12 @@ packed_struct HPET::RegisterSpace {
   TimerRegister timers[32];
 };
 
-using GeneralConfig = HPET::RegisterSpace::GeneralConfig;
-
-constexpr GeneralConfig operator|=(GeneralConfig& a, GeneralConfig b) {
-  a = static_cast<GeneralConfig>(static_cast<uint64_t>(a) |
-                                 static_cast<uint64_t>(b));
-  return a;
-}
-
 void HPET::Init(HPET::RegisterSpace* registers) {
   registers_ = registers;
   femtosecond_per_count_ = registers->general_capabilities_and_id >> 32;
-  GeneralConfig general_config = registers->general_configuration;
-  general_config |= GeneralConfig::kUseLegacyReplacementRouting;
-  general_config |= GeneralConfig::kEnable;
+  uint64_t general_config = registers->general_configuration;
+  general_config |= GeneralConfigBits::kUseLegacyReplacementRouting;
+  general_config |= GeneralConfigBits::kEnable;
   registers->general_configuration = general_config;
 }
 
@@ -66,4 +67,15 @@ void HPET::BusyWait(uint64_t ms) {
   uint64_t count = 1e12 * ms / femtosecond_per_count_ + ReadMainCounterValue();
   while (ReadMainCounterValue() < count)
     ;
+}
+
+void HPET::Print() {
+  PutStringAndHex("HPET at", registers_);
+  PutStringAndHex("  # of timers",
+                  GeneralCapabilityBits::GetNumOfTimers(
+                      registers_->general_capabilities_and_id));
+  PutStringAndHex("  femtosecond_per_count", femtosecond_per_count_);
+  PutStringAndBool("  main counter supports 64bit mode",
+                   registers_->general_capabilities_and_id &
+                       GeneralCapabilityBits::kMainCounterSupports64bit);
 }
