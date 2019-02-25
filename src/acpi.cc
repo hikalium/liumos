@@ -7,6 +7,18 @@ ACPI::HPET* ACPI::hpet;
 ACPI::SRAT* ACPI::srat;
 ACPI::SLIT* ACPI::slit;
 
+const GUID ACPI::NFIT::SPARange::kByteAdressablePersistentMemory = {
+    0x66F0D379,
+    0xB4F3,
+    0x4074,
+    {0xAC, 0x43, 0x0D, 0x33, 0x18, 0xB7, 0x8C, 0xDB}};
+
+const GUID ACPI::NFIT::SPARange::kNVDIMMControlRegion = {
+    0x92F701F6,
+    0x13B4,
+    0x405D,
+    {0x91, 0x0B, 0x29, 0x93, 0x67, 0xE8, 0x23, 0x4C}};
+
 void ACPI::DetectTables() {
   assert(rsdt);
   XSDT* xsdt = rsdt->xsdt;

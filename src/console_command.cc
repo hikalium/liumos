@@ -2,18 +2,6 @@
 
 namespace ConsoleCommand {
 
-static const GUID kByteAdressablePersistentMemory = {
-    0x66F0D379,
-    0xB4F3,
-    0x4074,
-    {0xAC, 0x43, 0x0D, 0x33, 0x18, 0xB7, 0x8C, 0xDB}};
-
-static const GUID kNVDIMMControlRegion = {
-    0x92F701F6,
-    0x13B4,
-    0x405D,
-    {0x91, 0x0B, 0x29, 0x93, 0x67, 0xE8, 0x23, 0x4C}};
-
 static void ShowNFIT_PrintMemoryMappingAttr(uint64_t attr) {
   PutString("  attr: ");
   PutHex64(attr);
@@ -44,9 +32,10 @@ static void ShowNFIT_PrintMemoryMappingAttr(uint64_t attr) {
 static void ShowNFIT_PrintMemoryTypeGUID(ACPI::NFIT::SPARange* spa) {
   GUID* type_guid = reinterpret_cast<GUID*>(&spa->address_range_type_guid);
   PutString("  type:");
-  if (IsEqualGUID(type_guid, &kByteAdressablePersistentMemory))
+  if (IsEqualGUID(type_guid,
+                  &ACPI::NFIT::SPARange::kByteAdressablePersistentMemory))
     PutString(" ByteAddressablePersistentMemory");
-  else if (IsEqualGUID(type_guid, &kNVDIMMControlRegion))
+  else if (IsEqualGUID(type_guid, &ACPI::NFIT::SPARange::kNVDIMMControlRegion))
     PutString(" NVDIMMControlRegion");
   else
     PutGUID(type_guid);

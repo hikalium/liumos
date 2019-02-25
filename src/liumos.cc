@@ -38,6 +38,7 @@ void InitPMEMManagement() {
   pmem_allocator = &pmem_allocator_;
   new (pmem_allocator) PhysicalPageAllocator();
   int available_pages = 0;
+
   PutStringAndHex("Available PMEM (KiB)", available_pages * 4);
 }
 
