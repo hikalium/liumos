@@ -84,12 +84,6 @@ int strncmp(const char* s1, const char* s2, size_t n);
 void* memcpy(void* dst, const void* src, size_t n);
 
 // @liumos.c
-constexpr uint64_t kPageSizeExponent = 12;
-constexpr uint64_t kPageSize = 1 << kPageSizeExponent;
-inline uint64_t ByteSizeToPageSize(uint64_t byte_size) {
-  return (byte_size + kPageSize - 1) >> kPageSizeExponent;
-}
-
 extern EFI::MemoryMap efi_memory_map;
 extern PhysicalPageAllocator* page_allocator;
 extern int kMaxPhyAddr;

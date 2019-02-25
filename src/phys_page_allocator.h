@@ -36,6 +36,7 @@ class PhysicalPageAllocator {
     uint64_t num_of_pages_;
     FreeInfo* next_;
   };
+  static_assert(sizeof(FreeInfo) <= kPageSize);
 
   FreeInfo* head_;
 };
