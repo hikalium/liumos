@@ -17,6 +17,20 @@ class PhysicalPageAllocator {
     }
     Panic("Cannot allocate pages");
   }
+  template <typename T>
+  T AllocPagesInProximityDomain(int num_of_pages, uint32_t proximity_domain) {
+    FreeInfo* info = head_;
+    void* addr = nullptr;
+    while (info) {
+      if (info->GetProximityDomain() == proximity_domain) {
+        addr = info->ProvidePages(num_of_pages);
+        if (addr)
+          return reinterpret_cast<T>(addr);
+      }
+      info = info->GetNext();
+    }
+    Panic("Cannot allocate pages");
+  }
   void Print();
 
  private:
@@ -29,6 +43,7 @@ class PhysicalPageAllocator {
     FreeInfo* GetNext() const { return next_; }
     void* ProvidePages(int num_of_req_pages);
     void Print();
+    uint32_t GetProximityDomain() { return proximity_domain_; };
 
    private:
     bool CanProvidePages(uint64_t num_of_req_pages) const {

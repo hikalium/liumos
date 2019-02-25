@@ -5,7 +5,7 @@ OBJS= acpi.o apic.o asm.o console.o console_command.o \
 		 libfunc.o liumos.o paging.o phys_page_allocator.o \
 		 scheduler.o serial.o sheet.o text_box.o \
 		 font.gen.o
-HEADERS=$(wildcard *.h) lib/musl/include/elf.h
+HEADERS=$(filter-out githash.h, $(wildcard *.h)) lib/musl/include/elf.h
 OVMF=ovmf/bios64.bin
 QEMU=qemu-system-x86_64
 
@@ -104,4 +104,7 @@ print_cc :
 
 dump : $(addsuffix .dump.txt, $(OBJS))
 
+FORCE : 
 
+githash.h: FORCE
+	echo '#define GIT_HASH "$(shell git rev-parse HEAD | tr -d "\n")"' > $@

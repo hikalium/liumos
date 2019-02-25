@@ -6,6 +6,7 @@
 #include "efi.h"
 #include "gdt.h"
 #include "generic.h"
+#include "githash.h"
 #include "guid.h"
 #include "hpet.h"
 #include "interrupt.h"
@@ -31,6 +32,8 @@ void PutHex8ZeroFilled(uint8_t value);
 void PutStringAndHex(const char* s, uint64_t value);
 void PutStringAndHex(const char* s, void* value);
 void PutStringAndBool(const char* s, bool cond);
+void PutAddressRange(uint64_t addr, uint64_t size);
+void PutAddressRange(void* addr, uint64_t size);
 
 // @console_command.cc
 namespace ConsoleCommand {
@@ -83,6 +86,7 @@ constexpr uint16_t kIOPortKeyboardData = 0x0060;
 // @libfunc.cc
 int strncmp(const char* s1, const char* s2, size_t n);
 void* memcpy(void* dst, const void* src, size_t n);
+int atoi(const char* str);
 
 // @liumos.c
 extern EFI::MemoryMap efi_memory_map;

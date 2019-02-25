@@ -9,3 +9,4 @@
 *.out
 *.gen.mk
 *.dump.txt
+githash.h

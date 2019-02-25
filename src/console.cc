@@ -97,8 +97,8 @@ void PutHex64ZeroFilled(uint64_t value) {
   char s[2];
   s[1] = 0;
   for (i = 15; i >= 0; i--) {
-    if (i == 7)
-      PutString("_");
+    if (i == 11 || i == 7 || i == 3)
+      PutString("'");
     s[0] = (value >> (4 * i)) & 0xF;
     if (s[0] < 10)
       s[0] += '0';
@@ -138,4 +138,15 @@ void PutStringAndBool(const char* s, bool cond) {
   PutString(": ");
   PutString(cond ? "True" : "False");
   PutString("\n");
+}
+
+void PutAddressRange(uint64_t addr, uint64_t size) {
+  PutChar('[');
+  PutHex64ZeroFilled(addr);
+  PutChar('-');
+  PutHex64ZeroFilled(addr + size);
+  PutChar(')');
+}
+void PutAddressRange(void* addr, uint64_t size) {
+  PutAddressRange(reinterpret_cast<uint64_t>(addr), size);
 }

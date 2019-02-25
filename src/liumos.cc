@@ -299,7 +299,7 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   SetSerialForConsole(&com1);
 
   PrintLogoFile();
-  PutString("\nliumOS is booting...\n\n");
+  PutString("\nliumOS version: " GIT_HASH "\n\n");
   ClearIntFlag();
 
   ACPI::DetectTables();

@@ -15,3 +15,19 @@ void* memcpy(void* dst, const void* src, size_t n) {
   }
   return dst;
 }
+
+int atoi(const char* str) {
+  int v = 0;
+  char c;
+  while ((c = *(str++))) {
+    if (c == ' ')
+      continue;
+    if ('0' <= c && c <= '9') {
+      v *= 10;
+      v += c - '0';
+      continue;
+    }
+    break;
+  }
+  return v;
+}
