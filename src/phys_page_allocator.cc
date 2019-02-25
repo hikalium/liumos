@@ -11,10 +11,16 @@ void PhysicalPageAllocator::Print() {
 void PhysicalPageAllocator::FreePages(void* phys_addr, uint64_t num_of_pages) {
   // TODO: Impl merge
   assert(num_of_pages > 0);
-  assert((reinterpret_cast<uint64_t>(phys_addr) & 0xfff) == 0);
+  const uint64_t phys_addr_uint64 = reinterpret_cast<uint64_t>(phys_addr);
+  assert((phys_addr_uint64 & 0xfff) == 0);
 
   FreeInfo* info = reinterpret_cast<FreeInfo*>(phys_addr);
-  head_ = new (info) FreeInfo(num_of_pages, head_);
+
+  const uint32_t prox_domain =
+      ACPI::srat ? ACPI::srat->GetProximityDomainForAddrRange(
+                       phys_addr_uint64, num_of_pages << kPageSizeExponent)
+                 : 0;
+  head_ = new (info) FreeInfo(num_of_pages, head_, prox_domain);
 }
 
 void* PhysicalPageAllocator::FreeInfo::ProvidePages(int num_of_req_pages) {
@@ -31,7 +37,9 @@ void PhysicalPageAllocator::FreeInfo::Print() {
   PutHex64ZeroFilled(physical_start);
   PutString(" - 0x");
   PutHex64ZeroFilled(physical_start + (num_of_pages_ << 12));
-  PutString(" ) = 0x");
+  PutString(" )@ProxDomain:0x");
+  PutHex64(proximity_domain_);
+  PutString(" = 0x");
   PutHex64(num_of_pages_);
   PutString(" pages\n");
 }

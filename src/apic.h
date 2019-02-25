@@ -4,7 +4,8 @@
 class LocalAPIC {
  public:
   void Init(void);
-  uint8_t GetID() { return id_; }
+  uint32_t GetID() { return id_; }
+  bool Isx2APIC() { return is_x2apic_; }
   void SendEndOfInterrupt(void);
 
  private:

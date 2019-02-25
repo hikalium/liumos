@@ -22,8 +22,10 @@ class PhysicalPageAllocator {
  private:
   class FreeInfo {
    public:
-    FreeInfo(uint64_t num_of_pages, FreeInfo* next)
-        : num_of_pages_(num_of_pages), next_(next) {}
+    FreeInfo(uint64_t num_of_pages, FreeInfo* next, uint32_t proximity_domain)
+        : num_of_pages_(num_of_pages),
+          next_(next),
+          proximity_domain_(proximity_domain) {}
     FreeInfo* GetNext() const { return next_; }
     void* ProvidePages(int num_of_req_pages);
     void Print();
@@ -35,6 +37,7 @@ class PhysicalPageAllocator {
 
     uint64_t num_of_pages_;
     FreeInfo* next_;
+    uint32_t proximity_domain_;
   };
   static_assert(sizeof(FreeInfo) <= kPageSize);
 

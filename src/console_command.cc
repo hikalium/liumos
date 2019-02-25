@@ -428,6 +428,15 @@ void Process(TextBox& tbox) {
     ShowEFIMemoryMap();
   } else if (IsEqualString(line, "show hpet")) {
     hpet.Print();
+  } else if (IsEqualString(line, "show cpu")) {
+    PutString("APIC Mode: ");
+    PutString(bsp_local_apic.Isx2APIC() ? "x2APIC" : "xAPIC");
+    PutString("\n");
+    PutStringAndHex("BSP APIC ID", bsp_local_apic.GetID());
+    if (ACPI::srat)
+      PutStringAndHex(
+          "  proximity_domain",
+          ACPI::srat->GetProximityDomainForLocalAPIC(bsp_local_apic));
   } else if (IsEqualString(line, "test mem")) {
     TestMem();
   } else if (IsEqualString(line, "free")) {

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "apic.h"
 #include "generic.h"
 #include "guid.h"
 
@@ -231,6 +232,41 @@ packed_struct SRAT {
   uint32_t creator_revision;
   uint32_t reserved[3];
   Entry entry[1];
+
+  constexpr static uint32_t kUnknownProximityDomain = 0xffffffffULL;
+  uint32_t GetProximityDomainForAddrRange(uint64_t paddr, uint64_t size) {
+    for (auto& it : *this) {
+      if (it.type != Entry::kTypeMemoryAffinity)
+        continue;
+      MemoryAffinity* e = reinterpret_cast<MemoryAffinity*>(&it);
+      if (e->base_address <= paddr && paddr < e->base_address + e->size &&
+          paddr + size <= e->base_address + e->size) {
+        return e->proximity_domain;
+      }
+    }
+    return kUnknownProximityDomain;
+  }
+  uint32_t GetProximityDomainForLocalAPIC(LocalAPIC & lapic) {
+    for (auto& it : *this) {
+      if (it.type != SRAT::Entry::kTypeLx2APICAffinity)
+        continue;
+      SRAT::Lx2APICAffinity* e = reinterpret_cast<SRAT::Lx2APICAffinity*>(&it);
+      if (e->x2apic_id != lapic.GetID())
+        continue;
+      return e->proximity_domain;
+    }
+    for (auto& it : *this) {
+      if (it.type != SRAT::Entry::kTypeLAPICAffinity)
+        continue;
+      SRAT::LAPICAffinity* e = reinterpret_cast<SRAT::LAPICAffinity*>(&it);
+      if (e->apic_id != lapic.GetID())
+        continue;
+      return e->proximity_domain_low | (e->proximity_domain_high[0] << 8) |
+             (e->proximity_domain_high[1] << 16) |
+             (e->proximity_domain_high[2] << 24);
+    }
+    return kUnknownProximityDomain;
+  }
 };
 static_assert(offsetof(SRAT, entry) == 48);
 
