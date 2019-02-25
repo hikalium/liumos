@@ -34,18 +34,40 @@ packed_struct XSDT {
   void* entry[1];
 };
 
-enum class NFITStructureType : int {
-  kSystemPhysicalAddressRangeStructure,
-  kNVDIMMRegionMappingStructure,
-  kInterleaveStructure,
-  kSMBIOSManagementInformationStructure,
-  kNVDIMMControlRegionStructure,
-  kNVDIMMBlockDataWindowRegionStructure,
-  kFlushHintAddressStructure,
-  kPlatformCapabilitiesStructure,
-};
-
 packed_struct NFIT {
+  packed_struct Entry {
+    static const uint16_t kTypeSPARangeStructure = 0x00;
+    static const uint16_t kTypeNVDIMMRegionMappingStructure = 0x01;
+    static const uint16_t kTypeInterleaveStructure = 0x02;
+    static const uint16_t kTypeNVDIMMControlRegionStructure = 0x04;
+    static const uint16_t kTypeFlushHintAddressStructure = 0x06;
+    static const uint16_t kTypePlatformCapabilitiesStructure = 0x07;
+
+    uint16_t type;
+    uint16_t length;
+  };
+
+  class Iterator {
+   public:
+    Iterator(Entry* e) : current_(e){};
+    void operator++() {
+      current_ = reinterpret_cast<Entry*>(reinterpret_cast<uint64_t>(current_) +
+                                          current_->length);
+    }
+    Entry& operator*() { return *current_; }
+    friend bool operator!=(const Iterator& lhs, const Iterator& rhs) {
+      return lhs.current_ != rhs.current_;
+    }
+
+   private:
+    Entry* current_;
+  };
+  Iterator begin() { return Iterator(entry); }
+  Iterator end() {
+    return Iterator(
+        reinterpret_cast<Entry*>(reinterpret_cast<uint64_t>(this) + length));
+  }
+
   char signature[4];
   uint32_t length;
   uint8_t revision;
@@ -56,7 +78,7 @@ packed_struct NFIT {
   uint32_t creator_id;
   uint32_t creator_revision;
   uint32_t reserved;
-  uint16_t entry[1];
+  Entry entry[1];
 };
 static_assert(offsetof(NFIT, entry) == 40);
 
@@ -155,6 +177,11 @@ packed_struct SRAT {
    private:
     Entry* current_;
   };
+  Iterator begin() { return Iterator(entry); }
+  Iterator end() {
+    return Iterator(
+        reinterpret_cast<Entry*>(reinterpret_cast<uint64_t>(this) + length));
+  }
 
   packed_struct LAPICAffinity {
     Entry entry;
@@ -201,12 +228,6 @@ packed_struct SRAT {
   uint32_t creator_revision;
   uint32_t reserved[3];
   Entry entry[1];
-
-  Iterator begin() { return Iterator(entry); }
-  Iterator end() {
-    return Iterator(
-        reinterpret_cast<Entry*>(reinterpret_cast<uint64_t>(this) + length));
-  }
 };
 static_assert(offsetof(SRAT, entry) == 48);
 

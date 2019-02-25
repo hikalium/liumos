@@ -80,85 +80,87 @@ void ShowNFIT() {
   }
   PutString("NFIT found\n");
   PutStringAndHex("NFIT Size in bytes", nfit->length);
-  for (int i = 0; i < (int)(nfit->length - offsetof(NFIT, entry)) / 2;
-       i += nfit->entry[i + 1] / 2) {
-    NFITStructureType type = static_cast<NFITStructureType>(nfit->entry[i]);
-    if (type == NFITStructureType::kSystemPhysicalAddressRangeStructure) {
-      NFIT_SPARange* spa_range =
-          reinterpret_cast<NFIT_SPARange*>(&nfit->entry[i]);
-      PutStringAndHex("SPARange #", spa_range->spa_range_structure_index);
-      PutStringAndHex("  Base", spa_range->system_physical_address_range_base);
-      PutStringAndHex("  Length",
-                      spa_range->system_physical_address_range_length);
-      ShowNFIT_PrintMemoryMappingAttr(
-          spa_range->address_range_memory_mapping_attribute);
-      ShowNFIT_PrintMemoryTypeGUID(spa_range);
-    } else if (type == NFITStructureType::kNVDIMMRegionMappingStructure) {
-      NFIT_RegionMapping* rmap =
-          reinterpret_cast<NFIT_RegionMapping*>(&nfit->entry[i]);
-      PutString("Region Mapping\n");
-      PutStringAndHex("  NFIT Device Handle #", rmap->nfit_device_handle);
-      PutStringAndHex("  NVDIMM phys ID", rmap->nvdimm_physical_id);
-      PutStringAndHex("  NVDIMM region ID", rmap->nvdimm_region_id);
-      PutStringAndHex("  SPARange struct index",
-                      rmap->spa_range_structure_index);
-      PutStringAndHex("  ControlRegion struct index",
-                      rmap->nvdimm_control_region_struct_index);
-      PutStringAndHex("  region size", rmap->nvdimm_region_size);
-      PutStringAndHex("  region offset", rmap->region_offset);
-      PutStringAndHex("  NVDIMM phys addr region base",
-                      rmap->nvdimm_physical_address_region_base);
-      PutStringAndHex("  NVDIMM interleave_structure_index",
-                      rmap->interleave_structure_index);
-      PutStringAndHex("  NVDIMM interleave ways", rmap->interleave_ways);
-      PutStringAndHex("  NVDIMM state flags", rmap->nvdimm_state_flags);
-    } else if (type == NFITStructureType::kNVDIMMControlRegionStructure) {
-      NFIT_ControlRegionStruct* ctrl_region =
-          reinterpret_cast<NFIT_ControlRegionStruct*>(&nfit->entry[i]);
-      PutStringAndHex("Control Region Struct #",
-                      ctrl_region->nvdimm_control_region_struct_index);
-    } else if (type == NFITStructureType::kInterleaveStructure) {
-      NFIT_InterleaveStructure* interleave =
-          reinterpret_cast<NFIT_InterleaveStructure*>(&nfit->entry[i]);
-      PutStringAndHex("Interleave Struct #",
-                      interleave->interleave_struct_index);
-      PutStringAndHex("  Line size (in bytes)", interleave->line_size);
-      PutString("  Lines = ");
-      PutHex64(interleave->num_of_lines_described);
-      PutString(" :");
-      for (uint32_t line_index = 0;
-           line_index < interleave->num_of_lines_described; line_index++) {
-        PutString(" +");
-        PutHex64(interleave->line_offsets[line_index]);
-      }
-      PutChar('\n');
-    } else if (type == NFITStructureType::kFlushHintAddressStructure) {
-      NFIT_FlushHintAddressStructure* flush_hint =
-          reinterpret_cast<NFIT_FlushHintAddressStructure*>(&nfit->entry[i]);
-      PutStringAndHex("Flush Hint Addresses for NFIT Device handle",
-                      flush_hint->nfit_device_handle);
-      PutString("  Addrs = ");
-      PutHex64(flush_hint->num_of_flush_hint_addresses);
-      PutString(" :");
-      for (uint32_t index = 0; index < flush_hint->num_of_flush_hint_addresses;
-           index++) {
-        PutString(" @");
-        PutHex64(flush_hint->flush_hint_addresses[index]);
-      }
-      PutChar('\n');
-    } else if (type == NFITStructureType::kPlatformCapabilitiesStructure) {
-      NFIT_PlatformCapabilities* caps =
-          reinterpret_cast<NFIT_PlatformCapabilities*>(&nfit->entry[i]);
-      const int cap_shift = 31 - caps->highest_valid_cap_bit;
-      const uint32_t cap_bits =
-          ((caps->capabilities << cap_shift) & 0xFFFF'FFFFUL) >> cap_shift;
-      PutString("Platform Capabilities\n");
-      PutStringAndBool("  Flush CPU Cache when power loss", cap_bits & 0b001);
-      PutStringAndBool("  Flush Memory Controller when power loss",
-                       cap_bits & 0b010);
-      PutStringAndBool("  Hardware Mirroring Support", cap_bits & 0b100);
-    } else {
-      PutStringAndHex("Unknown entry. type", static_cast<int>(type));
+  for (auto& it : *nfit) {
+    switch (it.type) {
+      case NFIT::Entry::kTypeSPARangeStructure: {
+        NFIT_SPARange* spa_range = reinterpret_cast<NFIT_SPARange*>(&it);
+        PutStringAndHex("SPARange #", spa_range->spa_range_structure_index);
+        PutStringAndHex("  Base",
+                        spa_range->system_physical_address_range_base);
+        PutStringAndHex("  Length",
+                        spa_range->system_physical_address_range_length);
+        ShowNFIT_PrintMemoryMappingAttr(
+            spa_range->address_range_memory_mapping_attribute);
+        ShowNFIT_PrintMemoryTypeGUID(spa_range);
+      } break;
+      case NFIT::Entry::kTypeNVDIMMRegionMappingStructure: {
+        NFIT_RegionMapping* rmap = reinterpret_cast<NFIT_RegionMapping*>(&it);
+        PutString("Region Mapping\n");
+        PutStringAndHex("  NFIT Device Handle #", rmap->nfit_device_handle);
+        PutStringAndHex("  NVDIMM phys ID", rmap->nvdimm_physical_id);
+        PutStringAndHex("  NVDIMM region ID", rmap->nvdimm_region_id);
+        PutStringAndHex("  SPARange struct index",
+                        rmap->spa_range_structure_index);
+        PutStringAndHex("  ControlRegion struct index",
+                        rmap->nvdimm_control_region_struct_index);
+        PutStringAndHex("  region size", rmap->nvdimm_region_size);
+        PutStringAndHex("  region offset", rmap->region_offset);
+        PutStringAndHex("  NVDIMM phys addr region base",
+                        rmap->nvdimm_physical_address_region_base);
+        PutStringAndHex("  NVDIMM interleave_structure_index",
+                        rmap->interleave_structure_index);
+        PutStringAndHex("  NVDIMM interleave ways", rmap->interleave_ways);
+        PutStringAndHex("  NVDIMM state flags", rmap->nvdimm_state_flags);
+      } break;
+      case NFIT::Entry::kTypeInterleaveStructure: {
+        NFIT_InterleaveStructure* interleave =
+            reinterpret_cast<NFIT_InterleaveStructure*>(&it);
+        PutStringAndHex("Interleave Struct #",
+                        interleave->interleave_struct_index);
+        PutStringAndHex("  Line size (in bytes)", interleave->line_size);
+        PutString("  Lines = ");
+        PutHex64(interleave->num_of_lines_described);
+        PutString(" :");
+        for (uint32_t line_index = 0;
+             line_index < interleave->num_of_lines_described; line_index++) {
+          PutString(" +");
+          PutHex64(interleave->line_offsets[line_index]);
+        }
+        PutChar('\n');
+      } break;
+      case NFIT::Entry::kTypeNVDIMMControlRegionStructure: {
+        NFIT_ControlRegionStruct* ctrl_region =
+            reinterpret_cast<NFIT_ControlRegionStruct*>(&it);
+        PutStringAndHex("Control Region Struct #",
+                        ctrl_region->nvdimm_control_region_struct_index);
+      } break;
+      case NFIT::Entry::kTypeFlushHintAddressStructure: {
+        NFIT_FlushHintAddressStructure* flush_hint =
+            reinterpret_cast<NFIT_FlushHintAddressStructure*>(&it);
+        PutStringAndHex("Flush Hint Addresses for NFIT Device handle",
+                        flush_hint->nfit_device_handle);
+        PutString("  Addrs = ");
+        PutHex64(flush_hint->num_of_flush_hint_addresses);
+        PutString(" :");
+        for (uint32_t index = 0;
+             index < flush_hint->num_of_flush_hint_addresses; index++) {
+          PutString(" @");
+          PutHex64(flush_hint->flush_hint_addresses[index]);
+        }
+        PutChar('\n');
+      } break;
+      case NFIT::Entry::kTypePlatformCapabilitiesStructure: {
+        NFIT_PlatformCapabilities* caps =
+            reinterpret_cast<NFIT_PlatformCapabilities*>(&it);
+        const int cap_shift = 31 - caps->highest_valid_cap_bit;
+        const uint32_t cap_bits =
+            ((caps->capabilities << cap_shift) & 0xFFFF'FFFFUL) >> cap_shift;
+        PutString("Platform Capabilities\n");
+        PutStringAndBool("  Flush CPU Cache when power loss", cap_bits & 0b001);
+        PutStringAndBool("  Flush Memory Controller when power loss",
+                         cap_bits & 0b010);
+        PutStringAndBool("  Hardware Mirroring Support", cap_bits & 0b100);
+      } break;
     }
   }
   PutString("NFIT end\n");
