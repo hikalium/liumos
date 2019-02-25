@@ -68,6 +68,76 @@ packed_struct NFIT {
         reinterpret_cast<Entry*>(reinterpret_cast<uint64_t>(this) + length));
   }
 
+  packed_struct SPARange {
+    // System Physical Address Range
+    uint16_t type;
+    uint16_t length;
+    uint16_t spa_range_structure_index;
+    uint16_t flags;
+    uint32_t reserved;
+    uint32_t proximity_domain;
+    uint64_t address_range_type_guid[2];
+    uint64_t system_physical_address_range_base;
+    uint64_t system_physical_address_range_length;
+    uint64_t address_range_memory_mapping_attribute;
+  };
+
+  packed_struct RegionMapping {
+    uint16_t type;
+    uint16_t length;
+    uint32_t nfit_device_handle;
+    uint16_t nvdimm_physical_id;
+    uint16_t nvdimm_region_id;
+    uint16_t spa_range_structure_index;
+    uint16_t nvdimm_control_region_struct_index;
+    uint64_t nvdimm_region_size;
+    uint64_t region_offset;
+    uint64_t nvdimm_physical_address_region_base;
+    uint16_t interleave_structure_index;
+    uint16_t interleave_ways;
+    uint16_t nvdimm_state_flags;
+    uint16_t reserved;
+  };
+  static_assert(sizeof(RegionMapping) == 48);
+
+  packed_struct InterleaveStructure {
+    uint16_t type;
+    uint16_t length;
+    uint16_t interleave_struct_index;
+    uint16_t reserved;
+    uint32_t num_of_lines_described;
+    uint32_t line_size;
+    uint32_t line_offsets[1];
+  };
+  static_assert(offsetof(InterleaveStructure, line_offsets) == 16);
+
+  packed_struct FlushHintAddressStructure {
+    uint16_t type;
+    uint16_t length;
+    uint32_t nfit_device_handle;
+    uint16_t num_of_flush_hint_addresses;
+    uint16_t reserved[3];
+    uint64_t flush_hint_addresses[1];
+  };
+  static_assert(offsetof(FlushHintAddressStructure, flush_hint_addresses) ==
+                16);
+
+  packed_struct PlatformCapabilities {
+    uint16_t type;
+    uint16_t length;
+    uint8_t highest_valid_cap_bit;
+    uint8_t reserved0[3];
+    uint32_t capabilities;
+    uint32_t reserved1;
+  };
+  static_assert(sizeof(PlatformCapabilities) == 16);
+
+  packed_struct ControlRegionStruct {
+    uint16_t type;
+    uint16_t length;
+    uint16_t nvdimm_control_region_struct_index;
+  };
+
   char signature[4];
   uint32_t length;
   uint8_t revision;
@@ -81,76 +151,6 @@ packed_struct NFIT {
   Entry entry[1];
 };
 static_assert(offsetof(NFIT, entry) == 40);
-
-packed_struct NFIT_SPARange {
-  // System Physical Address Range
-  uint16_t type;
-  uint16_t length;
-  uint16_t spa_range_structure_index;
-  uint16_t flags;
-  uint32_t reserved;
-  uint32_t proximity_domain;
-  uint64_t address_range_type_guid[2];
-  uint64_t system_physical_address_range_base;
-  uint64_t system_physical_address_range_length;
-  uint64_t address_range_memory_mapping_attribute;
-};
-
-packed_struct NFIT_RegionMapping {
-  uint16_t type;
-  uint16_t length;
-  uint32_t nfit_device_handle;
-  uint16_t nvdimm_physical_id;
-  uint16_t nvdimm_region_id;
-  uint16_t spa_range_structure_index;
-  uint16_t nvdimm_control_region_struct_index;
-  uint64_t nvdimm_region_size;
-  uint64_t region_offset;
-  uint64_t nvdimm_physical_address_region_base;
-  uint16_t interleave_structure_index;
-  uint16_t interleave_ways;
-  uint16_t nvdimm_state_flags;
-  uint16_t reserved;
-};
-static_assert(sizeof(NFIT_RegionMapping) == 48);
-
-packed_struct NFIT_InterleaveStructure {
-  uint16_t type;
-  uint16_t length;
-  uint16_t interleave_struct_index;
-  uint16_t reserved;
-  uint32_t num_of_lines_described;
-  uint32_t line_size;
-  uint32_t line_offsets[1];
-};
-static_assert(offsetof(NFIT_InterleaveStructure, line_offsets) == 16);
-
-packed_struct NFIT_FlushHintAddressStructure {
-  uint16_t type;
-  uint16_t length;
-  uint32_t nfit_device_handle;
-  uint16_t num_of_flush_hint_addresses;
-  uint16_t reserved[3];
-  uint64_t flush_hint_addresses[1];
-};
-static_assert(offsetof(NFIT_FlushHintAddressStructure, flush_hint_addresses) ==
-              16);
-
-packed_struct NFIT_PlatformCapabilities {
-  uint16_t type;
-  uint16_t length;
-  uint8_t highest_valid_cap_bit;
-  uint8_t reserved0[3];
-  uint32_t capabilities;
-  uint32_t reserved1;
-};
-static_assert(sizeof(NFIT_PlatformCapabilities) == 16);
-
-packed_struct NFIT_ControlRegionStruct {
-  uint16_t type;
-  uint16_t length;
-  uint16_t nvdimm_control_region_struct_index;
-};
 
 packed_struct SRAT {
   packed_struct Entry {
