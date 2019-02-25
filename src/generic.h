@@ -14,6 +14,7 @@ void __assert(const char* expr_str, const char* file, int line);
 
 constexpr uint64_t kPageSizeExponent = 12;
 constexpr uint64_t kPageSize = 1 << kPageSizeExponent;
+constexpr uint64_t kPageAddrMask = kPageSize - 1;
 inline uint64_t ByteSizeToPageSize(uint64_t byte_size) {
   return (byte_size + kPageSize - 1) >> kPageSizeExponent;
 }
