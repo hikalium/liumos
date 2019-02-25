@@ -86,6 +86,7 @@ void* memcpy(void* dst, const void* src, size_t n);
 // @liumos.c
 extern EFI::MemoryMap efi_memory_map;
 extern PhysicalPageAllocator* dram_allocator;
+extern PhysicalPageAllocator* pmem_allocator;
 extern int kMaxPhyAddr;
 extern LocalAPIC bsp_local_apic;
 extern CPUFeatureSet cpu_features;

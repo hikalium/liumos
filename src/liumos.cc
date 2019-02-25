@@ -5,6 +5,7 @@
 
 EFI::MemoryMap efi_memory_map;
 PhysicalPageAllocator* dram_allocator;
+PhysicalPageAllocator* pmem_allocator;
 int kMaxPhyAddr;
 LocalAPIC bsp_local_apic;
 CPUFeatureSet cpu_features;
@@ -14,10 +15,11 @@ File liumos_elf_file;
 HPET hpet;
 
 PhysicalPageAllocator dram_allocator_;
+PhysicalPageAllocator pmem_allocator_;
 
 File logo_file;
 
-void InitMemoryManagement(EFI::MemoryMap& map) {
+void InitDRAMManagement(EFI::MemoryMap& map) {
   dram_allocator = &dram_allocator_;
   new (dram_allocator) PhysicalPageAllocator();
   int available_pages = 0;
@@ -29,7 +31,19 @@ void InitMemoryManagement(EFI::MemoryMap& map) {
     dram_allocator->FreePages(reinterpret_cast<void*>(desc->physical_start),
                               desc->number_of_pages);
   }
-  PutStringAndHex("Available memory (KiB)", available_pages * 4);
+  PutStringAndHex("Available DRAM (KiB)", available_pages * 4);
+}
+
+void InitPMEMManagement() {
+  pmem_allocator = &pmem_allocator_;
+  new (pmem_allocator) PhysicalPageAllocator();
+  int available_pages = 0;
+  PutStringAndHex("Available PMEM (KiB)", available_pages * 4);
+}
+
+void InitMemoryManagement(EFI::MemoryMap& map) {
+  InitDRAMManagement(map);
+  InitPMEMManagement();
 }
 
 void SubTask() {
@@ -267,7 +281,6 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
 
   ACPI::DetectTables();
 
-  new (&dram_allocator) PhysicalPageAllocator();
   InitMemoryManagement(efi_memory_map);
 
   InitDoubleBuffer();

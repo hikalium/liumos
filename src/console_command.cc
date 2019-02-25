@@ -316,6 +316,8 @@ void ShowEFIMemoryMap() {
 void Free() {
   PutString("DRAM Free List:\n");
   dram_allocator->Print();
+  PutString("PMEM Free List:\n");
+  pmem_allocator->Print();
 }
 
 bool IsEqualString(const char* a, const char* b) {
