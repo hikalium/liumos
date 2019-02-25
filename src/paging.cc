@@ -93,6 +93,21 @@ void InitPaging() {
       direct_mapping_end = map_end_addr;
   }
 
+  // PMEM address area may not be shown in UEFI memory map. (ex. QEMU)
+  // So we should check NFIT to determine direct_mapping_end.
+  if (ACPI::nfit) {
+    for (auto& it : *ACPI::nfit) {
+      using namespace ACPI;
+      if (it.type != NFIT::Entry::kTypeSPARangeStructure)
+        continue;
+      NFIT::SPARange* spa_range = reinterpret_cast<NFIT::SPARange*>(&it);
+      uint64_t map_end_addr = spa_range->system_physical_address_range_base +
+                              spa_range->system_physical_address_range_length;
+      if (map_end_addr > direct_mapping_end)
+        direct_mapping_end = map_end_addr;
+    }
+  }
+
   assert(loader_code_desc->number_of_pages < (1 << 9));
   PutStringAndHex("map_end_addr", direct_mapping_end);
   uint64_t direct_map_1gb_pages = (direct_mapping_end + (1ULL << 30) - 1) >> 30;

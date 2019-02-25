@@ -139,6 +139,11 @@ WriteDataAndExtraSegmentSelectors:
 	mov gs, cx
 	ret
 
+.global ReadCR2
+ReadCR2:
+	mov rax, cr2
+	ret
+
 .global ReadCR3
 ReadCR3:
 	mov rax, cr3

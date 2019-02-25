@@ -45,9 +45,16 @@ extern "C" ContextSwitchRequest* IntHandler(uint64_t intcode,
     Panic("Int3 Trap");
   }
   if (intcode == 0x0D) {
+    PutStringAndHex("Memory dump at", info->rip);
+    for (int i = 0; i < 16; i++) {
+      PutChar(' ');
+      PutHex8ZeroFilled(reinterpret_cast<uint8_t*>(info->rip)[i]);
+    }
+    PutChar('\n');
     Panic("General Protection Fault");
   }
   if (intcode == 0x0E) {
+    PutStringAndHex("CR2", ReadCR2());
     Panic("Page Fault");
   }
   Panic("INTHandler not implemented");

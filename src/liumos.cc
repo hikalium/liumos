@@ -35,11 +35,33 @@ void InitDRAMManagement(EFI::MemoryMap& map) {
 }
 
 void InitPMEMManagement() {
+  using namespace ACPI;
   pmem_allocator = &pmem_allocator_;
   new (pmem_allocator) PhysicalPageAllocator();
-  int available_pages = 0;
+  if (!nfit) {
+    PutString("NFIT not found. There are no PMEMs on this system.\n");
+    return;
+  }
+  uint64_t available_pmem_size = 0;
 
-  PutStringAndHex("Available PMEM (KiB)", available_pages * 4);
+  for (auto& it : *nfit) {
+    if (it.type != NFIT::Entry::kTypeSPARangeStructure)
+      continue;
+    NFIT::SPARange* spa_range = reinterpret_cast<NFIT::SPARange*>(&it);
+    if (!IsEqualGUID(
+            reinterpret_cast<GUID*>(&spa_range->address_range_type_guid),
+            &NFIT::SPARange::kByteAdressablePersistentMemory))
+      continue;
+    PutStringAndHex("SPARange #", spa_range->spa_range_structure_index);
+    PutStringAndHex("  Base", spa_range->system_physical_address_range_base);
+    PutStringAndHex("  Length",
+                    spa_range->system_physical_address_range_length);
+    available_pmem_size += spa_range->system_physical_address_range_length;
+    pmem_allocator->FreePages(
+        reinterpret_cast<void*>(spa_range->system_physical_address_range_base),
+        spa_range->system_physical_address_range_length >> kPageSizeExponent);
+  }
+  PutStringAndHex("Available PMEM (KiB)", available_pmem_size >> 10);
 }
 
 void InitMemoryManagement(EFI::MemoryMap& map) {

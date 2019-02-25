@@ -108,6 +108,20 @@ void PutHex64ZeroFilled(uint64_t value) {
   }
 }
 
+void PutHex8ZeroFilled(uint8_t value) {
+  int i;
+  char s[2];
+  s[1] = 0;
+  for (i = 1; i >= 0; i--) {
+    s[0] = (value >> (4 * i)) & 0xF;
+    if (s[0] < 10)
+      s[0] += '0';
+    else
+      s[0] += 'A' - 10;
+    PutString(s);
+  }
+}
+
 void PutStringAndHex(const char* s, uint64_t value) {
   PutString(s);
   PutString(": 0x");

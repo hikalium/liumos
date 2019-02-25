@@ -162,6 +162,7 @@ void WriteCSSelector(uint16_t);
 void WriteSSSelector(uint16_t);
 void WriteDataAndExtraSegmentSelectors(uint16_t);
 
+uint64_t ReadCR2(void);
 uint64_t ReadCR3(void);
 void WriteCR3(uint64_t);
 

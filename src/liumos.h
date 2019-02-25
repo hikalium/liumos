@@ -27,6 +27,7 @@ void PutString(const char* s);
 void PutChars(const char* s, int n);
 void PutHex64(uint64_t value);
 void PutHex64ZeroFilled(uint64_t value);
+void PutHex8ZeroFilled(uint8_t value);
 void PutStringAndHex(const char* s, uint64_t value);
 void PutStringAndHex(const char* s, void* value);
 void PutStringAndBool(const char* s, bool cond);
