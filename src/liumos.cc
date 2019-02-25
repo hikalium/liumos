@@ -4,7 +4,7 @@
 #include "hpet.h"
 
 EFI::MemoryMap efi_memory_map;
-PhysicalPageAllocator* page_allocator;
+PhysicalPageAllocator* dram_allocator;
 int kMaxPhyAddr;
 LocalAPIC bsp_local_apic;
 CPUFeatureSet cpu_features;
@@ -13,20 +13,20 @@ File hello_bin_file;
 File liumos_elf_file;
 HPET hpet;
 
-PhysicalPageAllocator page_allocator_;
+PhysicalPageAllocator dram_allocator_;
 
 File logo_file;
 
 void InitMemoryManagement(EFI::MemoryMap& map) {
-  page_allocator = &page_allocator_;
-  new (page_allocator) PhysicalPageAllocator();
+  dram_allocator = &dram_allocator_;
+  new (dram_allocator) PhysicalPageAllocator();
   int available_pages = 0;
   for (int i = 0; i < map.GetNumberOfEntries(); i++) {
     const EFI::MemoryDescriptor* desc = map.GetDescriptor(i);
     if (desc->type != EFI::MemoryType::kConventionalMemory)
       continue;
     available_pages += desc->number_of_pages;
-    page_allocator->FreePages(reinterpret_cast<void*>(desc->physical_start),
+    dram_allocator->FreePages(reinterpret_cast<void*>(desc->physical_start),
                               desc->number_of_pages);
   }
   PutStringAndHex("Available memory (KiB)", available_pages * 4);
@@ -267,7 +267,7 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
 
   ACPI::DetectTables();
 
-  new (&page_allocator) PhysicalPageAllocator();
+  new (&dram_allocator) PhysicalPageAllocator();
   InitMemoryManagement(efi_memory_map);
 
   InitDoubleBuffer();
@@ -292,7 +292,7 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
       0, 10, HPET::TimerConfig::kUsePeriodicMode | HPET::TimerConfig::kEnable);
   const int kNumOfStackPages = 3;
   void* sub_context_stack_base =
-      page_allocator->AllocPages<void*>(kNumOfStackPages);
+      dram_allocator->AllocPages<void*>(kNumOfStackPages);
   void* sub_context_rsp = reinterpret_cast<void*>(
       reinterpret_cast<uint64_t>(sub_context_stack_base) +
       kNumOfStackPages * (1 << 12));

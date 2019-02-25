@@ -51,7 +51,7 @@ void IA_PML4::Print() {
 }
 
 IA_PML4* CreatePageTable() {
-  IA_PML4* pml4 = page_allocator->AllocPages<IA_PML4*>(1);
+  IA_PML4* pml4 = dram_allocator->AllocPages<IA_PML4*>(1);
   pml4->ClearMapping();
   for (int i = 0; i < IA_PML4::kNumOfPML4E; i++) {
     pml4->entries[i] = kernel_pml4->entries[i];
@@ -99,21 +99,21 @@ void InitPaging() {
   PutStringAndHex("direct map 1gb pages", direct_map_1gb_pages);
   PutStringAndHex("InitPaging", reinterpret_cast<uint64_t>(InitPaging));
 
-  kernel_pml4 = page_allocator->AllocPages<IA_PML4*>(1);
+  kernel_pml4 = dram_allocator->AllocPages<IA_PML4*>(1);
   kernel_pml4->ClearMapping();
 
   // mapping pages for real memory & memory mapped IOs
   for (uint64_t addr = 0; addr < direct_mapping_end;) {
     if (addr >= direct_mapping_end)
       break;
-    IA_PDPT* pdpt = page_allocator->AllocPages<IA_PDPT*>(1);
+    IA_PDPT* pdpt = dram_allocator->AllocPages<IA_PDPT*>(1);
     pdpt->ClearMapping();
     kernel_pml4->SetTableBaseForAddr(addr, pdpt,
                                      kPageAttrPresent | kPageAttrWritable);
     for (int i = 0; i < IA_PDPT::kNumOfPDPTE; i++) {
       if (addr >= direct_mapping_end)
         break;
-      IA_PDT* pdt = page_allocator->AllocPages<IA_PDT*>(1);
+      IA_PDT* pdt = dram_allocator->AllocPages<IA_PDT*>(1);
       pdt->ClearMapping();
       pdpt->SetTableBaseForAddr(addr, pdt,
                                 kPageAttrPresent | kPageAttrWritable);
@@ -138,7 +138,7 @@ void InitPaging() {
   kernel_pdt->SetTableBaseForAddr(kKernelBaseAddr, kernel_pt,
                                   kPageAttrPresent | kPageAttrWritable);
   for (size_t i = 0; i < loader_code_desc->number_of_pages; i++) {
-    uint8_t* page = page_allocator->AllocPages<uint8_t*>(1);
+    uint8_t* page = dram_allocator->AllocPages<uint8_t*>(1);
     memcpy(page,
            reinterpret_cast<uint8_t*>(loader_code_desc->physical_start +
                                       i * (1 << 12)),

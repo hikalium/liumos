@@ -314,7 +314,8 @@ void ShowEFIMemoryMap() {
 }
 
 void Free() {
-  page_allocator->Print();
+  PutString("DRAM Free List:\n");
+  dram_allocator->Print();
 }
 
 bool IsEqualString(const char* a, const char* b) {
@@ -346,7 +347,7 @@ void TestMem() {
   uint64_t sec0, sec1, tick_sum_with_mem_read, tick_sum_without_mem_read;
   uint64_t kDurationTick = (uint64_t)0.1 * 1e15 / hpet.GetFemtosecndPerCount();
   int* array = nullptr;
-  array = page_allocator->AllocPages<int*>(
+  array = dram_allocator->AllocPages<int*>(
       (sizeof(int) * kRangeMax + kPageSize - 1) >> kPageSizeExponent);
 
   PutString(" ,");
