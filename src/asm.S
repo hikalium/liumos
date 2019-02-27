@@ -273,6 +273,15 @@ AsmIntHandler03:
 	lea r8, [rsp + 8 * 3]
 	jmp IntHandlerWrapper
 
+.global AsmIntHandler06
+AsmIntHandler06:
+	push rcx
+	push rdx
+	push r8
+	mov rcx, 0x06
+	lea r8, [rsp + 8 * 3]
+	jmp IntHandlerWrapper
+
 .global AsmIntHandler0D
 AsmIntHandler0D:
 	push rcx

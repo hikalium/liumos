@@ -40,22 +40,26 @@ extern "C" ContextSwitchRequest* IntHandler(uint64_t intcode,
   PutStringAndHex("CS", info->cs);
   PutStringAndHex("Error Code", error_code);
   PutStringAndHex("Context#", current_context->GetID());
+  if (intcode == 0x0E) {
+    PutStringAndHex("CR2", ReadCR2());
+    Panic("Page Fault");
+  }
+
+  PutStringAndHex("Memory dump at", info->rip);
+  for (int i = 0; i < 16; i++) {
+    PutChar(' ');
+    PutHex8ZeroFilled(reinterpret_cast<uint8_t*>(info->rip)[i]);
+  }
+  PutChar('\n');
 
   if (intcode == 0x03) {
     Panic("Int3 Trap");
   }
-  if (intcode == 0x0D) {
-    PutStringAndHex("Memory dump at", info->rip);
-    for (int i = 0; i < 16; i++) {
-      PutChar(' ');
-      PutHex8ZeroFilled(reinterpret_cast<uint8_t*>(info->rip)[i]);
-    }
-    PutChar('\n');
-    Panic("General Protection Fault");
+  if (intcode == 0x06) {
+    Panic("Invalid Opcode");
   }
-  if (intcode == 0x0E) {
-    PutStringAndHex("CR2", ReadCR2());
-    Panic("Page Fault");
+  if (intcode == 0x0D) {
+    Panic("General Protection Fault");
   }
   Panic("INTHandler not implemented");
 }
@@ -105,6 +109,7 @@ void InitIDT() {
   }
 
   SetIntHandler(0x03, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler03);
+  SetIntHandler(0x06, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler06);
   SetIntHandler(0x0d, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler0D);
   SetIntHandler(0x0e, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler0E);
   SetIntHandler(0x20, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler20);

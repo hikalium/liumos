@@ -170,6 +170,7 @@ uint64_t CompareAndSwap(uint64_t*, uint64_t);
 void SwapGS(void);
 
 void AsmIntHandler03(void);
+void AsmIntHandler06(void);
 void AsmIntHandler0D(void);
 void AsmIntHandler0E(void);
 void AsmIntHandler20(void);
