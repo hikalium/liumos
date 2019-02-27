@@ -23,7 +23,7 @@ void PhysicalPageAllocator::FreePages(void* phys_addr, uint64_t num_of_pages) {
   head_ = new (info) FreeInfo(num_of_pages, head_, prox_domain);
 }
 
-void* PhysicalPageAllocator::FreeInfo::ProvidePages(int num_of_req_pages) {
+void* PhysicalPageAllocator::FreeInfo::ProvidePages(uint64_t num_of_req_pages) {
   if (!CanProvidePages(num_of_req_pages))
     return nullptr;
   num_of_pages_ -= num_of_req_pages;

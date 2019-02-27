@@ -31,6 +31,7 @@ void ParseELFFile(File& file) {
     return;
   }
   PutString("This is an ELF file\n");
+  /*
   PutString("sections:\n");
   const Elf64_Shdr* shstr = reinterpret_cast<const Elf64_Shdr*>(
       buf + ehdr->e_shoff + ehdr->e_shentsize * ehdr->e_shstrndx);
@@ -83,4 +84,21 @@ void ParseELFFile(File& file) {
     PutChar('\n');
   }
   PutStringAndHex("Entry Point", ehdr->e_entry);
+  */
+
+  const uint64_t file_size = file.GetFileSize();
+  PutStringAndHex("File Size", file_size);
+  uint8_t* body =
+      dram_allocator->AllocPages<uint8_t*>(ByteSizeToPageSize(file_size));
+  PutStringAndHex("Load Addr", body);
+  memcpy(body, buf, file_size);
+  uint8_t* entry_point = body + (ehdr->e_entry - 0x400000);
+  PutStringAndHex("Entry address(physical)", entry_point);
+  PutString("Data at entrypoint: ");
+  for (int i = 0; i < 16; i++) {
+    PutHex8ZeroFilled(entry_point[i]);
+    PutChar(' ');
+  }
+  PutChar('\n');
+  reinterpret_cast<void (*)(void)>(entry_point)();
 }
