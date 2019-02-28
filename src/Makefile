@@ -56,6 +56,10 @@ lib/musl/include/%.h : lib/musl/include/Makefile
 	$(CC) $(CFLAGS) \
 		-c -o $*.o $*.c
 
+liumos.o : liumos.cc githash.h $(HEADERS) Makefile
+	$(CC) $(CXXFLAGS) \
+		-c -o $*.o $*.cc
+
 %.o : %.cc $(HEADERS) Makefile
 	$(CC) $(CXXFLAGS) \
 		-c -o $*.o $*.cc
@@ -107,4 +111,4 @@ dump : $(addsuffix .dump.txt, $(OBJS))
 FORCE : 
 
 githash.h: FORCE
-	echo '#define GIT_HASH "$(shell git rev-parse HEAD | tr -d "\n")"' > $@
+	echo '#define GIT_HASH "$(shell git rev-parse HEAD | tr -d "\n") $(shell ./git_modification_check.sh)"' > $@
