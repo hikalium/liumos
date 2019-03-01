@@ -19,7 +19,8 @@ ExecutionContext* Scheduler::SwitchContext() {
     if (!context)
       continue;
     if (context->GetStatus() == ExecutionContext::Status::kSleeping) {
-      current_->SetStatus(ExecutionContext::Status::kSleeping);
+      if (current_->GetStatus() == ExecutionContext::Status::kRunning)
+        current_->SetStatus(ExecutionContext::Status::kSleeping);
       context->SetStatus(ExecutionContext::Status::kRunning);
       current_ = context;
       return context;

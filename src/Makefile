@@ -1,5 +1,5 @@
 OBJS= acpi.o apic.o asm.o console.o console_command.o \
-		 efi.o efimain.o elf.o file.o \
+		 efi.o efimain.o elf.o execution_context.o file.o \
 		 gdt.o generic.o graphics.o guid.o \
 		 hpet.o interrupt.o keyboard.o\
 		 libfunc.o liumos.o paging.o phys_page_allocator.o \

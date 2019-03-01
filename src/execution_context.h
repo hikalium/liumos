@@ -10,6 +10,23 @@ class ExecutionContext {
     kRunning,
     kKilled,
   };
+  uint64_t GetID() { return id_; };
+  int GetSchedulerIndex() const { return scheduler_index_; };
+  void SetSchedulerIndex(int scheduler_index) {
+    scheduler_index_ = scheduler_index;
+  };
+  CPUContext* GetCPUContext() { return &cpu_context_; };
+  Status GetStatus() const { return status_; };
+  void SetStatus(Status status) { status_ = status; };
+
+  friend ExecutionContext* CreateExecutionContext(void (*rip)(),
+                                                  uint16_t cs,
+                                                  void* rsp,
+                                                  uint16_t ss,
+                                                  uint64_t cr3);
+  void WaitUntilExit();
+
+ private:
   ExecutionContext(uint64_t id,
                    void (*rip)(),
                    uint16_t cs,
@@ -24,18 +41,14 @@ class ExecutionContext {
     cpu_context_.int_info.eflags = 0x202;
     cpu_context_.cr3 = cr3;
   }
-  uint64_t GetID() { return id_; };
-  int GetSchedulerIndex() const { return scheduler_index_; };
-  void SetSchedulerIndex(int scheduler_index) {
-    scheduler_index_ = scheduler_index;
-  };
-  CPUContext* GetCPUContext() { return &cpu_context_; };
-  Status GetStatus() const { return status_; };
-  void SetStatus(Status status) { status_ = status; };
-
- private:
   uint64_t id_;
   int scheduler_index_;
-  Status status_;
+  volatile Status status_;
   CPUContext cpu_context_;
 };
+
+ExecutionContext* CreateExecutionContext(void (*rip)(),
+                                         uint16_t cs,
+                                         void* rsp,
+                                         uint16_t ss,
+                                         uint64_t cr3);

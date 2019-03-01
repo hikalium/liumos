@@ -367,8 +367,9 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   InitIDT();
   InitPaging();
 
-  ExecutionContext root_context(1, NULL, 0, NULL, 0, ReadCR3());
-  Scheduler scheduler_(&root_context);
+  ExecutionContext* root_context =
+      CreateExecutionContext(nullptr, 0, nullptr, 0, ReadCR3());
+  Scheduler scheduler_(root_context);
   scheduler = &scheduler_;
   EnableSyscall();
 
@@ -389,10 +390,10 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
       kNumOfStackPages * (1 << 12));
   PutStringAndHex("alloc addr", sub_context_stack_base);
 
-  ExecutionContext sub_context(2, SubTask, GDT::kUserCSSelector,
-                               sub_context_rsp, GDT::kUserDSSelector,
-                               reinterpret_cast<uint64_t>(CreatePageTable()));
-  scheduler->RegisterExecutionContext(&sub_context);
+  ExecutionContext* sub_context = CreateExecutionContext(
+      SubTask, GDT::kUserCSSelector, sub_context_rsp, GDT::kUserDSSelector,
+      reinterpret_cast<uint64_t>(CreatePageTable()));
+  scheduler->RegisterExecutionContext(sub_context);
 
   TextBox console_text_box;
   while (1) {
