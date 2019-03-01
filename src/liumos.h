@@ -100,4 +100,5 @@ extern File hello_bin_file;
 extern File liumos_elf_file;
 extern HPET hpet;
 
+extern "C" void SyscallHandler(uint64_t* args);
 void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table);

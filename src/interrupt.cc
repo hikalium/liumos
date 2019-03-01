@@ -110,6 +110,7 @@ void InitIDT() {
 
   SetIntHandler(0x03, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler03);
   SetIntHandler(0x06, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler06);
+  SetIntHandler(0x08, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler08);
   SetIntHandler(0x0d, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler0D);
   SetIntHandler(0x0e, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler0E);
   SetIntHandler(0x20, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler20);

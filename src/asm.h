@@ -129,6 +129,9 @@ enum class MSRIndex : uint32_t {
   kLocalAPICBase = 0x1b,
   kx2APICEndOfInterrupt = 0x80b,
   kEFER = 0xC0000080,
+  kSTAR = 0xC0000081,
+  kLSTAR = 0xC0000082,
+  kFSBase = 0xC000'0100,
   kKernelGSBase = 0xC0000102,
 };
 
@@ -169,8 +172,11 @@ void WriteCR3(uint64_t);
 uint64_t CompareAndSwap(uint64_t*, uint64_t);
 void SwapGS(void);
 
+void AsmSyscallHandler(void);
+
 void AsmIntHandler03(void);
 void AsmIntHandler06(void);
+void AsmIntHandler08(void);
 void AsmIntHandler0D(void);
 void AsmIntHandler0E(void);
 void AsmIntHandler20(void);

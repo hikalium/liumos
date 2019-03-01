@@ -228,6 +228,54 @@ void PrintLogoFile() {
   }
 }
 
+constexpr uint64_t kSyscallIndex_sys_write = 1;
+constexpr uint64_t kSyscallIndex_arch_prctl = 158;
+constexpr uint64_t kArchSetGS = 0x1001;
+constexpr uint64_t kArchSetFS = 0x1002;
+constexpr uint64_t kArchGetFS = 0x1003;
+constexpr uint64_t kArchGetGS = 0x1004;
+
+extern "C" void SyscallHandler(uint64_t* args) {
+  uint64_t idx = args[0];
+  PutStringAndHex("idx", idx);
+  if (idx == kSyscallIndex_sys_write) {
+    const uint64_t fildes = args[1];
+    const uint8_t* buf = reinterpret_cast<uint8_t*>(args[2]);
+    uint64_t nbyte = args[3];
+    if (fildes != 1) {
+      PutStringAndHex("fildes", fildes);
+      Panic("Only stdout is supported for now.");
+    }
+    while (nbyte--) {
+      PutChar(*(buf++));
+    }
+    return;
+  } else if (idx == kSyscallIndex_arch_prctl) {
+    if (args[1] == kArchSetFS) {
+      WriteMSR(MSRIndex::kFSBase, args[2]);
+      return;
+    }
+    PutStringAndHex("arg1", args[1]);
+    PutStringAndHex("arg2", args[2]);
+    PutStringAndHex("arg3", args[3]);
+    Panic("arch_prctl!");
+  }
+  Panic("syscall handler!");
+}
+
+void EnableSyscall() {
+  uint64_t star = GDT::kKernelCSSelector << 32;  // kernel CS
+  star |= GDT::kKernelCSSelector << 48;          // user CS
+  WriteMSR(MSRIndex::kSTAR, star);
+
+  uint64_t lstar = reinterpret_cast<uint64_t>(AsmSyscallHandler);
+  WriteMSR(MSRIndex::kLSTAR, lstar);
+
+  uint64_t efer = ReadMSR(MSRIndex::kEFER);
+  efer |= 1;  // SCE
+  WriteMSR(MSRIndex::kEFER, efer);
+}
+
 void IdentifyCPU() {
   CPUID cpuid;
 
@@ -316,6 +364,7 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   ExecutionContext root_context(1, NULL, 0, NULL, 0, ReadCR3());
   Scheduler scheduler_(&root_context);
   scheduler = &scheduler_;
+  EnableSyscall();
 
   bsp_local_apic.Init();
   Disable8259PIC();

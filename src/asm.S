@@ -168,6 +168,48 @@ SwapGS:
 	swapgs
 	ret
 
+.global AsmSyscallHandler
+AsmSyscallHandler:
+	// Microsoft x64 calling convention:
+	//   args: rcx, rdx, r8, r9
+	//   callee-saved: RBX, RBP, RDI, RSI, RSP, R12, R13, R14, R15
+	//   caller-saved: RAX, RCX, RDX, R8, R9, R10, R11
+	// System V AMD64 ABI:
+  //   args: RDI, RSI, RDX, RCX, R8, R9
+  //   callee-saved: RBX, RBP, R12, R13, R14, R15
+  //   caller-saved: otherwise
+	// Linux kernel x86-64 syscall:
+	//   idx: RAX
+	//   args: RDI, RSI, RDX, R10, R8, R9
+	push rbx
+	push rbp
+	push r12
+	push r13
+	push r14
+	push r15
+	push r9
+	push r8
+	push r10
+	push rdx
+	push rsi
+	push rdi
+	push rax
+	mov rcx, rsp
+	call SyscallHandler
+	pop rax
+	pop rdi
+	pop rsi
+	pop rdx
+	pop r10
+	pop r8
+	pop r9
+	pop r15
+	pop r14
+	pop r13
+	pop r12
+	pop rbp
+	pop rbx
+	sysret
 
 ContextSwitch:
 	// r8: InterruptInfo*
@@ -279,6 +321,15 @@ AsmIntHandler06:
 	push rdx
 	push r8
 	mov rcx, 0x06
+	lea r8, [rsp + 8 * 3]
+	jmp IntHandlerWrapper
+
+.global AsmIntHandler08
+AsmIntHandler08:
+	push rcx
+	push rdx
+	push r8
+	mov rcx, 0x08
 	lea r8, [rsp + 8 * 3]
 	jmp IntHandlerWrapper
 
