@@ -8,6 +8,7 @@ class ExecutionContext {
     kNotScheduled,
     kSleeping,
     kRunning,
+    kKilled,
   };
   ExecutionContext(uint64_t id,
                    void (*rip)(),

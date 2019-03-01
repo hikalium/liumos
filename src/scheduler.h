@@ -11,6 +11,7 @@ class Scheduler {
   void RegisterExecutionContext(ExecutionContext* context);
   ExecutionContext* SwitchContext();
   ExecutionContext* GetCurrentContext() { return current_; }
+  void KillCurrentContext();
 
  private:
   const static int kNumberOfContexts = 16;

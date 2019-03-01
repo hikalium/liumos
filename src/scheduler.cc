@@ -16,6 +16,8 @@ ExecutionContext* Scheduler::SwitchContext() {
   for (int i = 1; i < number_of_contexts_; i++) {
     ExecutionContext* context =
         contexts_[(base_index + i) % number_of_contexts_];
+    if (!context)
+      continue;
     if (context->GetStatus() == ExecutionContext::Status::kSleeping) {
       current_->SetStatus(ExecutionContext::Status::kSleeping);
       context->SetStatus(ExecutionContext::Status::kRunning);
@@ -24,4 +26,8 @@ ExecutionContext* Scheduler::SwitchContext() {
     }
   }
   return nullptr;
+}
+
+void Scheduler::KillCurrentContext() {
+  current_->SetStatus(ExecutionContext::Status::kKilled);
 }
