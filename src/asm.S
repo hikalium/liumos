@@ -181,6 +181,7 @@ AsmSyscallHandler:
 	// Linux kernel x86-64 syscall:
 	//   idx: RAX
 	//   args: RDI, RSI, RDX, R10, R8, R9
+	push rcx
 	push rbx
 	push rbp
 	push r12
@@ -209,7 +210,8 @@ AsmSyscallHandler:
 	pop r12
 	pop rbp
 	pop rbx
-	sysret
+	pop rcx
+	sysretq
 
 ContextSwitch:
 	// r8: InterruptInfo*

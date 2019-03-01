@@ -100,5 +100,18 @@ void ParseELFFile(File& file) {
     PutChar(' ');
   }
   PutChar('\n');
-  reinterpret_cast<void (*)(void)>(entry_point)();
+
+  const int kNumOfStackPages = 3;
+  void* sub_context_stack_base =
+      dram_allocator->AllocPages<void*>(kNumOfStackPages);
+  void* sub_context_rsp = reinterpret_cast<void*>(
+      reinterpret_cast<uint64_t>(sub_context_stack_base) +
+      kNumOfStackPages * (1 << 12));
+  ExecutionContext* sub_context = dram_allocator->AllocPages<ExecutionContext*>(
+      ByteSizeToPageSize(sizeof(ExecutionContext)));
+  new (sub_context) ExecutionContext(
+      3, reinterpret_cast<void (*)(void)>(entry_point), GDT::kUserCSSelector,
+      sub_context_rsp, GDT::kUserDSSelector,
+      reinterpret_cast<uint64_t>(CreatePageTable()));
+  scheduler->RegisterExecutionContext(sub_context);
 }

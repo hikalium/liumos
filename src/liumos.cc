@@ -227,6 +227,7 @@ void PrintLogoFile() {
 }
 
 constexpr uint64_t kSyscallIndex_sys_write = 1;
+constexpr uint64_t kSyscallIndex_sys_exit = 60;
 constexpr uint64_t kSyscallIndex_arch_prctl = 158;
 constexpr uint64_t kArchSetGS = 0x1001;
 constexpr uint64_t kArchSetFS = 0x1002;
@@ -235,7 +236,6 @@ constexpr uint64_t kArchGetGS = 0x1004;
 
 extern "C" void SyscallHandler(uint64_t* args) {
   uint64_t idx = args[0];
-  PutStringAndHex("idx", idx);
   if (idx == kSyscallIndex_sys_write) {
     const uint64_t fildes = args[1];
     const uint8_t* buf = reinterpret_cast<uint8_t*>(args[2]);
@@ -248,6 +248,10 @@ extern "C" void SyscallHandler(uint64_t* args) {
       PutChar(*(buf++));
     }
     return;
+  } else if (idx == kSyscallIndex_sys_exit) {
+    const uint64_t exit_code = args[1];
+    PutStringAndHex("exit: exit_code", exit_code);
+    Panic("exit not implemented");
   } else if (idx == kSyscallIndex_arch_prctl) {
     if (args[1] == kArchSetFS) {
       WriteMSR(MSRIndex::kFSBase, args[2]);
@@ -258,12 +262,13 @@ extern "C" void SyscallHandler(uint64_t* args) {
     PutStringAndHex("arg3", args[3]);
     Panic("arch_prctl!");
   }
+  PutStringAndHex("idx", idx);
   Panic("syscall handler!");
 }
 
 void EnableSyscall() {
-  uint64_t star = GDT::kKernelCSSelector << 32;  // kernel CS
-  star |= GDT::kKernelCSSelector << 48;          // user CS
+  uint64_t star = GDT::kKernelCSSelector << 32;
+  star |= GDT::kUserCSSelector << 48;
   WriteMSR(MSRIndex::kSTAR, star);
 
   uint64_t lstar = reinterpret_cast<uint64_t>(AsmSyscallHandler);
