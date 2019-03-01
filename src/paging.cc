@@ -123,19 +123,19 @@ void InitPaging() {
       break;
     IA_PDPT* pdpt = dram_allocator->AllocPages<IA_PDPT*>(1);
     pdpt->ClearMapping();
-    kernel_pml4->SetTableBaseForAddr(addr, pdpt,
-                                     kPageAttrPresent | kPageAttrWritable);
+    kernel_pml4->SetTableBaseForAddr(
+        addr, pdpt, kPageAttrPresent | kPageAttrWritable | kPageAttrUser);
     for (int i = 0; i < IA_PDPT::kNumOfPDPTE; i++) {
       if (addr >= direct_mapping_end)
         break;
       IA_PDT* pdt = dram_allocator->AllocPages<IA_PDT*>(1);
       pdt->ClearMapping();
-      pdpt->SetTableBaseForAddr(addr, pdt,
-                                kPageAttrPresent | kPageAttrWritable);
+      pdpt->SetTableBaseForAddr(
+          addr, pdt, kPageAttrPresent | kPageAttrWritable | kPageAttrUser);
       for (int i = 0; i < IA_PDT::kNumOfPDE; i++) {
         if (addr >= direct_mapping_end)
           break;
-        uint64_t attr = kPageAttrPresent | kPageAttrWritable;
+        uint64_t attr = kPageAttrPresent | kPageAttrWritable | kPageAttrUser;
         if (i == 3) {
           attr |= kPageAttrCacheDisable | kPageAttrWriteThrough;
         }

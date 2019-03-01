@@ -11,14 +11,15 @@ void Scheduler::RegisterExecutionContext(ExecutionContext* context) {
   context->SetStatus(ExecutionContext::Status::kSleeping);
 }
 
-ExecutionContext* Scheduler::SwitchContext(ExecutionContext* current_context) {
-  const int base_index = current_context->GetSchedulerIndex();
+ExecutionContext* Scheduler::SwitchContext() {
+  const int base_index = current_->GetSchedulerIndex();
   for (int i = 1; i < number_of_contexts_; i++) {
     ExecutionContext* context =
         contexts_[(base_index + i) % number_of_contexts_];
     if (context->GetStatus() == ExecutionContext::Status::kSleeping) {
-      current_context->SetStatus(ExecutionContext::Status::kSleeping);
+      current_->SetStatus(ExecutionContext::Status::kSleeping);
       context->SetStatus(ExecutionContext::Status::kRunning);
+      current_ = context;
       return context;
     }
   }

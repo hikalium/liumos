@@ -70,7 +70,6 @@ void InitMemoryManagement(EFI::MemoryMap& map) {
 }
 
 void SubTask() {
-  StoreIntFlag();
   constexpr int map_ysize_shift = 4;
   constexpr int map_xsize_shift = 5;
   constexpr int pixel_size = 8;
@@ -95,7 +94,6 @@ void SubTask() {
   map[(ysize / 2 + 1) * xsize + (xsize / 2 + 2)] = 1;
 
   while (1) {
-    StoreIntFlagAndHalt();
     for (int y = 0; y < ysize; y++) {
       for (int x = 0; x < xsize; x++) {
         int count = 0;
@@ -383,8 +381,8 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
       kNumOfStackPages * (1 << 12));
   PutStringAndHex("alloc addr", sub_context_stack_base);
 
-  ExecutionContext sub_context(2, SubTask, ReadCSSelector(), sub_context_rsp,
-                               ReadSSSelector(),
+  ExecutionContext sub_context(2, SubTask, GDT::kUserCSSelector,
+                               sub_context_rsp, GDT::kUserDSSelector,
                                reinterpret_cast<uint64_t>(CreatePageTable()));
   scheduler->RegisterExecutionContext(&sub_context);
 

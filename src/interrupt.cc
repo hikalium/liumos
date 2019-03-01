@@ -12,22 +12,21 @@ RingBuffer<uint8_t, 16> keycode_buffer;
 ContextSwitchRequest context_switch_request;
 IDTGateDescriptor idt[256];
 
+ExecutionContext* current_context;
+
 extern "C" ContextSwitchRequest* IntHandler(uint64_t intcode,
                                             uint64_t error_code,
                                             InterruptInfo* info) {
-  uint64_t kernel_gs_base = ReadMSR(MSRIndex::kKernelGSBase);
-  ExecutionContext* current_context =
-      reinterpret_cast<ExecutionContext*>(kernel_gs_base);
+  ExecutionContext* current_context = scheduler->GetCurrentContext();
   if (intcode == 0x20) {
     bsp_local_apic.SendEndOfInterrupt();
-    ExecutionContext* next_context = scheduler->SwitchContext(current_context);
+    ExecutionContext* next_context = scheduler->SwitchContext();
     if (!next_context) {
       // no need to switching context.
       return nullptr;
     }
     context_switch_request.from = current_context->GetCPUContext();
     context_switch_request.to = next_context->GetCPUContext();
-    WriteMSR(MSRIndex::kKernelGSBase, reinterpret_cast<uint64_t>(next_context));
     return &context_switch_request;
   }
   if (intcode == 0x21) {
