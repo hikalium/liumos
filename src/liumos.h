@@ -49,7 +49,7 @@ void Process(TextBox& tbox);
 
 // @elf.cc
 class File;
-void ParseELFFile(File& logo_file);
+ExecutionContext* LoadELFAndLaunchProcess(File& file);
 
 // @file.cc
 class File {

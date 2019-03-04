@@ -1,6 +1,6 @@
 int counter;
 
-extern "C" void ELFEntry() {
+extern "C" void KernelEntry() {
   for (;;) {
     counter++;
   }

@@ -1,34 +1,43 @@
 #include "lib/musl/include/elf.h"
 #include "liumos.h"
 
-void ParseELFFile(File& file) {
+struct ProcessMappingInfo {
+  uint64_t file_paddr;
+  uint64_t file_vaddr;
+  uint64_t file_size;
+  uint64_t stack_paddr;
+  uint64_t stack_vaddr;
+  uint64_t stack_size;
+};
+
+const Elf64_Ehdr* LoadELF(ProcessMappingInfo& info, File& file) {
   const uint8_t* buf = file.GetBuf();
   // uint64_t buf_size = file.GetFileSize();
   PutString("Loading ELF...\n");
   if (strncmp(reinterpret_cast<const char*>(buf), ELFMAG, SELFMAG) != 0) {
     PutString("Not an ELF file\n");
-    return;
+    return nullptr;
   }
   if (buf[EI_CLASS] != ELFCLASS64) {
     PutString("Not an ELF Class 64n");
-    return;
+    return nullptr;
   }
   if (buf[EI_DATA] != ELFDATA2LSB) {
     PutString("Not an ELF Data 2LSB");
-    return;
+    return nullptr;
   }
   if (buf[EI_OSABI] != ELFOSABI_SYSV) {
     PutString("Not a SYSV ABI");
-    return;
+    return nullptr;
   }
   const Elf64_Ehdr* ehdr = reinterpret_cast<const Elf64_Ehdr*>(buf);
   if (ehdr->e_type != ET_EXEC) {
     PutString("Not an executable");
-    return;
+    return nullptr;
   }
   if (ehdr->e_machine != EM_X86_64) {
     PutString("Not for x86_64");
-    return;
+    return nullptr;
   }
   PutString("This is an ELF file\n");
   /*
@@ -92,7 +101,20 @@ void ParseELFFile(File& file) {
       dram_allocator->AllocPages<uint8_t*>(ByteSizeToPageSize(file_size));
   PutStringAndHex("Load Addr", body);
   memcpy(body, buf, file_size);
-  uint8_t* entry_point = body + (ehdr->e_entry - 0x400000);
+
+  info.file_paddr = reinterpret_cast<uint64_t>(body);
+  info.file_vaddr = info.file_paddr;
+  return ehdr;
+}
+
+ExecutionContext* LoadELFAndLaunchProcess(File& file) {
+  ProcessMappingInfo info;
+  const Elf64_Ehdr* ehdr = LoadELF(info, file);
+  if (!ehdr)
+    return nullptr;
+
+  uint8_t* entry_point =
+      reinterpret_cast<uint8_t*>(info.file_paddr) + (ehdr->e_entry - 0x400000);
   PutStringAndHex("Entry address(physical)", entry_point);
   PutString("Data at entrypoint: ");
   for (int i = 0; i < 16; i++) {
@@ -102,16 +124,18 @@ void ParseELFFile(File& file) {
   PutChar('\n');
 
   const int kNumOfStackPages = 3;
-  void* sub_context_stack_base =
-      dram_allocator->AllocPages<void*>(kNumOfStackPages);
-  void* sub_context_rsp = reinterpret_cast<void*>(
-      reinterpret_cast<uint64_t>(sub_context_stack_base) +
-      kNumOfStackPages * (1 << 12));
+  info.stack_size = kNumOfStackPages << kPageSizeExponent;
+  info.stack_paddr =
+      dram_allocator->AllocPages<uint64_t>(ByteSizeToPageSize(info.stack_size));
+  info.stack_vaddr = info.stack_paddr;
+  void* sub_context_rsp =
+      reinterpret_cast<void*>(info.stack_vaddr + info.stack_size);
 
   ExecutionContext* ctx = CreateExecutionContext(
       reinterpret_cast<void (*)(void)>(entry_point), GDT::kUserCSSelector,
       sub_context_rsp, GDT::kUserDSSelector,
       reinterpret_cast<uint64_t>(CreatePageTable()));
   scheduler->RegisterExecutionContext(ctx);
+  return ctx;
   ctx->WaitUntilExit();
 }

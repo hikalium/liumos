@@ -460,9 +460,8 @@ void Process(TextBox& tbox) {
   } else if (IsEqualString(line, "time")) {
     Time();
   } else if (IsEqualString(line, "hello.bin")) {
-    ParseELFFile(hello_bin_file);
-  } else if (IsEqualString(line, "liumos.elf")) {
-    ParseELFFile(liumos_elf_file);
+    ExecutionContext* ctx = LoadELFAndLaunchProcess(hello_bin_file);
+    ctx->WaitUntilExit();
   } else if (IsEqualString(line, "help")) {
     PutString("hello: Nothing to say.\n");
     PutString("show xsdt: Print XSDT Entries\n");

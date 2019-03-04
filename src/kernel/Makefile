@@ -22,7 +22,7 @@ include ../../common.mk
 		-g -c -fPIC -o $*.o $*.cc
 
 LIUMOS.ELF : $(OBJS) kernel.ld Makefile
-	$(LD_LLD) -o $@ -e ELFEntry -T kernel.ld $(OBJS)
+	$(LD_LLD) -o $@ -e KernelEntry -T kernel.ld $(OBJS)
 
 format:
 	clang-format -i *.cc
