@@ -170,20 +170,3 @@ void InitPaging() {
   PutStringAndHex("CR3", ReadCR3());
   WriteCR3(reinterpret_cast<uint64_t>(kernel_pml4));
 }
-
-void CreatePageMapping(PhysicalPageAllocator& allocator,
-                       IA_PML4& pml4,
-                       uint64_t vaddr,
-                       uint64_t paddr,
-                       uint64_t byte_size,
-                       uint64_t attr) {
-  assert((vaddr & kPageAddrMask) == 0);
-  assert((paddr & kPageAddrMask) == 0);
-  uint64_t num_of_4k_pages = ByteSizeToPageSize(byte_size);
-  while (num_of_4k_pages) {
-    int pml4_idx = IA_PML4::addr2index(vaddr);
-    int pdpt_idx = IA_PDPT::addr2index(vaddr);
-    int pdt_idx = IA_PDT::addr2index(vaddr);
-    int pt_idx = IA_PT::addr2index(vaddr);
-  }
-}

@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <cassert>
 
-void Panic(const char* s) {
+[[noreturn]] void Panic(const char* s) {
   puts(s);
   exit(EXIT_FAILURE);
 }
@@ -15,6 +15,8 @@ alignas(4096) IA_PML4 pml4;
 alignas(4096) IA_PDPT pdpt;
 alignas(4096) IA_PDT pdt;
 alignas(4096) IA_PT pt;
+
+PhysicalPageAllocator dummy_allocator;
 
 void Test1GBPageMapping(const uint64_t virt_base, const uint64_t phys_base) {
   pml4.ClearMapping();
@@ -67,15 +69,31 @@ void Test4KBPageMapping() {
 }
 
 void TestRangeMapping(IA_PML4& pml4,
-                      uint64_t paddr,
                       uint64_t vaddr,
-                      uint64_t size) {}
+                      uint64_t paddr,
+                      uint64_t size) {
+  pml4.ClearMapping();
+  constexpr int kPageTableBufferSize = 2048;
+  uint64_t malloc_addr = reinterpret_cast<uint64_t>(
+      malloc(kPageSize * (kPageTableBufferSize + 1)));
+  dummy_allocator.FreePagesWithProximityDomain(
+      reinterpret_cast<void*>((malloc_addr + kPageSize - 1) & ~kPageAddrMask),
+      kPageTableBufferSize, 0);
+  CreatePageMapping(dummy_allocator, pml4, vaddr, paddr, size,
+                    kPageAttrPresent);
+  assert(v2p(pml4, vaddr - 1) == kAddrCannotTranslate);
+  assert(v2p(pml4, vaddr) == paddr);
+  assert(v2p(pml4, vaddr + size - 1) == paddr + size - 1);
+  assert(v2p(pml4, vaddr + size) == kAddrCannotTranslate);
+}
 
 int main() {
   Test1GBPageMapping(0, 1ULL << 30);
   Test1GBPageMapping(1ULL << 30, 1ULL << 31);
   Test2MBPageMapping();
   Test4KBPageMapping();
+  TestRangeMapping(pml4, 0x0000'0000'0000'1000, 0x0000'0000'1000'1000,
+                   2ULL * 1024 * 1024 * 1024);
   puts("PASS");
   return 0;
 }

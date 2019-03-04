@@ -4,7 +4,17 @@
 class PhysicalPageAllocator {
  public:
   PhysicalPageAllocator() : head_(nullptr) {}
-  void FreePages(void* phys_addr, uint64_t num_of_pages);
+  void FreePagesWithProximityDomain(void* phys_addr,
+                                    uint64_t num_of_pages,
+                                    uint32_t prox_domain) {
+    // TODO: Impl merge
+    assert(num_of_pages > 0);
+    const uint64_t phys_addr_uint64 = reinterpret_cast<uint64_t>(phys_addr);
+    assert((phys_addr_uint64 & 0xfff) == 0);
+    FreeInfo* info = reinterpret_cast<FreeInfo*>(phys_addr);
+    head_ = new (info) FreeInfo(num_of_pages, head_, prox_domain);
+  }
+
   template <typename T>
   T AllocPages(uint64_t num_of_pages) {
     FreeInfo* info = head_;
@@ -42,7 +52,14 @@ class PhysicalPageAllocator {
           next_(next),
           proximity_domain_(proximity_domain) {}
     FreeInfo* GetNext() const { return next_; }
-    void* ProvidePages(uint64_t num_of_req_pages);
+    void* ProvidePages(uint64_t num_of_req_pages) {
+      if (!CanProvidePages(num_of_req_pages))
+        return nullptr;
+      num_of_pages_ -= num_of_req_pages;
+      return reinterpret_cast<void*>(reinterpret_cast<uint64_t>(this) +
+                                     (num_of_pages_ << 12));
+    }
+
     void Print();
     uint32_t GetProximityDomain() { return proximity_domain_; };
 

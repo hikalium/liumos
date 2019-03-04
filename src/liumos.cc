@@ -19,6 +19,17 @@ PhysicalPageAllocator pmem_allocator_;
 
 File logo_file;
 
+void FreePages(PhysicalPageAllocator* allocator,
+               void* phys_addr,
+               uint64_t num_of_pages) {
+  const uint32_t prox_domain = ACPI::srat
+                                   ? ACPI::srat->GetProximityDomainForAddrRange(
+                                         reinterpret_cast<uint64_t>(phys_addr),
+                                         num_of_pages << kPageSizeExponent)
+                                   : 0;
+  allocator->FreePagesWithProximityDomain(phys_addr, num_of_pages, prox_domain);
+}
+
 void InitDRAMManagement(EFI::MemoryMap& map) {
   dram_allocator = &dram_allocator_;
   new (dram_allocator) PhysicalPageAllocator();
@@ -28,8 +39,8 @@ void InitDRAMManagement(EFI::MemoryMap& map) {
     if (desc->type != EFI::MemoryType::kConventionalMemory)
       continue;
     available_pages += desc->number_of_pages;
-    dram_allocator->FreePages(reinterpret_cast<void*>(desc->physical_start),
-                              desc->number_of_pages);
+    FreePages(dram_allocator, reinterpret_cast<void*>(desc->physical_start),
+              desc->number_of_pages);
   }
   PutStringAndHex("Available DRAM (KiB)", available_pages * 4);
 }
@@ -57,7 +68,8 @@ void InitPMEMManagement() {
     PutStringAndHex("  Length",
                     spa_range->system_physical_address_range_length);
     available_pmem_size += spa_range->system_physical_address_range_length;
-    pmem_allocator->FreePages(
+    FreePages(
+        pmem_allocator,
         reinterpret_cast<void*>(spa_range->system_physical_address_range_base),
         spa_range->system_physical_address_range_length >> kPageSizeExponent);
   }

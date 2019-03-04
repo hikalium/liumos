@@ -43,27 +43,28 @@ struct PageTableStruct {
     return (addr >> kIndexShift) & kIndexMask;
   }
   EntryType entries[kNumOfEntries];
+  EntryType& GetEntryForAddr(uint64_t vaddr) {
+    return entries[addr2index(vaddr)];
+  }
   void ClearMapping() {
     for (int i = 0; i < kNumOfEntries; i++) {
       reinterpret_cast<uint64_t*>(entries)[i] = 0;
     }
   }
-  typename EntryType::TableType* GetTableBaseForAddr(uint64_t addr) {
-    EntryType& e = entries[addr2index(addr)];
-    return e.GetTableAddr();
+  typename EntryType::TableType* GetTableBaseForAddr(uint64_t vaddr) {
+    return GetEntryForAddr(vaddr).GetTableAddr();
   }
   typename EntryType::TableType* SetTableBaseForAddr(
       uint64_t addr,
       typename EntryType::TableType* new_ent,
       uint64_t attr) {
-    EntryType& e = entries[addr2index(addr)];
+    EntryType& e = GetEntryForAddr(addr);
     typename EntryType::TableType* old_e = e.GetTableAddr();
     e.SetTableAddr(new_ent, attr);
     return old_e;
   }
   void SetPageBaseForAddr(uint64_t vaddr, uint64_t paddr, uint64_t attr) {
-    EntryType& e = entries[addr2index(vaddr)];
-    e.SetPageBaseAddr(paddr, attr);
+    GetEntryForAddr(vaddr).SetPageBaseAddr(paddr, attr);
   }
   void Print(void);
 };
@@ -301,9 +302,49 @@ using IA_PML4 = PageTableStruct<39, IA_PML4E>;
 
 IA_PML4* CreatePageTable();
 void InitPaging(void);
-void CreatePageMapping(PhysicalPageAllocator& allocator,
-                       IA_PML4& pml4,
-                       uint64_t vaddr,
-                       uint64_t paddr,
-                       uint64_t byte_size,
-                       uint64_t attr);
+
+void inline CreatePageMapping(PhysicalPageAllocator& allocator,
+                              IA_PML4& pml4,
+                              uint64_t vaddr,
+                              uint64_t paddr,
+                              uint64_t byte_size,
+                              uint64_t attr) {
+  assert((vaddr & kPageAddrMask) == 0);
+  assert((paddr & kPageAddrMask) == 0);
+  uint64_t num_of_4k_pages = ByteSizeToPageSize(byte_size);
+  for (int pml4_idx = IA_PML4::addr2index(vaddr);
+       pml4_idx < IA_PML4::kNumOfEntries; pml4_idx++) {
+    auto& pml4e = pml4.GetEntryForAddr(vaddr);
+    if (!pml4e.IsPresent()) {
+      pml4e.SetTableAddr(allocator.AllocPages<IA_PDPT*>(1), attr);
+    }
+    auto* pdpt = pml4e.GetTableAddr();
+    for (int pdpt_idx = IA_PDPT::addr2index(vaddr);
+         num_of_4k_pages && pdpt_idx < IA_PDPT::kNumOfEntries; pdpt_idx++) {
+      auto& pdpte = pdpt->GetEntryForAddr(vaddr);
+      if (!pdpte.IsPresent()) {
+        pdpte.SetTableAddr(allocator.AllocPages<IA_PDT*>(1), attr);
+      }
+      if (pdpte.IsPage())
+        Panic("Page overwrapping");
+      auto* pdt = pdpte.GetTableAddr();
+      for (int pdt_idx = IA_PDT::addr2index(vaddr);
+           num_of_4k_pages && pdt_idx < IA_PDT::kNumOfEntries; pdt_idx++) {
+        auto& pdte = pdt->GetEntryForAddr(vaddr);
+        if (!pdte.IsPresent()) {
+          pdte.SetTableAddr(allocator.AllocPages<IA_PT*>(1), attr);
+        }
+        if (pdte.IsPage())
+          Panic("Page overwrapping");
+        auto* pt = pdte.GetTableAddr();
+        for (int pt_idx = IA_PT::addr2index(vaddr);
+             num_of_4k_pages && pt_idx < IA_PT::kNumOfEntries; pt_idx++) {
+          pt->SetPageBaseForAddr(vaddr, paddr, attr);
+          vaddr += (1 << 12);
+          paddr += (1 << 12);
+          num_of_4k_pages--;
+        }
+      }
+    }
+  }
+}

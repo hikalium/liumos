@@ -69,13 +69,6 @@ class File {
 // @font.gen.c
 extern uint8_t font[0x100][16];
 
-// @generic.h
-
-[[noreturn]] void Panic(const char* s);
-inline void* operator new(size_t, void* where) {
-  return where;
-}
-
 // @graphics.cc
 extern Sheet* screen_sheet;
 void InitGraphics(void);
