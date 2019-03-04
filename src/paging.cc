@@ -170,3 +170,7 @@ void InitPaging() {
   PutStringAndHex("CR3", ReadCR3());
   WriteCR3(reinterpret_cast<uint64_t>(kernel_pml4));
 }
+
+IA_PML4& GetKernelPML4(void) {
+  return *kernel_pml4;
+}

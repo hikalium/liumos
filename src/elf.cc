@@ -10,7 +10,9 @@ struct ProcessMappingInfo {
   uint64_t stack_size;
 };
 
-const Elf64_Ehdr* LoadELF(ProcessMappingInfo& info, File& file) {
+const Elf64_Ehdr* LoadELF(ProcessMappingInfo& info,
+                          File& file,
+                          IA_PML4& page_root) {
   const uint8_t* buf = file.GetBuf();
   // uint64_t buf_size = file.GetFileSize();
   PutString("Loading ELF...\n");
@@ -39,8 +41,8 @@ const Elf64_Ehdr* LoadELF(ProcessMappingInfo& info, File& file) {
     PutString("Not for x86_64");
     return nullptr;
   }
-  /*
   PutString("This is an ELF file\n");
+  /*
   PutString("sections:\n");
   const Elf64_Shdr* shstr = reinterpret_cast<const Elf64_Shdr*>(
       buf + ehdr->e_shoff + ehdr->e_shentsize * ehdr->e_shstrndx);
@@ -51,25 +53,19 @@ const Elf64_Ehdr* LoadELF(ProcessMappingInfo& info, File& file) {
         reinterpret_cast<const char*>(buf + shstr->sh_offset + shdr->sh_name));
     PutStringAndHex(" @+", shdr->sh_offset);
     PutStringAndHex("    @", shdr->sh_addr);
+    PutStringAndHex("    size = ", shdr->sh_size);
+    PutStringAndHex("    size = ", shdr->sh_flags);
   }
   */
-  PutString("Program headers:\n");
+  PutString("Program headers to be loaded:\n");
   for (int i = 0; i < ehdr->e_phnum; i++) {
     const Elf64_Phdr* phdr = reinterpret_cast<const Elf64_Phdr*>(
         buf + ehdr->e_phoff + ehdr->e_phentsize * i);
+    if (phdr->p_type != PT_LOAD)
+      continue;
     PutString("Phdr #");
     PutHex64(i);
-    PutString(" type:");
-    if (phdr->p_type == PT_NULL)
-      PutString("NULL");
-    else if (phdr->p_type == PT_LOAD)
-      PutString("LOAD");
-    else if (phdr->p_type == PT_GNU_STACK)
-      PutString("GNU_STACK");
-    else if (phdr->p_type == PT_GNU_RELRO)
-      PutString("GNU_RELRO");
-    else
-      PutHex64(phdr->p_type);
+    PutString(" type:LOAD");
     PutString(" flags:");
     if (phdr->p_flags & PF_R)
       PutChar('R');
@@ -78,21 +74,35 @@ const Elf64_Ehdr* LoadELF(ProcessMappingInfo& info, File& file) {
     if (phdr->p_flags & PF_X)
       PutChar('X');
     PutChar('\n');
-    PutStringAndHex("Phdr offset", phdr->p_offset);
-    PutString("ofsset:");
+    PutString("  offset:");
     PutHex64ZeroFilled(phdr->p_offset);
     PutString(" vaddr:");
     PutHex64ZeroFilled(phdr->p_vaddr);
-    PutString(" paddr:");
-    PutHex64ZeroFilled(phdr->p_paddr);
     PutChar('\n');
-    PutString("filesz:");
+    PutString("  filesz:");
     PutHex64ZeroFilled(phdr->p_filesz);
     PutString(" memsz:");
     PutHex64ZeroFilled(phdr->p_memsz);
     PutString(" align:");
     PutHex64ZeroFilled(phdr->p_align);
     PutChar('\n');
+    const uint64_t map_base_file_ofs =
+        phdr->p_offset & ~(phdr->p_align - 1) & ~kPageAddrMask;
+    const uint64_t map_base_vaddr =
+        phdr->p_vaddr & ~(phdr->p_align - 1) & ~kPageAddrMask;
+    const uint64_t map_size =
+        (phdr->p_memsz + (phdr->p_offset - map_base_file_ofs) + kPageAddrMask) &
+        ~kPageAddrMask;
+    PutString("  map_base_file_ofs:");
+    PutHex64ZeroFilled(map_base_file_ofs);
+    PutString(" map_base_vaddr:");
+    PutHex64ZeroFilled(map_base_vaddr);
+    PutString(" map_size:");
+    PutHex64ZeroFilled(map_size);
+    PutChar('\n');
+    CreatePageMapping(*dram_allocator, page_root, map_base_vaddr,
+                      reinterpret_cast<uint64_t>(buf) + map_base_file_ofs,
+                      map_size, kPageAttrPresent);
   }
   PutStringAndHex("Entry Point", ehdr->e_entry);
 
@@ -110,7 +120,7 @@ const Elf64_Ehdr* LoadELF(ProcessMappingInfo& info, File& file) {
 
 ExecutionContext* LoadELFAndLaunchProcess(File& file) {
   ProcessMappingInfo info;
-  const Elf64_Ehdr* ehdr = LoadELF(info, file);
+  const Elf64_Ehdr* ehdr = LoadELF(info, file, GetKernelPML4());
   if (!ehdr)
     return nullptr;
 
@@ -142,12 +152,11 @@ ExecutionContext* LoadELFAndLaunchProcess(File& file) {
 
 void LoadKernelELF(File& file) {
   ProcessMappingInfo info;
-  const Elf64_Ehdr* ehdr = LoadELF(info, file);
+  const Elf64_Ehdr* ehdr = LoadELF(info, file, GetKernelPML4());
   if (!ehdr)
     Panic("Failed to load kernel ELF");
 
-  uint8_t* entry_point = reinterpret_cast<uint8_t*>(info.file_paddr) +
-                         (ehdr->e_entry - kKernelBaseAddr);
+  uint8_t* entry_point = reinterpret_cast<uint8_t*>(ehdr->e_entry);
   PutStringAndHex("Entry address(physical)", entry_point);
   PutString("Data at entrypoint: ");
   for (int i = 0; i < 16; i++) {

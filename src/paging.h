@@ -302,6 +302,7 @@ using IA_PML4 = PageTableStruct<39, IA_PML4E>;
 
 IA_PML4* CreatePageTable();
 void InitPaging(void);
+IA_PML4& GetKernelPML4(void);
 
 void inline CreatePageMapping(PhysicalPageAllocator& allocator,
                               IA_PML4& pml4,

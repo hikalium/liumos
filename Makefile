@@ -33,7 +33,7 @@ pmem.img :
 app/% :
 	make -C $(dir $@)
 
-src/kernel/LIUMOS.ELF :
+src/kernel/LIUMOS.ELF : .FORCE
 	make -C src/kernel LIUMOS.ELF
 
 files : src/BOOTX64.EFI $(APPS) src/kernel/LIUMOS.ELF .FORCE
