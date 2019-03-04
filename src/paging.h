@@ -23,13 +23,12 @@ uint64_t v2p(TableType& table, uint64_t vaddr) {
 }
 template <typename TableType>
 uint64_t v2p(TableType* table, uint64_t vaddr) {
-  static constexpr uint64_t kOffsetMask = (1ULL << TableType::kIndexShift) - 1;
   typename TableType::EntryType& e =
       table->entries[TableType::addr2index(vaddr)];
   if (!e.IsPresent())
     return kAddrCannotTranslate;
   if (e.IsPage())
-    return (e.GetPageBaseAddr()) | (vaddr & kOffsetMask);
+    return (e.GetPageBaseAddr()) | (vaddr & TableType::kOffsetMask);
   return v2p(e.GetTableAddr(), vaddr);
 }
 
@@ -39,6 +38,7 @@ struct PageTableStruct {
   static constexpr int kNumOfEntries = (1 << 9);
   static constexpr int kIndexMask = kNumOfEntries - 1;
   static constexpr int kIndexShift = index_shift;
+  static constexpr uint64_t kOffsetMask = (1ULL << kIndexShift) - 1;
   static inline int addr2index(uint64_t addr) {
     return (addr >> kIndexShift) & kIndexMask;
   }
@@ -109,11 +109,10 @@ packed_struct IA_PTE {
 using IA_PT = PageTableStruct<12, IA_PTE>;
 template <>
 inline uint64_t v2p<IA_PT>(IA_PT* table, uint64_t vaddr) {
-  static constexpr uint64_t kOffsetMask = (1ULL << IA_PT::kIndexShift) - 1;
   IA_PTE& e = table->entries[IA_PT::addr2index(vaddr)];
   if (!e.IsPresent())
     return kAddrCannotTranslate;
-  return (e.GetPageBaseAddr()) | (vaddr & kOffsetMask);
+  return (e.GetPageBaseAddr()) | (vaddr & IA_PT::kOffsetMask);
 }
 
 packed_struct IA_PDE_2MB_PAGE_BITS {
