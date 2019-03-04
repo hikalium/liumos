@@ -17,12 +17,28 @@ constexpr uint64_t kPageAttrCacheDisable = 0b10000;
 
 struct IA_PML4E;
 
-template <int index_shift, typename EntryType>
+template <typename TableType>
+uint64_t v2p(TableType& table, uint64_t vaddr) {
+  return v2p(&table, vaddr);
+}
+template <typename TableType>
+uint64_t v2p(TableType* table, uint64_t vaddr) {
+  static constexpr uint64_t kOffsetMask = (1ULL << TableType::kIndexShift) - 1;
+  typename TableType::EntryType& e =
+      table->entries[TableType::addr2index(vaddr)];
+  if (!e.IsPresent())
+    return kAddrCannotTranslate;
+  if (e.IsPage())
+    return (e.GetPageBaseAddr()) | (vaddr & kOffsetMask);
+  return v2p(e.GetTableAddr(), vaddr);
+}
+
+template <int index_shift, typename ET>
 struct PageTableStruct {
+  using EntryType = ET;
   static constexpr int kNumOfEntries = (1 << 9);
   static constexpr int kIndexMask = kNumOfEntries - 1;
   static constexpr int kIndexShift = index_shift;
-  static constexpr int kOffsetMask = (1ULL << kIndexShift) - 1;
   static inline int addr2index(uint64_t addr) {
     return (addr >> kIndexShift) & kIndexMask;
   }
@@ -31,14 +47,6 @@ struct PageTableStruct {
     for (int i = 0; i < kNumOfEntries; i++) {
       reinterpret_cast<uint64_t*>(entries)[i] = 0;
     }
-  }
-  uint64_t v2p(uint64_t addr) {
-    EntryType& e = entries[addr2index(addr)];
-    if (!e.IsPresent())
-      return kAddrCannotTranslate;
-    if (e.IsPage())
-      return (e.GetPageBaseAddr()) | (addr & kOffsetMask);
-    return e.GetTableAddr()->v2p(addr);
   }
   typename EntryType::TableType* GetTableBaseForAddr(uint64_t addr) {
     EntryType& e = entries[addr2index(addr)];
@@ -82,7 +90,6 @@ packed_struct IA_PTE {
     uint64_t data;
     IA_PT_BITS bits;
   };
-  TableType* GetTableAddr() { return nullptr; }
   bool IsPresent() { return bits.is_present; }
   bool IsPage() { return true; }
   uint64_t GetPageBaseAddr(void) {
@@ -99,36 +106,15 @@ packed_struct IA_PTE {
   }
 };
 
-template <int index_shift>
-struct PageTableStruct<index_shift, IA_PTE> {
-  using EntryType = IA_PTE;
-  static constexpr int kNumOfEntries = (1 << 9);
-  static constexpr int kIndexMask = kNumOfEntries - 1;
-  static constexpr int kIndexShift = index_shift;
-  static constexpr int kOffsetMask = (1ULL << kIndexShift) - 1;
-  static inline int addr2index(uint64_t addr) {
-    return (addr >> kIndexShift) & kIndexMask;
-  }
-  EntryType entries[kNumOfEntries];
-  void ClearMapping() {
-    for (int i = 0; i < kNumOfEntries; i++) {
-      reinterpret_cast<uint64_t*>(entries)[i] = 0;
-    }
-  }
-  uint64_t v2p(uint64_t addr) {
-    EntryType& e = entries[addr2index(addr)];
-    if (!e.IsPresent())
-      return kAddrCannotTranslate;
-    return (e.GetPageBaseAddr()) | (addr & kOffsetMask);
-  }
-  void SetPageBaseForAddr(uint64_t vaddr, uint64_t paddr, uint64_t attr) {
-    EntryType& e = entries[addr2index(vaddr)];
-    e.SetPageBaseAddr(paddr, attr);
-  }
-  void Print(void);
-};
-
 using IA_PT = PageTableStruct<12, IA_PTE>;
+template <>
+inline uint64_t v2p<IA_PT>(IA_PT* table, uint64_t vaddr) {
+  static constexpr uint64_t kOffsetMask = (1ULL << IA_PT::kIndexShift) - 1;
+  IA_PTE& e = table->entries[IA_PT::addr2index(vaddr)];
+  if (!e.IsPresent())
+    return kAddrCannotTranslate;
+  return (e.GetPageBaseAddr()) | (vaddr & kOffsetMask);
+}
 
 packed_struct IA_PDE_2MB_PAGE_BITS {
   uint64_t is_present : 1;
