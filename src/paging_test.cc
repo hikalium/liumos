@@ -73,9 +73,13 @@ void TestRangeMapping(IA_PML4& pml4,
                       uint64_t paddr,
                       uint64_t size) {
   pml4.ClearMapping();
-  constexpr int kPageTableBufferSize = 2048;
+  constexpr int kPageTableBufferSize = 1024;
   uint64_t malloc_addr = reinterpret_cast<uint64_t>(
       malloc(kPageSize * (kPageTableBufferSize + 1)));
+  if (!malloc_addr) {
+    perror("malloc failed.\n");
+    exit(EXIT_FAILURE);
+  }
   dummy_allocator.FreePagesWithProximityDomain(
       reinterpret_cast<void*>((malloc_addr + kPageSize - 1) & ~kPageAddrMask),
       kPageTableBufferSize, 0);
@@ -92,8 +96,8 @@ int main() {
   Test1GBPageMapping(1ULL << 30, 1ULL << 31);
   Test2MBPageMapping();
   Test4KBPageMapping();
-  TestRangeMapping(pml4, 0x0000'0000'0000'1000, 0x0000'0000'1000'1000,
-                   2ULL * 1024 * 1024 * 1024);
+  TestRangeMapping(pml4, 0x0000'0000'0000'3000, 0x0000'0000'1000'7000,
+                   1ULL * 1024 * 1024 * 1024);
   puts("PASS");
   return 0;
 }
