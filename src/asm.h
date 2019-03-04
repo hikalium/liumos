@@ -1,6 +1,7 @@
 #pragma once
 
 #include "generic.h"
+#include "paging.h"
 
 extern "C" {
 
@@ -105,7 +106,6 @@ packed_struct IA_CR3_BITS {
   uint64_t pml4_addr : 52;
 };
 
-struct IA_PML4;
 packed_struct IA_CR3 {
   union {
     uint64_t data;

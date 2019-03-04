@@ -1,9 +1,13 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <cassert>
 
-#include "paging.h"
+void Panic(const char* s) {
+  puts(s);
+  exit(EXIT_FAILURE);
+}
 
-#ifdef LIUMOS_TEST
+#include "paging.h"
 
 int kMaxPhyAddr = 36;
 
@@ -62,6 +66,11 @@ void Test4KBPageMapping() {
   assert(pml4.v2p(k4KBPageVirtBase) == kAddrCannotTranslate);
 }
 
+void TestRangeMapping(IA_PML4& pml4,
+                      uint64_t paddr,
+                      uint64_t vaddr,
+                      uint64_t size) {}
+
 int main() {
   Test1GBPageMapping(0, 1ULL << 30);
   Test1GBPageMapping(1ULL << 30, 1ULL << 31);
@@ -70,5 +79,3 @@ int main() {
   puts("PASS");
   return 0;
 }
-
-#endif

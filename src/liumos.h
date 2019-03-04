@@ -50,6 +50,7 @@ void Process(TextBox& tbox);
 // @elf.cc
 class File;
 ExecutionContext* LoadELFAndLaunchProcess(File& file);
+void LoadKernelELF(File& file);
 
 // @file.cc
 class File {

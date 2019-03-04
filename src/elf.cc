@@ -39,8 +39,8 @@ const Elf64_Ehdr* LoadELF(ProcessMappingInfo& info, File& file) {
     PutString("Not for x86_64");
     return nullptr;
   }
-  PutString("This is an ELF file\n");
   /*
+  PutString("This is an ELF file\n");
   PutString("sections:\n");
   const Elf64_Shdr* shstr = reinterpret_cast<const Elf64_Shdr*>(
       buf + ehdr->e_shoff + ehdr->e_shentsize * ehdr->e_shstrndx);
@@ -49,8 +49,10 @@ const Elf64_Ehdr* LoadELF(ProcessMappingInfo& info, File& file) {
         buf + ehdr->e_shoff + ehdr->e_shentsize * i);
     PutString(
         reinterpret_cast<const char*>(buf + shstr->sh_offset + shdr->sh_name));
-    PutChar('\n');
+    PutStringAndHex(" @+", shdr->sh_offset);
+    PutStringAndHex("    @", shdr->sh_addr);
   }
+  */
   PutString("Program headers:\n");
   for (int i = 0; i < ehdr->e_phnum; i++) {
     const Elf64_Phdr* phdr = reinterpret_cast<const Elf64_Phdr*>(
@@ -93,7 +95,6 @@ const Elf64_Ehdr* LoadELF(ProcessMappingInfo& info, File& file) {
     PutChar('\n');
   }
   PutStringAndHex("Entry Point", ehdr->e_entry);
-  */
 
   const uint64_t file_size = file.GetFileSize();
   PutStringAndHex("File Size", file_size);
@@ -137,5 +138,39 @@ ExecutionContext* LoadELFAndLaunchProcess(File& file) {
       reinterpret_cast<uint64_t>(CreatePageTable()));
   scheduler->RegisterExecutionContext(ctx);
   return ctx;
-  ctx->WaitUntilExit();
+}
+
+void LoadKernelELF(File& file) {
+  ProcessMappingInfo info;
+  const Elf64_Ehdr* ehdr = LoadELF(info, file);
+  if (!ehdr)
+    Panic("Failed to load kernel ELF");
+
+  uint8_t* entry_point = reinterpret_cast<uint8_t*>(info.file_paddr) +
+                         (ehdr->e_entry - kKernelBaseAddr);
+  PutStringAndHex("Entry address(physical)", entry_point);
+  PutString("Data at entrypoint: ");
+  for (int i = 0; i < 16; i++) {
+    PutHex8ZeroFilled(entry_point[i]);
+    PutChar(' ');
+  }
+  PutChar('\n');
+
+  for (;;) {
+    StoreIntFlagAndHalt();
+  }
+
+  const int kNumOfStackPages = 3;
+  info.stack_size = kNumOfStackPages << kPageSizeExponent;
+  info.stack_paddr =
+      dram_allocator->AllocPages<uint64_t>(ByteSizeToPageSize(info.stack_size));
+  info.stack_vaddr = info.stack_paddr;
+  void* sub_context_rsp =
+      reinterpret_cast<void*>(info.stack_vaddr + info.stack_size);
+
+  ExecutionContext* ctx = CreateExecutionContext(
+      reinterpret_cast<void (*)(void)>(entry_point), GDT::kUserCSSelector,
+      sub_context_rsp, GDT::kUserDSSelector,
+      reinterpret_cast<uint64_t>(CreatePageTable()));
+  scheduler->RegisterExecutionContext(ctx);
 }

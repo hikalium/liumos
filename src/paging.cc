@@ -6,8 +6,9 @@ IA_PDPT* kernel_pdpt;
 IA_PDT* kernel_pdt;
 IA_PT* kernel_pt;
 
+template <>
 void IA_PDT::Print() {
-  for (int i = 0; i < kNumOfPDE; i++) {
+  for (int i = 0; i < kNumOfEntries; i++) {
     if (!entries[i].IsPresent())
       continue;
     PutString("  PDT[");
@@ -21,8 +22,9 @@ void IA_PDT::Print() {
   }
 }
 
+template <>
 void IA_PDPT::Print() {
-  for (int i = 0; i < kNumOfPDPTE; i++) {
+  for (int i = 0; i < kNumOfEntries; i++) {
     if (!entries[i].IsPresent())
       continue;
     PutString(" PDPT[");
@@ -38,22 +40,24 @@ void IA_PDPT::Print() {
   }
 }
 
+template <>
 void IA_PML4::Print() {
-  for (int i = 0; i < kNumOfPML4E; i++) {
+  for (int i = 0; i < kNumOfEntries; i++) {
     if (!entries[i].IsPresent())
       continue;
-    PutString("PML4[");
+    PutString(" PML4[");
     PutHex64(i);
-    PutString("]:\n");
-    IA_PDPT* pdpt = entries[i].GetTableAddr();
-    pdpt->Print();
+    PutString("]:");
+    PutString("\n");
+    IA_PDPT* pdt = entries[i].GetTableAddr();
+    pdt->Print();
   }
 }
 
 IA_PML4* CreatePageTable() {
   IA_PML4* pml4 = dram_allocator->AllocPages<IA_PML4*>(1);
   pml4->ClearMapping();
-  for (int i = 0; i < IA_PML4::kNumOfPML4E; i++) {
+  for (int i = 0; i < IA_PML4::kNumOfEntries; i++) {
     pml4->entries[i] = kernel_pml4->entries[i];
   }
   return pml4;
@@ -125,14 +129,14 @@ void InitPaging() {
     pdpt->ClearMapping();
     kernel_pml4->SetTableBaseForAddr(
         addr, pdpt, kPageAttrPresent | kPageAttrWritable | kPageAttrUser);
-    for (int i = 0; i < IA_PDPT::kNumOfPDPTE; i++) {
+    for (int i = 0; i < IA_PDPT::kNumOfEntries; i++) {
       if (addr >= direct_mapping_end)
         break;
       IA_PDT* pdt = dram_allocator->AllocPages<IA_PDT*>(1);
       pdt->ClearMapping();
       pdpt->SetTableBaseForAddr(
           addr, pdt, kPageAttrPresent | kPageAttrWritable | kPageAttrUser);
-      for (int i = 0; i < IA_PDT::kNumOfPDE; i++) {
+      for (int i = 0; i < IA_PDT::kNumOfEntries; i++) {
         if (addr >= direct_mapping_end)
           break;
         uint64_t attr = kPageAttrPresent | kPageAttrWritable | kPageAttrUser;
@@ -165,4 +169,21 @@ void InitPaging() {
   */
   PutStringAndHex("CR3", ReadCR3());
   WriteCR3(reinterpret_cast<uint64_t>(kernel_pml4));
+}
+
+void CreatePageMapping(PhysicalPageAllocator& allocator,
+                       IA_PML4& pml4,
+                       uint64_t vaddr,
+                       uint64_t paddr,
+                       uint64_t byte_size,
+                       uint64_t attr) {
+  assert((vaddr & kPageAddrMask) == 0);
+  assert((paddr & kPageAddrMask) == 0);
+  uint64_t num_of_4k_pages = ByteSizeToPageSize(byte_size);
+  while (num_of_4k_pages) {
+    int pml4_idx = IA_PML4::addr2index(vaddr);
+    int pdpt_idx = IA_PDPT::addr2index(vaddr);
+    int pdt_idx = IA_PDT::addr2index(vaddr);
+    int pt_idx = IA_PT::addr2index(vaddr);
+  }
 }

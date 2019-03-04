@@ -395,6 +395,8 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
       reinterpret_cast<uint64_t>(CreatePageTable()));
   scheduler->RegisterExecutionContext(sub_context);
 
+  LoadKernelELF(liumos_elf_file);
+
   TextBox console_text_box;
   while (1) {
     WaitAndProcessCommand(console_text_box);
