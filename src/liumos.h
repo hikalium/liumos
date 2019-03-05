@@ -83,6 +83,9 @@ void* memcpy(void* dst, const void* src, size_t n);
 int atoi(const char* str);
 
 // @liumos.c
+packed_struct LiumOS {
+  Sheet* screen_sheet;
+};
 extern EFI::MemoryMap efi_memory_map;
 extern PhysicalPageAllocator* dram_allocator;
 extern PhysicalPageAllocator* pmem_allocator;
@@ -93,6 +96,7 @@ extern SerialPort com1;
 extern File hello_bin_file;
 extern File liumos_elf_file;
 extern HPET hpet;
+extern LiumOS* liumos;
 
 extern "C" void SyscallHandler(uint64_t* args);
 void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table);

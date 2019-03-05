@@ -2,8 +2,11 @@
 
 int counter;
 
-extern "C" void KernelEntry(Sheet* vram_sheet) {
-  vram_sheet->DrawRect(0, 0, 100, 100, 0xffffff);
+LiumOS* liumos;
+
+extern "C" void KernelEntry(LiumOS* liumos_) {
+  liumos = liumos_;
+  liumos->screen_sheet->DrawRect(0, 0, 100, 100, 0xffffff);
   for (;;) {
     counter++;
   }

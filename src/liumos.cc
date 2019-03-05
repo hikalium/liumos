@@ -3,6 +3,8 @@
 #include "execution_context.h"
 #include "hpet.h"
 
+LiumOS* liumos;
+LiumOS liumos_;
 EFI::MemoryMap efi_memory_map;
 PhysicalPageAllocator* dram_allocator;
 PhysicalPageAllocator* pmem_allocator;
@@ -350,8 +352,8 @@ void IdentifyCPU() {
 }
 
 void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
+  liumos = &liumos_;
   GDT gdt;
-
   EFI::Init(system_table);
   EFI::ConOut::ClearScreen();
   logo_file.LoadFromEFISimpleFS(L"logo.ppm");
