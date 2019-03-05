@@ -172,6 +172,8 @@ void WriteCR3(uint64_t);
 uint64_t CompareAndSwap(uint64_t*, uint64_t);
 void SwapGS(void);
 
+void JumpToKernel(void* kernel_entry_point);
+
 void AsmSyscallHandler(void);
 
 void AsmIntHandler03(void);

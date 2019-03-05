@@ -5,6 +5,8 @@ OBJS= acpi.o apic.o asm.o console.o console_command.o \
 		 libfunc.o liumos.o paging.o phys_page_allocator.o \
 		 scheduler.o serial.o sheet.o text_box.o \
 		 font.gen.o
+KERNEL_SRCS= elf_entry.cc
+KERNEL_OBJS= $(addsuffix .elf.o, $(basename $(KERNEL_SRCS)))
 HEADERS=$(filter-out githash.h, $(wildcard *.h)) lib/musl/include/elf.h
 OVMF=ovmf/bios64.bin
 QEMU=qemu-system-x86_64
@@ -20,6 +22,13 @@ CFLAGS= \
 		-nostdlibinc \
 		$(CLANG_WARNINGS) -std=c11 \
 		-Imusl_supplement -Imusl/include
+
+CFLAGS_KERNEL= \
+		-target x86_64-unknown-none-elf \
+		-fno-stack-protector -fshort-wchar \
+		-mno-red-zone \
+		-nostdlibinc \
+		$(CLANG_WARNINGS) $(CXX_STD)
 
 CXXFLAGS= \
 		-target x86_64-pc-win32-coff \
@@ -81,6 +90,13 @@ BOOTX64.EFI : $(OBJS) $(HEADERS) Makefile
 		-subsystem:efi_application -nodefaultlib \
 		-entry:efi_main $(OBJS) -out:$@
 
+%.elf.o : %.cc $(HEADERS) Makefile
+	$(CC) $(CFLAGS_KERNEL) \
+		-g -c -fPIC -o $*.elf.o $*.cc
+
+LIUMOS.ELF : $(KERNEL_OBJS) kernel.ld Makefile
+	$(LD_LLD) -o $@ -e KernelEntry -T kernel.ld $(KERNEL_OBJS)
+
 run:
 	make -C .. run
 
@@ -98,7 +114,6 @@ clean :
 
 format :
 	clang-format -i *.cc *.h
-	make -C kernel format
 
 commit :
 	make -C .. commit

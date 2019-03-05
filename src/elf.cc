@@ -168,7 +168,7 @@ void LoadKernelELF(File& file) {
   }
   PutChar('\n');
 
-  reinterpret_cast<void (*)(void)>(entry_point)();
+  JumpToKernel(entry_point);
 
   for (;;) {
     StoreIntFlagAndHalt();

@@ -168,6 +168,15 @@ SwapGS:
 	swapgs
 	ret
 
+.global JumpToKernel
+JumpToKernel:
+	// rcx: kernel ptr
+	// rdx: kernel info
+	// convert calling convention from Microsoft x64 to SystemV AMD64
+	mov rdi, rdx
+	call rcx
+	ret
+
 .global AsmSyscallHandler
 AsmSyscallHandler:
 	// Microsoft x64 calling convention:

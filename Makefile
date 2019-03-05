@@ -22,6 +22,9 @@ endif
 src/BOOTX64.EFI : .FORCE
 	make -C src
 
+src/LIUMOS.ELF : .FORCE
+	make -C src LIUMOS.ELF
+
 .FORCE :
 
 tools : .FORCE
@@ -33,17 +36,14 @@ pmem.img :
 app/% :
 	make -C $(dir $@)
 
-src/kernel/LIUMOS.ELF : .FORCE
-	make -C src/kernel LIUMOS.ELF
-
-files : src/BOOTX64.EFI $(APPS) src/kernel/LIUMOS.ELF .FORCE
+files : src/BOOTX64.EFI $(APPS) src/LIUMOS.ELF .FORCE
 	mkdir -p mnt/
 	-rm -r mnt/*
 	mkdir -p mnt/EFI/BOOT
 	cp src/BOOTX64.EFI mnt/EFI/BOOT/
 	cp dist/logo.ppm mnt/
 	cp $(APPS) mnt/
-	cp src/kernel/LIUMOS.ELF mnt/LIUMOS.ELF
+	cp src/LIUMOS.ELF mnt/LIUMOS.ELF
 
 run_nopmem : files .FORCE
 	$(QEMU) $(QEMU_ARGS)
@@ -75,7 +75,6 @@ unittest :
 
 clean :
 	make -C src clean
-	make -C src/kernel clean
 
 format :
 	make -C src format
