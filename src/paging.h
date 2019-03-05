@@ -30,12 +30,12 @@ uint64_t v2p(TableType* table, uint64_t vaddr) {
   return v2p(e.GetTableAddr(), vaddr);
 }
 
-template <int TIndexShift, typename TEntryType, typename TChildTableType>
+template <typename TEntryType>
 struct PageTableStruct {
   using EntryType = TEntryType;
   static constexpr int kNumOfEntries = (1 << 9);
   static constexpr int kIndexMask = kNumOfEntries - 1;
-  static constexpr int kIndexShift = TIndexShift;
+  static constexpr int kIndexShift = TEntryType::kIndexShift;
   static constexpr uint64_t kOffsetMask = (1ULL << kIndexShift) - 1;
   static inline int addr2index(uint64_t addr) {
     return (addr >> kIndexShift) & kIndexMask;
@@ -49,14 +49,15 @@ struct PageTableStruct {
       reinterpret_cast<uint64_t*>(entries)[i] = 0;
     }
   }
-  TChildTableType* GetTableBaseForAddr(uint64_t vaddr) {
+  typename TEntryType::NextTableType* GetTableBaseForAddr(uint64_t vaddr) {
     return GetEntryForAddr(vaddr).GetTableAddr();
   }
-  TChildTableType* SetTableBaseForAddr(uint64_t addr,
-                                       TChildTableType* new_ent,
-                                       uint64_t attr) {
+  typename TEntryType::NextTableType* SetTableBaseForAddr(
+      uint64_t addr,
+      typename TEntryType::NextTableType* new_ent,
+      uint64_t attr) {
     TEntryType& e = GetEntryForAddr(addr);
-    TChildTableType* old_e = e.GetTableAddr();
+    typename TEntryType::NextTableType* old_e = e.GetTableAddr();
     e.SetTableAddr(new_ent, attr);
     return old_e;
   }
@@ -68,6 +69,7 @@ struct PageTableStruct {
 
 template <int TIndexShift, class TPageStrategy>
 packed_struct PageTableEntryStruct {
+  using NextTableType = typename TPageStrategy::NextTableType;
   static constexpr int kIndexShift = TIndexShift;
   static constexpr uint64_t kOffsetMask = (1ULL << kIndexShift) - 1;
   uint64_t data;
@@ -112,15 +114,8 @@ struct PTEStrategy {
   }
 };
 using IA_PTE = PageTableEntryStruct<12, PTEStrategy>;
-using IA_PT = PageTableStruct<12, IA_PTE, void>;
+using IA_PT = PageTableStruct<IA_PTE>;
 static_assert(sizeof(IA_PT) == kPageSize);
-template <>
-inline uint64_t v2p<IA_PT>(IA_PT* table, uint64_t vaddr) {
-  IA_PTE& e = table->entries[IA_PT::addr2index(vaddr)];
-  if (!e.IsPresent())
-    return kAddrCannotTranslate;
-  return (e.GetPageBaseAddr()) | (vaddr & IA_PT::kOffsetMask);
-}
 
 struct PDEStrategy {
   using NextTableType = IA_PT;
@@ -130,7 +125,7 @@ struct PDEStrategy {
   }
 };
 using IA_PDE = PageTableEntryStruct<21, PDEStrategy>;
-using IA_PDT = PageTableStruct<21, IA_PDE, IA_PT>;
+using IA_PDT = PageTableStruct<IA_PDE>;
 static_assert(sizeof(IA_PDT) == kPageSize);
 
 struct PDPTEStrategy {
@@ -141,7 +136,7 @@ struct PDPTEStrategy {
   }
 };
 using IA_PDPTE = PageTableEntryStruct<30, PDPTEStrategy>;
-using IA_PDPT = PageTableStruct<30, IA_PDPTE, IA_PDT>;
+using IA_PDPT = PageTableStruct<IA_PDPTE>;
 static_assert(sizeof(IA_PDPT) == kPageSize);
 
 struct PML4EStrategy {
@@ -153,7 +148,7 @@ struct PML4EStrategy {
   }
 };
 using IA_PML4E = PageTableEntryStruct<39, PML4EStrategy>;
-using IA_PML4 = PageTableStruct<39, IA_PML4E, IA_PDPT>;
+using IA_PML4 = PageTableStruct<IA_PML4E>;
 static_assert(sizeof(IA_PML4) == kPageSize);
 
 IA_PML4* CreatePageTable();
