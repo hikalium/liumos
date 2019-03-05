@@ -29,6 +29,10 @@ uint64_t v2p(TableType* table, uint64_t vaddr) {
     return (e.GetPageBaseAddr()) | (vaddr & TableType::kOffsetMask);
   return v2p(e.GetTableAddr(), vaddr);
 }
+template <>
+inline uint64_t v2p(void*, uint64_t) {
+  return kAddrCannotTranslate;
+}
 
 template <typename TEntryType>
 struct PageTableStruct {
