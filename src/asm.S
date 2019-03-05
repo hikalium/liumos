@@ -96,12 +96,6 @@ ClearIntFlag:
 	cli
 	ret
 
-.global Die
-Die:
-	cli
-	hlt
-	jmp Die
-
 .global ReadCSSelector
 ReadCSSelector:
 	mov rax, 0

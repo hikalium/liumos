@@ -168,7 +168,6 @@ void LoadKernelELF(File& file) {
   }
   PutChar('\n');
 
-  liumos->screen_sheet = screen_sheet;
   JumpToKernel(entry_point, liumos);
 
   for (;;) {

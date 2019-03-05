@@ -1,11 +1,18 @@
-OBJS= acpi.o apic.o asm.o console.o console_command.o \
+OBJS= acpi.o apic.o asm_common.o asm.o console.o console_command.o \
 		 efi.o efimain.o elf.o execution_context.o file.o \
 		 gdt.o generic.o graphics.o guid.o \
 		 hpet.o interrupt.o keyboard.o\
 		 libfunc.o liumos.o paging.o phys_page_allocator.o \
 		 scheduler.o serial.o sheet.o text_box.o \
 		 font.gen.o
-KERNEL_SRCS= elf_entry.cc sheet.cc font.gen.cc
+KERNEL_SRCS= acpi.cc asm_common.S asm_sysv.S \
+						 console.cc \
+						 efi.cc \
+						 generic.cc guid.cc \
+						 kernel.cc \
+						 libfunc.cc \
+						 serial.cc sheet.cc \
+						 font.gen.cc
 KERNEL_OBJS= $(addsuffix .elf.o, $(basename $(KERNEL_SRCS)))
 HEADERS=$(filter-out githash.h, $(wildcard *.h)) lib/musl/include/elf.h
 OVMF=ovmf/bios64.bin
@@ -93,6 +100,10 @@ BOOTX64.EFI : $(OBJS) $(HEADERS) Makefile
 %.elf.o : %.cc $(HEADERS) Makefile
 	$(CC) $(CFLAGS_KERNEL) \
 		-g -c -fPIC -o $*.elf.o $*.cc
+
+%.elf.o : %.S Makefile
+	$(CC) $(CFLAGS_KERNEL) \
+		-c -o $*.elf.o $*.S
 
 LIUMOS.ELF : $(KERNEL_OBJS) kernel.ld Makefile
 	$(LD_LLD) -o $@ -e KernelEntry -T kernel.ld $(KERNEL_OBJS)

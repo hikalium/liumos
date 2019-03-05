@@ -3,6 +3,7 @@
 #include "acpi.h"
 #include "apic.h"
 #include "asm.h"
+#include "console.h"
 #include "efi.h"
 #include "gdt.h"
 #include "generic.h"
@@ -18,22 +19,6 @@
 #include "text_box.h"
 
 constexpr uint64_t kKernelBaseAddr = 0xFFFF'FFFF'0000'0000;
-
-// @console.c
-void ResetCursorPosition();
-void EnableVideoModeForConsole();
-void SetSerialForConsole(SerialPort* p);
-void PutChar(char c);
-void PutString(const char* s);
-void PutChars(const char* s, int n);
-void PutHex64(uint64_t value);
-void PutHex64ZeroFilled(uint64_t value);
-void PutHex8ZeroFilled(uint8_t value);
-void PutStringAndHex(const char* s, uint64_t value);
-void PutStringAndHex(const char* s, void* value);
-void PutStringAndBool(const char* s, bool cond);
-void PutAddressRange(uint64_t addr, uint64_t size);
-void PutAddressRange(void* addr, uint64_t size);
 
 // @console_command.cc
 namespace ConsoleCommand {
@@ -85,6 +70,7 @@ int atoi(const char* str);
 // @liumos.c
 packed_struct LiumOS {
   Sheet* screen_sheet;
+  Console* main_console;
 };
 extern EFI::MemoryMap efi_memory_map;
 extern PhysicalPageAllocator* dram_allocator;

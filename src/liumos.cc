@@ -4,7 +4,6 @@
 #include "hpet.h"
 
 LiumOS* liumos;
-LiumOS liumos_;
 EFI::MemoryMap efi_memory_map;
 PhysicalPageAllocator* dram_allocator;
 PhysicalPageAllocator* pmem_allocator;
@@ -16,8 +15,10 @@ File hello_bin_file;
 File liumos_elf_file;
 HPET hpet;
 
+LiumOS liumos_;
 PhysicalPageAllocator dram_allocator_;
 PhysicalPageAllocator pmem_allocator_;
+Console main_console_;
 
 File logo_file;
 
@@ -360,11 +361,12 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   hello_bin_file.LoadFromEFISimpleFS(L"hello.bin");
   liumos_elf_file.LoadFromEFISimpleFS(L"LIUMOS.ELF");
   InitGraphics();
-  EnableVideoModeForConsole();
+  main_console_.SetSheet(liumos->screen_sheet);
+  liumos->main_console = &main_console_;
   EFI::GetMemoryMapAndExitBootServices(image_handle, efi_memory_map);
 
   com1.Init(kPortCOM1);
-  SetSerialForConsole(&com1);
+  liumos->main_console->SetSerial(&com1);
 
   PrintLogoFile();
   PutString("\nliumOS version: " GIT_HASH "\n\n");
@@ -375,6 +377,7 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   InitMemoryManagement(efi_memory_map);
 
   InitDoubleBuffer();
+  main_console_.SetSheet(liumos->screen_sheet);
 
   IdentifyCPU();
   gdt.Init();

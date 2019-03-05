@@ -13,6 +13,7 @@ void InitGraphics() {
       EFI::graphics_output_protocol->mode->info->vertical_resolution,
       EFI::graphics_output_protocol->mode->info->pixels_per_scan_line);
   screen_sheet = &vram_sheet_;
+  liumos->screen_sheet = screen_sheet;
 }
 
 void InitDoubleBuffer() {
@@ -25,5 +26,6 @@ void InitDoubleBuffer() {
   memcpy(screen_sheet_.GetBuf(), vram_sheet_.GetBuf(),
          screen_sheet_.GetBufSize());
   screen_sheet = &screen_sheet_;
+  liumos->screen_sheet = screen_sheet;
   screen_sheet->Flush(0, 0, screen_sheet->GetXSize(), screen_sheet->GetYSize());
 }

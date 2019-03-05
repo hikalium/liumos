@@ -1,31 +1,12 @@
 #include "liumos.h"
 
-int cursor_x, cursor_y;
-bool use_vram;
-SerialPort* serial_port;
-
-void ResetCursorPosition() {
-  cursor_x = 0;
-  cursor_y = 0;
-}
-
-void EnableVideoModeForConsole() {
-  if (!screen_sheet)
-    return;
-  use_vram = true;
-}
-
-void SetSerialForConsole(SerialPort* p) {
-  serial_port = p;
-}
-
-void PutChar(char c) {
-  if (serial_port) {
+void Console::PutChar(char c) {
+  if (serial_port_) {
     if (c == '\n')
-      serial_port->SendChar('\r');
-    serial_port->SendChar(c);
+      serial_port_->SendChar('\r');
+    serial_port_->SendChar(c);
   }
-  if (!use_vram) {
+  if (!sheet_) {
     if (c == '\n') {
       EFI::ConOut::PutChar('\r');
       EFI::ConOut::PutChar('\n');
@@ -35,31 +16,34 @@ void PutChar(char c) {
     return;
   }
   if (c == '\n') {
-    cursor_y += 16;
-    cursor_x = 0;
+    cursor_y_ += 16;
+    cursor_x_ = 0;
   } else if (c == '\b') {
-    cursor_x -= 8;
+    cursor_x_ -= 8;
   } else {
-    screen_sheet->DrawCharacter(c, cursor_x, cursor_y);
-    cursor_x += 8;
+    sheet_->DrawCharacter(c, cursor_x_, cursor_y_);
+    cursor_x_ += 8;
   }
-  if (cursor_x >= screen_sheet->GetXSize()) {
-    cursor_y += 16;
-    cursor_x = 0;
-  } else if (cursor_x < 0) {
-    cursor_y -= 16;
-    cursor_x = (screen_sheet->GetXSize() - 8) & ~7;
+  if (cursor_x_ >= sheet_->GetXSize()) {
+    cursor_y_ += 16;
+    cursor_x_ = 0;
+  } else if (cursor_x_ < 0) {
+    cursor_y_ -= 16;
+    cursor_x_ = (sheet_->GetXSize() - 8) & ~7;
   }
   if (c == '\b') {
-    screen_sheet->DrawRect(cursor_x, cursor_y, 8, 16, 0x000000);
+    sheet_->DrawRect(cursor_x_, cursor_y_, 8, 16, 0x000000);
   }
-  if (cursor_y + 16 > screen_sheet->GetYSize()) {
-    screen_sheet->BlockTransfer(0, 0, 0, 16, screen_sheet->GetXSize(),
-                                screen_sheet->GetYSize() - 16);
-    screen_sheet->DrawRect(0, cursor_y - 16, screen_sheet->GetXSize(), 16,
-                           0x000000);
-    cursor_y -= 16;
+  if (cursor_y_ + 16 > sheet_->GetYSize()) {
+    sheet_->BlockTransfer(0, 0, 0, 16, sheet_->GetXSize(),
+                          sheet_->GetYSize() - 16);
+    sheet_->DrawRect(0, cursor_y_ - 16, sheet_->GetXSize(), 16, 0x000000);
+    cursor_y_ -= 16;
   }
+}
+
+void PutChar(char c) {
+  liumos->main_console->PutChar(c);
 }
 
 void PutString(const char* s) {
@@ -68,7 +52,7 @@ void PutString(const char* s) {
   }
 }
 
-void PutChars(const char* s, int n) {
+void Console::PutChars(const char* s, int n) {
   for (int i = 0; i < n; i++) {
     PutChar(*(s++));
   }
