@@ -168,7 +168,7 @@ void LoadKernelELF(File& file) {
   }
   PutChar('\n');
 
-  JumpToKernel(entry_point);
+  JumpToKernel(entry_point, screen_sheet);
 
   for (;;) {
     StoreIntFlagAndHalt();

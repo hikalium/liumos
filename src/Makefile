@@ -5,7 +5,7 @@ OBJS= acpi.o apic.o asm.o console.o console_command.o \
 		 libfunc.o liumos.o paging.o phys_page_allocator.o \
 		 scheduler.o serial.o sheet.o text_box.o \
 		 font.gen.o
-KERNEL_SRCS= elf_entry.cc
+KERNEL_SRCS= elf_entry.cc sheet.cc font.gen.cc
 KERNEL_OBJS= $(addsuffix .elf.o, $(basename $(KERNEL_SRCS)))
 HEADERS=$(filter-out githash.h, $(wildcard *.h)) lib/musl/include/elf.h
 OVMF=ovmf/bios64.bin
@@ -51,7 +51,7 @@ OSX_STD_HEADER_INCLUDE_FLAGS= \
 		-I/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include \
 		-I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include
 
-default: BOOTX64.EFI
+default: BOOTX64.EFI LIUMOS.ELF
 
 include ../common.mk
 
