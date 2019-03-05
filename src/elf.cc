@@ -100,9 +100,12 @@ const Elf64_Ehdr* LoadELF(ProcessMappingInfo& info,
     PutString(" map_size:");
     PutHex64ZeroFilled(map_size);
     PutChar('\n');
+    uint64_t page_attr = kPageAttrPresent;
+    if (phdr->p_flags & PF_W)
+      page_attr |= kPageAttrWritable;
     CreatePageMapping(*dram_allocator, page_root, map_base_vaddr,
                       reinterpret_cast<uint64_t>(buf) + map_base_file_ofs,
-                      map_size, kPageAttrPresent);
+                      map_size, page_attr);
   }
   PutStringAndHex("Entry Point", ehdr->e_entry);
 
@@ -164,6 +167,8 @@ void LoadKernelELF(File& file) {
     PutChar(' ');
   }
   PutChar('\n');
+
+  reinterpret_cast<void (*)(void)>(entry_point)();
 
   for (;;) {
     StoreIntFlagAndHalt();
