@@ -37,7 +37,7 @@ CFLAGS= \
 CFLAGS_KERNEL= \
 		-target x86_64-unknown-none-elf \
 		-fno-stack-protector -fshort-wchar \
-		-mno-red-zone \
+		-mno-red-zone -mstack-alignment=8 \
 		-nostdlibinc \
 		$(CLANG_WARNINGS) $(CXX_STD)
 

@@ -91,6 +91,9 @@ void PutHex64ZeroFilled(uint64_t value) {
     PutString(s);
   }
 }
+void PutHex64ZeroFilled(void* value) {
+  PutHex64ZeroFilled(reinterpret_cast<uint64_t>(value));
+}
 
 void PutHex8ZeroFilled(uint8_t value) {
   int i;

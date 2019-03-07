@@ -211,11 +211,9 @@ IntHandlerWrapper:
 	push r10
 	push r11
 
-	push r8
 	swapgs
 	call IntHandler
 	swapgs
-	pop r8
 
 	cmp rax, 0
 	jnz	ContextSwitch

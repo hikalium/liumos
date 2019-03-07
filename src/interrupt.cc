@@ -29,18 +29,23 @@ ContextSwitchRequest* IDT::IntHandler(uint64_t intcode,
   PutStringAndHex("CS", info->cs);
   PutStringAndHex("Error Code", error_code);
   PutStringAndHex("Context#", current_context->GetID());
+  if (intcode != 0x0E || ReadCR2() != info->rip) {
+    PutStringAndHex("Memory dump at", info->rip);
+    for (int i = 0; i < 16; i++) {
+      PutChar(' ');
+      PutHex8ZeroFilled(reinterpret_cast<uint8_t*>(info->rip)[i]);
+    }
+    PutChar('\n');
+  }
   if (intcode == 0x0E) {
     PutStringAndHex("CR3", ReadCR3());
     PutStringAndHex("CR2", ReadCR2());
+    if (error_code & 1) {
+      // present but not ok. print entries.
+      reinterpret_cast<IA_PML4*>(ReadCR3())->DebugPrintEntryForAddr(ReadCR2());
+    }
     Panic("Page Fault");
   }
-
-  PutStringAndHex("Memory dump at", info->rip);
-  for (int i = 0; i < 16; i++) {
-    PutChar(' ');
-    PutHex8ZeroFilled(reinterpret_cast<uint8_t*>(info->rip)[i]);
-  }
-  PutChar('\n');
 
   if (intcode == 0x03) {
     Panic("Int3 Trap");

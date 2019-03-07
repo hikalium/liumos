@@ -112,6 +112,8 @@ extern "C" void KernelEntry(LiumOS* liumos_) {
 
   StoreIntFlag();
 
+  GetKernelPML4().Print();
+
   const int kNumOfStackPages = 3;
   void* sub_context_stack_base =
       liumos->dram_allocator->AllocPages<void*>(kNumOfStackPages);

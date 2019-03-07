@@ -68,6 +68,7 @@ struct PageTableStruct {
     GetEntryForAddr(vaddr).SetPageBaseAddr(paddr, attr);
   }
   void Print(void);
+  void DebugPrintEntryForAddr(uint64_t vaddr);
 };
 
 template <int TIndexShift, class TPageStrategy>
@@ -183,7 +184,7 @@ void inline CreatePageMapping(PhysicalPageAllocator& allocator,
       }
       pdpte.SetAttr(attr);
       if (pdpte.IsPage())
-        Panic("Page overwrapping");
+        Panic("Page overwrapping at pdpte");
       auto* pdt = pdpte.GetTableAddr();
       for (int pdt_idx = IA_PDT::addr2index(vaddr);
            num_of_4k_pages && pdt_idx < IA_PDT::kNumOfEntries; pdt_idx++) {
@@ -193,7 +194,7 @@ void inline CreatePageMapping(PhysicalPageAllocator& allocator,
         }
         pdte.SetAttr(attr);
         if (pdte.IsPage())
-          Panic("Page overwrapping");
+          Panic("Page overwrapping at pdte");
         auto* pt = pdte.GetTableAddr();
         for (int pt_idx = IA_PT::addr2index(vaddr);
              num_of_4k_pages && pt_idx < IA_PT::kNumOfEntries; pt_idx++) {

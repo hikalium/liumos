@@ -41,4 +41,5 @@ void PutHex64(uint64_t value);
 void PutAddressRange(uint64_t addr, uint64_t size);
 void PutAddressRange(void* addr, uint64_t size);
 void PutHex64ZeroFilled(uint64_t value);
+void PutHex64ZeroFilled(void* value);
 void PutHex8ZeroFilled(uint8_t value);

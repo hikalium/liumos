@@ -43,9 +43,62 @@ void IA_PML4::Print() {
     PutHex64(i);
     PutString("]:");
     PutString("\n");
-    IA_PDPT* pdt = entries[i].GetTableAddr();
-    pdt->Print();
   }
+}
+template <>
+void IA_PT::DebugPrintEntryForAddr(uint64_t vaddr) {
+  IA_PTE& e = GetEntryForAddr(vaddr);
+  PutString("PTE@");
+  PutHex64ZeroFilled(this);
+  PutString("[");
+  PutHex64(addr2index(vaddr));
+  PutString("]: ");
+  PutHex64ZeroFilled(e.data);
+  PutString("\n");
+}
+template <>
+void IA_PDT::DebugPrintEntryForAddr(uint64_t vaddr) {
+  IA_PDE& e = GetEntryForAddr(vaddr);
+  PutString("PDTE@");
+  PutHex64ZeroFilled(this);
+  PutString("[");
+  PutHex64(addr2index(vaddr));
+  PutString("]: ");
+  PutHex64ZeroFilled(e.data);
+  PutString("\n");
+  if (e.IsPage())
+    return;
+  e.GetTableAddr()->DebugPrintEntryForAddr(vaddr);
+}
+
+template <>
+void IA_PDPT::DebugPrintEntryForAddr(uint64_t vaddr) {
+  IA_PDPTE& e = GetEntryForAddr(vaddr);
+  PutString("PDPT@");
+  PutHex64ZeroFilled(this);
+  PutString("[");
+  PutHex64(addr2index(vaddr));
+  PutString("]: ");
+  PutHex64ZeroFilled(e.data);
+  PutString("\n");
+  if (e.IsPage())
+    return;
+  e.GetTableAddr()->DebugPrintEntryForAddr(vaddr);
+}
+
+template <>
+void IA_PML4::DebugPrintEntryForAddr(uint64_t vaddr) {
+  IA_PML4E& e = GetEntryForAddr(vaddr);
+  PutString("PML4@");
+  PutHex64ZeroFilled(this);
+  PutString("[");
+  PutHex64(addr2index(vaddr));
+  PutString("]: ");
+  PutHex64ZeroFilled(e.data);
+  PutString("\n");
+  if (e.IsPage())
+    return;
+  e.GetTableAddr()->DebugPrintEntryForAddr(vaddr);
 }
 
 IA_PML4& CreatePageTable() {

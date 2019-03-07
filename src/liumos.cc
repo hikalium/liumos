@@ -278,5 +278,7 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   hpet.SetTimerMs(
       0, 10, HPET::TimerConfig::kUsePeriodicMode | HPET::TimerConfig::kEnable);
 
+  GetKernelPML4().Print();
+
   LoadKernelELF(liumos_elf_file);
 }
