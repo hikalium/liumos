@@ -79,7 +79,7 @@ clean :
 format :
 	make -C src format
 
-commit : format
+commit : format unittest
 	git add .
 	git diff HEAD --color=always | less -R
 	git commit

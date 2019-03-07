@@ -11,11 +11,13 @@
 #include "guid.h"
 #include "hpet.h"
 #include "interrupt.h"
+#include "keyboard.h"
 #include "keyid.h"
 #include "paging.h"
 #include "phys_page_allocator.h"
 #include "serial.h"
 #include "sheet.h"
+#include "sys_constant.h"
 #include "text_box.h"
 
 constexpr uint64_t kKernelBaseAddr = 0xFFFF'FFFF'0000'0000;
@@ -71,11 +73,14 @@ int atoi(const char* str);
 packed_struct LiumOS {
   Sheet* screen_sheet;
   Console* main_console;
+  KeyboardController* keyboard_ctrl;
+  SerialPort* com1;
+  LocalAPIC* bsp_local_apic;
+  CPUFeatureSet* cpu_features;
 };
 extern EFI::MemoryMap efi_memory_map;
 extern PhysicalPageAllocator* dram_allocator;
 extern PhysicalPageAllocator* pmem_allocator;
-extern int kMaxPhyAddr;
 extern LocalAPIC bsp_local_apic;
 extern CPUFeatureSet cpu_features;
 extern SerialPort com1;
@@ -84,5 +89,7 @@ extern File liumos_elf_file;
 extern HPET hpet;
 extern LiumOS* liumos;
 
-extern "C" void SyscallHandler(uint64_t* args);
 void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table);
+
+// @syscall.c
+extern "C" void SyscallHandler(uint64_t* args);

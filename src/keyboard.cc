@@ -11,6 +11,8 @@
 
 using namespace KeyID;
 
+KeyboardController* KeyboardController::last_instance_;
+
 static const uint16_t kKeyCodeTable[0x80] = {
     0, kEsc, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '^',
     kBackspace, kTab,
@@ -66,13 +68,23 @@ static const uint16_t kKeyCodeTableWithShift[0x80] = {
     0x00, 0x00, 0x00, '_', 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     '|', 0x00, 0x00};
 
-static bool state_shift;
-
 constexpr uint16_t kKeyScanCodeMaskBreak = 0x80;
 
-uint16_t ParseKeyCode(uint8_t keycode) {
+void KeyboardController::Init() {
+  state_shift_ = false;
+  new (&keycode_buffer_) RingBuffer<uint8_t, 16>();
+  last_instance_ = this;
+  SetIntHandler(0x21, KeyboardController::IntHandler);
+}
+
+void KeyboardController::IntHandlerSub(uint64_t, uint64_t, InterruptInfo*) {
+  keycode_buffer_.Push(ReadIOPort8(kIOPortKeyboardData));
+  liumos->bsp_local_apic->SendEndOfInterrupt();
+}
+
+uint16_t KeyboardController::ParseKeyCode(uint8_t keycode) {
   uint16_t keyid;
-  if (state_shift) {
+  if (state_shift_) {
     keyid = kKeyCodeTableWithShift[keycode];
     if (!keyid)
       keyid = kKeyCodeTable[keycode];
@@ -80,18 +92,19 @@ uint16_t ParseKeyCode(uint8_t keycode) {
     keyid = kKeyCodeTable[keycode];
   }
 
-  if ('A' <= keyid && keyid <= 'Z' && !state_shift)
-    keyid += 0x20;
   if (!keyid)
     return 0;
 
+  if ('A' <= keyid && keyid <= 'Z' && !state_shift_)
+    keyid += 0x20;
+
   if (keycode & kKeyScanCodeMaskBreak) {
     if (keyid == kShiftL || keyid == kShiftR)
-      state_shift = false;
+      state_shift_ = false;
     keyid |= kMaskBreak;
   } else {
     if (keyid == kShiftL || keyid == kShiftR)
-      state_shift = true;
+      state_shift_ = true;
   }
   return keyid;
 }

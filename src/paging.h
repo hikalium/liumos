@@ -2,8 +2,7 @@
 
 #include "generic.h"
 #include "phys_page_allocator.h"
-
-extern int kMaxPhyAddr;
+#include "sys_constant.h"
 
 constexpr uint64_t kAddrCannotTranslate =
     0x8000'0000'0000'0000;  // non-canonical address
@@ -83,22 +82,22 @@ packed_struct PageTableEntryStruct {
     if (IsPage())
       return nullptr;
     return reinterpret_cast<typename TPageStrategy::NextTableType*>(
-        data & ((1ULL << kMaxPhyAddr) - 1) & ~kPageAddrMask);
+        data & GetPhysAddrMask() & ~kPageAddrMask);
   }
   void SetTableAddr(typename TPageStrategy::NextTableType * table,
                     uint64_t attr) {
-    const uint64_t addr_mask = (((1ULL << kMaxPhyAddr) - 1) & ~kPageAddrMask);
+    const uint64_t addr_mask = (GetPhysAddrMask() & ~kPageAddrMask);
     assert((reinterpret_cast<uint64_t>(table) & ~addr_mask) == 0);
     data = reinterpret_cast<uint64_t>(table) | attr;
     TPageStrategy::SetIsPage(data, false);
   }
   uint64_t GetPageBaseAddr(void) {
-    const uint64_t addr_mask = (((1ULL << kMaxPhyAddr) - 1) & ~kOffsetMask);
+    const uint64_t addr_mask = (GetPhysAddrMask() & ~kOffsetMask);
     return data & addr_mask;
   }
   void SetPageBaseAddr(uint64_t paddr, uint64_t attr) {
     assert((paddr & kOffsetMask) == 0);
-    const uint64_t addr_mask = (((1ULL << kMaxPhyAddr) - 1) & ~kOffsetMask);
+    const uint64_t addr_mask = (GetPhysAddrMask() & ~kOffsetMask);
     data &= ~(addr_mask | kPageAttrMask);
     data |= (paddr & addr_mask) | attr;
     TPageStrategy::SetIsPage(data, true);

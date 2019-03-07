@@ -6,7 +6,8 @@ void LocalAPIC::Init(void) {
   if (!(base_msr & kLocalAPICBaseBitAPICEnabled))
     Panic("APIC not enabled");
 
-  if (cpu_features.x2apic && !(base_msr & kLocalAPICBaseBitx2APICEnabled)) {
+  if (liumos->cpu_features->x2apic &&
+      !(base_msr & kLocalAPICBaseBitx2APICEnabled)) {
     base_msr |= kLocalAPICBaseBitx2APICEnabled;
     WriteMSR(MSRIndex::kLocalAPICBase, base_msr);
     base_msr = ReadMSR(MSRIndex::kLocalAPICBase);
@@ -19,7 +20,7 @@ void LocalAPIC::Init(void) {
   else
     PutString("xAPIC");
 
-  base_addr_ = (base_msr & ((1ULL << kMaxPhyAddr) - 1)) & ~0xfffULL;
+  base_addr_ = (base_msr & GetPhysAddrMask()) & ~0xfffULL;
   CPUID cpuid;
   ReadCPUID(&cpuid, CPUIDIndex::kXTopology, 0);
   id_ = cpuid.edx;
@@ -32,8 +33,7 @@ void LocalAPIC::SendEndOfInterrupt(void) {
     WriteMSR(MSRIndex::kx2APICEndOfInterrupt, 0);
     return;
   }
-  *(uint32_t*)(((ReadMSR(MSRIndex::kLocalAPICBase) &
-                 ((1ULL << kMaxPhyAddr) - 1)) &
+  *(uint32_t*)(((ReadMSR(MSRIndex::kLocalAPICBase) & GetPhysAddrMask()) &
                 ~0xfffULL) +
                0xB0) = 0;
 }

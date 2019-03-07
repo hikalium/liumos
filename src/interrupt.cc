@@ -7,19 +7,23 @@ packed_struct ContextSwitchRequest {
 };
 
 Scheduler* scheduler;
-RingBuffer<uint8_t, 16> keycode_buffer;
 
 ContextSwitchRequest context_switch_request;
 IDTGateDescriptor idt[256];
+InterruptHandler handler_list[256];
 
 ExecutionContext* current_context;
 
 extern "C" ContextSwitchRequest* IntHandler(uint64_t intcode,
                                             uint64_t error_code,
                                             InterruptInfo* info) {
+  if (intcode <= 0xFF && handler_list[intcode]) {
+    handler_list[intcode](intcode, error_code, info);
+    return nullptr;
+  }
   ExecutionContext* current_context = scheduler->GetCurrentContext();
   if (intcode == 0x20) {
-    bsp_local_apic.SendEndOfInterrupt();
+    liumos->bsp_local_apic->SendEndOfInterrupt();
     ExecutionContext* next_context = scheduler->SwitchContext();
     if (!next_context) {
       // no need to switching context.
@@ -28,11 +32,6 @@ extern "C" ContextSwitchRequest* IntHandler(uint64_t intcode,
     context_switch_request.from = current_context->GetCPUContext();
     context_switch_request.to = next_context->GetCPUContext();
     return &context_switch_request;
-  }
-  if (intcode == 0x21) {
-    bsp_local_apic.SendEndOfInterrupt();
-    keycode_buffer.Push(ReadIOPort8(kIOPortKeyboardData));
-    return NULL;
   }
   PutStringAndHex("Int#", intcode);
   PutStringAndHex("RIP", info->rip);
@@ -63,6 +62,11 @@ extern "C" ContextSwitchRequest* IntHandler(uint64_t intcode,
   Panic("INTHandler not implemented");
 }
 
+void SetIntHandler(uint64_t intcode, InterruptHandler handler) {
+  assert(intcode <= 0xFF);
+  handler_list[intcode] = handler;
+}
+
 void PrintIDTGateDescriptor(IDTGateDescriptor* desc) {
   PutStringAndHex("desc.ofs", ((uint64_t)desc->offset_high << 32) |
                                   ((uint64_t)desc->offset_mid << 16) |
@@ -74,12 +78,12 @@ void PrintIDTGateDescriptor(IDTGateDescriptor* desc) {
   PutStringAndHex("desc.present", desc->present);
 }
 
-void SetIntHandler(int index,
-                   uint8_t segm_desc,
-                   uint8_t ist,
-                   IDTType type,
-                   uint8_t dpl,
-                   void (*handler)()) {
+static void SetIntHandler(int index,
+                          uint8_t segm_desc,
+                          uint8_t ist,
+                          IDTType type,
+                          uint8_t dpl,
+                          void (*handler)()) {
   IDTGateDescriptor* desc = &idt[index];
   desc->segment_descriptor = segm_desc;
   desc->interrupt_stack_table = ist;
@@ -96,7 +100,6 @@ void SetIntHandler(int index,
 
 void InitIDT() {
   uint16_t cs = ReadCSSelector();
-  new (&keycode_buffer) RingBuffer<uint8_t, 16>();
 
   IDTR idtr;
   idtr.limit = sizeof(idt) - 1;

@@ -9,7 +9,9 @@
 
 #include "paging.h"
 
-int kMaxPhyAddr = 57;
+uint64_t GetPhysAddrMask() {
+  return (1ULL << 57) - 1;
+}
 
 alignas(4096) IA_PML4 pml4;
 alignas(4096) IA_PDPT pdpt;

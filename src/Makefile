@@ -3,15 +3,17 @@ OBJS= acpi.o apic.o asm_common.o asm.o console.o console_command.o \
 		 gdt.o generic.o graphics.o guid.o \
 		 hpet.o interrupt.o keyboard.o\
 		 libfunc.o liumos.o paging.o phys_page_allocator.o \
-		 scheduler.o serial.o sheet.o text_box.o \
+		 scheduler.o serial.o sheet.o sys_constant.o syscall.o text_box.o \
 		 font.gen.o
-KERNEL_SRCS= acpi.cc asm_common.S asm_sysv.S \
+KERNEL_SRCS= acpi.cc apic.cc asm_common.S asm_sysv.S \
 						 console.cc \
 						 efi.cc \
 						 generic.cc guid.cc \
-						 kernel.cc \
+						 interrupt.cc \
+						 kernel.cc keyboard.cc \
 						 libfunc.cc \
-						 serial.cc sheet.cc \
+						 scheduler.cc serial.cc sheet.cc sys_constant.cc syscall.cc \
+						 text_box.cc \
 						 font.gen.cc
 KERNEL_OBJS= $(addsuffix .elf.o, $(basename $(KERNEL_SRCS)))
 HEADERS=$(filter-out githash.h, $(wildcard *.h)) lib/musl/include/elf.h

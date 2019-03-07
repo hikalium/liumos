@@ -7,7 +7,6 @@ LiumOS* liumos;
 EFI::MemoryMap efi_memory_map;
 PhysicalPageAllocator* dram_allocator;
 PhysicalPageAllocator* pmem_allocator;
-int kMaxPhyAddr;
 LocalAPIC bsp_local_apic;
 CPUFeatureSet cpu_features;
 SerialPort com1;
@@ -19,6 +18,7 @@ LiumOS liumos_;
 PhysicalPageAllocator dram_allocator_;
 PhysicalPageAllocator pmem_allocator_;
 Console main_console_;
+KeyboardController keyboard_ctrl_;
 
 File logo_file;
 
@@ -141,44 +141,6 @@ void SubTask() {
   }
 }
 
-uint16_t ParseKeyCode(uint8_t keycode);
-
-void WaitAndProcessCommand(TextBox& tbox) {
-  PutString("> ");
-  tbox.StartRecording();
-  while (1) {
-    StoreIntFlagAndHalt();
-    while (1) {
-      uint16_t keyid;
-      if (!keycode_buffer.IsEmpty()) {
-        keyid = ParseKeyCode(keycode_buffer.Pop());
-        if (!keyid && keyid & KeyID::kMaskBreak)
-          continue;
-        if (keyid == KeyID::kEnter) {
-          keyid = '\n';
-        }
-      } else if (com1.IsReceived()) {
-        keyid = com1.ReadCharReceived();
-        if (keyid == '\n') {
-          continue;
-        }
-        if (keyid == '\r') {
-          keyid = '\n';
-        }
-      } else {
-        break;
-      }
-      if (keyid == '\n') {
-        tbox.StopRecording();
-        tbox.putc('\n');
-        ConsoleCommand::Process(tbox);
-        return;
-      }
-      tbox.putc(keyid);
-    }
-  }
-}
-
 void PrintLogoFile() {
   const uint8_t* buf = logo_file.GetBuf();
   uint64_t buf_size = logo_file.GetFileSize();
@@ -241,49 +203,6 @@ void PrintLogoFile() {
   }
 }
 
-constexpr uint64_t kSyscallIndex_sys_write = 1;
-constexpr uint64_t kSyscallIndex_sys_exit = 60;
-constexpr uint64_t kSyscallIndex_arch_prctl = 158;
-constexpr uint64_t kArchSetGS = 0x1001;
-constexpr uint64_t kArchSetFS = 0x1002;
-constexpr uint64_t kArchGetFS = 0x1003;
-constexpr uint64_t kArchGetGS = 0x1004;
-
-extern "C" void SyscallHandler(uint64_t* args) {
-  uint64_t idx = args[0];
-  if (idx == kSyscallIndex_sys_write) {
-    const uint64_t fildes = args[1];
-    const uint8_t* buf = reinterpret_cast<uint8_t*>(args[2]);
-    uint64_t nbyte = args[3];
-    if (fildes != 1) {
-      PutStringAndHex("fildes", fildes);
-      Panic("Only stdout is supported for now.");
-    }
-    while (nbyte--) {
-      PutChar(*(buf++));
-    }
-    return;
-  } else if (idx == kSyscallIndex_sys_exit) {
-    const uint64_t exit_code = args[1];
-    PutStringAndHex("exit: exit_code", exit_code);
-    scheduler->KillCurrentContext();
-    for (;;) {
-      StoreIntFlagAndHalt();
-    };
-  } else if (idx == kSyscallIndex_arch_prctl) {
-    if (args[1] == kArchSetFS) {
-      WriteMSR(MSRIndex::kFSBase, args[2]);
-      return;
-    }
-    PutStringAndHex("arg1", args[1]);
-    PutStringAndHex("arg2", args[2]);
-    PutStringAndHex("arg3", args[3]);
-    Panic("arch_prctl!");
-  }
-  PutStringAndHex("idx", idx);
-  Panic("syscall handler!");
-}
-
 void EnableSyscall() {
   uint64_t star = GDT::kKernelCSSelector << 32;
   star |= GDT::kUserCSSelector << 48;
@@ -343,13 +262,16 @@ void IdentifyCPU() {
     ReadCPUID(&cpuid, CPUIDIndex::kMaxAddr, 0);
     IA32_MaxPhyAddr maxaddr;
     maxaddr.data = cpuid.eax;
-    kMaxPhyAddr = maxaddr.bits.physical_address_bits;
+    cpu_features.max_phy_addr = maxaddr.bits.physical_address_bits;
   } else {
     PutString("CPUID function 80000008H not supported.\n");
     PutString("Assuming Physical address bits = 36\n");
-    kMaxPhyAddr = 36;
+    cpu_features.max_phy_addr = 36;
   }
-  PutStringAndHex("kMaxPhyAddr", kMaxPhyAddr);
+  PutStringAndHex("MAX_PHY_ADDR", cpu_features.max_phy_addr);
+  cpu_features.phy_addr_mask = (1ULL << cpu_features.max_phy_addr) - 1;
+  PutStringAndHex("phy_addr_mask", cpu_features.phy_addr_mask);
+  liumos->cpu_features = &cpu_features;
 }
 
 void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
@@ -366,10 +288,12 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   EFI::GetMemoryMapAndExitBootServices(image_handle, efi_memory_map);
 
   com1.Init(kPortCOM1);
+  liumos->com1 = &com1;
   liumos->main_console->SetSerial(&com1);
 
   PrintLogoFile();
   PutString("\nliumOS version: " GIT_HASH "\n\n");
+  IdentifyCPU();
   ClearIntFlag();
 
   ACPI::DetectTables();
@@ -379,10 +303,11 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   InitDoubleBuffer();
   main_console_.SetSheet(liumos->screen_sheet);
 
-  IdentifyCPU();
   gdt.Init();
   InitIDT();
   InitPaging();
+  keyboard_ctrl_.Init();
+  liumos->keyboard_ctrl = &keyboard_ctrl_;
 
   ExecutionContext* root_context =
       CreateExecutionContext(nullptr, 0, nullptr, 0, ReadCR3());
@@ -391,6 +316,7 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   EnableSyscall();
 
   bsp_local_apic.Init();
+  liumos->bsp_local_apic = &bsp_local_apic;
   Disable8259PIC();
 
   InitIOAPIC(bsp_local_apic.GetID());
@@ -413,9 +339,4 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   scheduler->RegisterExecutionContext(sub_context);
 
   LoadKernelELF(liumos_elf_file);
-
-  TextBox console_text_box;
-  while (1) {
-    WaitAndProcessCommand(console_text_box);
-  }
 }
