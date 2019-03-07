@@ -6,7 +6,6 @@
   puts(s);
   exit(EXIT_FAILURE);
 }
-
 #include "paging.h"
 
 uint64_t GetPhysAddrMask() {
