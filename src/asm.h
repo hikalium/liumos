@@ -137,55 +137,43 @@ enum class MSRIndex : uint32_t {
   kKernelGSBase = 0xC0000102,
 };
 
-void ReadCPUID(CPUID*, uint32_t eax, uint32_t ecx);
+__attribute__((ms_abi)) void ReadCPUID(CPUID*, uint32_t eax, uint32_t ecx);
 
-uint64_t ReadMSR(MSRIndex);
-void WriteMSR(MSRIndex, uint64_t);
+__attribute__((ms_abi)) uint64_t ReadMSR(MSRIndex);
+__attribute__((ms_abi)) void WriteMSR(MSRIndex, uint64_t);
 
-void ReadGDTR(GDTR*);
-void WriteGDTR(GDTR*);
-
-void ReadIDTR(IDTR*);
-void WriteIDTR(IDTR*);
-
-void WriteTaskRegister(uint16_t);
-
-void Int03(void);
-
-uint8_t ReadIOPort8(uint16_t);
-void WriteIOPort8(uint16_t, uint8_t);
-
-void StoreIntFlag(void);
-void StoreIntFlagAndHalt(void);
-void ClearIntFlag(void);
-[[noreturn]] void Die(void);
-
-uint16_t ReadCSSelector(void);
-uint16_t ReadSSSelector(void);
-
-void WriteCSSelector(uint16_t);
-void WriteSSSelector(uint16_t);
-void WriteDataAndExtraSegmentSelectors(uint16_t);
-
-uint64_t ReadCR2(void);
-uint64_t ReadCR3(void);
-void WriteCR3(uint64_t);
-
-uint64_t CompareAndSwap(uint64_t*, uint64_t);
-void SwapGS(void);
-
-void JumpToKernel(void* kernel_entry_point, void* vram_sheet);
-
-void AsmSyscallHandler(void);
-
-void AsmIntHandler03(void);
-void AsmIntHandler06(void);
-void AsmIntHandler08(void);
-void AsmIntHandler0D(void);
-void AsmIntHandler0E(void);
-void AsmIntHandler20(void);
-void AsmIntHandler21(void);
-void AsmIntHandlerNotImplemented(void);
-
-void Disable8259PIC(void);
+__attribute__((ms_abi)) void ReadGDTR(GDTR*);
+__attribute__((ms_abi)) void WriteGDTR(GDTR*);
+__attribute__((ms_abi)) void ReadIDTR(IDTR*);
+__attribute__((ms_abi)) void WriteIDTR(IDTR*);
+__attribute__((ms_abi)) void WriteTaskRegister(uint16_t);
+__attribute__((ms_abi)) void Int03(void);
+__attribute__((ms_abi)) uint8_t ReadIOPort8(uint16_t);
+__attribute__((ms_abi)) void WriteIOPort8(uint16_t, uint8_t);
+__attribute__((ms_abi)) void StoreIntFlag(void);
+__attribute__((ms_abi)) void StoreIntFlagAndHalt(void);
+__attribute__((ms_abi)) void ClearIntFlag(void);
+[[noreturn]] __attribute__((ms_abi)) void Die(void);
+__attribute__((ms_abi)) uint16_t ReadCSSelector(void);
+__attribute__((ms_abi)) uint16_t ReadSSSelector(void);
+__attribute__((ms_abi)) void WriteCSSelector(uint16_t);
+__attribute__((ms_abi)) void WriteSSSelector(uint16_t);
+__attribute__((ms_abi)) void WriteDataAndExtraSegmentSelectors(uint16_t);
+__attribute__((ms_abi)) uint64_t ReadCR2(void);
+__attribute__((ms_abi)) uint64_t ReadCR3(void);
+__attribute__((ms_abi)) void WriteCR3(uint64_t);
+__attribute__((ms_abi)) uint64_t CompareAndSwap(uint64_t*, uint64_t);
+__attribute__((ms_abi)) void SwapGS(void);
+__attribute__((ms_abi)) void JumpToKernel(void* kernel_entry_point,
+                                          void* vram_sheet);
+__attribute__((ms_abi)) void AsmSyscallHandler(void);
+__attribute__((ms_abi)) void AsmIntHandler03(void);
+__attribute__((ms_abi)) void AsmIntHandler06(void);
+__attribute__((ms_abi)) void AsmIntHandler08(void);
+__attribute__((ms_abi)) void AsmIntHandler0D(void);
+__attribute__((ms_abi)) void AsmIntHandler0E(void);
+__attribute__((ms_abi)) void AsmIntHandler20(void);
+__attribute__((ms_abi)) void AsmIntHandler21(void);
+__attribute__((ms_abi)) void AsmIntHandlerNotImplemented(void);
+__attribute__((ms_abi)) void Disable8259PIC(void);
 }

@@ -33,6 +33,7 @@ class GDT {
   void Print(void);
 
  private:
+  static constexpr uint64_t kKernelStackPages = 2;
   GDTR gdtr_;
   packed_struct GDTDescriptors {
     uint64_t null_segment;
@@ -61,4 +62,6 @@ class GDT {
     static_assert(sizeof(TSS64Entry) == 16);
   }
   descriptors_;
+  IA_TSS64 tss64_;
+  uint64_t kernel_stack_addr_;
 };

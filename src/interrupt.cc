@@ -80,7 +80,7 @@ static void SetIntHandler(int index,
                           uint8_t ist,
                           IDTType type,
                           uint8_t dpl,
-                          void (*handler)()) {
+                          __attribute__((ms_abi)) void (*handler)()) {
   IDTGateDescriptor* desc = &idt[index];
   desc->segment_descriptor = segm_desc;
   desc->interrupt_stack_table = ist;

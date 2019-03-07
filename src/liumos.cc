@@ -266,8 +266,6 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   Scheduler scheduler_(root_context);
   liumos->scheduler = &scheduler_;
 
-  EnableSyscall();
-
   bsp_local_apic.Init();
   liumos->bsp_local_apic = &bsp_local_apic;
   Disable8259PIC();

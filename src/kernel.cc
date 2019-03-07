@@ -100,6 +100,13 @@ extern "C" void KernelEntry(LiumOS* liumos_) {
   liumos = liumos_;
   PutString("Hello from kernel!\n");
 
+  ClearIntFlag();
+
+  GDT gdt;
+  gdt.Init();
+
+  StoreIntFlag();
+
   const int kNumOfStackPages = 3;
   void* sub_context_stack_base =
       liumos->dram_allocator->AllocPages<void*>(kNumOfStackPages);
@@ -112,6 +119,8 @@ extern "C" void KernelEntry(LiumOS* liumos_) {
       SubTask, GDT::kKernelCSSelector, sub_context_rsp, GDT::kKernelDSSelector,
       reinterpret_cast<uint64_t>(&GetKernelPML4()));
   liumos->scheduler->RegisterExecutionContext(sub_context);
+
+  // EnableSyscall();
 
   TextBox console_text_box;
   while (1) {
