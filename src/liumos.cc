@@ -222,7 +222,6 @@ void IdentifyCPU() {
 
 void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   liumos = &liumos_;
-  GDT gdt;
   EFI::Init(system_table);
   EFI::ConOut::ClearScreen();
   logo_file.LoadFromEFISimpleFS(L"logo.ppm");
@@ -251,11 +250,12 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   InitDoubleBuffer();
   main_console_.SetSheet(liumos->screen_sheet);
 
+  GDT gdt;
   gdt.Init();
-  InitIDT();
+  IDT idt;
+  idt.Init();
   InitPaging();
   keyboard_ctrl_.Init();
-  liumos->keyboard_ctrl = &keyboard_ctrl_;
 
   ExecutionContextController exec_ctx_ctrl_;
   liumos->exec_ctx_ctrl = &exec_ctx_ctrl_;

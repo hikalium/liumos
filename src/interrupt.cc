@@ -1,20 +1,15 @@
 #include "liumos.h"
 #include "scheduler.h"
 
-packed_struct ContextSwitchRequest {
-  CPUContext* from;
-  CPUContext* to;
-};
-
-ContextSwitchRequest context_switch_request;
-IDTGateDescriptor idt[256];
-InterruptHandler handler_list[256];
-
-extern "C" ContextSwitchRequest* IntHandler(uint64_t intcode,
-                                            uint64_t error_code,
-                                            InterruptInfo* info) {
-  if (intcode <= 0xFF && handler_list[intcode]) {
-    handler_list[intcode](intcode, error_code, info);
+__attribute__((ms_abi)) extern "C" ContextSwitchRequest*
+IntHandler(uint64_t intcode, uint64_t error_code, InterruptInfo* info) {
+  return liumos->idt->IntHandler(intcode, error_code, info);
+}
+ContextSwitchRequest* IDT::IntHandler(uint64_t intcode,
+                                      uint64_t error_code,
+                                      InterruptInfo* info) {
+  if (intcode <= 0xFF && handler_list_[intcode]) {
+    handler_list_[intcode](intcode, error_code, info);
     return nullptr;
   }
   ExecutionContext* current_context = liumos->scheduler->GetCurrentContext();
@@ -25,9 +20,9 @@ extern "C" ContextSwitchRequest* IntHandler(uint64_t intcode,
       // no need to switching context.
       return nullptr;
     }
-    context_switch_request.from = current_context->GetCPUContext();
-    context_switch_request.to = next_context->GetCPUContext();
-    return &context_switch_request;
+    context_switch_request_.from = current_context->GetCPUContext();
+    context_switch_request_.to = next_context->GetCPUContext();
+    return &context_switch_request_;
   }
   PutStringAndHex("Int#", intcode);
   PutStringAndHex("RIP", info->rip);
@@ -59,9 +54,9 @@ extern "C" ContextSwitchRequest* IntHandler(uint64_t intcode,
   Panic("INTHandler not implemented");
 }
 
-void SetIntHandler(uint64_t intcode, InterruptHandler handler) {
+void IDT::SetIntHandler(uint64_t intcode, InterruptHandler handler) {
   assert(intcode <= 0xFF);
-  handler_list[intcode] = handler;
+  handler_list_[intcode] = handler;
 }
 
 void PrintIDTGateDescriptor(IDTGateDescriptor* desc) {
@@ -75,13 +70,13 @@ void PrintIDTGateDescriptor(IDTGateDescriptor* desc) {
   PutStringAndHex("desc.present", desc->present);
 }
 
-static void SetIntHandler(int index,
-                          uint8_t segm_desc,
-                          uint8_t ist,
-                          IDTType type,
-                          uint8_t dpl,
-                          __attribute__((ms_abi)) void (*handler)()) {
-  IDTGateDescriptor* desc = &idt[index];
+void IDT::SetEntry(int index,
+                   uint8_t segm_desc,
+                   uint8_t ist,
+                   IDTType type,
+                   uint8_t dpl,
+                   __attribute__((ms_abi)) void (*handler)()) {
+  IDTGateDescriptor* desc = &descriptors_[index];
   desc->segment_descriptor = segm_desc;
   desc->interrupt_stack_table = ist;
   desc->type = static_cast<int>(type);
@@ -95,24 +90,25 @@ static void SetIntHandler(int index,
   desc->reserved2 = 0;
 }
 
-void InitIDT() {
+void IDT::Init() {
   uint16_t cs = ReadCSSelector();
 
   IDTR idtr;
-  idtr.limit = sizeof(idt) - 1;
-  idtr.base = idt;
+  idtr.limit = sizeof(descriptors_) - 1;
+  idtr.base = descriptors_;
 
   for (int i = 0; i < 0x100; i++) {
-    SetIntHandler(i, cs, 0, IDTType::kInterruptGate, 0,
-                  AsmIntHandlerNotImplemented);
+    SetEntry(i, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandlerNotImplemented);
+    handler_list_[i] = nullptr;
   }
 
-  SetIntHandler(0x03, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler03);
-  SetIntHandler(0x06, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler06);
-  SetIntHandler(0x08, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler08);
-  SetIntHandler(0x0d, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler0D);
-  SetIntHandler(0x0e, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler0E);
-  SetIntHandler(0x20, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler20);
-  SetIntHandler(0x21, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler21);
+  SetEntry(0x03, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler03);
+  SetEntry(0x06, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler06);
+  SetEntry(0x08, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler08);
+  SetEntry(0x0d, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler0D);
+  SetEntry(0x0e, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler0E);
+  SetEntry(0x20, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler20);
+  SetEntry(0x21, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler21);
   WriteIDTR(&idtr);
+  liumos->idt = this;
 }

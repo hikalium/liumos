@@ -96,14 +96,19 @@ void SubTask() {
   }
 }
 
+GDT gdt_;
+IDT idt_;
+KeyboardController keyboard_ctrl_;
+
 extern "C" void KernelEntry(LiumOS* liumos_) {
   liumos = liumos_;
   PutString("Hello from kernel!\n");
 
   ClearIntFlag();
 
-  GDT gdt;
-  gdt.Init();
+  gdt_.Init();
+  idt_.Init();
+  keyboard_ctrl_.Init();
 
   StoreIntFlag();
 

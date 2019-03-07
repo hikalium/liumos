@@ -98,6 +98,7 @@ packed_struct LiumOS {
   Scheduler* scheduler;
   ExecutionContextController* exec_ctx_ctrl;
   ExecutionContext* current_context;
+  IDT* idt;
 };
 extern LiumOS* liumos;
 

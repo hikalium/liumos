@@ -74,7 +74,8 @@ void KeyboardController::Init() {
   state_shift_ = false;
   new (&keycode_buffer_) RingBuffer<uint8_t, 16>();
   last_instance_ = this;
-  SetIntHandler(0x21, KeyboardController::IntHandler);
+  liumos->idt->SetIntHandler(0x21, KeyboardController::IntHandler);
+  liumos->keyboard_ctrl = this;
 }
 
 void KeyboardController::IntHandlerSub(uint64_t, uint64_t, InterruptInfo*) {
