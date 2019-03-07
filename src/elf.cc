@@ -117,34 +117,19 @@ const Elf64_Ehdr* LoadELF(ProcessMappingInfo& info,
   }
   PutStringAndHex("Entry Point", ehdr->e_entry);
 
-  uint8_t* body = liumos->dram_allocator->AllocPages<uint8_t*>(
-      ByteSizeToPageSize(file_size));
-  PutStringAndHex("Load Addr", body);
-  memcpy(body, buf, file_size);
-
-  info.file_paddr = reinterpret_cast<uint64_t>(body);
-  info.file_vaddr = info.file_paddr;
   return ehdr;
 }
 
 ExecutionContext* LoadELFAndLaunchProcess(File& file) {
   ProcessMappingInfo info;
   IA_PML4& user_page_table = CreatePageTable();
-  const Elf64_Ehdr* ehdr = LoadELF(info, file, GetKernelPML4());
-  for (;;)
-    ;
+  const Elf64_Ehdr* ehdr = LoadELF(info, file, user_page_table);
   if (!ehdr)
     return nullptr;
 
   uint8_t* entry_point =
       reinterpret_cast<uint8_t*>(info.file_paddr) + (ehdr->e_entry - 0x400000);
-  PutStringAndHex("Entry address(physical)", entry_point);
-  PutString("Data at entrypoint: ");
-  for (int i = 0; i < 16; i++) {
-    PutHex8ZeroFilled(entry_point[i]);
-    PutChar(' ');
-  }
-  PutChar('\n');
+  PutStringAndHex("Entry address(virtual)", entry_point);
 
   const int kNumOfStackPages = 3;
   info.stack_size = kNumOfStackPages << kPageSizeExponent;

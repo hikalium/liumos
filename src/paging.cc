@@ -52,7 +52,7 @@ IA_PML4& CreatePageTable() {
   IA_PML4* pml4 = liumos->dram_allocator->AllocPages<IA_PML4*>(1);
   assert(pml4);
   pml4->ClearMapping();
-  for (int i = 0; i < IA_PML4::kNumOfEntries; i++) {
+  for (int i = IA_PML4::kNumOfEntries / 2; i < IA_PML4::kNumOfEntries; i++) {
     pml4->entries[i] = liumos->kernel_pml4->entries[i];
   }
   return *pml4;
