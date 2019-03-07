@@ -6,12 +6,14 @@ OBJS= acpi.o apic.o asm_common.o asm.o console.o console_command.o \
 		 scheduler.o serial.o sheet.o sys_constant.o syscall.o text_box.o \
 		 font.gen.o
 KERNEL_SRCS= acpi.cc apic.cc asm_common.S asm_sysv.S \
-						 console.cc \
-						 efi.cc \
+						 console.cc console_command.cc\
+						 efi.cc elf.cc execution_context.cc \
 						 generic.cc guid.cc \
+						 hpet.cc \
 						 interrupt.cc \
 						 kernel.cc keyboard.cc \
 						 libfunc.cc \
+						 paging.cc phys_page_allocator.cc \
 						 scheduler.cc serial.cc sheet.cc sys_constant.cc syscall.cc \
 						 text_box.cc \
 						 font.gen.cc

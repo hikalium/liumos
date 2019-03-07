@@ -18,7 +18,7 @@ void InitGraphics() {
 
 void InitDoubleBuffer() {
   screen_sheet_.Init(
-      dram_allocator->AllocPages<uint8_t*>(
+      liumos->dram_allocator->AllocPages<uint8_t*>(
           (vram_sheet_.GetBufSize() + kPageSize - 1) >> kPageSizeExponent),
       vram_sheet_.GetXSize(), vram_sheet_.GetYSize(),
       vram_sheet_.GetPixelsPerScanLine());

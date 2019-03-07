@@ -55,7 +55,7 @@ void IA_PML4::Print() {
 }
 
 IA_PML4* CreatePageTable() {
-  IA_PML4* pml4 = dram_allocator->AllocPages<IA_PML4*>(1);
+  IA_PML4* pml4 = liumos->dram_allocator->AllocPages<IA_PML4*>(1);
   pml4->ClearMapping();
   for (int i = 0; i < IA_PML4::kNumOfEntries; i++) {
     pml4->entries[i] = kernel_pml4->entries[i];
@@ -74,8 +74,9 @@ void InitPaging() {
   // CPUID.80000001H:EDX.Page1GB [bit 26] = 1.
   const EFI::MemoryDescriptor* loader_code_desc = nullptr;
   uint64_t direct_mapping_end = 0xffff'ffffULL;
-  for (int i = 0; i < efi_memory_map.GetNumberOfEntries(); i++) {
-    const EFI::MemoryDescriptor* desc = efi_memory_map.GetDescriptor(i);
+  EFI::MemoryMap& map = *liumos->efi_memory_map;
+  for (int i = 0; i < map.GetNumberOfEntries(); i++) {
+    const EFI::MemoryDescriptor* desc = map.GetDescriptor(i);
     uint64_t map_end_addr =
         desc->physical_start + (desc->number_of_pages << 12);
     if (map_end_addr > direct_mapping_end)
@@ -91,16 +92,18 @@ void InitPaging() {
   // Adjust direct_mapping_end here
   // since VRAM region is not appeared in EFIMemoryMap
   {
-    uint64_t map_end_addr = reinterpret_cast<uint64_t>(screen_sheet->GetBuf()) +
-                            screen_sheet->GetBufSize();
+    uint64_t map_end_addr =
+        reinterpret_cast<uint64_t>(liumos->screen_sheet->GetBuf()) +
+        liumos->screen_sheet->GetBufSize();
     if (map_end_addr > direct_mapping_end)
       direct_mapping_end = map_end_addr;
   }
 
   // PMEM address area may not be shown in UEFI memory map. (ex. QEMU)
   // So we should check NFIT to determine direct_mapping_end.
-  if (ACPI::nfit) {
-    for (auto& it : *ACPI::nfit) {
+  if (liumos->acpi.nfit) {
+    ACPI::NFIT& nfit = *liumos->acpi.nfit;
+    for (auto& it : nfit) {
       using namespace ACPI;
       if (it.type != NFIT::Entry::kTypeSPARangeStructure)
         continue;
@@ -118,21 +121,21 @@ void InitPaging() {
   PutStringAndHex("direct map 1gb pages", direct_map_1gb_pages);
   PutStringAndHex("InitPaging", reinterpret_cast<uint64_t>(InitPaging));
 
-  kernel_pml4 = dram_allocator->AllocPages<IA_PML4*>(1);
+  kernel_pml4 = liumos->dram_allocator->AllocPages<IA_PML4*>(1);
   kernel_pml4->ClearMapping();
 
   // mapping pages for real memory & memory mapped IOs
   for (uint64_t addr = 0; addr < direct_mapping_end;) {
     if (addr >= direct_mapping_end)
       break;
-    IA_PDPT* pdpt = dram_allocator->AllocPages<IA_PDPT*>(1);
+    IA_PDPT* pdpt = liumos->dram_allocator->AllocPages<IA_PDPT*>(1);
     pdpt->ClearMapping();
     kernel_pml4->SetTableBaseForAddr(
         addr, pdpt, kPageAttrPresent | kPageAttrWritable | kPageAttrUser);
     for (int i = 0; i < IA_PDPT::kNumOfEntries; i++) {
       if (addr >= direct_mapping_end)
         break;
-      IA_PDT* pdt = dram_allocator->AllocPages<IA_PDT*>(1);
+      IA_PDT* pdt = liumos->dram_allocator->AllocPages<IA_PDT*>(1);
       pdt->ClearMapping();
       pdpt->SetTableBaseForAddr(
           addr, pdt, kPageAttrPresent | kPageAttrWritable | kPageAttrUser);

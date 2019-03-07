@@ -25,11 +25,11 @@ File logo_file;
 void FreePages(PhysicalPageAllocator* allocator,
                void* phys_addr,
                uint64_t num_of_pages) {
-  const uint32_t prox_domain = ACPI::srat
-                                   ? ACPI::srat->GetProximityDomainForAddrRange(
-                                         reinterpret_cast<uint64_t>(phys_addr),
-                                         num_of_pages << kPageSizeExponent)
-                                   : 0;
+  const uint32_t prox_domain =
+      liumos->acpi.srat ? liumos->acpi.srat->GetProximityDomainForAddrRange(
+                              reinterpret_cast<uint64_t>(phys_addr),
+                              num_of_pages << kPageSizeExponent)
+                        : 0;
   allocator->FreePagesWithProximityDomain(phys_addr, num_of_pages, prox_domain);
 }
 
@@ -52,13 +52,14 @@ void InitPMEMManagement() {
   using namespace ACPI;
   pmem_allocator = &pmem_allocator_;
   new (pmem_allocator) PhysicalPageAllocator();
-  if (!nfit) {
+  if (!liumos->acpi.nfit) {
     PutString("NFIT not found. There are no PMEMs on this system.\n");
     return;
   }
+  NFIT& nfit = *liumos->acpi.nfit;
   uint64_t available_pmem_size = 0;
 
-  for (auto& it : *nfit) {
+  for (auto& it : nfit) {
     if (it.type != NFIT::Entry::kTypeSPARangeStructure)
       continue;
     NFIT::SPARange* spa_range = reinterpret_cast<NFIT::SPARange*>(&it);
@@ -82,6 +83,8 @@ void InitPMEMManagement() {
 void InitMemoryManagement(EFI::MemoryMap& map) {
   InitDRAMManagement(map);
   InitPMEMManagement();
+  liumos->dram_allocator = &dram_allocator_;
+  liumos->pmem_allocator = &pmem_allocator_;
 }
 
 void SubTask() {
@@ -281,11 +284,13 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   EFI::ConOut::ClearScreen();
   logo_file.LoadFromEFISimpleFS(L"logo.ppm");
   hello_bin_file.LoadFromEFISimpleFS(L"hello.bin");
+  liumos->hello_bin_file = &hello_bin_file;
   liumos_elf_file.LoadFromEFISimpleFS(L"LIUMOS.ELF");
   InitGraphics();
   main_console_.SetSheet(liumos->screen_sheet);
   liumos->main_console = &main_console_;
   EFI::GetMemoryMapAndExitBootServices(image_handle, efi_memory_map);
+  liumos->efi_memory_map = &efi_memory_map;
 
   com1.Init(kPortCOM1);
   liumos->com1 = &com1;
@@ -321,8 +326,9 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
 
   InitIOAPIC(bsp_local_apic.GetID());
 
-  hpet.Init(
-      static_cast<HPET::RegisterSpace*>(ACPI::hpet->base_address.address));
+  hpet.Init(static_cast<HPET::RegisterSpace*>(
+      liumos->acpi.hpet->base_address.address));
+  liumos->hpet = &hpet;
   hpet.SetTimerMs(
       0, 10, HPET::TimerConfig::kUsePeriodicMode | HPET::TimerConfig::kEnable);
   const int kNumOfStackPages = 3;

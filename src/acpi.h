@@ -338,12 +338,5 @@ packed_struct MADT {
   uint8_t entries[1];
 };
 
-extern RSDT* rsdt;
-extern MADT* madt;
-extern HPET* hpet;
-extern NFIT* nfit;
-extern SRAT* srat;
-extern SLIT* slit;
-
 void DetectTables();
 }  // namespace ACPI

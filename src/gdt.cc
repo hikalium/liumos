@@ -19,7 +19,8 @@ void GDT::Init() {
   descriptors_.task_state_segment.attr = 0b1000'0000'1000'1001 | (3 << 5);
   descriptors_.task_state_segment.SetBaseAddr(&tss64);
   descriptors_.task_state_segment.SetLimit(sizeof(tss64) - 1);
-  kernel_stack_addr = dram_allocator->AllocPages<uint64_t>(kKernelStackPages);
+  kernel_stack_addr =
+      liumos->dram_allocator->AllocPages<uint64_t>(kKernelStackPages);
   tss64.rsp[0] = kernel_stack_addr + (kKernelStackPages << kPageSizeExponent);
   PutStringAndHex("rsp[0]", tss64.rsp[0]);
 

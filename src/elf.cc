@@ -103,7 +103,7 @@ const Elf64_Ehdr* LoadELF(ProcessMappingInfo& info,
     uint64_t page_attr = kPageAttrPresent;
     if (phdr->p_flags & PF_W)
       page_attr |= kPageAttrWritable;
-    CreatePageMapping(*dram_allocator, page_root, map_base_vaddr,
+    CreatePageMapping(*liumos->dram_allocator, page_root, map_base_vaddr,
                       reinterpret_cast<uint64_t>(buf) + map_base_file_ofs,
                       map_size, page_attr);
   }
@@ -111,8 +111,8 @@ const Elf64_Ehdr* LoadELF(ProcessMappingInfo& info,
 
   const uint64_t file_size = file.GetFileSize();
   PutStringAndHex("File Size", file_size);
-  uint8_t* body =
-      dram_allocator->AllocPages<uint8_t*>(ByteSizeToPageSize(file_size));
+  uint8_t* body = liumos->dram_allocator->AllocPages<uint8_t*>(
+      ByteSizeToPageSize(file_size));
   PutStringAndHex("Load Addr", body);
   memcpy(body, buf, file_size);
 
@@ -139,8 +139,8 @@ ExecutionContext* LoadELFAndLaunchProcess(File& file) {
 
   const int kNumOfStackPages = 3;
   info.stack_size = kNumOfStackPages << kPageSizeExponent;
-  info.stack_paddr =
-      dram_allocator->AllocPages<uint64_t>(ByteSizeToPageSize(info.stack_size));
+  info.stack_paddr = liumos->dram_allocator->AllocPages<uint64_t>(
+      ByteSizeToPageSize(info.stack_size));
   info.stack_vaddr = info.stack_paddr;
   void* sub_context_rsp =
       reinterpret_cast<void*>(info.stack_vaddr + info.stack_size);
@@ -176,8 +176,8 @@ void LoadKernelELF(File& file) {
 
   const int kNumOfStackPages = 3;
   info.stack_size = kNumOfStackPages << kPageSizeExponent;
-  info.stack_paddr =
-      dram_allocator->AllocPages<uint64_t>(ByteSizeToPageSize(info.stack_size));
+  info.stack_paddr = liumos->dram_allocator->AllocPages<uint64_t>(
+      ByteSizeToPageSize(info.stack_size));
   info.stack_vaddr = info.stack_paddr;
   void* sub_context_rsp =
       reinterpret_cast<void*>(info.stack_vaddr + info.stack_size);

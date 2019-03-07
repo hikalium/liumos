@@ -31,7 +31,7 @@ void WaitAndProcessCommand(TextBox& tbox) {
       if (keyid == '\n') {
         tbox.StopRecording();
         tbox.putc('\n');
-        // ConsoleCommand::Process(tbox);
+        ConsoleCommand::Process(tbox);
         return;
       }
       tbox.putc(keyid);

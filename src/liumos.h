@@ -71,22 +71,26 @@ int atoi(const char* str);
 
 // @liumos.c
 packed_struct LiumOS {
+  struct {
+    ACPI::RSDT* rsdt;
+    ACPI::NFIT* nfit;
+    ACPI::MADT* madt;
+    ACPI::HPET* hpet;
+    ACPI::SRAT* srat;
+    ACPI::SLIT* slit;
+  } acpi;
   Sheet* screen_sheet;
   Console* main_console;
   KeyboardController* keyboard_ctrl;
   SerialPort* com1;
   LocalAPIC* bsp_local_apic;
   CPUFeatureSet* cpu_features;
+  PhysicalPageAllocator* dram_allocator;
+  PhysicalPageAllocator* pmem_allocator;
+  HPET* hpet;
+  EFI::MemoryMap* efi_memory_map;
+  File* hello_bin_file;
 };
-extern EFI::MemoryMap efi_memory_map;
-extern PhysicalPageAllocator* dram_allocator;
-extern PhysicalPageAllocator* pmem_allocator;
-extern LocalAPIC bsp_local_apic;
-extern CPUFeatureSet cpu_features;
-extern SerialPort com1;
-extern File hello_bin_file;
-extern File liumos_elf_file;
-extern HPET hpet;
 extern LiumOS* liumos;
 
 void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table);

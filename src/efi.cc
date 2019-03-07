@@ -145,9 +145,9 @@ void EFI::Init(SystemTable* system_table) {
   EFI::system_table->boot_services->LocateProtocol(
       &kSimpleFileSystemProtocolGUID, nullptr, (void**)&simple_fs);
   assert(simple_fs);
-  ACPI::rsdt = static_cast<ACPI::RSDT*>(
+  liumos->acpi.rsdt = static_cast<ACPI::RSDT*>(
       EFI::GetConfigurationTableByUUID(&kACPITableGUID));
-  assert(ACPI::rsdt);
+  assert(liumos->acpi.rsdt);
   EFI::Status status = EFI::simple_fs->OpenVolume(EFI::simple_fs, &root_file);
   assert(status == EFI::Status::kSuccess);
 }

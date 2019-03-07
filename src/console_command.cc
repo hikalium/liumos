@@ -44,14 +44,15 @@ static void ShowNFIT_PrintMemoryTypeGUID(ACPI::NFIT::SPARange* spa) {
 
 void ShowXSDT() {
   using namespace ACPI;
-  XSDT* xsdt = rsdt->xsdt;
-  const int num_of_xsdt_entries = (xsdt->length - kDescriptionHeaderSize) >> 3;
+  assert(liumos && liumos->acpi.rsdt && liumos->acpi.rsdt->xsdt);
+  XSDT& xsdt = *liumos->acpi.rsdt->xsdt;
+  const int num_of_xsdt_entries = (xsdt.length - kDescriptionHeaderSize) >> 3;
 
   PutString("Found 0x");
   PutHex64(num_of_xsdt_entries);
   PutString(" XSDT entries found:");
   for (int i = 0; i < num_of_xsdt_entries; i++) {
-    const char* signature = static_cast<const char*>(xsdt->entry[i]);
+    const char* signature = static_cast<const char*>(xsdt.entry[i]);
     PutChar(' ');
     PutChar(signature[0]);
     PutChar(signature[1]);
@@ -63,13 +64,14 @@ void ShowXSDT() {
 
 void ShowNFIT() {
   using namespace ACPI;
-  if (!nfit) {
+  if (!liumos->acpi.nfit) {
     PutString("NFIT not found\n");
     return;
   }
+  NFIT& nfit = *liumos->acpi.nfit;
   PutString("NFIT found\n");
-  PutStringAndHex("NFIT Size in bytes", nfit->length);
-  for (auto& it : *nfit) {
+  PutStringAndHex("NFIT Size in bytes", nfit.length);
+  for (auto& it : nfit) {
     switch (it.type) {
       case NFIT::Entry::kTypeSPARangeStructure: {
         NFIT::SPARange* spa_range = reinterpret_cast<NFIT::SPARange*>(&it);
@@ -180,51 +182,53 @@ void PutMPSINTIFlags(uint8_t flags) {
 
 void ShowMADT() {
   using namespace ACPI;
-  for (int i = 0; i < (int)(madt->length - offsetof(MADT, entries));
-       i += madt->entries[i + 1]) {
-    uint8_t type = madt->entries[i];
+  assert(liumos->acpi.madt);
+  MADT& madt = *liumos->acpi.madt;
+  for (int i = 0; i < (int)(madt.length - offsetof(MADT, entries));
+       i += madt.entries[i + 1]) {
+    uint8_t type = madt.entries[i];
     PutString("MADT(type=0x");
     PutHex64(type);
     PutString(") ");
 
     if (type == kProcessorLocalAPICInfo) {
       PutString("Processor 0x");
-      PutHex64(madt->entries[i + 2]);
+      PutHex64(madt.entries[i + 2]);
       PutString(" local_apic_id = 0x");
-      PutHex64(madt->entries[i + 3]);
-      PutString((madt->entries[i + 4] & 1) ? " Enabled" : "Disabled");
+      PutHex64(madt.entries[i + 3]);
+      PutString((madt.entries[i + 4] & 1) ? " Enabled" : "Disabled");
     } else if (type == kIOAPICInfo) {
       PutString("IOAPIC id=0x");
-      PutHex64(madt->entries[i + 2]);
+      PutHex64(madt.entries[i + 2]);
       PutString(" base=0x");
-      PutHex64(*(uint32_t*)&madt->entries[i + 4]);
+      PutHex64(*(uint32_t*)&madt.entries[i + 4]);
       PutString(" gsi_base=0x");
-      PutHex64(*(uint32_t*)&madt->entries[i + 8]);
+      PutHex64(*(uint32_t*)&madt.entries[i + 8]);
     } else if (type == kInterruptSourceOverrideInfo) {
       PutString("IRQ override: 0x");
-      PutHex64(madt->entries[i + 3]);
+      PutHex64(madt.entries[i + 3]);
       PutString(" -> 0x");
-      PutHex64(*(uint32_t*)&madt->entries[i + 4]);
-      PutMPSINTIFlags(madt->entries[i + 8]);
+      PutHex64(*(uint32_t*)&madt.entries[i + 4]);
+      PutMPSINTIFlags(madt.entries[i + 8]);
     } else if (type == kLocalAPICNMIStruct) {
       PutString("LAPIC NMI uid=0x");
-      PutHex64(madt->entries[i + 2]);
-      PutMPSINTIFlags(madt->entries[i + 3]);
+      PutHex64(madt.entries[i + 2]);
+      PutMPSINTIFlags(madt.entries[i + 3]);
       PutString(" LINT#=0x");
-      PutHex64(madt->entries[i + 5]);
+      PutHex64(madt.entries[i + 5]);
     } else if (type == kProcessorLocalx2APICStruct) {
       PutString("x2APIC id=0x");
-      PutHex64(*(uint32_t*)&madt->entries[i + 4]);
-      PutString((madt->entries[i + 8] & 1) ? " Enabled" : " Disabled");
+      PutHex64(*(uint32_t*)&madt.entries[i + 4]);
+      PutString((madt.entries[i + 8] & 1) ? " Enabled" : " Disabled");
       PutString(" acpi_processor_uid=0x");
-      PutHex64(*(uint32_t*)&madt->entries[i + 12]);
+      PutHex64(*(uint32_t*)&madt.entries[i + 12]);
     } else if (type == kLocalx2APICNMIStruct) {
       PutString("x2APIC NMI");
-      PutMPSINTIFlags(madt->entries[i + 2]);
+      PutMPSINTIFlags(madt.entries[i + 2]);
       PutString(" acpi_processor_uid=0x");
-      PutHex64(*(uint32_t*)&madt->entries[i + 4]);
+      PutHex64(*(uint32_t*)&madt.entries[i + 4]);
       PutString(" LINT#=0x");
-      PutHex64(madt->entries[i + 8]);
+      PutHex64(madt.entries[i + 8]);
     }
     PutString("\n");
   }
@@ -232,12 +236,13 @@ void ShowMADT() {
 
 void ShowSRAT() {
   using namespace ACPI;
-  if (!srat) {
+  if (!liumos->acpi.srat) {
     PutString("SRAT not found.\n");
     return;
   }
+  SRAT& srat = *liumos->acpi.srat;
   PutString("SRAT found.\n");
-  for (auto& it : *srat) {
+  for (auto& it : srat) {
     PutString("SRAT(type=0x");
     PutHex64(it.type);
     PutString(") ");
@@ -279,26 +284,28 @@ void ShowSRAT() {
 
 void ShowSLIT() {
   using namespace ACPI;
-  if (!slit) {
+  if (!liumos->acpi.slit) {
     PutString("SLIT not found.\n");
     return;
   }
+  SLIT& slit = *liumos->acpi.slit;
   PutString("SLIT found.\n");
-  PutStringAndHex("num_of_system_localities", slit->num_of_system_localities);
-  for (uint64_t y = 0; y < slit->num_of_system_localities; y++) {
-    for (uint64_t x = 0; x < slit->num_of_system_localities; x++) {
+  PutStringAndHex("num_of_system_localities", slit.num_of_system_localities);
+  for (uint64_t y = 0; y < slit.num_of_system_localities; y++) {
+    for (uint64_t x = 0; x < slit.num_of_system_localities; x++) {
       if (x)
         PutString(", ");
-      PutHex64(slit->entry[y * slit->num_of_system_localities + x]);
+      PutHex64(slit.entry[y * slit.num_of_system_localities + x]);
     }
     PutString("\n");
   }
 }
 
 void ShowEFIMemoryMap() {
-  PutStringAndHex("Map entries", efi_memory_map.GetNumberOfEntries());
-  for (int i = 0; i < efi_memory_map.GetNumberOfEntries(); i++) {
-    const EFI::MemoryDescriptor* desc = efi_memory_map.GetDescriptor(i);
+  EFI::MemoryMap& map = *liumos->efi_memory_map;
+  PutStringAndHex("Map entries", map.GetNumberOfEntries());
+  for (int i = 0; i < map.GetNumberOfEntries(); i++) {
+    const EFI::MemoryDescriptor* desc = map.GetDescriptor(i);
     desc->Print();
     PutString("\n");
   }
@@ -306,9 +313,9 @@ void ShowEFIMemoryMap() {
 
 void Free() {
   PutString("DRAM Free List:\n");
-  dram_allocator->Print();
+  liumos->dram_allocator->Print();
   PutString("PMEM Free List:\n");
-  pmem_allocator->Print();
+  liumos->pmem_allocator->Print();
 }
 
 bool IsEqualString(const char* a, const char* b) {
@@ -328,7 +335,7 @@ void label(uint64_t i) {
 }
 
 uint64_t get_seconds() {
-  return hpet.ReadMainCounterValue();
+  return liumos->hpet->ReadMainCounterValue();
 }
 
 void TestMem(PhysicalPageAllocator* allocator, uint32_t proximity_domain) {
@@ -351,7 +358,7 @@ void TestMem(PhysicalPageAllocator* allocator, uint32_t proximity_domain) {
   uint64_t steps, tsteps;
   uint64_t sec0, sec1, tick_sum_with_mem_read, tick_sum_without_mem_read;
   uint64_t kDurationTick =
-      (uint64_t)(0.1 * 1e15) / hpet.GetFemtosecndPerCount();
+      (uint64_t)(0.1 * 1e15) / liumos->hpet->GetFemtosecndPerCount();
 
   PutString(" ,");
   for (stride = 1; stride <= kRangeMax / 2; stride = stride * 2)
@@ -406,9 +413,9 @@ void TestMem(PhysicalPageAllocator* allocator, uint32_t proximity_domain) {
 
       const uint64_t tick_sum_of_mem_read =
           tick_sum_with_mem_read - tick_sum_without_mem_read;
-      const uint64_t pico_second_per_mem_read = tick_sum_of_mem_read *
-                                                hpet.GetFemtosecndPerCount() /
-                                                (steps * csize) / 1000;
+      const uint64_t pico_second_per_mem_read =
+          tick_sum_of_mem_read * liumos->hpet->GetFemtosecndPerCount() /
+          (steps * csize) / 1000;
       PutString("0x");
       PutHex64(pico_second_per_mem_read > 0 ? pico_second_per_mem_read : 1);
       PutString(", ");
@@ -419,7 +426,7 @@ void TestMem(PhysicalPageAllocator* allocator, uint32_t proximity_domain) {
 }
 
 void Time() {
-  PutStringAndHex("HPET main counter", hpet.ReadMainCounterValue());
+  PutStringAndHex("HPET main counter", liumos->hpet->ReadMainCounterValue());
 }
 
 void Process(TextBox& tbox) {
@@ -439,28 +446,28 @@ void Process(TextBox& tbox) {
   } else if (IsEqualString(line, "show mmap")) {
     ShowEFIMemoryMap();
   } else if (IsEqualString(line, "show hpet")) {
-    hpet.Print();
+    liumos->hpet->Print();
   } else if (IsEqualString(line, "show cpu")) {
     PutString("APIC Mode: ");
-    PutString(bsp_local_apic.Isx2APIC() ? "x2APIC" : "xAPIC");
+    PutString(liumos->bsp_local_apic->Isx2APIC() ? "x2APIC" : "xAPIC");
     PutString("\n");
-    PutStringAndHex("BSP APIC ID", bsp_local_apic.GetID());
-    if (ACPI::srat)
-      PutStringAndHex(
-          "  proximity_domain",
-          ACPI::srat->GetProximityDomainForLocalAPIC(bsp_local_apic));
+    PutStringAndHex("BSP APIC ID", liumos->bsp_local_apic->GetID());
+    if (liumos->acpi.srat)
+      PutStringAndHex("  proximity_domain",
+                      liumos->acpi.srat->GetProximityDomainForLocalAPIC(
+                          *liumos->bsp_local_apic));
   } else if (strncmp(line, "test mem ", 9) == 0) {
     int proximity_domain = atoi(&line[9]);
-    TestMem(dram_allocator, proximity_domain);
+    TestMem(liumos->dram_allocator, proximity_domain);
   } else if (strncmp(line, "test pmem ", 10) == 0) {
     int proximity_domain = atoi(&line[10]);
-    TestMem(pmem_allocator, proximity_domain);
+    TestMem(liumos->pmem_allocator, proximity_domain);
   } else if (IsEqualString(line, "free")) {
     Free();
   } else if (IsEqualString(line, "time")) {
     Time();
   } else if (IsEqualString(line, "hello.bin")) {
-    ExecutionContext* ctx = LoadELFAndLaunchProcess(hello_bin_file);
+    ExecutionContext* ctx = LoadELFAndLaunchProcess(*liumos->hello_bin_file);
     ctx->WaitUntilExit();
   } else if (IsEqualString(line, "help")) {
     PutString("hello: Nothing to say.\n");
