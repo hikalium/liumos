@@ -10,9 +10,7 @@ struct ProcessMappingInfo {
   uint64_t stack_size;
 };
 
-const Elf64_Ehdr* LoadELF(ProcessMappingInfo& info,
-                          File& file,
-                          IA_PML4& page_root) {
+const Elf64_Ehdr* LoadELF(File& file, IA_PML4& page_root) {
   const uint8_t* buf = file.GetBuf();
   // uint64_t buf_size = file.GetFileSize();
   PutString("Loading ELF...\n");
@@ -123,13 +121,12 @@ const Elf64_Ehdr* LoadELF(ProcessMappingInfo& info,
 ExecutionContext* LoadELFAndLaunchProcess(File& file) {
   ProcessMappingInfo info;
   IA_PML4& user_page_table = CreatePageTable();
-  const Elf64_Ehdr* ehdr = LoadELF(info, file, user_page_table);
+  const Elf64_Ehdr* ehdr = LoadELF(file, user_page_table);
   if (!ehdr)
     return nullptr;
 
-  uint8_t* entry_point =
-      reinterpret_cast<uint8_t*>(info.file_paddr) + (ehdr->e_entry - 0x400000);
-  PutStringAndHex("Entry address(virtual)", entry_point);
+  uint8_t* entry_point = reinterpret_cast<uint8_t*>(ehdr->e_entry);
+  PutStringAndHex("Entry address: ", entry_point);
 
   const int kNumOfStackPages = 3;
   info.stack_size = kNumOfStackPages << kPageSizeExponent;
@@ -148,8 +145,7 @@ ExecutionContext* LoadELFAndLaunchProcess(File& file) {
 }
 
 void LoadKernelELF(File& file) {
-  ProcessMappingInfo info;
-  const Elf64_Ehdr* ehdr = LoadELF(info, file, GetKernelPML4());
+  const Elf64_Ehdr* ehdr = LoadELF(file, GetKernelPML4());
   if (!ehdr)
     Panic("Failed to load kernel ELF");
 
