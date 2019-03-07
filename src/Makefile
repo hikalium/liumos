@@ -1,4 +1,4 @@
-OBJS= acpi.o apic.o asm_common.o asm.o console.o console_command.o \
+OBJS= acpi.o apic.o asm_common.o asm.o console.o command.o \
 		 efi.o efimain.o elf.o execution_context.o file.o \
 		 gdt.o generic.o graphics.o guid.o \
 		 hpet.o interrupt.o keyboard.o\
@@ -6,7 +6,7 @@ OBJS= acpi.o apic.o asm_common.o asm.o console.o console_command.o \
 		 scheduler.o serial.o sheet.o sys_constant.o syscall.o text_box.o \
 		 font.gen.o
 KERNEL_SRCS= acpi.cc apic.cc asm_common.S asm_sysv.S \
-						 console.cc console_command.cc\
+						 console.cc command.cc\
 						 efi.cc elf.cc execution_context.cc \
 						 generic.cc guid.cc \
 						 hpet.cc \

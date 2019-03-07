@@ -22,7 +22,7 @@
 
 constexpr uint64_t kKernelBaseAddr = 0xFFFF'FFFF'0000'0000;
 
-// @console_command.cc
+// @command.cc
 namespace ConsoleCommand {
 void ShowNFIT(void);
 void ShowMADT(void);
