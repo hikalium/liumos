@@ -41,7 +41,6 @@ void WaitAndProcessCommand(TextBox& tbox) {
 
 extern "C" void KernelEntry(LiumOS* liumos_) {
   liumos = liumos_;
-  liumos->screen_sheet->DrawRect(0, 0, 100, 100, 0xffffff);
   PutString("Hello from kernel!\n");
   TextBox console_text_box;
   while (1) {
