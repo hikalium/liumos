@@ -57,7 +57,6 @@ class File {
 extern uint8_t font[0x100][16];
 
 // @graphics.cc
-extern Sheet* screen_sheet;
 void InitGraphics(void);
 void InitDoubleBuffer(void);
 
@@ -67,7 +66,12 @@ constexpr uint16_t kIOPortKeyboardData = 0x0060;
 // @libfunc.cc
 int strncmp(const char* s1, const char* s2, size_t n);
 void* memcpy(void* dst, const void* src, size_t n);
+void bzero(void* s, size_t n);
 int atoi(const char* str);
+template <typename T>
+inline T min(T a, T b) {
+  return a < b ? a : b;
+}
 
 // @liumos.c
 packed_struct LiumOS {
@@ -90,6 +94,10 @@ packed_struct LiumOS {
   HPET* hpet;
   EFI::MemoryMap* efi_memory_map;
   File* hello_bin_file;
+  IA_PML4* kernel_pml4;
+  Scheduler* scheduler;
+  ExecutionContextController* exec_ctx_ctrl;
+  ExecutionContext* current_context;
 };
 extern LiumOS* liumos;
 

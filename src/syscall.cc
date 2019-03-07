@@ -25,7 +25,7 @@ extern "C" void SyscallHandler(uint64_t* args) {
   } else if (idx == kSyscallIndex_sys_exit) {
     const uint64_t exit_code = args[1];
     PutStringAndHex("exit: exit_code", exit_code);
-    scheduler->KillCurrentContext();
+    liumos->scheduler->KillCurrentContext();
     for (;;) {
       StoreIntFlagAndHalt();
     };

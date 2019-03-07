@@ -6,16 +6,14 @@ void ExecutionContext::WaitUntilExit() {
   }
 }
 
-ExecutionContext* CreateExecutionContext(void (*rip)(),
-                                         uint16_t cs,
-                                         void* rsp,
-                                         uint16_t ss,
-                                         uint64_t cr3) {
-  static uint64_t context_id;
-
+ExecutionContext* ExecutionContextController::Create(void (*rip)(),
+                                                     uint16_t cs,
+                                                     void* rsp,
+                                                     uint16_t ss,
+                                                     uint64_t cr3) {
   ExecutionContext* context =
       liumos->dram_allocator->AllocPages<ExecutionContext*>(
           ByteSizeToPageSize(sizeof(ExecutionContext)));
-  new (context) ExecutionContext(++context_id, rip, cs, rsp, ss, cr3);
+  new (context) ExecutionContext(++last_context_id_, rip, cs, rsp, ss, cr3);
   return context;
 }

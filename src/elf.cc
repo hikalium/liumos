@@ -16,6 +16,8 @@ const Elf64_Ehdr* LoadELF(ProcessMappingInfo& info,
   const uint8_t* buf = file.GetBuf();
   // uint64_t buf_size = file.GetFileSize();
   PutString("Loading ELF...\n");
+  const uint64_t file_size = file.GetFileSize();
+  PutStringAndHex("File Size", file_size);
   if (strncmp(reinterpret_cast<const char*>(buf), ELFMAG, SELFMAG) != 0) {
     PutString("Not an ELF file\n");
     return nullptr;
@@ -103,14 +105,18 @@ const Elf64_Ehdr* LoadELF(ProcessMappingInfo& info,
     uint64_t page_attr = kPageAttrPresent;
     if (phdr->p_flags & PF_W)
       page_attr |= kPageAttrWritable;
+    uint8_t* phys_buf = liumos->dram_allocator->AllocPages<uint8_t*>(
+        map_size >> kPageSizeExponent);
+    const size_t copy_size = min(map_size, phdr->p_filesz);
+    memcpy(phys_buf, buf + map_base_file_ofs, copy_size);
+    if (copy_size < map_size)
+      bzero(phys_buf + copy_size, map_size - copy_size);
     CreatePageMapping(*liumos->dram_allocator, page_root, map_base_vaddr,
-                      reinterpret_cast<uint64_t>(buf) + map_base_file_ofs,
-                      map_size, page_attr);
+                      reinterpret_cast<uint64_t>(phys_buf), map_size,
+                      page_attr);
   }
   PutStringAndHex("Entry Point", ehdr->e_entry);
 
-  const uint64_t file_size = file.GetFileSize();
-  PutStringAndHex("File Size", file_size);
   uint8_t* body = liumos->dram_allocator->AllocPages<uint8_t*>(
       ByteSizeToPageSize(file_size));
   PutStringAndHex("Load Addr", body);
@@ -123,7 +129,10 @@ const Elf64_Ehdr* LoadELF(ProcessMappingInfo& info,
 
 ExecutionContext* LoadELFAndLaunchProcess(File& file) {
   ProcessMappingInfo info;
+  IA_PML4& user_page_table = CreatePageTable();
   const Elf64_Ehdr* ehdr = LoadELF(info, file, GetKernelPML4());
+  for (;;)
+    ;
   if (!ehdr)
     return nullptr;
 
@@ -145,11 +154,11 @@ ExecutionContext* LoadELFAndLaunchProcess(File& file) {
   void* sub_context_rsp =
       reinterpret_cast<void*>(info.stack_vaddr + info.stack_size);
 
-  ExecutionContext* ctx = CreateExecutionContext(
+  ExecutionContext* ctx = liumos->exec_ctx_ctrl->Create(
       reinterpret_cast<void (*)(void)>(entry_point), GDT::kUserCSSelector,
       sub_context_rsp, GDT::kUserDSSelector,
-      reinterpret_cast<uint64_t>(CreatePageTable()));
-  scheduler->RegisterExecutionContext(ctx);
+      reinterpret_cast<uint64_t>(&user_page_table));
+  liumos->scheduler->RegisterExecutionContext(ctx);
   return ctx;
 }
 
@@ -160,7 +169,7 @@ void LoadKernelELF(File& file) {
     Panic("Failed to load kernel ELF");
 
   uint8_t* entry_point = reinterpret_cast<uint8_t*>(ehdr->e_entry);
-  PutStringAndHex("Entry address(physical)", entry_point);
+  PutStringAndHex("Entry address: ", entry_point);
   PutString("Data at entrypoint: ");
   for (int i = 0; i < 16; i++) {
     PutHex8ZeroFilled(entry_point[i]);
@@ -169,22 +178,4 @@ void LoadKernelELF(File& file) {
   PutChar('\n');
 
   JumpToKernel(entry_point, liumos);
-
-  for (;;) {
-    StoreIntFlagAndHalt();
-  }
-
-  const int kNumOfStackPages = 3;
-  info.stack_size = kNumOfStackPages << kPageSizeExponent;
-  info.stack_paddr = liumos->dram_allocator->AllocPages<uint64_t>(
-      ByteSizeToPageSize(info.stack_size));
-  info.stack_vaddr = info.stack_paddr;
-  void* sub_context_rsp =
-      reinterpret_cast<void*>(info.stack_vaddr + info.stack_size);
-
-  ExecutionContext* ctx = CreateExecutionContext(
-      reinterpret_cast<void (*)(void)>(entry_point), GDT::kUserCSSelector,
-      sub_context_rsp, GDT::kUserDSSelector,
-      reinterpret_cast<uint64_t>(CreatePageTable()));
-  scheduler->RegisterExecutionContext(ctx);
 }

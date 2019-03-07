@@ -6,13 +6,9 @@ packed_struct ContextSwitchRequest {
   CPUContext* to;
 };
 
-Scheduler* scheduler;
-
 ContextSwitchRequest context_switch_request;
 IDTGateDescriptor idt[256];
 InterruptHandler handler_list[256];
-
-ExecutionContext* current_context;
 
 extern "C" ContextSwitchRequest* IntHandler(uint64_t intcode,
                                             uint64_t error_code,
@@ -21,10 +17,10 @@ extern "C" ContextSwitchRequest* IntHandler(uint64_t intcode,
     handler_list[intcode](intcode, error_code, info);
     return nullptr;
   }
-  ExecutionContext* current_context = scheduler->GetCurrentContext();
+  ExecutionContext* current_context = liumos->scheduler->GetCurrentContext();
   if (intcode == 0x20) {
     liumos->bsp_local_apic->SendEndOfInterrupt();
-    ExecutionContext* next_context = scheduler->SwitchContext();
+    ExecutionContext* next_context = liumos->scheduler->SwitchContext();
     if (!next_context) {
       // no need to switching context.
       return nullptr;
@@ -39,6 +35,7 @@ extern "C" ContextSwitchRequest* IntHandler(uint64_t intcode,
   PutStringAndHex("Error Code", error_code);
   PutStringAndHex("Context#", current_context->GetID());
   if (intcode == 0x0E) {
+    PutStringAndHex("CR3", ReadCR3());
     PutStringAndHex("CR2", ReadCR2());
     Panic("Page Fault");
   }

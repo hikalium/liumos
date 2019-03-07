@@ -154,7 +154,7 @@ using IA_PML4E = PageTableEntryStruct<39, PML4EStrategy>;
 using IA_PML4 = PageTableStruct<IA_PML4E>;
 static_assert(sizeof(IA_PML4) == kPageSize);
 
-IA_PML4* CreatePageTable();
+IA_PML4& CreatePageTable();
 void InitPaging(void);
 IA_PML4& GetKernelPML4(void);
 

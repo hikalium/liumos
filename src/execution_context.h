@@ -19,11 +19,7 @@ class ExecutionContext {
   Status GetStatus() const { return status_; };
   void SetStatus(Status status) { status_ = status; };
 
-  friend ExecutionContext* CreateExecutionContext(void (*rip)(),
-                                                  uint16_t cs,
-                                                  void* rsp,
-                                                  uint16_t ss,
-                                                  uint64_t cr3);
+  friend class ExecutionContextController;
   void WaitUntilExit();
 
  private:
@@ -47,8 +43,15 @@ class ExecutionContext {
   CPUContext cpu_context_;
 };
 
-ExecutionContext* CreateExecutionContext(void (*rip)(),
-                                         uint16_t cs,
-                                         void* rsp,
-                                         uint16_t ss,
-                                         uint64_t cr3);
+class ExecutionContextController {
+ public:
+  ExecutionContextController() : last_context_id_(0){};
+  ExecutionContext* Create(void (*rip)(),
+                           uint16_t cs,
+                           void* rsp,
+                           uint16_t ss,
+                           uint64_t cr3);
+
+ private:
+  uint64_t last_context_id_;
+};

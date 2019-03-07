@@ -133,6 +133,9 @@ format :
 commit :
 	make -C .. commit
 
+sym : LIUMOS.ELF
+	/usr/local/opt/binutils/bin/gobjdump -t LIUMOS.ELF | more
+
 print_cc :
 	@echo "$(CC) $(LD)"
 

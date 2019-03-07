@@ -1,11 +1,5 @@
 #include "liumos.h"
 
-IA_PML4* kernel_pml4;
-
-IA_PDPT* kernel_pdpt;
-IA_PDT* kernel_pdt;
-IA_PT* kernel_pt;
-
 template <>
 void IA_PDT::Print() {
   for (int i = 0; i < kNumOfEntries; i++) {
@@ -54,13 +48,14 @@ void IA_PML4::Print() {
   }
 }
 
-IA_PML4* CreatePageTable() {
+IA_PML4& CreatePageTable() {
   IA_PML4* pml4 = liumos->dram_allocator->AllocPages<IA_PML4*>(1);
+  assert(pml4);
   pml4->ClearMapping();
   for (int i = 0; i < IA_PML4::kNumOfEntries; i++) {
-    pml4->entries[i] = kernel_pml4->entries[i];
+    pml4->entries[i] = liumos->kernel_pml4->entries[i];
   }
-  return pml4;
+  return *pml4;
 }
 
 void InitPaging() {
@@ -119,9 +114,8 @@ void InitPaging() {
   PutStringAndHex("map_end_addr", direct_mapping_end);
   uint64_t direct_map_1gb_pages = (direct_mapping_end + (1ULL << 30) - 1) >> 30;
   PutStringAndHex("direct map 1gb pages", direct_map_1gb_pages);
-  PutStringAndHex("InitPaging", reinterpret_cast<uint64_t>(InitPaging));
 
-  kernel_pml4 = liumos->dram_allocator->AllocPages<IA_PML4*>(1);
+  IA_PML4* kernel_pml4 = liumos->dram_allocator->AllocPages<IA_PML4*>(1);
   kernel_pml4->ClearMapping();
 
   // mapping pages for real memory & memory mapped IOs
@@ -152,28 +146,11 @@ void InitPaging() {
     }
   }
 
-  /*
-  kernel_pml4->SetTableBaseForAddr(kKernelBaseAddr, kernel_pdpt,
-                                   kPageAttrPresent | kPageAttrWritable);
-  kernel_pdpt->SetTableBaseForAddr(kKernelBaseAddr, kernel_pdt,
-                                   kPageAttrPresent | kPageAttrWritable);
-  kernel_pdt->SetTableBaseForAddr(kKernelBaseAddr, kernel_pt,
-                                  kPageAttrPresent | kPageAttrWritable);
-  for (size_t i = 0; i < loader_code_desc->number_of_pages; i++) {
-    uint8_t* page = dram_allocator->AllocPages<uint8_t*>(1);
-    memcpy(page,
-           reinterpret_cast<uint8_t*>(loader_code_desc->physical_start +
-                                      i * (1 << 12)),
-           (1 << 12));
-    uint64_t page_flags = kPageAttrPresent | kPageAttrWritable;
-    kernel_pt->SetPageBaseForAddr(kKernelBaseAddr + (1 << 12) * i,
-                                  reinterpret_cast<uint64_t>(page), page_flags);
-  }
-  */
-  PutStringAndHex("CR3", ReadCR3());
   WriteCR3(reinterpret_cast<uint64_t>(kernel_pml4));
+  PutStringAndHex("Paging enabled. Kernel CR3", ReadCR3());
+  liumos->kernel_pml4 = kernel_pml4;
 }
 
 IA_PML4& GetKernelPML4(void) {
-  return *kernel_pml4;
+  return *liumos->kernel_pml4;
 }

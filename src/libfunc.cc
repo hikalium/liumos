@@ -16,6 +16,12 @@ void* memcpy(void* dst, const void* src, size_t n) {
   return dst;
 }
 
+void bzero(void* s, size_t n) {
+  for (size_t i = 0; i < n; i++) {
+    reinterpret_cast<uint8_t*>(s)[i] = 0;
+  }
+}
+
 int atoi(const char* str) {
   int v = 0;
   char c;
