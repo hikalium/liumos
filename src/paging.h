@@ -172,7 +172,9 @@ void inline CreatePageMapping(PhysicalPageAllocator& allocator,
        pml4_idx < IA_PML4::kNumOfEntries; pml4_idx++) {
     auto& pml4e = pml4.GetEntryForAddr(vaddr);
     if (!pml4e.IsPresent()) {
-      pml4e.SetTableAddr(allocator.AllocPages<IA_PDPT*>(1), attr);
+      IA_PDPT* new_pdpt = allocator.AllocPages<IA_PDPT*>(1);
+      new_pdpt->ClearMapping();
+      pml4e.SetTableAddr(new_pdpt, attr);
     }
     pml4e.SetAttr(attr);
     auto* pdpt = pml4e.GetTableAddr();
@@ -180,7 +182,9 @@ void inline CreatePageMapping(PhysicalPageAllocator& allocator,
          num_of_4k_pages && pdpt_idx < IA_PDPT::kNumOfEntries; pdpt_idx++) {
       auto& pdpte = pdpt->GetEntryForAddr(vaddr);
       if (!pdpte.IsPresent()) {
-        pdpte.SetTableAddr(allocator.AllocPages<IA_PDT*>(1), attr);
+        IA_PDT* new_pdt = allocator.AllocPages<IA_PDT*>(1);
+        new_pdt->ClearMapping();
+        pdpte.SetTableAddr(new_pdt, attr);
       }
       pdpte.SetAttr(attr);
       if (pdpte.IsPage())
@@ -190,7 +194,9 @@ void inline CreatePageMapping(PhysicalPageAllocator& allocator,
            num_of_4k_pages && pdt_idx < IA_PDT::kNumOfEntries; pdt_idx++) {
         auto& pdte = pdt->GetEntryForAddr(vaddr);
         if (!pdte.IsPresent()) {
-          pdte.SetTableAddr(allocator.AllocPages<IA_PT*>(1), attr);
+          IA_PT* new_pt = allocator.AllocPages<IA_PT*>(1);
+          new_pt->ClearMapping();
+          pdte.SetTableAddr(new_pt, attr);
         }
         pdte.SetAttr(attr);
         if (pdte.IsPage())

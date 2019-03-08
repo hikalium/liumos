@@ -353,6 +353,17 @@ void TestMem(PhysicalPageAllocator* allocator, uint32_t proximity_domain) {
   PutString("Array range: ");
   PutAddressRange(array, array_size_in_pages << kPageSizeExponent);
   PutString("\n");
+
+  int32_t* test_mem_map_addr =
+      reinterpret_cast<int32_t*>(0xFFFF'FFFE'0000'0000ULL);
+
+  CreatePageMapping(*liumos->dram_allocator, GetKernelPML4(),
+                    reinterpret_cast<uint64_t>(test_mem_map_addr),
+                    reinterpret_cast<uint64_t>(array),
+                    array_size_in_pages << kPageSizeExponent,
+                    kPageAttrPresent | kPageAttrWritable | kPageAttrUser |
+                        kPageAttrCacheDisable | kPageAttrWriteThrough);
+
   uint64_t nextstep, i, index;
   uint64_t csize, stride;
   uint64_t steps, tsteps;
@@ -370,9 +381,9 @@ void TestMem(PhysicalPageAllocator* allocator, uint32_t proximity_domain) {
     label(csize * sizeof(int));
     for (stride = 1; stride <= csize / 2; stride = stride * 2) {
       for (index = 0; index < csize; index = index + stride) {
-        array[index] = (int)(index + stride);
+        test_mem_map_addr[index] = (int)(index + stride);
       }
-      array[index - stride] = 0;
+      test_mem_map_addr[index - stride] = 0;
 
       // measure time spent on (reading data from memory) + (loop, instrs,
       // etc...)
@@ -383,8 +394,107 @@ void TestMem(PhysicalPageAllocator* allocator, uint32_t proximity_domain) {
         for (i = stride; i != 0; i = i - 1) {
           nextstep = 0;
           do
-            nextstep = array[nextstep];
+            nextstep = test_mem_map_addr[nextstep];
           while (nextstep != 0);
+        }
+        steps = steps + 1;
+        sec1 = get_seconds();
+      } while ((sec1 - sec0) < kDurationTick);  // originary 20.0
+      tick_sum_with_mem_read = sec1 - sec0;
+
+      // measure time spent on (loop, instrs, etc...) only
+      tsteps = 0;
+      sec0 = get_seconds();
+      do {
+        for (i = stride; i != 0; i = i - 1) {
+          index = 0;
+          do
+            index = index + stride;
+          while (index < csize);
+        }
+        tsteps = tsteps + 1;
+        sec1 = get_seconds();
+      } while (tsteps < steps);
+      tick_sum_without_mem_read = sec1 - sec0;
+
+      // avoid negative value
+      if (tick_sum_without_mem_read >= tick_sum_with_mem_read) {
+        tick_sum_without_mem_read = tick_sum_with_mem_read;
+      }
+
+      const uint64_t tick_sum_of_mem_read =
+          tick_sum_with_mem_read - tick_sum_without_mem_read;
+      const uint64_t pico_second_per_mem_read =
+          tick_sum_of_mem_read * liumos->hpet->GetFemtosecndPerCount() /
+          (steps * csize) / 1000;
+      PutString("0x");
+      PutHex64(pico_second_per_mem_read > 0 ? pico_second_per_mem_read : 1);
+      PutString(", ");
+    };
+    PutString("\n");
+  };
+  StoreIntFlag();
+}
+
+void TestMemWrite(PhysicalPageAllocator* allocator, uint32_t proximity_domain) {
+  constexpr uint64_t kRangeMin = 1ULL << 10;
+  constexpr uint64_t kRangeMax = 1ULL << 24;
+  PutStringAndHex("Test memory on proximity_domain", proximity_domain);
+  constexpr uint64_t array_size_in_pages =
+      (sizeof(int) * kRangeMax + kPageSize - 1) >> kPageSizeExponent;
+  int* array = allocator->AllocPagesInProximityDomain<int*>(array_size_in_pages,
+                                                            proximity_domain);
+  if (!array) {
+    PutString("Alloc failed.");
+    return;
+  }
+  PutString("Array range: ");
+  PutAddressRange(array, array_size_in_pages << kPageSizeExponent);
+  PutString("\n");
+
+  volatile int32_t* test_mem_map_addr =
+      reinterpret_cast<volatile int32_t*>(0xFFFF'FFFE'0000'0000ULL);
+
+  CreatePageMapping(*liumos->dram_allocator, GetKernelPML4(),
+                    reinterpret_cast<uint64_t>(test_mem_map_addr),
+                    reinterpret_cast<uint64_t>(array),
+                    array_size_in_pages << kPageSizeExponent,
+                    kPageAttrPresent | kPageAttrWritable | kPageAttrUser |
+                        kPageAttrCacheDisable | kPageAttrWriteThrough);
+
+  uint64_t nextstep, i, index;
+  uint64_t csize, stride;
+  uint64_t steps, tsteps;
+  uint64_t sec0, sec1, tick_sum_with_mem_read, tick_sum_without_mem_read;
+  uint64_t kDurationTick =
+      (uint64_t)(0.1 * 1e15) / liumos->hpet->GetFemtosecndPerCount();
+
+  PutString(" ,");
+  for (stride = 1; stride <= kRangeMax / 2; stride = stride * 2)
+    label(stride * sizeof(int));
+  PutString("\n");
+
+  ClearIntFlag();
+  for (csize = kRangeMin; csize <= kRangeMax; csize = csize * 2) {
+    label(csize * sizeof(int));
+    for (stride = 1; stride <= csize / 2; stride = stride * 2) {
+      for (index = 0; index < csize; index = index + stride) {
+        test_mem_map_addr[index] = (int)(index + stride);
+      }
+      test_mem_map_addr[index - stride] = 0;
+
+      // measure time spent on (reading data from memory) + (loop, instrs,
+      // etc...)
+      steps = 0;
+      nextstep = 0;
+      sec0 = get_seconds();
+      do {
+        for (i = stride; i != 0; i = i - 1) {
+          index = 0;
+          do {
+            test_mem_map_addr[nextstep] = (int32_t)index;  // HERE
+            index = index + stride;
+          } while (index < csize);
         }
         steps = steps + 1;
         sec1 = get_seconds();
@@ -462,6 +572,12 @@ void Process(TextBox& tbox) {
   } else if (strncmp(line, "test pmem ", 10) == 0) {
     int proximity_domain = atoi(&line[10]);
     TestMem(liumos->pmem_allocator, proximity_domain);
+  } else if (strncmp(line, "test pmemw ", 11) == 0) {
+    int proximity_domain = atoi(&line[11]);
+    TestMemWrite(liumos->pmem_allocator, proximity_domain);
+  } else if (strncmp(line, "test memw ", 10) == 0) {
+    int proximity_domain = atoi(&line[10]);
+    TestMemWrite(liumos->dram_allocator, proximity_domain);
   } else if (IsEqualString(line, "free")) {
     Free();
   } else if (IsEqualString(line, "time")) {
