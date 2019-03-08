@@ -367,7 +367,7 @@ void TestMem(PhysicalPageAllocator* allocator, uint32_t proximity_domain) {
   uint64_t nextstep, i, index;
   uint64_t csize, stride;
   uint64_t steps, tsteps;
-  uint64_t sec0, sec1, tick_sum_with_mem_read, tick_sum_without_mem_read;
+  uint64_t t0, t1, tick_sum_overall, tick_sum_loop_only;
   uint64_t kDurationTick =
       (uint64_t)(0.1 * 1e15) / liumos->hpet->GetFemtosecndPerCount();
 
@@ -389,7 +389,7 @@ void TestMem(PhysicalPageAllocator* allocator, uint32_t proximity_domain) {
       // etc...)
       steps = 0;
       nextstep = 0;
-      sec0 = get_seconds();
+      t0 = get_seconds();
       do {
         for (i = stride; i != 0; i = i - 1) {
           nextstep = 0;
@@ -398,13 +398,13 @@ void TestMem(PhysicalPageAllocator* allocator, uint32_t proximity_domain) {
           while (nextstep != 0);
         }
         steps = steps + 1;
-        sec1 = get_seconds();
-      } while ((sec1 - sec0) < kDurationTick);  // originary 20.0
-      tick_sum_with_mem_read = sec1 - sec0;
+        t1 = get_seconds();
+      } while ((t1 - t0) < kDurationTick);  // originary 20.0
+      tick_sum_overall = t1 - t0;
 
       // measure time spent on (loop, instrs, etc...) only
       tsteps = 0;
-      sec0 = get_seconds();
+      t0 = get_seconds();
       do {
         for (i = stride; i != 0; i = i - 1) {
           index = 0;
@@ -413,17 +413,17 @@ void TestMem(PhysicalPageAllocator* allocator, uint32_t proximity_domain) {
           while (index < csize);
         }
         tsteps = tsteps + 1;
-        sec1 = get_seconds();
+        t1 = get_seconds();
       } while (tsteps < steps);
-      tick_sum_without_mem_read = sec1 - sec0;
+      tick_sum_loop_only = t1 - t0;
 
       // avoid negative value
-      if (tick_sum_without_mem_read >= tick_sum_with_mem_read) {
-        tick_sum_without_mem_read = tick_sum_with_mem_read;
+      if (tick_sum_loop_only >= tick_sum_overall) {
+        tick_sum_loop_only = tick_sum_overall;
       }
 
       const uint64_t tick_sum_of_mem_read =
-          tick_sum_with_mem_read - tick_sum_without_mem_read;
+          tick_sum_overall - tick_sum_loop_only;
       const uint64_t pico_second_per_mem_read =
           tick_sum_of_mem_read * liumos->hpet->GetFemtosecndPerCount() /
           (steps * csize) / 1000;
@@ -465,7 +465,7 @@ void TestMemWrite(PhysicalPageAllocator* allocator, uint32_t proximity_domain) {
   uint64_t nextstep, i, index;
   uint64_t csize, stride;
   uint64_t steps, tsteps;
-  uint64_t sec0, sec1, tick_sum_with_mem_read, tick_sum_without_mem_read;
+  uint64_t t0, t1;
   uint64_t kDurationTick =
       (uint64_t)(0.1 * 1e15) / liumos->hpet->GetFemtosecndPerCount();
 
@@ -483,11 +483,10 @@ void TestMemWrite(PhysicalPageAllocator* allocator, uint32_t proximity_domain) {
       }
       test_mem_map_addr[index - stride] = 0;
 
-      // measure time spent on (reading data from memory) + (loop, instrs,
-      // etc...)
+      // measure time spent on (memory access) + (loop, instrs, etc...)
       steps = 0;
       nextstep = 0;
-      sec0 = get_seconds();
+      t0 = get_seconds();
       do {
         for (i = stride; i != 0; i = i - 1) {
           index = 0;
@@ -497,13 +496,13 @@ void TestMemWrite(PhysicalPageAllocator* allocator, uint32_t proximity_domain) {
           } while (index < csize);
         }
         steps = steps + 1;
-        sec1 = get_seconds();
-      } while ((sec1 - sec0) < kDurationTick);  // originary 20.0
-      tick_sum_with_mem_read = sec1 - sec0;
+        t1 = get_seconds();
+      } while ((t1 - t0) < kDurationTick);
+      const uint64_t tick_sum_overall = t1 - t0;
 
       // measure time spent on (loop, instrs, etc...) only
       tsteps = 0;
-      sec0 = get_seconds();
+      t0 = get_seconds();
       do {
         for (i = stride; i != 0; i = i - 1) {
           index = 0;
@@ -512,22 +511,27 @@ void TestMemWrite(PhysicalPageAllocator* allocator, uint32_t proximity_domain) {
           while (index < csize);
         }
         tsteps = tsteps + 1;
-        sec1 = get_seconds();
+        t1 = get_seconds();
       } while (tsteps < steps);
-      tick_sum_without_mem_read = sec1 - sec0;
+      const uint64_t tick_sum_loop_only = t1 - t0;
 
       // avoid negative value
-      if (tick_sum_without_mem_read >= tick_sum_with_mem_read) {
-        tick_sum_without_mem_read = tick_sum_with_mem_read;
+      if (tick_sum_loop_only >= tick_sum_overall) {
+        PutString(", ");
+        continue;
       }
 
-      const uint64_t tick_sum_of_mem_read =
-          tick_sum_with_mem_read - tick_sum_without_mem_read;
+      const uint64_t tick_sum_access_only =
+          tick_sum_overall - tick_sum_loop_only;
       const uint64_t pico_second_per_mem_read =
-          tick_sum_of_mem_read * liumos->hpet->GetFemtosecndPerCount() /
+          tick_sum_access_only * liumos->hpet->GetFemtosecndPerCount() /
           (steps * csize) / 1000;
+      if (pico_second_per_mem_read == 0) {
+        PutString(", ");
+        continue;
+      }
       PutString("0x");
-      PutHex64(pico_second_per_mem_read > 0 ? pico_second_per_mem_read : 1);
+      PutHex64(pico_second_per_mem_read);
       PutString(", ");
     };
     PutString("\n");
