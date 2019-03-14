@@ -99,14 +99,63 @@ void SubTask() {
 GDT gdt_;
 IDT idt_;
 KeyboardController keyboard_ctrl_;
+LiumOS liumos_;
+Sheet virtual_vram_;
+Sheet virtual_screen_;
+Console virtual_console_;
 
-extern "C" void KernelEntry(LiumOS* liumos_) {
-  liumos = liumos_;
+void InitializeVRAMForKernel() {
+  constexpr uint64_t kernel_virtual_vram_base = 0xFFFF'FFFF'8000'0000ULL;
+  const int xsize = liumos->vram_sheet->GetXSize();
+  const int ysize = liumos->vram_sheet->GetYSize();
+  const int ppsl = liumos->vram_sheet->GetPixelsPerScanLine();
+  CreatePageMapping(
+      *liumos->dram_allocator, GetKernelPML4(), kernel_virtual_vram_base,
+      reinterpret_cast<uint64_t>(liumos->vram_sheet->GetBuf()),
+      liumos->vram_sheet->GetBufSize(), kPageAttrPresent | kPageAttrWritable);
+  virtual_vram_.Init(reinterpret_cast<uint8_t*>(kernel_virtual_vram_base),
+                     xsize, ysize, ppsl);
+
+  constexpr uint64_t kernel_virtual_screen_base = 0xFFFF'FFFF'8800'0000ULL;
+  CreatePageMapping(
+      *liumos->dram_allocator, GetKernelPML4(), kernel_virtual_screen_base,
+      reinterpret_cast<uint64_t>(liumos->screen_sheet->GetBuf()),
+      liumos->screen_sheet->GetBufSize(), kPageAttrPresent | kPageAttrWritable);
+  virtual_screen_.Init(reinterpret_cast<uint8_t*>(kernel_virtual_screen_base),
+                       xsize, ysize, ppsl);
+  virtual_screen_.SetParent(&virtual_vram_);
+
+  liumos->screen_sheet = &virtual_screen_;
+  liumos->screen_sheet->DrawRect(0, 0, xsize, ysize, 0xc6c6c6);
+}
+
+extern "C" void KernelEntry(LiumOS* liumos_passed) {
+  liumos_ = *liumos_passed;
+  liumos = &liumos_;
+
+  InitializeVRAMForKernel();
+
+  new (&virtual_console_) Console();
+  virtual_console_.SetSheet(liumos->screen_sheet);
+  liumos->main_console = &virtual_console_;
+
   PutString("Hello from kernel!\n");
+  PutStringAndHex("RSP: ", ReadRSP());
 
   ClearIntFlag();
 
-  gdt_.Init();
+  constexpr uint64_t kNumOfKernelStackPages = 128;
+  uint64_t kernel_stack_physical_base =
+      liumos->dram_allocator->AllocPages<uint64_t>(kNumOfKernelStackPages);
+  uint64_t kernel_stack_virtual_base = 0xFFFF'FFFF'2000'0000ULL;
+  CreatePageMapping(*liumos->dram_allocator, GetKernelPML4(),
+                    kernel_stack_virtual_base, kernel_stack_physical_base,
+                    kNumOfKernelStackPages << kPageSizeExponent,
+                    kPageAttrPresent | kPageAttrWritable);
+  uint64_t kernel_stack_pointer =
+      kernel_stack_virtual_base + (kNumOfKernelStackPages << kPageSizeExponent);
+
+  gdt_.Init(kernel_stack_pointer);
   idt_.Init();
   keyboard_ctrl_.Init();
 
@@ -125,7 +174,7 @@ extern "C" void KernelEntry(LiumOS* liumos_) {
   ExecutionContext* sub_context = liumos->exec_ctx_ctrl->Create(
       SubTask, GDT::kKernelCSSelector, sub_context_rsp, GDT::kKernelDSSelector,
       reinterpret_cast<uint64_t>(&GetKernelPML4()));
-  liumos->scheduler->RegisterExecutionContext(sub_context);
+  // liumos->scheduler->RegisterExecutionContext(sub_context);
 
   // EnableSyscall();
 

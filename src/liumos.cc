@@ -250,8 +250,17 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   InitDoubleBuffer();
   main_console_.SetSheet(liumos->screen_sheet);
 
+  liumos->dram_allocator->Print();
+  constexpr uint64_t kNumOfKernelStackPages = 2;
+  uint64_t kernel_stack_base =
+      liumos->dram_allocator->AllocPages<uint64_t>(kNumOfKernelStackPages);
+  liumos->dram_allocator->Print();
+  PutStringAndHex("\nstack base", kernel_stack_base);
+  uint64_t kernel_stack_pointer =
+      kernel_stack_base + (kNumOfKernelStackPages << kPageSizeExponent);
+
   GDT gdt;
-  gdt.Init();
+  gdt.Init(kernel_stack_pointer);
   IDT idt;
   idt.Init();
   InitPaging();

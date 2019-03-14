@@ -12,6 +12,9 @@ ContextSwitchRequest* IDT::IntHandler(uint64_t intcode,
     handler_list_[intcode](intcode, error_code, info);
     return nullptr;
   }
+  if (intcode == 0x08) {
+    Panic("Double Fault");
+  }
   ExecutionContext* current_context = liumos->scheduler->GetCurrentContext();
   if (intcode == 0x20) {
     liumos->bsp_local_apic->SendEndOfInterrupt();
@@ -111,7 +114,7 @@ void IDT::Init() {
   SetEntry(0x06, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler06);
   SetEntry(0x08, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler08);
   SetEntry(0x0d, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler0D);
-  SetEntry(0x0e, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler0E);
+  SetEntry(0x0e, cs, 1, IDTType::kInterruptGate, 0, AsmIntHandler0E);
   SetEntry(0x20, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler20);
   SetEntry(0x21, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler21);
   WriteIDTR(&idtr);

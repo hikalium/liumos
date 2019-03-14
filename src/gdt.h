@@ -29,11 +29,10 @@ class GDT {
   static constexpr uint64_t kUserDSSelector = kUserDSIndex << 3 | 3;
   static constexpr uint64_t kTSS64Selector = kTSS64Index << 3 | 3;
 
-  void Init(void);
+  void Init(uint64_t kernel_stack_pointer);
   void Print(void);
 
  private:
-  static constexpr uint64_t kKernelStackPages = 2;
   GDTR gdtr_;
   packed_struct GDTDescriptors {
     uint64_t null_segment;
@@ -63,5 +62,4 @@ class GDT {
   }
   descriptors_;
   IA_TSS64 tss64_;
-  uint64_t kernel_stack_addr_;
 };

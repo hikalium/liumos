@@ -12,6 +12,7 @@ void InitGraphics() {
       EFI::graphics_output_protocol->mode->info->horizontal_resolution,
       EFI::graphics_output_protocol->mode->info->vertical_resolution,
       EFI::graphics_output_protocol->mode->info->pixels_per_scan_line);
+  liumos->vram_sheet = &vram_sheet_;
   screen_sheet = &vram_sheet_;
   liumos->screen_sheet = screen_sheet;
 }

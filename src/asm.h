@@ -164,8 +164,10 @@ __attribute__((ms_abi)) uint64_t ReadCR3(void);
 __attribute__((ms_abi)) void WriteCR3(uint64_t);
 __attribute__((ms_abi)) uint64_t CompareAndSwap(uint64_t*, uint64_t);
 __attribute__((ms_abi)) void SwapGS(void);
+__attribute__((ms_abi)) uint64_t ReadRSP(void);
 __attribute__((ms_abi)) void JumpToKernel(void* kernel_entry_point,
-                                          void* vram_sheet);
+                                          void* vram_sheet,
+                                          uint64_t kernel_stack_pointer);
 __attribute__((ms_abi)) void AsmSyscallHandler(void);
 __attribute__((ms_abi)) void AsmIntHandler03(void);
 __attribute__((ms_abi)) void AsmIntHandler06(void);

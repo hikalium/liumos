@@ -65,7 +65,7 @@ constexpr uint16_t kIOPortKeyboardData = 0x0060;
 
 // @libfunc.cc
 int strncmp(const char* s1, const char* s2, size_t n);
-void* memcpy(void* dst, const void* src, size_t n);
+extern "C" void* memcpy(void* dst, const void* src, size_t n);
 void bzero(void* s, size_t n);
 int atoi(const char* str);
 template <typename T>
@@ -83,6 +83,7 @@ packed_struct LiumOS {
     ACPI::SRAT* srat;
     ACPI::SLIT* slit;
   } acpi;
+  Sheet* vram_sheet;
   Sheet* screen_sheet;
   Console* main_console;
   KeyboardController* keyboard_ctrl;

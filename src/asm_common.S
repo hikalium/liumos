@@ -212,7 +212,12 @@ IntHandlerWrapper:
 	push r11
 
 	swapgs
+	push rbp
+	mov rbp, rsp
+	and rsp, -16
 	call IntHandler
+	mov rsp, rbp
+	pop rbp
 	swapgs
 
 	cmp rax, 0
@@ -352,13 +357,26 @@ SwapGS:
 	swapgs
 	ret
 
+.global ReadRSP
+ReadRSP:
+ 	mov rax, rsp
+	ret
+
 .global JumpToKernel
 JumpToKernel:
 	// rcx: kernel ptr
 	// rdx: kernel info
+	// r8: kernel stack
 	// convert calling convention from Microsoft x64 to SystemV AMD64
+	push rbp
+	mov rbp, rsp
+	mov rsp, r8
+
 	mov rdi, rdx
 	call rcx
+
+	mov rsp, rbp
+	pop rbp
 	ret
 
 .global AsmSyscallHandler

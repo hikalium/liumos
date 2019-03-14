@@ -158,5 +158,18 @@ void LoadKernelELF(File& file) {
   }
   PutChar('\n');
 
-  JumpToKernel(entry_point, liumos);
+  constexpr uint64_t kNumOfKernelMainStackPages = 2;
+  uint64_t kernel_main_stack_physical_base =
+      liumos->dram_allocator->AllocPages<uint64_t>(kNumOfKernelMainStackPages);
+  uint64_t kernel_main_stack_virtual_base = 0xFFFF'FFFF'4000'0000ULL;
+  CreatePageMapping(*liumos->dram_allocator, GetKernelPML4(),
+                    kernel_main_stack_virtual_base,
+                    kernel_main_stack_physical_base,
+                    kNumOfKernelMainStackPages << kPageSizeExponent,
+                    kPageAttrPresent | kPageAttrWritable);
+  uint64_t kernel_main_stack_pointer =
+      kernel_main_stack_virtual_base +
+      (kNumOfKernelMainStackPages << kPageSizeExponent);
+
+  JumpToKernel(entry_point, liumos, kernel_main_stack_pointer);
 }
