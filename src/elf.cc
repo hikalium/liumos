@@ -130,15 +130,18 @@ ExecutionContext* LoadELFAndLaunchProcess(File& file) {
 
   const int kNumOfStackPages = 3;
   info.stack_size = kNumOfStackPages << kPageSizeExponent;
-  info.stack_paddr = liumos->dram_allocator->AllocPages<uint64_t>(
+  uint64_t stack_phys_base_addr = liumos->dram_allocator->AllocPages<uint64_t>(
       ByteSizeToPageSize(info.stack_size));
-  info.stack_vaddr = info.stack_paddr;
-  void* sub_context_rsp =
-      reinterpret_cast<void*>(info.stack_vaddr + info.stack_size);
+  constexpr uint64_t stack_virt_base_addr = 0xBEEF'0000;
+  CreatePageMapping(*liumos->dram_allocator, user_page_table,
+                    stack_virt_base_addr, stack_phys_base_addr, info.stack_size,
+                    kPageAttrPresent | kPageAttrUser | kPageAttrWritable);
+  void* stack_pointer =
+      reinterpret_cast<void*>(stack_virt_base_addr + info.stack_size);
 
   ExecutionContext* ctx = liumos->exec_ctx_ctrl->Create(
       reinterpret_cast<void (*)(void)>(entry_point), GDT::kUserCSSelector,
-      sub_context_rsp, GDT::kUserDSSelector,
+      stack_pointer, GDT::kUserDSSelector,
       reinterpret_cast<uint64_t>(&user_page_table));
   liumos->scheduler->RegisterExecutionContext(ctx);
   return ctx;
