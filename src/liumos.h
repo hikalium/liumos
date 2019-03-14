@@ -20,7 +20,11 @@
 #include "sys_constant.h"
 #include "text_box.h"
 
-constexpr uint64_t kKernelBaseAddr = 0xFFFF'FFFF'0000'0000;
+constexpr uint64_t kLAPICRegisterAreaPhysBase = 0x0000'0000'FEE0'0000ULL;
+constexpr uint64_t kLAPICRegisterAreaVirtBase = 0xFFFF'FFFF'FEE0'0000ULL;
+constexpr uint64_t kLAPICRegisterAreaByteSize = 0x0000'0000'0010'0000ULL;
+
+constexpr uint64_t kKernelBaseAddr = 0xFFFF'FFFF'0000'0000ULL;
 
 // @command.cc
 namespace ConsoleCommand {
@@ -106,4 +110,4 @@ extern LiumOS* liumos;
 void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table);
 
 // @syscall.c
-extern "C" void SyscallHandler(uint64_t* args);
+__attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args);

@@ -104,6 +104,7 @@ Sheet virtual_vram_;
 Sheet virtual_screen_;
 Console virtual_console_;
 LocalAPIC bsp_local_apic_;
+CPUFeatureSet cpu_features_;
 
 void InitializeVRAMForKernel() {
   constexpr uint64_t kernel_virtual_vram_base = 0xFFFF'FFFF'8000'0000ULL;
@@ -145,9 +146,25 @@ void LaunchSubTask(KernelVirtualHeapAllocator& kernel_heap_allocator) {
   liumos->scheduler->RegisterExecutionContext(sub_context);
 }
 
+void EnableSyscall() {
+  uint64_t star = GDT::kKernelCSSelector << 32;
+  star |= GDT::kUserCSSelector << 48;
+  WriteMSR(MSRIndex::kSTAR, star);
+
+  uint64_t lstar = reinterpret_cast<uint64_t>(AsmSyscallHandler);
+  WriteMSR(MSRIndex::kLSTAR, lstar);
+
+  uint64_t efer = ReadMSR(MSRIndex::kEFER);
+  efer |= 1;  // SCE
+  WriteMSR(MSRIndex::kEFER, efer);
+}
+
 extern "C" void KernelEntry(LiumOS* liumos_passed) {
   liumos_ = *liumos_passed;
   liumos = &liumos_;
+
+  cpu_features_ = *liumos->cpu_features;
+  liumos->cpu_features = &cpu_features_;
 
   KernelVirtualHeapAllocator kernel_heap_allocator(GetKernelPML4(),
                                                    *liumos->dram_allocator);
@@ -195,7 +212,7 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
 
   LaunchSubTask(kernel_heap_allocator);
 
-  // EnableSyscall();
+  EnableSyscall();
 
   TextBox console_text_box;
   while (1) {

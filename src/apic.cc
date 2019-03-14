@@ -13,14 +13,17 @@ void LocalAPIC::Init(void) {
     base_msr = ReadMSR(MSRIndex::kLocalAPICBase);
   }
 
-  PutString("LocalAPIC mode: ");
+  base_addr_ = (base_msr & GetPhysAddrMask()) & ~0xfffULL;
+
+  PutString("LocalAPIC at 0x");
+  PutHex64(base_addr_);
+  PutString(" mode: ");
   is_x2apic_ = (base_msr & (1 << 10));
   if (is_x2apic_)
     PutString("x2APIC");
   else
     PutString("xAPIC");
 
-  base_addr_ = (base_msr & GetPhysAddrMask()) & ~0xfffULL;
   CPUID cpuid;
   ReadCPUID(&cpuid, CPUIDIndex::kXTopology, 0);
   id_ = cpuid.edx;
@@ -34,9 +37,7 @@ void LocalAPIC::SendEndOfInterrupt(void) {
     WriteMSR(MSRIndex::kx2APICEndOfInterrupt, 0);
     return;
   }
-  *(uint32_t*)(((ReadMSR(MSRIndex::kLocalAPICBase) & GetPhysAddrMask()) &
-                ~0xfffULL) +
-               0xB0) = 0;
+  *reinterpret_cast<uint32_t*>(kLAPICRegisterAreaVirtBase + 0xB0ULL) = 0;
 }
 
 static uint32_t ReadIOAPICRegister(uint8_t reg_index) {

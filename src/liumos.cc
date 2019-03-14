@@ -149,19 +149,6 @@ void PrintLogoFile() {
   }
 }
 
-void EnableSyscall() {
-  uint64_t star = GDT::kKernelCSSelector << 32;
-  star |= GDT::kUserCSSelector << 48;
-  WriteMSR(MSRIndex::kSTAR, star);
-
-  uint64_t lstar = reinterpret_cast<uint64_t>(AsmSyscallHandler);
-  WriteMSR(MSRIndex::kLSTAR, lstar);
-
-  uint64_t efer = ReadMSR(MSRIndex::kEFER);
-  efer |= 1;  // SCE
-  WriteMSR(MSRIndex::kEFER, efer);
-}
-
 void IdentifyCPU() {
   CPUID cpuid;
 

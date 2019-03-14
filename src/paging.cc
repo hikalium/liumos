@@ -195,6 +195,12 @@ void InitPaging() {
     }
   }
 
+  CreatePageMapping(*liumos->dram_allocator, *kernel_pml4,
+                    kLAPICRegisterAreaVirtBase, kLAPICRegisterAreaPhysBase,
+                    kLAPICRegisterAreaByteSize,
+                    kPageAttrPresent | kPageAttrWritable |
+                        kPageAttrWriteThrough | kPageAttrCacheDisable);
+
   WriteCR3(reinterpret_cast<uint64_t>(kernel_pml4));
   PutStringAndHex("Paging enabled. Kernel CR3", ReadCR3());
   liumos->kernel_pml4 = kernel_pml4;

@@ -396,8 +396,13 @@ AsmSyscallHandler:
 	push rsi
 	push rdi
 	push rax
+
 	mov rcx, rsp
+	mov rbp, rsp
+	and rsp, -16
 	call SyscallHandler
+	mov rsp, rbp
+
 	pop rax
 	pop rdi
 	pop rsi
