@@ -10,11 +10,13 @@ ExecutionContext* ExecutionContextController::Create(void (*rip)(),
                                                      uint16_t cs,
                                                      void* rsp,
                                                      uint16_t ss,
-                                                     uint64_t cr3) {
+                                                     uint64_t cr3,
+                                                     uint64_t rflags) {
   ExecutionContext* context =
       kernel_heap_allocator_.AllocPages<ExecutionContext*>(
           ByteSizeToPageSize(sizeof(ExecutionContext)),
           kPageAttrPresent | kPageAttrWritable);
-  new (context) ExecutionContext(++last_context_id_, rip, cs, rsp, ss, cr3);
+  new (context)
+      ExecutionContext(++last_context_id_, rip, cs, rsp, ss, cr3, rflags);
   return context;
 }

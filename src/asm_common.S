@@ -248,14 +248,12 @@ IntHandlerWrapper:
 	push r10
 	push r11
 
-	swapgs
 	push rbp
 	mov rbp, rsp
 	and rsp, -16
 	call IntHandler
 	mov rsp, rbp
 	pop rbp
-	swapgs
 
 	cmp rax, 0
 	jnz	ContextSwitch
@@ -264,6 +262,7 @@ RestoreScratchRegistersAndIRET:
 	pop r10
 	pop r9
 	pop rax
+
 	pop r8
 	pop rdx
 	pop rcx

@@ -22,6 +22,8 @@ ContextSwitchRequest* IDT::IntHandler(uint64_t intcode,
     }
     context_switch_request_.from = current_context->GetCPUContext();
     context_switch_request_.to = next_context->GetCPUContext();
+    // PutStringAndHex("from", current_context->GetID());
+    // PutStringAndHex("to", next_context->GetID());
     return &context_switch_request_;
   }
   PutStringAndHex("Int#", intcode);

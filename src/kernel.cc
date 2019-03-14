@@ -142,7 +142,7 @@ void LaunchSubTask(KernelVirtualHeapAllocator& kernel_heap_allocator) {
 
   ExecutionContext* sub_context = liumos->exec_ctx_ctrl->Create(
       SubTask, GDT::kKernelCSSelector, sub_context_rsp, GDT::kKernelDSSelector,
-      reinterpret_cast<uint64_t>(&GetKernelPML4()));
+      reinterpret_cast<uint64_t>(&GetKernelPML4()), kRFlagsInterruptEnable);
   liumos->scheduler->RegisterExecutionContext(sub_context);
 }
 
@@ -183,7 +183,7 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
   liumos->exec_ctx_ctrl = &exec_ctx_ctrl_;
 
   ExecutionContext* root_context =
-      liumos->exec_ctx_ctrl->Create(nullptr, 0, nullptr, 0, ReadCR3());
+      liumos->exec_ctx_ctrl->Create(nullptr, 0, nullptr, 0, ReadCR3(), 0);
 
   Scheduler scheduler_(root_context);
   liumos->scheduler = &scheduler_;
