@@ -100,7 +100,7 @@ const Elf64_Ehdr* LoadELF(File& file, IA_PML4& page_root) {
     PutString(" map_size:");
     PutHex64ZeroFilled(map_size);
     PutChar('\n');
-    uint64_t page_attr = kPageAttrPresent;
+    uint64_t page_attr = kPageAttrPresent | kPageAttrUser;
     if (phdr->p_flags & PF_W)
       page_attr |= kPageAttrWritable;
     uint8_t* phys_buf = liumos->dram_allocator->AllocPages<uint8_t*>(

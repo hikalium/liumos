@@ -130,12 +130,27 @@ void InitializeVRAMForKernel() {
   liumos->screen_sheet->DrawRect(0, 0, xsize, ysize, 0xc6c6c6);
 }
 
+void LaunchSubTask(KernelVirtualHeapAllocator& kernel_heap_allocator) {
+  const int kNumOfStackPages = 3;
+  void* sub_context_stack_base = kernel_heap_allocator.AllocPages<void*>(
+      kNumOfStackPages, kPageAttrPresent | kPageAttrWritable);
+  void* sub_context_rsp = reinterpret_cast<void*>(
+      reinterpret_cast<uint64_t>(sub_context_stack_base) +
+      (kNumOfStackPages << kPageSizeExponent));
+  PutStringAndHex("SubTask stack base", sub_context_stack_base);
+
+  ExecutionContext* sub_context = liumos->exec_ctx_ctrl->Create(
+      SubTask, GDT::kKernelCSSelector, sub_context_rsp, GDT::kKernelDSSelector,
+      reinterpret_cast<uint64_t>(&GetKernelPML4()));
+  liumos->scheduler->RegisterExecutionContext(sub_context);
+}
+
 extern "C" void KernelEntry(LiumOS* liumos_passed) {
   liumos_ = *liumos_passed;
   liumos = &liumos_;
 
-  KernelVirtualHeapAllocator kernel_heap_allocator_(GetKernelPML4(),
-                                                    *liumos->dram_allocator);
+  KernelVirtualHeapAllocator kernel_heap_allocator(GetKernelPML4(),
+                                                   *liumos->dram_allocator);
 
   InitializeVRAMForKernel();
 
@@ -145,7 +160,7 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
 
   bsp_local_apic_.Init();
 
-  ExecutionContextController exec_ctx_ctrl_(kernel_heap_allocator_);
+  ExecutionContextController exec_ctx_ctrl_(kernel_heap_allocator);
   liumos->exec_ctx_ctrl = &exec_ctx_ctrl_;
 
   ExecutionContext* root_context =
@@ -178,18 +193,7 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
 
   GetKernelPML4().Print();
 
-  const int kNumOfStackPages = 3;
-  void* sub_context_stack_base =
-      liumos->dram_allocator->AllocPages<void*>(kNumOfStackPages);
-  void* sub_context_rsp = reinterpret_cast<void*>(
-      reinterpret_cast<uint64_t>(sub_context_stack_base) +
-      kNumOfStackPages * (1 << 12));
-  PutStringAndHex("SubTask stack base", sub_context_stack_base);
-
-  ExecutionContext* sub_context = liumos->exec_ctx_ctrl->Create(
-      SubTask, GDT::kKernelCSSelector, sub_context_rsp, GDT::kKernelDSSelector,
-      reinterpret_cast<uint64_t>(&GetKernelPML4()));
-  // liumos->scheduler->RegisterExecutionContext(sub_context);
+  LaunchSubTask(kernel_heap_allocator);
 
   // EnableSyscall();
 
