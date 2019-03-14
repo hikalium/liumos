@@ -28,6 +28,7 @@ ContextSwitchRequest* IDT::IntHandler(uint64_t intcode,
   PutStringAndHex("RIP", info->rip);
   PutStringAndHex("CS Index", info->cs >> 3);
   PutStringAndHex("CS   RPL", info->cs & 3);
+  PutStringAndHex("RSP", info->rsp);
   PutStringAndHex("Error Code", error_code);
   PutStringAndHex("Context#", current_context->GetID());
   if (intcode == 0x08) {
