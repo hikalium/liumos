@@ -11,6 +11,7 @@ LocalAPIC bsp_local_apic;
 CPUFeatureSet cpu_features;
 SerialPort com1;
 File hello_bin_file;
+File pi_bin_file;
 File liumos_elf_file;
 HPET hpet;
 
@@ -214,6 +215,8 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   logo_file.LoadFromEFISimpleFS(L"logo.ppm");
   hello_bin_file.LoadFromEFISimpleFS(L"hello.bin");
   liumos->hello_bin_file = &hello_bin_file;
+  pi_bin_file.LoadFromEFISimpleFS(L"pi.bin");
+  liumos->pi_bin_file = &pi_bin_file;
   liumos_elf_file.LoadFromEFISimpleFS(L"LIUMOS.ELF");
   InitGraphics();
   main_console_.SetSheet(liumos->screen_sheet);

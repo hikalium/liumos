@@ -128,7 +128,7 @@ ExecutionContext* LoadELFAndLaunchProcess(File& file) {
   uint8_t* entry_point = reinterpret_cast<uint8_t*>(ehdr->e_entry);
   PutStringAndHex("Entry address: ", entry_point);
 
-  const int kNumOfStackPages = 3;
+  const int kNumOfStackPages = 32;
   info.stack_size = kNumOfStackPages << kPageSizeExponent;
   uint64_t stack_phys_base_addr = liumos->dram_allocator->AllocPages<uint64_t>(
       ByteSizeToPageSize(info.stack_size));

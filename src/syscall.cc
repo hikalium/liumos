@@ -30,6 +30,7 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
       StoreIntFlagAndHalt();
     };
   } else if (idx == kSyscallIndex_arch_prctl) {
+    Panic("arch_prctl!");
     if (args[1] == kArchSetFS) {
       WriteMSR(MSRIndex::kFSBase, args[2]);
       return;
@@ -37,7 +38,6 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     PutStringAndHex("arg1", args[1]);
     PutStringAndHex("arg2", args[2]);
     PutStringAndHex("arg3", args[3]);
-    Panic("arch_prctl!");
   }
   PutStringAndHex("idx", idx);
   Panic("syscall handler!");

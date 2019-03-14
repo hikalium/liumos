@@ -170,11 +170,15 @@ __attribute__((ms_abi)) void JumpToKernel(void* kernel_entry_point,
                                           void* vram_sheet,
                                           uint64_t kernel_stack_pointer);
 __attribute__((ms_abi)) void AsmSyscallHandler(void);
+__attribute__((ms_abi)) void AsmIntHandler00_DivideError(void);
 __attribute__((ms_abi)) void AsmIntHandler03(void);
 __attribute__((ms_abi)) void AsmIntHandler06(void);
+__attribute__((ms_abi)) void AsmIntHandler07_DeviceNotAvailable(void);
 __attribute__((ms_abi)) void AsmIntHandler08(void);
 __attribute__((ms_abi)) void AsmIntHandler0D(void);
 __attribute__((ms_abi)) void AsmIntHandler0E(void);
+__attribute__((ms_abi)) void AsmIntHandler10_x87FPUError(void);
+__attribute__((ms_abi)) void AsmIntHandler13_SIMDFPException(void);
 __attribute__((ms_abi)) void AsmIntHandler20(void);
 __attribute__((ms_abi)) void AsmIntHandler21(void);
 __attribute__((ms_abi)) void AsmIntHandlerNotImplemented(void);

@@ -13,7 +13,7 @@ QEMU_ARGS_PMEM=\
 					 -object memory-backend-file,id=mem1,share=on,mem-path=pmem.img,size=2G \
 					 -device nvdimm,id=nvdimm1,memdev=mem1
 
-APPS=app/hello/hello.bin
+APPS=app/hello/hello.bin app/pi/pi.bin
 
 ifdef SSH_CONNECTION
 QEMU_ARGS+= -vnc :5,password

@@ -51,6 +51,12 @@ ContextSwitchRequest* IDT::IntHandler(uint64_t intcode,
     }
     Panic("Page Fault");
   }
+  for (int i = 0; i < 4; i++) {
+    PutHex64ZeroFilled(info->rsp + i * 8);
+    PutString(": ");
+    PutHex64ZeroFilled(*reinterpret_cast<uint64_t*>(info->rsp + i * 8));
+    PutString("\n");
+  }
 
   if (intcode == 0x03) {
     Panic("Int3 Trap");
@@ -112,11 +118,19 @@ void IDT::Init() {
     handler_list_[i] = nullptr;
   }
 
+  SetEntry(0x00, cs, 1, IDTType::kInterruptGate, 0,
+           AsmIntHandler00_DivideError);
   SetEntry(0x03, cs, 1, IDTType::kInterruptGate, 0, AsmIntHandler03);
   SetEntry(0x06, cs, 1, IDTType::kInterruptGate, 0, AsmIntHandler06);
+  SetEntry(0x07, cs, 1, IDTType::kInterruptGate, 0,
+           AsmIntHandler07_DeviceNotAvailable);
   SetEntry(0x08, cs, 1, IDTType::kInterruptGate, 0, AsmIntHandler08);
   SetEntry(0x0d, cs, 1, IDTType::kInterruptGate, 0, AsmIntHandler0D);
   SetEntry(0x0e, cs, 1, IDTType::kInterruptGate, 0, AsmIntHandler0E);
+  SetEntry(0x10, cs, 1, IDTType::kInterruptGate, 0,
+           AsmIntHandler10_x87FPUError);
+  SetEntry(0x13, cs, 1, IDTType::kInterruptGate, 0,
+           AsmIntHandler13_SIMDFPException);
   SetEntry(0x20, cs, 1, IDTType::kInterruptGate, 0, AsmIntHandler20);
   SetEntry(0x21, cs, 1, IDTType::kInterruptGate, 0, AsmIntHandler21);
   WriteIDTR(&idtr);

@@ -59,6 +59,15 @@ ReadSSSelector:
 	mov ax, ss
 	ret
 
+.global AsmIntHandler00_DivideError
+AsmIntHandler00_DivideError:
+	push rcx
+	push rdx
+	push r8
+	mov rcx, 0x00
+	lea r8, [rsp + 8 * 3]
+	jmp IntHandlerWrapper
+
 .global AsmIntHandler03
 AsmIntHandler03:
 	push rcx
@@ -74,6 +83,15 @@ AsmIntHandler06:
 	push rdx
 	push r8
 	mov rcx, 0x06
+	lea r8, [rsp + 8 * 3]
+	jmp IntHandlerWrapper
+
+.global AsmIntHandler07_DeviceNotAvailable
+AsmIntHandler07_DeviceNotAvailable:
+	push rcx
+	push rdx
+	push r8
+	mov rcx, 0x07
 	lea r8, [rsp + 8 * 3]
 	jmp IntHandlerWrapper
 
@@ -105,6 +123,24 @@ AsmIntHandler0E:
 	mov rcx, 0x0E
 	mov rdx, [rsp + 8 * 3] // error_code
 	lea r8, [rsp + 8 * 4]
+	jmp IntHandlerWrapper
+
+.global AsmIntHandler10_x87FPUError
+AsmIntHandler10_x87FPUError:
+	push rcx
+	push rdx
+	push r8
+	mov rcx, 0x10
+	lea r8, [rsp + 8 * 3]
+	jmp IntHandlerWrapper
+
+.global AsmIntHandler13_SIMDFPException
+AsmIntHandler13_SIMDFPException:
+	push rcx
+	push rdx
+	push r8
+	mov rcx, 0x13
+	lea r8, [rsp + 8 * 3]
 	jmp IntHandlerWrapper
 
 .global AsmIntHandler20
@@ -380,15 +416,20 @@ JumpToKernel:
 	pop rbp
 	ret
 
+// Linux kernel x86-64 syscall:
+//   idx: RAX
+//   args: RDI, RSI, RDX, R10, R8, R9
 .global AsmSyscallHandler
 AsmSyscallHandler:
 	push rcx
 	push rbx
 	push rbp
+	push r11
 	push r12
 	push r13
 	push r14
 	push r15
+
 	push r9
 	push r8
 	push r10
@@ -410,10 +451,12 @@ AsmSyscallHandler:
 	pop r10
 	pop r8
 	pop r9
+
 	pop r15
 	pop r14
 	pop r13
 	pop r12
+	pop r11
 	pop rbp
 	pop rbx
 	pop rcx

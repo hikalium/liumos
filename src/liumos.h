@@ -99,6 +99,7 @@ packed_struct LiumOS {
   HPET* hpet;
   EFI::MemoryMap* efi_memory_map;
   File* hello_bin_file;
+  File* pi_bin_file;
   IA_PML4* kernel_pml4;
   Scheduler* scheduler;
   ExecutionContextController* exec_ctx_ctrl;
