@@ -25,6 +25,7 @@ void LocalAPIC::Init(void) {
   ReadCPUID(&cpuid, CPUIDIndex::kXTopology, 0);
   id_ = cpuid.edx;
   PutStringAndHex(" id", id_);
+  liumos->bsp_local_apic = this;
 }
 
 void LocalAPIC::SendEndOfInterrupt(void) {

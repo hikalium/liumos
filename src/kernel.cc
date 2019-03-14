@@ -103,6 +103,7 @@ LiumOS liumos_;
 Sheet virtual_vram_;
 Sheet virtual_screen_;
 Console virtual_console_;
+LocalAPIC bsp_local_apic_;
 
 void InitializeVRAMForKernel() {
   constexpr uint64_t kernel_virtual_vram_base = 0xFFFF'FFFF'8000'0000ULL;
@@ -133,11 +134,25 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
   liumos_ = *liumos_passed;
   liumos = &liumos_;
 
+  KernelVirtualHeapAllocator kernel_heap_allocator_(GetKernelPML4(),
+                                                    *liumos->dram_allocator);
+
   InitializeVRAMForKernel();
 
   new (&virtual_console_) Console();
   virtual_console_.SetSheet(liumos->screen_sheet);
   liumos->main_console = &virtual_console_;
+
+  bsp_local_apic_.Init();
+
+  ExecutionContextController exec_ctx_ctrl_(kernel_heap_allocator_);
+  liumos->exec_ctx_ctrl = &exec_ctx_ctrl_;
+
+  ExecutionContext* root_context =
+      liumos->exec_ctx_ctrl->Create(nullptr, 0, nullptr, 0, ReadCR3());
+
+  Scheduler scheduler_(root_context);
+  liumos->scheduler = &scheduler_;
 
   PutString("Hello from kernel!\n");
   PutStringAndHex("RSP: ", ReadRSP());

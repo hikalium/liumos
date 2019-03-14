@@ -250,12 +250,9 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   InitDoubleBuffer();
   main_console_.SetSheet(liumos->screen_sheet);
 
-  liumos->dram_allocator->Print();
   constexpr uint64_t kNumOfKernelStackPages = 2;
   uint64_t kernel_stack_base =
       liumos->dram_allocator->AllocPages<uint64_t>(kNumOfKernelStackPages);
-  liumos->dram_allocator->Print();
-  PutStringAndHex("\nstack base", kernel_stack_base);
   uint64_t kernel_stack_pointer =
       kernel_stack_base + (kNumOfKernelStackPages << kPageSizeExponent);
 
@@ -266,17 +263,7 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   InitPaging();
   keyboard_ctrl_.Init();
 
-  ExecutionContextController exec_ctx_ctrl_;
-  liumos->exec_ctx_ctrl = &exec_ctx_ctrl_;
-
-  ExecutionContext* root_context =
-      liumos->exec_ctx_ctrl->Create(nullptr, 0, nullptr, 0, ReadCR3());
-
-  Scheduler scheduler_(root_context);
-  liumos->scheduler = &scheduler_;
-
   bsp_local_apic.Init();
-  liumos->bsp_local_apic = &bsp_local_apic;
   Disable8259PIC();
 
   InitIOAPIC(bsp_local_apic.GetID());

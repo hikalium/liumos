@@ -83,7 +83,8 @@ AsmIntHandler08:
 	push rdx
 	push r8
 	mov rcx, 0x08
-	lea r8, [rsp + 8 * 3]
+	mov rdx, [rsp + 8 * 3] // error_code
+	lea r8, [rsp + 8 * 4]
 	jmp IntHandlerWrapper
 
 .global AsmIntHandler0D

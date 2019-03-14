@@ -12,9 +12,6 @@ ContextSwitchRequest* IDT::IntHandler(uint64_t intcode,
     handler_list_[intcode](intcode, error_code, info);
     return nullptr;
   }
-  if (intcode == 0x08) {
-    Panic("Double Fault");
-  }
   ExecutionContext* current_context = liumos->scheduler->GetCurrentContext();
   if (intcode == 0x20) {
     liumos->bsp_local_apic->SendEndOfInterrupt();
@@ -29,9 +26,13 @@ ContextSwitchRequest* IDT::IntHandler(uint64_t intcode,
   }
   PutStringAndHex("Int#", intcode);
   PutStringAndHex("RIP", info->rip);
-  PutStringAndHex("CS", info->cs);
+  PutStringAndHex("CS Index", info->cs >> 3);
+  PutStringAndHex("CS   RPL", info->cs & 3);
   PutStringAndHex("Error Code", error_code);
   PutStringAndHex("Context#", current_context->GetID());
+  if (intcode == 0x08) {
+    Panic("Double Fault");
+  }
   if (intcode != 0x0E || ReadCR2() != info->rip) {
     PutStringAndHex("Memory dump at", info->rip);
     for (int i = 0; i < 16; i++) {
