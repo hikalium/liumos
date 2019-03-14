@@ -9,8 +9,6 @@ constexpr uint64_t kArchSetFS = 0x1002;
 // constexpr uint64_t kArchGetGS = 0x1004;
 
 __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
-  for (;;) {
-  };
   uint64_t idx = args[0];
   if (idx == kSyscallIndex_sys_write) {
     const uint64_t fildes = args[1];

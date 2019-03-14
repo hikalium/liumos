@@ -133,6 +133,7 @@ enum class MSRIndex : uint32_t {
   kEFER = 0xC0000080,
   kSTAR = 0xC0000081,
   kLSTAR = 0xC0000082,
+  kFMASK = 0xC0000084,
   kFSBase = 0xC000'0100,
   kKernelGSBase = 0xC0000102,
 };

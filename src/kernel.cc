@@ -154,6 +154,8 @@ void EnableSyscall() {
   uint64_t lstar = reinterpret_cast<uint64_t>(AsmSyscallHandler);
   WriteMSR(MSRIndex::kLSTAR, lstar);
 
+  WriteMSR(MSRIndex::kFMASK, 1ULL << 9);
+
   uint64_t efer = ReadMSR(MSRIndex::kEFER);
   efer |= 1;  // SCE
   WriteMSR(MSRIndex::kEFER, efer);
@@ -202,7 +204,7 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
   uint64_t kernel_stack_pointer =
       kernel_stack_virtual_base + (kNumOfKernelStackPages << kPageSizeExponent);
 
-  gdt_.Init(kernel_stack_pointer);
+  gdt_.Init(kernel_stack_pointer, kernel_stack_pointer);
   idt_.Init();
   keyboard_ctrl_.Init();
 

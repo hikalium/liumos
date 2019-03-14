@@ -112,13 +112,13 @@ void IDT::Init() {
     handler_list_[i] = nullptr;
   }
 
-  SetEntry(0x03, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler03);
-  SetEntry(0x06, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler06);
-  SetEntry(0x08, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler08);
-  SetEntry(0x0d, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler0D);
-  SetEntry(0x0e, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler0E);
-  SetEntry(0x20, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler20);
-  SetEntry(0x21, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler21);
+  SetEntry(0x03, cs, 1, IDTType::kInterruptGate, 0, AsmIntHandler03);
+  SetEntry(0x06, cs, 1, IDTType::kInterruptGate, 0, AsmIntHandler06);
+  SetEntry(0x08, cs, 1, IDTType::kInterruptGate, 0, AsmIntHandler08);
+  SetEntry(0x0d, cs, 1, IDTType::kInterruptGate, 0, AsmIntHandler0D);
+  SetEntry(0x0e, cs, 1, IDTType::kInterruptGate, 0, AsmIntHandler0E);
+  SetEntry(0x20, cs, 1, IDTType::kInterruptGate, 0, AsmIntHandler20);
+  SetEntry(0x21, cs, 1, IDTType::kInterruptGate, 0, AsmIntHandler21);
   WriteIDTR(&idtr);
   liumos->idt = this;
 }

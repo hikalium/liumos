@@ -243,8 +243,13 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   uint64_t kernel_stack_pointer =
       kernel_stack_base + (kNumOfKernelStackPages << kPageSizeExponent);
 
+  uint64_t ist1_base =
+      liumos->dram_allocator->AllocPages<uint64_t>(kNumOfKernelStackPages);
+  uint64_t ist1_pointer =
+      ist1_base + (kNumOfKernelStackPages << kPageSizeExponent);
+
   GDT gdt;
-  gdt.Init(kernel_stack_pointer);
+  gdt.Init(kernel_stack_pointer, ist1_pointer);
   IDT idt;
   idt.Init();
   InitPaging();

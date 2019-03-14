@@ -29,7 +29,7 @@ class GDT {
   static constexpr uint64_t kUserDSSelector = kUserDSIndex << 3 | 3;
   static constexpr uint64_t kTSS64Selector = kTSS64Index << 3 | 3;
 
-  void Init(uint64_t kernel_stack_pointer);
+  void Init(uint64_t kernel_stack_pointer, uint64_t ist1_pointer);
   void Print(void);
 
  private:
