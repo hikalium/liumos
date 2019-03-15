@@ -151,31 +151,31 @@ void PrintLogoFile() {
 
 void IdentifyCPU() {
   CPUID cpuid;
+  CPUFeatureSet& f = cpu_features;
 
   ReadCPUID(&cpuid, 0, 0);
-  const uint32_t kMaxCPUID = cpuid.eax;
-  PutStringAndHex("Max CPUID", kMaxCPUID);
-  cpu_features.max_cpuid = kMaxCPUID;
+  f.max_cpuid = cpuid.eax;
 
   ReadCPUID(&cpuid, 0x8000'0000, 0);
-  const uint32_t kMaxExtendedCPUID = cpuid.eax;
-  PutStringAndHex("Max Extended CPUID", kMaxExtendedCPUID);
-  cpu_features.max_extended_cpuid = kMaxExtendedCPUID;
+  f.max_extended_cpuid = cpuid.eax;
 
   ReadCPUID(&cpuid, 1, 0);
-  uint8_t cpu_family = ((cpuid.eax >> 16) & 0xff0) | ((cpuid.eax >> 8) & 0xf);
-  uint8_t cpu_model = ((cpuid.eax >> 12) & 0xf0) | ((cpuid.eax >> 4) & 0xf);
-  uint8_t cpu_stepping = cpuid.eax & 0xf;
-  PutStringAndHex("CPU family  ", cpu_family);
-  PutStringAndHex("CPU model   ", cpu_model);
-  PutStringAndHex("CPU stepping", cpu_stepping);
+  f.family = ((cpuid.eax >> 16) & 0xff0) | ((cpuid.eax >> 8) & 0xf);
+  f.model = ((cpuid.eax >> 12) & 0xf0) | ((cpuid.eax >> 4) & 0xf);
+  f.stepping = cpuid.eax & 0xf;
   if (!(cpuid.edx & kCPUID01H_EDXBitAPIC))
     Panic("APIC not supported");
   if (!(cpuid.edx & kCPUID01H_EDXBitMSR))
     Panic("MSR not supported");
-  cpu_features.x2apic = cpuid.ecx & kCPUID01H_ECXBitx2APIC;
+  f.x2apic = cpuid.ecx & kCPUID01H_ECXBitx2APIC;
+  f.clfsh = cpuid.edx & (1 << 19);
 
-  if (0x8000'0004 <= kMaxExtendedCPUID) {
+  if (7 <= f.max_cpuid) {
+    ReadCPUID(&cpuid, 7, 0);
+    f.clflushopt = cpuid.ebx & (1 << 23);
+  }
+
+  if (0x8000'0004 <= f.max_extended_cpuid) {
     for (int i = 0; i < 3; i++) {
       ReadCPUID(&cpuid, 0x8000'0002 + i, 0);
       *reinterpret_cast<uint32_t*>(&cpu_features.brand_string[i * 16 + 0]) =
@@ -187,24 +187,20 @@ void IdentifyCPU() {
       *reinterpret_cast<uint32_t*>(&cpu_features.brand_string[i * 16 + 12]) =
           cpuid.edx;
     }
-    PutString(cpu_features.brand_string);
-    PutChar('\n');
   }
 
-  if (CPUIDIndex::kMaxAddr <= kMaxExtendedCPUID) {
+  if (CPUIDIndex::kMaxAddr <= f.max_extended_cpuid) {
     ReadCPUID(&cpuid, CPUIDIndex::kMaxAddr, 0);
     IA32_MaxPhyAddr maxaddr;
     maxaddr.data = cpuid.eax;
-    cpu_features.max_phy_addr = maxaddr.bits.physical_address_bits;
+    f.max_phy_addr = maxaddr.bits.physical_address_bits;
   } else {
     PutString("CPUID function 80000008H not supported.\n");
     PutString("Assuming Physical address bits = 36\n");
-    cpu_features.max_phy_addr = 36;
+    f.max_phy_addr = 36;
   }
-  PutStringAndHex("MAX_PHY_ADDR", cpu_features.max_phy_addr);
-  cpu_features.phy_addr_mask = (1ULL << cpu_features.max_phy_addr) - 1;
-  PutStringAndHex("phy_addr_mask", cpu_features.phy_addr_mask);
-  liumos->cpu_features = &cpu_features;
+  f.phy_addr_mask = (1ULL << f.max_phy_addr) - 1;
+  liumos->cpu_features = &f;
 }
 
 void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {

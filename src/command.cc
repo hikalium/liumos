@@ -592,6 +592,21 @@ void Process(TextBox& tbox) {
   } else if (IsEqualString(line, "pi.bin")) {
     ExecutionContext* ctx = LoadELFAndLaunchProcess(*liumos->pi_bin_file);
     ctx->WaitUntilExit();
+  } else if (IsEqualString(line, "cpuid")) {
+    assert(liumos->cpu_features);
+    CPUFeatureSet& f = *liumos->cpu_features;
+    PutStringAndHex("Max CPUID", f.max_cpuid);
+    PutStringAndHex("Max Extended CPUID", f.max_extended_cpuid);
+    PutStringAndHex("family  ", f.family);
+    PutStringAndHex("model   ", f.model);
+    PutStringAndHex("stepping", f.stepping);
+    PutString(f.brand_string);
+    PutChar('\n');
+    PutStringAndHex("MAX_PHY_ADDR", f.max_phy_addr);
+    PutStringAndHex("phy_addr_mask", f.phy_addr_mask);
+    PutStringAndBool("CLFLUSH supported", f.clfsh);
+    PutStringAndBool("CLFLUSHOPT supported", f.clflushopt);
+
   } else if (IsEqualString(line, "help")) {
     PutString("hello: Nothing to say.\n");
     PutString("show xsdt: Print XSDT Entries\n");
