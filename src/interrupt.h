@@ -2,17 +2,12 @@
 #include "ring_buffer.h"
 #include "scheduler.h"
 
-packed_struct ContextSwitchRequest {
-  CPUContext* from;
-  CPUContext* to;
-};
-
 using InterruptHandler = void (*)(uint64_t intcode, InterruptInfo* info);
 
 class IDT {
  public:
   void Init();
-  ContextSwitchRequest* IntHandler(uint64_t intcode, InterruptInfo* info);
+  void IntHandler(uint64_t intcode, InterruptInfo* info);
   void SetIntHandler(uint64_t intcode, InterruptHandler handler);
 
  private:

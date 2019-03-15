@@ -1,13 +1,12 @@
 #include "liumos.h"
 #include "scheduler.h"
 
-__attribute__((ms_abi)) extern "C" ContextSwitchRequest* IntHandler(
-    uint64_t intcode,
-    InterruptInfo* info) {
-  return liumos->idt->IntHandler(intcode, info);
+__attribute__((ms_abi)) extern "C" void IntHandler(uint64_t intcode,
+                                                   InterruptInfo* info) {
+  liumos->idt->IntHandler(intcode, info);
 }
 
-ContextSwitchRequest* IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
+void IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
   if (ReadRSP() < kKernelBaseAddr) {
     ExecutionContext* current_context = liumos->scheduler->GetCurrentContext();
     PutStringAndHex("Int#", intcode);
@@ -22,7 +21,7 @@ ContextSwitchRequest* IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
   }
   if (intcode <= 0xFF && handler_list_[intcode]) {
     handler_list_[intcode](intcode, info);
-    return nullptr;
+    return;
   }
   ExecutionContext* current_context = liumos->scheduler->GetCurrentContext();
   if (intcode == 0x20) {
@@ -30,7 +29,7 @@ ContextSwitchRequest* IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
     ExecutionContext* next_context = liumos->scheduler->SwitchContext();
     if (!next_context) {
       // no need to switching context.
-      return nullptr;
+      return;
     }
     auto from = current_context->GetCPUContext();
     from->cr3 = ReadCR3();
@@ -40,9 +39,9 @@ ContextSwitchRequest* IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
     info->greg = to->greg;
     info->int_ctx = to->int_ctx;
     if (from->cr3 == to->cr3)
-      return nullptr;
+      return;
     WriteCR3(to->cr3);
-    return nullptr;
+    return;
   }
   PutStringAndHex("Int#", intcode);
   PutStringAndHex("at CPL", info->int_ctx.cs & 3);
@@ -83,7 +82,7 @@ ContextSwitchRequest* IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
     PutStringAndHex("Handler current RSP", ReadRSP());
     PutString("Int3\n");
     PutStringAndHex("CS      ", info->int_ctx.cs);
-    return nullptr;
+    return;
   }
   if (intcode == 0x06) {
     Panic("Invalid Opcode");
