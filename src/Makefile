@@ -1,11 +1,11 @@
-OBJS= acpi.o apic.o asm_common.o console.o command.o \
+OBJS= acpi.o apic.o asm.o console.o command.o \
 		 efi.o efimain.o elf.o execution_context.o file.o \
 		 gdt.o generic.o graphics.o guid.o \
 		 hpet.o interrupt.o keyboard.o\
 		 libfunc.o liumos.o paging.o phys_page_allocator.o \
 		 scheduler.o serial.o sheet.o sys_constant.o syscall.o text_box.o \
 		 font.gen.o
-KERNEL_SRCS= acpi.cc apic.cc asm_common.S \
+KERNEL_SRCS= acpi.cc apic.cc asm.S \
 						 console.cc command.cc\
 						 efi.cc elf.cc execution_context.cc \
 						 gdt.cc generic.cc guid.cc \
