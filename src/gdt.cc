@@ -6,12 +6,13 @@ void GDT::Init(uint64_t kernel_stack_pointer, uint64_t ist1_pointer) {
                                      kCSDescBitLongMode | kCSDescBitReadable;
   descriptors_.kernel_data_segment =
       kDescBitTypeData | kDescBitPresent | kDSDescBitWritable;
-  descriptors_.user_code_segment = kDescBitTypeCode | kDescBitPresent |
-                                   kCSDescBitLongMode | kCSDescBitReadable |
-                                   (3ULL << kDescBitOfsDPL);
+  descriptors_.user_code_segment_32 = 0;
   descriptors_.user_data_segment = kDescBitTypeData | kDescBitPresent |
                                    kDSDescBitWritable |
                                    (3ULL << kDescBitOfsDPL);
+  descriptors_.user_code_segment_64 = kDescBitTypeCode | kDescBitPresent |
+                                      kCSDescBitLongMode | kCSDescBitReadable |
+                                      (3ULL << kDescBitOfsDPL);
   bzero(&descriptors_.task_state_segment, sizeof(GDTDescriptors::TSS64Entry));
   descriptors_.task_state_segment.attr = 0b1000'0000'1000'1001 | (3 << 5);
   descriptors_.task_state_segment.SetBaseAddr(&tss64_);

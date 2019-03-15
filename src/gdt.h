@@ -19,15 +19,17 @@ class GDT {
 
   static constexpr uint64_t kKernelCSIndex = 1;
   static constexpr uint64_t kKernelDSIndex = 2;
-  static constexpr uint64_t kUserCSIndex = 3;
+  static constexpr uint64_t kUserCS32Index = 3;
   static constexpr uint64_t kUserDSIndex = 4;
-  static constexpr uint64_t kTSS64Index = 5;
+  static constexpr uint64_t kUserCS64Index = 5;
+  static constexpr uint64_t kTSS64Index = 6;
 
   static constexpr uint64_t kKernelCSSelector = kKernelCSIndex << 3;
   static constexpr uint64_t kKernelDSSelector = kKernelDSIndex << 3;
-  static constexpr uint64_t kUserCSSelector = kUserCSIndex << 3 | 3;
+  static constexpr uint64_t kUserCS32Selector = kUserCS32Index << 3 | 3;
   static constexpr uint64_t kUserDSSelector = kUserDSIndex << 3 | 3;
-  static constexpr uint64_t kTSS64Selector = kTSS64Index << 3 | 3;
+  static constexpr uint64_t kUserCS64Selector = kUserCS64Index << 3 | 3;
+  static constexpr uint64_t kTSS64Selector = kTSS64Index << 3;
 
   void Init(uint64_t kernel_stack_pointer, uint64_t ist1_pointer);
   void Print(void);
@@ -38,8 +40,9 @@ class GDT {
     uint64_t null_segment;
     uint64_t kernel_code_segment;
     uint64_t kernel_data_segment;
-    uint64_t user_code_segment;
+    uint64_t user_code_segment_32;
     uint64_t user_data_segment;
+    uint64_t user_code_segment_64;
     packed_struct TSS64Entry {
       uint16_t limit_low;
       uint16_t base_low;

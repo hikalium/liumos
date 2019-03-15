@@ -26,6 +26,8 @@ constexpr uint64_t kLAPICRegisterAreaByteSize = 0x0000'0000'0010'0000ULL;
 
 constexpr uint64_t kKernelBaseAddr = 0xFFFF'FFFF'0000'0000ULL;
 
+constexpr uint64_t kKernelStackPagesForEachProcess = 2;
+
 // @command.cc
 namespace ConsoleCommand {
 void ShowNFIT(void);
@@ -96,6 +98,7 @@ packed_struct LiumOS {
   CPUFeatureSet* cpu_features;
   PhysicalPageAllocator* dram_allocator;
   PhysicalPageAllocator* pmem_allocator;
+  KernelVirtualHeapAllocator* kernel_heap_allocator;
   HPET* hpet;
   EFI::MemoryMap* efi_memory_map;
   File* hello_bin_file;

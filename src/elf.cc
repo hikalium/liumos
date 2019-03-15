@@ -140,9 +140,13 @@ ExecutionContext* LoadELFAndLaunchProcess(File& file) {
       reinterpret_cast<void*>(stack_virt_base_addr + info.stack_size);
 
   ExecutionContext* ctx = liumos->exec_ctx_ctrl->Create(
-      reinterpret_cast<void (*)(void)>(entry_point), GDT::kUserCSSelector,
+      reinterpret_cast<void (*)(void)>(entry_point), GDT::kUserCS64Selector,
       stack_pointer, GDT::kUserDSSelector,
-      reinterpret_cast<uint64_t>(&user_page_table), kRFlagsInterruptEnable);
+      reinterpret_cast<uint64_t>(&user_page_table), kRFlagsInterruptEnable,
+      liumos->kernel_heap_allocator->AllocPages<uint64_t>(
+          kKernelStackPagesForEachProcess,
+          kPageAttrPresent | kPageAttrWritable) +
+          kPageSize * kKernelStackPagesForEachProcess);
   liumos->scheduler->RegisterExecutionContext(ctx);
   return ctx;
 }

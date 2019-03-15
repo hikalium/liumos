@@ -9,7 +9,6 @@ constexpr uint64_t kArchSetFS = 0x1002;
 // constexpr uint64_t kArchGetGS = 0x1004;
 
 __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
-  ClearIntFlag();
   uint64_t idx = args[0];
   if (idx == kSyscallIndex_sys_write) {
     const uint64_t fildes = args[1];
@@ -27,6 +26,8 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     const uint64_t exit_code = args[1];
     PutStringAndHex("exit: exit_code", exit_code);
     liumos->scheduler->KillCurrentContext();
+    ExecutionContext* ctx = liumos->scheduler->GetCurrentContext();
+    ChangeRSP(ctx->GetKernelRSP());
     for (;;) {
       StoreIntFlagAndHalt();
     };

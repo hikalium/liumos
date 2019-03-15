@@ -33,7 +33,7 @@ tools : .FORCE
 pmem.img :
 	qemu-img create $@ 2G
 
-app/% :
+app/% : .FORCE
 	make -C $(dir $@)
 
 files : src/BOOTX64.EFI $(APPS) src/LIUMOS.ELF .FORCE

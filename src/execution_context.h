@@ -40,14 +40,15 @@ class ExecutionContext {
     kRunning,
     kKilled,
   };
-  uint64_t GetID() { return id_; };
-  int GetSchedulerIndex() const { return scheduler_index_; };
+  uint64_t GetID() { return id_; }
+  int GetSchedulerIndex() const { return scheduler_index_; }
   void SetSchedulerIndex(int scheduler_index) {
     scheduler_index_ = scheduler_index;
   };
-  CPUContext* GetCPUContext() { return &cpu_context_; };
+  CPUContext* GetCPUContext() { return &cpu_context_; }
   Status GetStatus() const { return status_; };
-  void SetStatus(Status status) { status_ = status; };
+  void SetStatus(Status status) { status_ = status; }
+  uint64_t GetKernelRSP() { return kernel_rsp_; }
 
   friend class ExecutionContextController;
   void WaitUntilExit();
@@ -59,8 +60,9 @@ class ExecutionContext {
                    void* rsp,
                    uint16_t ss,
                    uint64_t cr3,
-                   uint64_t rflags)
-      : id_(id), status_(Status::kNotScheduled) {
+                   uint64_t rflags,
+                   uint64_t kernel_rsp)
+      : id_(id), status_(Status::kNotScheduled), kernel_rsp_(kernel_rsp) {
     cpu_context_.int_ctx.rip = reinterpret_cast<uint64_t>(rip);
     cpu_context_.int_ctx.cs = cs;
     cpu_context_.int_ctx.rsp = reinterpret_cast<uint64_t>(rsp);
@@ -72,6 +74,7 @@ class ExecutionContext {
   int scheduler_index_;
   volatile Status status_;
   CPUContext cpu_context_;
+  uint64_t kernel_rsp_;
 };
 
 class ExecutionContextController {
@@ -83,7 +86,8 @@ class ExecutionContextController {
                            void* rsp,
                            uint16_t ss,
                            uint64_t cr3,
-                           uint64_t rflags);
+                           uint64_t rflags,
+                           uint64_t kernel_rsp);
 
  private:
   uint64_t last_context_id_;

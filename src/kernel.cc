@@ -142,13 +142,13 @@ void LaunchSubTask(KernelVirtualHeapAllocator& kernel_heap_allocator) {
 
   ExecutionContext* sub_context = liumos->exec_ctx_ctrl->Create(
       SubTask, GDT::kKernelCSSelector, sub_context_rsp, GDT::kKernelDSSelector,
-      reinterpret_cast<uint64_t>(&GetKernelPML4()), kRFlagsInterruptEnable);
+      reinterpret_cast<uint64_t>(&GetKernelPML4()), kRFlagsInterruptEnable, 0);
   liumos->scheduler->RegisterExecutionContext(sub_context);
 }
 
 void EnableSyscall() {
-  uint64_t star = GDT::kKernelCSSelector << 32;
-  star |= GDT::kUserCSSelector << 48;
+  uint64_t star = static_cast<uint64_t>(GDT::kKernelCSSelector) << 32;
+  star |= static_cast<uint64_t>(GDT::kUserCS32Selector) << 48;
   WriteMSR(MSRIndex::kSTAR, star);
 
   uint64_t lstar = reinterpret_cast<uint64_t>(AsmSyscallHandler);
@@ -170,6 +170,7 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
 
   KernelVirtualHeapAllocator kernel_heap_allocator(GetKernelPML4(),
                                                    *liumos->dram_allocator);
+  liumos->kernel_heap_allocator = &kernel_heap_allocator;
 
   InitializeVRAMForKernel();
 
@@ -183,7 +184,7 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
   liumos->exec_ctx_ctrl = &exec_ctx_ctrl_;
 
   ExecutionContext* root_context =
-      liumos->exec_ctx_ctrl->Create(nullptr, 0, nullptr, 0, ReadCR3(), 0);
+      liumos->exec_ctx_ctrl->Create(nullptr, 0, nullptr, 0, ReadCR3(), 0, 0);
 
   Scheduler scheduler_(root_context);
   liumos->scheduler = &scheduler_;
@@ -204,7 +205,11 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
   uint64_t kernel_stack_pointer =
       kernel_stack_virtual_base + (kNumOfKernelStackPages << kPageSizeExponent);
 
-  gdt_.Init(kernel_stack_pointer, kernel_stack_pointer);
+  uint64_t ist1_virt_base = kernel_heap_allocator.AllocPages<uint64_t>(
+      kNumOfKernelStackPages, kPageAttrPresent | kPageAttrWritable);
+
+  gdt_.Init(kernel_stack_pointer,
+            ist1_virt_base + (kNumOfKernelStackPages << kPageSizeExponent));
   idt_.Init();
   keyboard_ctrl_.Init();
 

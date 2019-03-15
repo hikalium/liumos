@@ -6,7 +6,20 @@ __attribute__((ms_abi)) extern "C" ContextSwitchRequest* IntHandler(
     InterruptInfo* info) {
   return liumos->idt->IntHandler(intcode, info);
 }
+
 ContextSwitchRequest* IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
+  if (ReadRSP() < kKernelBaseAddr) {
+    ExecutionContext* current_context = liumos->scheduler->GetCurrentContext();
+    PutStringAndHex("Int#", intcode);
+    PutStringAndHex("at CPL", info->int_ctx.cs & 3);
+    PutStringAndHex("RIP", info->int_ctx.rip);
+    PutStringAndHex("CS      ", info->int_ctx.cs);
+    PutStringAndHex("SS      ", info->int_ctx.ss);
+    PutStringAndHex("RSP", info->int_ctx.rsp);
+    PutStringAndHex("Error Code", info->error_code);
+    PutStringAndHex("Context#", current_context->GetID());
+    Panic("Handling exception in user mode stack");
+  }
   if (intcode <= 0xFF && handler_list_[intcode]) {
     handler_list_[intcode](intcode, info);
     return nullptr;
@@ -29,14 +42,13 @@ ContextSwitchRequest* IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
     if (from->cr3 == to->cr3)
       return nullptr;
     WriteCR3(to->cr3);
-    // PutStringAndHex("from", current_context->GetID());
-    // PutStringAndHex("to", next_context->GetID());
     return nullptr;
   }
   PutStringAndHex("Int#", intcode);
+  PutStringAndHex("at CPL", info->int_ctx.cs & 3);
   PutStringAndHex("RIP", info->int_ctx.rip);
-  PutStringAndHex("CS Index", info->int_ctx.cs >> 3);
-  PutStringAndHex("CS   RPL", info->int_ctx.cs & 3);
+  PutStringAndHex("CS      ", info->int_ctx.cs);
+  PutStringAndHex("SS      ", info->int_ctx.ss);
   PutStringAndHex("RSP", info->int_ctx.rsp);
   PutStringAndHex("Error Code", info->error_code);
   PutStringAndHex("Context#", current_context->GetID());
@@ -68,7 +80,10 @@ ContextSwitchRequest* IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
   }
 
   if (intcode == 0x03) {
-    Panic("Int3 Trap");
+    PutStringAndHex("Handler current RSP", ReadRSP());
+    PutString("Int3\n");
+    PutStringAndHex("CS      ", info->int_ctx.cs);
+    return nullptr;
   }
   if (intcode == 0x06) {
     Panic("Invalid Opcode");
@@ -123,25 +138,25 @@ void IDT::Init() {
   idtr.base = descriptors_;
 
   for (int i = 0; i < 0x100; i++) {
-    SetEntry(i, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandlerNotImplemented);
+    SetEntry(i, cs, 1, IDTType::kInterruptGate, 0, AsmIntHandlerNotImplemented);
     handler_list_[i] = nullptr;
   }
 
-  SetEntry(0x00, cs, 1, IDTType::kInterruptGate, 0,
+  SetEntry(0x00, cs, 0, IDTType::kInterruptGate, 0,
            AsmIntHandler00_DivideError);
-  SetEntry(0x03, cs, 1, IDTType::kInterruptGate, 0, AsmIntHandler03);
-  SetEntry(0x06, cs, 1, IDTType::kInterruptGate, 0, AsmIntHandler06);
-  SetEntry(0x07, cs, 1, IDTType::kInterruptGate, 0,
+  SetEntry(0x03, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler03);
+  SetEntry(0x06, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler06);
+  SetEntry(0x07, cs, 0, IDTType::kInterruptGate, 0,
            AsmIntHandler07_DeviceNotAvailable);
   SetEntry(0x08, cs, 1, IDTType::kInterruptGate, 0, AsmIntHandler08);
-  SetEntry(0x0d, cs, 1, IDTType::kInterruptGate, 0, AsmIntHandler0D);
+  SetEntry(0x0d, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler0D);
   SetEntry(0x0e, cs, 1, IDTType::kInterruptGate, 0, AsmIntHandler0E);
-  SetEntry(0x10, cs, 1, IDTType::kInterruptGate, 0,
+  SetEntry(0x10, cs, 0, IDTType::kInterruptGate, 0,
            AsmIntHandler10_x87FPUError);
-  SetEntry(0x13, cs, 1, IDTType::kInterruptGate, 0,
+  SetEntry(0x13, cs, 0, IDTType::kInterruptGate, 0,
            AsmIntHandler13_SIMDFPException);
-  SetEntry(0x20, cs, 1, IDTType::kInterruptGate, 0, AsmIntHandler20);
-  SetEntry(0x21, cs, 1, IDTType::kInterruptGate, 0, AsmIntHandler21);
+  SetEntry(0x20, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler20);
+  SetEntry(0x21, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler21);
   WriteIDTR(&idtr);
   liumos->idt = this;
 }

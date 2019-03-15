@@ -303,6 +303,13 @@ ReadRSP:
  	mov rax, rsp
 	ret
 
+.global ChangeRSP
+ChangeRSP:
+	mov rax, [rsp]
+	mov rsp, rcx
+	push rax
+	ret
+
 .global JumpToKernel
 JumpToKernel:
 	// rcx: kernel ptr
@@ -325,10 +332,11 @@ JumpToKernel:
 //   args: RDI, RSI, RDX, R10, R8, R9
 .global AsmSyscallHandler
 AsmSyscallHandler:
-	push rcx
+	push rcx	// Saved RIP
+	push r11	// Saved RFLAGS
+
 	push rbx
 	push rbp
-	push r11
 	push r12
 	push r13
 	push r14
@@ -360,10 +368,11 @@ AsmSyscallHandler:
 	pop r14
 	pop r13
 	pop r12
-	pop r11
 	pop rbp
 	pop rbx
-	pop rcx
+
+	pop r11	// Saved RFLAGS
+	pop rcx	// Saved RIP
 	sysretq
 
 .global Disable8259PIC
