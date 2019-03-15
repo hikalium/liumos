@@ -105,6 +105,7 @@ Sheet virtual_screen_;
 Console virtual_console_;
 LocalAPIC bsp_local_apic_;
 CPUFeatureSet cpu_features_;
+SerialPort com1_;
 
 void InitializeVRAMForKernel() {
   constexpr uint64_t kernel_virtual_vram_base = 0xFFFF'FFFF'8000'0000ULL;
@@ -162,6 +163,10 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
   new (&virtual_console_) Console();
   virtual_console_.SetSheet(liumos->screen_sheet);
   liumos->main_console = &virtual_console_;
+
+  com1_.Init(kPortCOM1);
+  liumos->com1 = &com1_;
+  liumos->main_console->SetSerial(&com1_);
 
   bsp_local_apic_.Init();
 
