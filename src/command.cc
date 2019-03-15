@@ -610,4 +610,39 @@ void Process(TextBox& tbox) {
   }
 }
 
+void WaitAndProcess(TextBox& tbox) {
+  PutString("> ");
+  tbox.StartRecording();
+  while (1) {
+    StoreIntFlagAndHalt();
+    while (1) {
+      uint16_t keyid;
+      if ((keyid = liumos->keyboard_ctrl->ReadKeyID())) {
+        if (!keyid && keyid & KeyID::kMaskBreak)
+          continue;
+        if (keyid == KeyID::kEnter) {
+          keyid = '\n';
+        }
+      } else if (liumos->com1->IsReceived()) {
+        keyid = liumos->com1->ReadCharReceived();
+        if (keyid == '\n') {
+          continue;
+        }
+        if (keyid == '\r') {
+          keyid = '\n';
+        }
+      } else {
+        break;
+      }
+      if (keyid == '\n') {
+        tbox.StopRecording();
+        tbox.putc('\n');
+        ConsoleCommand::Process(tbox);
+        return;
+      }
+      tbox.putc(keyid);
+    }
+  }
+}
+
 }  // namespace ConsoleCommand

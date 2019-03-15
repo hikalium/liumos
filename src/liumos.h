@@ -39,6 +39,7 @@ void ShowEFIMemoryMap(void);
 void Free(void);
 void Time(void);
 void Process(TextBox& tbox);
+void WaitAndProcess(TextBox& tbox);
 }  // namespace ConsoleCommand
 
 // @elf.cc
