@@ -114,5 +114,5 @@ extern LiumOS* liumos;
 
 void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table);
 
-// @syscall.c
-__attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args);
+// @syscall.cc
+void EnableSyscall();

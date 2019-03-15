@@ -44,3 +44,18 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
   PutStringAndHex("idx", idx);
   Panic("syscall handler!");
 }
+
+void EnableSyscall() {
+  uint64_t star = static_cast<uint64_t>(GDT::kKernelCSSelector) << 32;
+  star |= static_cast<uint64_t>(GDT::kUserCS32Selector) << 48;
+  WriteMSR(MSRIndex::kSTAR, star);
+
+  uint64_t lstar = reinterpret_cast<uint64_t>(AsmSyscallHandler);
+  WriteMSR(MSRIndex::kLSTAR, lstar);
+
+  WriteMSR(MSRIndex::kFMASK, 1ULL << 9);
+
+  uint64_t efer = ReadMSR(MSRIndex::kEFER);
+  efer |= 1;  // SCE
+  WriteMSR(MSRIndex::kEFER, efer);
+}
