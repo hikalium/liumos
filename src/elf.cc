@@ -142,7 +142,7 @@ ExecutionContext* LoadELFAndLaunchProcess(File& file) {
   ExecutionContext* ctx = liumos->exec_ctx_ctrl->Create(
       reinterpret_cast<void (*)(void)>(entry_point), GDT::kUserCSSelector,
       stack_pointer, GDT::kUserDSSelector,
-      reinterpret_cast<uint64_t>(&user_page_table), 0);
+      reinterpret_cast<uint64_t>(&user_page_table), kRFlagsInterruptEnable);
   liumos->scheduler->RegisterExecutionContext(ctx);
   return ctx;
 }

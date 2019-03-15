@@ -7,20 +7,15 @@ packed_struct ContextSwitchRequest {
   CPUContext* to;
 };
 
-using InterruptHandler = void (*)(uint64_t intcode,
-                                  uint64_t error_code,
-                                  InterruptInfo* info);
+using InterruptHandler = void (*)(uint64_t intcode, InterruptInfo* info);
 
 class IDT {
  public:
   void Init();
-  ContextSwitchRequest* IntHandler(uint64_t intcode,
-                                   uint64_t error_code,
-                                   InterruptInfo* info);
+  ContextSwitchRequest* IntHandler(uint64_t intcode, InterruptInfo* info);
   void SetIntHandler(uint64_t intcode, InterruptHandler handler);
 
  private:
-  ContextSwitchRequest context_switch_request_;
   IDTGateDescriptor descriptors_[256];
   InterruptHandler handler_list_[256];
   void SetEntry(int index,

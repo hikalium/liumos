@@ -61,222 +61,127 @@ ReadSSSelector:
 
 .global AsmIntHandler00_DivideError
 AsmIntHandler00_DivideError:
+	push 0
 	push rcx
-	push rdx
-	push r8
 	mov rcx, 0x00
-	lea r8, [rsp + 8 * 3]
 	jmp IntHandlerWrapper
 
 .global AsmIntHandler03
 AsmIntHandler03:
+	push 0
 	push rcx
-	push rdx
-	push r8
 	mov rcx, 0x03
-	lea r8, [rsp + 8 * 3]
 	jmp IntHandlerWrapper
 
 .global AsmIntHandler06
 AsmIntHandler06:
+	push 0
 	push rcx
-	push rdx
-	push r8
 	mov rcx, 0x06
-	lea r8, [rsp + 8 * 3]
 	jmp IntHandlerWrapper
 
 .global AsmIntHandler07_DeviceNotAvailable
 AsmIntHandler07_DeviceNotAvailable:
+	push 0
 	push rcx
-	push rdx
-	push r8
 	mov rcx, 0x07
-	lea r8, [rsp + 8 * 3]
 	jmp IntHandlerWrapper
 
 .global AsmIntHandler08
 AsmIntHandler08:
 	push rcx
-	push rdx
-	push r8
 	mov rcx, 0x08
-	mov rdx, [rsp + 8 * 3] // error_code
-	lea r8, [rsp + 8 * 4]
 	jmp IntHandlerWrapper
 
 .global AsmIntHandler0D
 AsmIntHandler0D:
 	push rcx
-	push rdx
-	push r8
 	mov rcx, 0x0D
-	mov rdx, [rsp + 8 * 3] // error_code
-	lea r8, [rsp + 8 * 4]
 	jmp IntHandlerWrapper
 
 .global AsmIntHandler0E
 AsmIntHandler0E:
 	push rcx
-	push rdx
-	push r8
 	mov rcx, 0x0E
-	mov rdx, [rsp + 8 * 3] // error_code
-	lea r8, [rsp + 8 * 4]
 	jmp IntHandlerWrapper
 
 .global AsmIntHandler10_x87FPUError
 AsmIntHandler10_x87FPUError:
+	push 0
 	push rcx
-	push rdx
-	push r8
 	mov rcx, 0x10
-	lea r8, [rsp + 8 * 3]
 	jmp IntHandlerWrapper
 
 .global AsmIntHandler13_SIMDFPException
 AsmIntHandler13_SIMDFPException:
+	push 0
 	push rcx
-	push rdx
-	push r8
 	mov rcx, 0x13
-	lea r8, [rsp + 8 * 3]
 	jmp IntHandlerWrapper
 
 .global AsmIntHandler20
 AsmIntHandler20:
+	push 0
 	push rcx
-	push rdx
-	push r8
 	mov rcx, 0x20
-	lea r8, [rsp + 8 * 3]
 	jmp IntHandlerWrapper
 
 .global AsmIntHandler21
 AsmIntHandler21:
+	push 0
 	push rcx
-	push rdx
-	push r8
 	mov rcx, 0x21
-	lea r8, [rsp + 8 * 3]
 	jmp IntHandlerWrapper
 
 .global AsmIntHandlerNotImplemented
 AsmIntHandlerNotImplemented:
+	push 0
 	push rcx
-	push rdx
-	push r8
 	mov rcx, 0x100
-	lea r8, [rsp + 8 * 3]
 	jmp IntHandlerWrapper
 
-ContextSwitch:
-	// r8: InterruptInfo*
-	// rax: ContextSwitchRequest*
-	mov rcx, [rax]	// Context *from
-	mov rdx, [rax + 8]	// Context *to
-	// save InterruptInfo(rip, cs, eflags, rsp, ss)
-	mov rax, [r8]
-	mov [rcx], rax
-	mov rax, [r8 + 8]
-	mov [rcx + 8], rax
-	mov rax, [r8 + 16]
-	mov [rcx + 16], rax
-	mov rax, [r8 + 24]
-	mov [rcx + 24], rax
-	mov rax, [r8 + 32]
-	mov [rcx + 32], rax
-	// save scratch registers (already pushed on stack)
-	pop qword ptr [rcx + 40]
-	pop qword ptr [rcx + 48]
-	pop qword ptr [rcx + 56]
-	pop qword ptr [rcx + 64]
-	pop qword ptr [rcx + 72]
-	pop qword ptr [rcx + 80]
-	pop qword ptr [rcx + 88]
-	// save rest of general registers (alive on registers)
-	mov [rcx + 96], rbx
-	mov [rcx + 104], rbp
-	mov [rcx + 112], rsi
-	mov [rcx + 120], rdi
-	mov [rcx + 128], r12
-	mov [rcx + 136], r13
-	mov [rcx + 144], r14
-	mov [rcx + 152], r15
-	// restore InterruptInfo to interrupt stack(rip, cs, eflags, rsp, ss)
-	mov rax, [rdx]
-	mov [r8], rax
-	mov rax, [rdx + 8]
-	mov [r8 + 8], rax
-	mov rax, [rdx + 16]
-	mov [r8 + 16], rax
-	mov rax, [rdx + 24]
-	mov [r8 + 24], rax
-	mov rax, [rdx + 32]
-	mov [r8 + 32], rax
-	// restore scratch registers to stack
-	push qword ptr [rdx + 88]
-	push qword ptr [rdx + 80]
-	push qword ptr [rdx + 72]
-	push qword ptr [rdx + 64]
-	push qword ptr [rdx + 56]
-	push qword ptr [rdx + 48]
-	push qword ptr [rdx + 40]
-	// save rest of general registers (alive on registers)
-	mov rbx, [rdx + 96]
-	mov rbp, [rdx + 104]
-	mov rsi, [rdx + 112]
-	mov rdi, [rdx + 120]
-	mov r12, [rdx + 128]
-	mov r13, [rdx + 136]
-	mov r14, [rdx + 144]
-	mov r15, [rdx + 152]
-	// switch cr3 if necessary
-	mov rax, [rdx + 160]
-	cmp rax, [rcx + 160]
-	je RestoreScratchRegistersAndIRET
-	mov cr3, rax
-	jmp RestoreScratchRegistersAndIRET
-
-
 .global IntHandler
-// The registers Rax, Rcx, Rdx, R8, R9, R10, R11, and XMM0-XMM5 are volatile
 // TODO: Save xmm registers
 IntHandlerWrapper:
-	push rax
-	push r9
-	push r10
-	push r11
+  push r15
+  push r14
+  push r13
+  push r12
+  push r11
+  push r10
+  push r9
+  push r8
+  push rdi
+  push rsi
+  push rbp
+  push rbx
+  push rdx
+  push rax
 
-	push rbp
+	mov rdx, rsp 
 	mov rbp, rsp
 	and rsp, -16
 	call IntHandler
 	mov rsp, rbp
-	pop rbp
 
-	cmp rax, 0
-	jnz	ContextSwitch
-RestoreScratchRegistersAndIRET:
-	pop r11
-	pop r10
-	pop r9
-	pop rax
+  pop rax
+  pop rdx
+  pop rbx
+  pop rbp
+  pop rsi
+  pop rdi
+  pop r8
+  pop r9
+  pop r10
+  pop r11
+  pop r12
+  pop r13
+  pop r14
+  pop r15
 
-	pop r8
-	pop rdx
 	pop rcx
+	add rsp, 8
 	iretq
-
-
-/*
-UEFI 2.3.4.2 Detailed Calling Conventions
-The caller passes the first four integer arguments in registers.
-...left to right in Rcx, Rdx, R8, and R9 
-
-The registers Rax, Rcx Rdx R8, R9, R10, R11, and XMM0-XMM5 are volatile
-The registers RBX, RBP, RDI, RSI, R12, R13, R14, R15, and XMM6-XMM15 should be preserved.
-*/
 
 .global ReadCPUID
 ReadCPUID:

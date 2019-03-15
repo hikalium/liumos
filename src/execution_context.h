@@ -1,7 +1,6 @@
 #pragma once
 
-#include "cpu_context.h"
-
+#include "asm.h"
 #include "paging.h"
 
 class KernelVirtualHeapAllocator {
@@ -62,11 +61,11 @@ class ExecutionContext {
                    uint64_t cr3,
                    uint64_t rflags)
       : id_(id), status_(Status::kNotScheduled) {
-    cpu_context_.int_info.rip = reinterpret_cast<uint64_t>(rip);
-    cpu_context_.int_info.cs = cs;
-    cpu_context_.int_info.rsp = reinterpret_cast<uint64_t>(rsp);
-    cpu_context_.int_info.ss = ss;
-    cpu_context_.int_info.eflags = rflags | 2;
+    cpu_context_.int_ctx.rip = reinterpret_cast<uint64_t>(rip);
+    cpu_context_.int_ctx.cs = cs;
+    cpu_context_.int_ctx.rsp = reinterpret_cast<uint64_t>(rsp);
+    cpu_context_.int_ctx.ss = ss;
+    cpu_context_.int_ctx.rflags = rflags | 2;
     cpu_context_.cr3 = cr3;
   }
   uint64_t id_;

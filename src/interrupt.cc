@@ -1,15 +1,14 @@
 #include "liumos.h"
 #include "scheduler.h"
 
-__attribute__((ms_abi)) extern "C" ContextSwitchRequest*
-IntHandler(uint64_t intcode, uint64_t error_code, InterruptInfo* info) {
-  return liumos->idt->IntHandler(intcode, error_code, info);
+__attribute__((ms_abi)) extern "C" ContextSwitchRequest* IntHandler(
+    uint64_t intcode,
+    InterruptInfo* info) {
+  return liumos->idt->IntHandler(intcode, info);
 }
-ContextSwitchRequest* IDT::IntHandler(uint64_t intcode,
-                                      uint64_t error_code,
-                                      InterruptInfo* info) {
+ContextSwitchRequest* IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
   if (intcode <= 0xFF && handler_list_[intcode]) {
-    handler_list_[intcode](intcode, error_code, info);
+    handler_list_[intcode](intcode, info);
     return nullptr;
   }
   ExecutionContext* current_context = liumos->scheduler->GetCurrentContext();
@@ -20,43 +19,51 @@ ContextSwitchRequest* IDT::IntHandler(uint64_t intcode,
       // no need to switching context.
       return nullptr;
     }
-    context_switch_request_.from = current_context->GetCPUContext();
-    context_switch_request_.to = next_context->GetCPUContext();
+    auto from = current_context->GetCPUContext();
+    from->cr3 = ReadCR3();
+    from->greg = info->greg;
+    from->int_ctx = info->int_ctx;
+    auto to = next_context->GetCPUContext();
+    info->greg = to->greg;
+    info->int_ctx = to->int_ctx;
+    if (from->cr3 == to->cr3)
+      return nullptr;
+    WriteCR3(to->cr3);
     // PutStringAndHex("from", current_context->GetID());
     // PutStringAndHex("to", next_context->GetID());
-    return &context_switch_request_;
+    return nullptr;
   }
   PutStringAndHex("Int#", intcode);
-  PutStringAndHex("RIP", info->rip);
-  PutStringAndHex("CS Index", info->cs >> 3);
-  PutStringAndHex("CS   RPL", info->cs & 3);
-  PutStringAndHex("RSP", info->rsp);
-  PutStringAndHex("Error Code", error_code);
+  PutStringAndHex("RIP", info->int_ctx.rip);
+  PutStringAndHex("CS Index", info->int_ctx.cs >> 3);
+  PutStringAndHex("CS   RPL", info->int_ctx.cs & 3);
+  PutStringAndHex("RSP", info->int_ctx.rsp);
+  PutStringAndHex("Error Code", info->error_code);
   PutStringAndHex("Context#", current_context->GetID());
   if (intcode == 0x08) {
     Panic("Double Fault");
   }
-  if (intcode != 0x0E || ReadCR2() != info->rip) {
-    PutStringAndHex("Memory dump at", info->rip);
+  if (intcode != 0x0E || ReadCR2() != info->int_ctx.rip) {
+    PutStringAndHex("Memory dump at", info->int_ctx.rip);
     for (int i = 0; i < 16; i++) {
       PutChar(' ');
-      PutHex8ZeroFilled(reinterpret_cast<uint8_t*>(info->rip)[i]);
+      PutHex8ZeroFilled(reinterpret_cast<uint8_t*>(info->int_ctx.rip)[i]);
     }
     PutChar('\n');
   }
   if (intcode == 0x0E) {
     PutStringAndHex("CR3", ReadCR3());
     PutStringAndHex("CR2", ReadCR2());
-    if (error_code & 1) {
+    if (info->error_code & 1) {
       // present but not ok. print entries.
       reinterpret_cast<IA_PML4*>(ReadCR3())->DebugPrintEntryForAddr(ReadCR2());
     }
     Panic("Page Fault");
   }
   for (int i = 0; i < 4; i++) {
-    PutHex64ZeroFilled(info->rsp + i * 8);
+    PutHex64ZeroFilled(info->int_ctx.rsp + i * 8);
     PutString(": ");
-    PutHex64ZeroFilled(*reinterpret_cast<uint64_t*>(info->rsp + i * 8));
+    PutHex64ZeroFilled(*reinterpret_cast<uint64_t*>(info->int_ctx.rsp + i * 8));
     PutString("\n");
   }
 

@@ -41,14 +41,48 @@ packed_struct GDTR {
   uint64_t* base;
 };
 
-packed_struct InterruptInfo {
+packed_struct GeneralRegisterContext {
+  uint64_t rax;
+  uint64_t rdx;
+  uint64_t rbx;
+  uint64_t rbp;
+  uint64_t rsi;
+  uint64_t rdi;
+  //
+  uint64_t r8;
+  uint64_t r9;
+  uint64_t r10;
+  uint64_t r11;
+  uint64_t r12;
+  uint64_t r13;
+  uint64_t r14;
+  uint64_t r15;
+  //
+  uint64_t rcx;
+};
+static_assert(sizeof(GeneralRegisterContext) == (16 - 1) * 8);
+
+packed_struct InterruptContext {
   uint64_t rip;
   uint64_t cs;
-  uint64_t eflags;
+  uint64_t rflags;
   uint64_t rsp;
   uint64_t ss;
 };
-static_assert(sizeof(InterruptInfo) == 40);
+static_assert(sizeof(InterruptContext) == 40);
+
+packed_struct CPUContext {
+  uint64_t cr3;
+  GeneralRegisterContext greg;
+  InterruptContext int_ctx;
+};
+
+packed_struct InterruptInfo {
+  GeneralRegisterContext greg;
+  uint64_t error_code;
+  InterruptContext int_ctx;
+};
+static_assert(sizeof(InterruptInfo) == (16 + 4 + 1) * 8);
 
 enum class IDTType {
   kInterruptGate = 0xE,
