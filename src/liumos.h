@@ -82,7 +82,9 @@ inline T min(T a, T b) {
 }
 
 // @liumos.c
+class PersistentMemoryManager;
 packed_struct LiumOS {
+  static constexpr int kNumOfPMEMManagers = 4;
   struct {
     ACPI::RSDT* rsdt;
     ACPI::NFIT* nfit;
@@ -91,6 +93,7 @@ packed_struct LiumOS {
     ACPI::SRAT* srat;
     ACPI::SLIT* slit;
   } acpi;
+  PersistentMemoryManager* pmem[kNumOfPMEMManagers];
   Sheet* vram_sheet;
   Sheet* screen_sheet;
   Console* main_console;

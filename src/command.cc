@@ -1,4 +1,5 @@
 #include "liumos.h"
+#include "pmem.h"
 
 namespace ConsoleCommand {
 
@@ -570,6 +571,18 @@ void Process(TextBox& tbox) {
       PutStringAndHex("  proximity_domain",
                       liumos->acpi.srat->GetProximityDomainForLocalAPIC(
                           *liumos->bsp_local_apic));
+  } else if (IsEqualString(line, "pmem show")) {
+    for (int i = 0; i < LiumOS::kNumOfPMEMManagers; i++) {
+      if (!liumos->pmem[i])
+        break;
+      liumos->pmem[i]->Print();
+    }
+  } else if (IsEqualString(line, "pmem init")) {
+    for (int i = 0; i < LiumOS::kNumOfPMEMManagers; i++) {
+      if (!liumos->pmem[i])
+        break;
+      liumos->pmem[i]->Init();
+    }
   } else if (strncmp(line, "test mem ", 9) == 0) {
     int proximity_domain = atoi(&line[9]);
     TestMem(liumos->dram_allocator, proximity_domain);

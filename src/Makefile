@@ -2,7 +2,7 @@ OBJS= acpi.o apic.o asm.o console.o command.o \
 		 efi.o efimain.o elf.o execution_context.o file.o \
 		 gdt.o generic.o graphics.o guid.o \
 		 hpet.o interrupt.o keyboard.o\
-		 libfunc.o liumos.o paging.o phys_page_allocator.o \
+		 libfunc.o liumos.o paging.o phys_page_allocator.o pmem.o \
 		 scheduler.o serial.o sheet.o sys_constant.o syscall.o text_box.o \
 		 font.gen.o
 KERNEL_SRCS= acpi.cc apic.cc asm.S \
@@ -13,7 +13,7 @@ KERNEL_SRCS= acpi.cc apic.cc asm.S \
 						 interrupt.cc \
 						 kernel.cc keyboard.cc \
 						 libfunc.cc \
-						 paging.cc phys_page_allocator.cc \
+						 paging.cc phys_page_allocator.cc pmem.cc \
 						 scheduler.cc serial.cc sheet.cc sys_constant.cc syscall.cc \
 						 text_box.cc \
 						 font.gen.cc

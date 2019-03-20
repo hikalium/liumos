@@ -310,6 +310,16 @@ ChangeRSP:
 	push rax
 	ret
 
+.global CLFlush
+CLFlush:
+	clflush [rcx]
+	ret
+
+.global CLFlushOptimized
+CLFlushOptimized:
+	clflushopt [rcx]
+	ret
+
 .global JumpToKernel
 JumpToKernel:
 	// rcx: kernel ptr

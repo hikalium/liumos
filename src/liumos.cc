@@ -50,14 +50,14 @@ void InitDRAMManagement(EFI::MemoryMap& map) {
 
 void InitPMEMManagement() {
   using namespace ACPI;
-  pmem_allocator = &pmem_allocator_;
-  new (pmem_allocator) PhysicalPageAllocator();
   if (!liumos->acpi.nfit) {
     PutString("NFIT not found. There are no PMEMs on this system.\n");
     return;
   }
   NFIT& nfit = *liumos->acpi.nfit;
   uint64_t available_pmem_size = 0;
+
+  int pmem_manager_used = 0;
 
   for (auto& it : nfit) {
     if (it.type != NFIT::Entry::kTypeSPARangeStructure)
@@ -72,10 +72,10 @@ void InitPMEMManagement() {
     PutStringAndHex("  Length",
                     spa_range->system_physical_address_range_length);
     available_pmem_size += spa_range->system_physical_address_range_length;
-    FreePages(
-        pmem_allocator,
-        reinterpret_cast<void*>(spa_range->system_physical_address_range_base),
-        spa_range->system_physical_address_range_length >> kPageSizeExponent);
+    assert(pmem_manager_used < LiumOS::kNumOfPMEMManagers);
+    liumos->pmem[pmem_manager_used++] =
+        reinterpret_cast<PersistentMemoryManager*>(
+            spa_range->system_physical_address_range_base);
   }
   PutStringAndHex("Available PMEM (KiB)", available_pmem_size >> 10);
 }
@@ -84,7 +84,6 @@ void InitMemoryManagement(EFI::MemoryMap& map) {
   InitDRAMManagement(map);
   InitPMEMManagement();
   liumos->dram_allocator = &dram_allocator_;
-  liumos->pmem_allocator = &pmem_allocator_;
 }
 
 void PrintLogoFile() {
