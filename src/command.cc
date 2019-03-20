@@ -583,6 +583,13 @@ void Process(TextBox& tbox) {
         break;
       liumos->pmem[i]->Init();
     }
+  } else if (IsEqualString(line, "pmem alloc")) {
+    if (!liumos->pmem[0]) {
+      PutString("PMEM not found\n");
+      return;
+    }
+    uint64_t obj_addr = liumos->pmem[0]->AllocatePages<uint64_t>(3);
+    PutStringAndHex("Allocated object at", obj_addr);
   } else if (strncmp(line, "test mem ", 9) == 0) {
     int proximity_domain = atoi(&line[9]);
     TestMem(liumos->dram_allocator, proximity_domain);

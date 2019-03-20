@@ -2,9 +2,33 @@
 
 #include "pmem.h"
 
+void PersistentObjectHeader::Init(uint64_t id, uint64_t num_of_pages) {
+  signature_ = ~kSignature;
+  CLFlush(&signature_);
+  id_ = id;
+  num_of_pages_ = num_of_pages;
+  next_ = nullptr;
+  signature_ = kSignature;
+  CLFlush(this);
+}
+
+void PersistentObjectHeader::SetNext(PersistentObjectHeader* next) {
+  assert(IsValid());
+  next_ = next;
+  CLFlush(&next_);
+}
+
+void PersistentObjectHeader::Print() {
+  PutStringAndHex("Object #", id_);
+  assert(IsValid());
+  PutStringAndHex("  base", GetObjectBase<void*>());
+  PutStringAndHex("  num_of_pages", num_of_pages_);
+}
+
 void PersistentMemoryManager::Init() {
   using namespace ACPI;
   assert(liumos->acpi.nfit);
+  assert((reinterpret_cast<uint64_t>(this) & kPageAddrMask) == 0);
   NFIT& nfit = *liumos->acpi.nfit;
   for (auto& it : nfit) {
     if (it.type != NFIT::Entry::kTypeSPARangeStructure)
@@ -22,19 +46,19 @@ void PersistentMemoryManager::Init() {
     PutStringAndHex("  Base", spa_range->system_physical_address_range_base);
     PutStringAndHex("  Length",
                     spa_range->system_physical_address_range_length);
-    byte_size_ = spa_range->system_physical_address_range_length;
-    free_pages_ = (byte_size_ >> kPageSizeExponent) - kGlobalHeaderPages;
+    page_idx_ = reinterpret_cast<uint64_t>(this) >> kPageSizeExponent;
+    num_of_pages_ =
+        spa_range->system_physical_address_range_length >> kPageSizeExponent;
+    head_ = nullptr;
     signature_ = kSignature;
     CLFlush(this);
+
+    sentinel_.Init(0, 0);
+    SetHead(&sentinel_);
+
     return;
   }
   assert(false);
-}
-
-uint64_t PersistentMemoryManager::Allocate(uint64_t bytesize) {
-  uint64_t num_of_pages = ByteSizeToPageSize(bytesize);
-  assert(num_of_pages + 1 < free_pages_);
-  return 0;
 }
 
 void PersistentMemoryManager::Print() {
@@ -44,7 +68,13 @@ void PersistentMemoryManager::Print() {
     return;
   }
   PutString("  signature valid.\n");
-  PutStringAndHex("  Size in byte", byte_size_);
-  PutStringAndHex("  Free pages", free_pages_);
-  PutStringAndHex("  Free size in byte", free_pages_ << kPageSizeExponent);
+  PutStringAndHex("  Size in byte", num_of_pages_ << kPageSizeExponent);
+  for (PersistentObjectHeader* h = head_; h; h = h->GetNext()) {
+    h->Print();
+  }
+}
+
+void PersistentMemoryManager::SetHead(PersistentObjectHeader* head) {
+  head_ = head;
+  CLFlush(&head_);
 }
