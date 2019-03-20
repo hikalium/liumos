@@ -14,7 +14,7 @@ KERNEL_SRCS= acpi.cc apic.cc asm.S \
 						 kernel.cc keyboard.cc \
 						 libfunc.cc \
 						 paging.cc phys_page_allocator.cc pmem.cc \
-						 scheduler.cc serial.cc sheet.cc sys_constant.cc syscall.cc \
+						 scheduler.cc serial.cc sheet.cc subtask.cc sys_constant.cc syscall.cc \
 						 text_box.cc \
 						 font.gen.cc
 KERNEL_OBJS= $(addsuffix .elf.o, $(basename $(KERNEL_SRCS)))
