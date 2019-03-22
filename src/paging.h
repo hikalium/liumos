@@ -14,6 +14,16 @@ constexpr uint64_t kPageAttrUser = 0b00100;
 constexpr uint64_t kPageAttrWriteThrough = 0b01000;
 constexpr uint64_t kPageAttrCacheDisable = 0b10000;
 
+static inline uint64_t CeilToPageAlignment(uint64_t v) {
+  return (v + kPageSize - 1) & ~kPageAddrMask;
+}
+static inline uint64_t FloorToPageAlignment(uint64_t v) {
+  return v & ~kPageAddrMask;
+}
+static inline bool IsAlignedToPageSize(uint64_t v) {
+  return (v & kPageAddrMask) == 0;
+}
+
 template <typename TableType>
 uint64_t v2p(TableType& table, uint64_t vaddr) {
   return v2p(&table, vaddr);

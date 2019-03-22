@@ -21,7 +21,6 @@ int denom;
 int first = 0;
 
 int main() {
-  base = 10000;
   for (n = 52500; n > 0; n -= 14) {
     carry %= base;
     digit = carry;

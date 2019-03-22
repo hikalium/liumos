@@ -1,16 +1,44 @@
 #include "lib/musl/include/elf.h"
 #include "liumos.h"
 
-struct ProcessMappingInfo {
-  uint64_t file_paddr;
-  uint64_t file_vaddr;
-  uint64_t file_size;
-  uint64_t stack_paddr;
-  uint64_t stack_vaddr;
-  uint64_t stack_size;
+struct SegmentMapping {
+  uint64_t paddr;
+  uint64_t vaddr;
+  uint64_t size;
 };
 
-const Elf64_Ehdr* LoadELF(File& file, IA_PML4& page_root) {
+struct ProcessMappingInfo {
+  SegmentMapping code;
+  SegmentMapping data;
+  SegmentMapping stack;
+};
+
+static void PrintProgramHeader(const Elf64_Phdr* phdr) {
+  PutString(" flags:");
+  if (phdr->p_flags & PF_R)
+    PutChar('R');
+  if (phdr->p_flags & PF_W)
+    PutChar('W');
+  if (phdr->p_flags & PF_X)
+    PutChar('X');
+  PutChar('\n');
+  PutString("  offset:");
+  PutHex64ZeroFilled(phdr->p_offset);
+  PutString(" vaddr:");
+  PutHex64ZeroFilled(phdr->p_vaddr);
+  PutChar('\n');
+  PutString("  filesz:");
+  PutHex64ZeroFilled(phdr->p_filesz);
+  PutString(" memsz:");
+  PutHex64ZeroFilled(phdr->p_memsz);
+  PutString(" align:");
+  PutHex64ZeroFilled(phdr->p_align);
+  PutChar('\n');
+}
+
+const Elf64_Ehdr* LoadELF(File& file,
+                          IA_PML4& page_root,
+                          ProcessMappingInfo& proc_map_info) {
   const uint8_t* buf = file.GetBuf();
   // uint64_t buf_size = file.GetFileSize();
   PutString("Loading ELF...\n");
@@ -42,21 +70,7 @@ const Elf64_Ehdr* LoadELF(File& file, IA_PML4& page_root) {
     return nullptr;
   }
   PutString("This is an ELF file\n");
-  /*
-  PutString("sections:\n");
-  const Elf64_Shdr* shstr = reinterpret_cast<const Elf64_Shdr*>(
-      buf + ehdr->e_shoff + ehdr->e_shentsize * ehdr->e_shstrndx);
-  for (int i = 0; i < ehdr->e_shnum; i++) {
-    const Elf64_Shdr* shdr = reinterpret_cast<const Elf64_Shdr*>(
-        buf + ehdr->e_shoff + ehdr->e_shentsize * i);
-    PutString(
-        reinterpret_cast<const char*>(buf + shstr->sh_offset + shdr->sh_name));
-    PutStringAndHex(" @+", shdr->sh_offset);
-    PutStringAndHex("    @", shdr->sh_addr);
-    PutStringAndHex("    size = ", shdr->sh_size);
-    PutStringAndHex("    size = ", shdr->sh_flags);
-  }
-  */
+
   PutString("Program headers to be loaded:\n");
   for (int i = 0; i < ehdr->e_phnum; i++) {
     const Elf64_Phdr* phdr = reinterpret_cast<const Elf64_Phdr*>(
@@ -65,50 +79,36 @@ const Elf64_Ehdr* LoadELF(File& file, IA_PML4& page_root) {
       continue;
     PutString("Phdr #");
     PutHex64(i);
-    PutString(" type:LOAD");
-    PutString(" flags:");
-    if (phdr->p_flags & PF_R)
-      PutChar('R');
-    if (phdr->p_flags & PF_W)
-      PutChar('W');
+    PrintProgramHeader(phdr);
+
+    SegmentMapping* seg_map = nullptr;
     if (phdr->p_flags & PF_X)
-      PutChar('X');
-    PutChar('\n');
-    PutString("  offset:");
-    PutHex64ZeroFilled(phdr->p_offset);
-    PutString(" vaddr:");
-    PutHex64ZeroFilled(phdr->p_vaddr);
-    PutChar('\n');
-    PutString("  filesz:");
-    PutHex64ZeroFilled(phdr->p_filesz);
-    PutString(" memsz:");
-    PutHex64ZeroFilled(phdr->p_memsz);
-    PutString(" align:");
-    PutHex64ZeroFilled(phdr->p_align);
-    PutChar('\n');
-    const uint64_t map_base_file_ofs =
-        phdr->p_offset & ~(phdr->p_align - 1) & ~kPageAddrMask;
-    const uint64_t map_base_vaddr =
-        phdr->p_vaddr & ~(phdr->p_align - 1) & ~kPageAddrMask;
+      seg_map = &proc_map_info.code;
+    if (phdr->p_flags & PF_W)
+      seg_map = &proc_map_info.data;
+
+    assert(IsAlignedToPageSize(phdr->p_align));
+
+    const uint64_t map_base_file_ofs = FloorToPageAlignment(phdr->p_offset);
+    const uint64_t map_base_vaddr = FloorToPageAlignment(phdr->p_vaddr);
     const uint64_t map_size =
-        (phdr->p_memsz + (phdr->p_offset - map_base_file_ofs) + kPageAddrMask) &
-        ~kPageAddrMask;
+        CeilToPageAlignment(phdr->p_memsz + (phdr->p_vaddr - map_base_vaddr));
+    const size_t copy_size = phdr->p_filesz + (phdr->p_vaddr - map_base_vaddr);
     PutString("  map_base_file_ofs:");
     PutHex64ZeroFilled(map_base_file_ofs);
     PutString(" map_base_vaddr:");
     PutHex64ZeroFilled(map_base_vaddr);
     PutString(" map_size:");
     PutHex64ZeroFilled(map_size);
+    PutString(" copy_size:");
+    PutHex64ZeroFilled(copy_size);
     PutChar('\n');
-    uint64_t page_attr = kPageAttrPresent | kPageAttrUser;
-    if (phdr->p_flags & PF_W)
-      page_attr |= kPageAttrWritable;
+    uint64_t page_attr = kPageAttrPresent | kPageAttrUser |
+                         ((phdr->p_flags & PF_W) ? kPageAttrWritable : 0);
     uint8_t* phys_buf = liumos->dram_allocator->AllocPages<uint8_t*>(
         ByteSizeToPageSize(map_size));
-    const size_t copy_size = min(map_size, phdr->p_filesz);
     memcpy(phys_buf, buf + map_base_file_ofs, copy_size);
-    if (copy_size < map_size)
-      bzero(phys_buf + copy_size, map_size - copy_size);
+    bzero(phys_buf + copy_size, map_size - copy_size);
     CreatePageMapping(*liumos->dram_allocator, page_root, map_base_vaddr,
                       reinterpret_cast<uint64_t>(phys_buf), map_size,
                       page_attr);
@@ -121,7 +121,7 @@ const Elf64_Ehdr* LoadELF(File& file, IA_PML4& page_root) {
 ExecutionContext* LoadELFAndLaunchProcess(File& file) {
   ProcessMappingInfo info;
   IA_PML4& user_page_table = CreatePageTable();
-  const Elf64_Ehdr* ehdr = LoadELF(file, user_page_table);
+  const Elf64_Ehdr* ehdr = LoadELF(file, user_page_table, info);
   if (!ehdr)
     return nullptr;
 
@@ -129,15 +129,15 @@ ExecutionContext* LoadELFAndLaunchProcess(File& file) {
   PutStringAndHex("Entry address: ", entry_point);
 
   const int kNumOfStackPages = 32;
-  info.stack_size = kNumOfStackPages << kPageSizeExponent;
+  info.stack.size = kNumOfStackPages << kPageSizeExponent;
   uint64_t stack_phys_base_addr = liumos->dram_allocator->AllocPages<uint64_t>(
-      ByteSizeToPageSize(info.stack_size));
+      ByteSizeToPageSize(info.stack.size));
   constexpr uint64_t stack_virt_base_addr = 0xBEEF'0000;
   CreatePageMapping(*liumos->dram_allocator, user_page_table,
-                    stack_virt_base_addr, stack_phys_base_addr, info.stack_size,
+                    stack_virt_base_addr, stack_phys_base_addr, info.stack.size,
                     kPageAttrPresent | kPageAttrUser | kPageAttrWritable);
   void* stack_pointer =
-      reinterpret_cast<void*>(stack_virt_base_addr + info.stack_size);
+      reinterpret_cast<void*>(stack_virt_base_addr + info.stack.size);
 
   ExecutionContext* ctx = liumos->exec_ctx_ctrl->Create(
       reinterpret_cast<void (*)(void)>(entry_point), GDT::kUserCS64Selector,
@@ -152,7 +152,8 @@ ExecutionContext* LoadELFAndLaunchProcess(File& file) {
 }
 
 void LoadKernelELF(File& file) {
-  const Elf64_Ehdr* ehdr = LoadELF(file, GetKernelPML4());
+  ProcessMappingInfo info;
+  const Elf64_Ehdr* ehdr = LoadELF(file, GetKernelPML4(), info);
   if (!ehdr)
     Panic("Failed to load kernel ELF");
 
