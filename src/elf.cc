@@ -104,7 +104,7 @@ const Elf64_Ehdr* LoadELF(File& file, IA_PML4& page_root) {
     if (phdr->p_flags & PF_W)
       page_attr |= kPageAttrWritable;
     uint8_t* phys_buf = liumos->dram_allocator->AllocPages<uint8_t*>(
-        map_size >> kPageSizeExponent);
+        ByteSizeToPageSize(map_size));
     const size_t copy_size = min(map_size, phdr->p_filesz);
     memcpy(phys_buf, buf + map_base_file_ofs, copy_size);
     if (copy_size < map_size)
