@@ -5,12 +5,26 @@ struct SegmentMapping {
   uint64_t paddr;
   uint64_t vaddr;
   uint64_t size;
+  void Print() {
+    PutString("vaddr:");
+    PutHex64ZeroFilled(vaddr);
+    PutString(" paddr:");
+    PutHex64ZeroFilled(paddr);
+    PutString(" size:");
+    PutHex64(size);
+    PutChar('\n');
+  }
 };
 
 struct ProcessMappingInfo {
   SegmentMapping code;
   SegmentMapping data;
   SegmentMapping stack;
+  void Print() {
+    code.Print();
+    data.Print();
+    stack.Print();
+  }
 };
 
 static void PrintProgramHeader(const Elf64_Phdr* phdr) {
@@ -40,9 +54,8 @@ const Elf64_Ehdr* LoadELF(File& file,
                           IA_PML4& page_root,
                           ProcessMappingInfo& proc_map_info) {
   const uint8_t* buf = file.GetBuf();
-  // uint64_t buf_size = file.GetFileSize();
-  PutString("Loading ELF...\n");
   const uint64_t file_size = file.GetFileSize();
+  PutString("Loading ELF...\n");
   PutStringAndHex("File Size", file_size);
   if (strncmp(reinterpret_cast<const char*>(buf), ELFMAG, SELFMAG) != 0) {
     PutString("Not an ELF file\n");
@@ -81,12 +94,6 @@ const Elf64_Ehdr* LoadELF(File& file,
     PutHex64(i);
     PrintProgramHeader(phdr);
 
-    SegmentMapping* seg_map = nullptr;
-    if (phdr->p_flags & PF_X)
-      seg_map = &proc_map_info.code;
-    if (phdr->p_flags & PF_W)
-      seg_map = &proc_map_info.data;
-
     assert(IsAlignedToPageSize(phdr->p_align));
 
     const uint64_t map_base_file_ofs = FloorToPageAlignment(phdr->p_offset);
@@ -112,6 +119,16 @@ const Elf64_Ehdr* LoadELF(File& file,
     CreatePageMapping(*liumos->dram_allocator, page_root, map_base_vaddr,
                       reinterpret_cast<uint64_t>(phys_buf), map_size,
                       page_attr);
+
+    SegmentMapping* seg_map = nullptr;
+    if (phdr->p_flags & PF_X)
+      seg_map = &proc_map_info.code;
+    if (phdr->p_flags & PF_W)
+      seg_map = &proc_map_info.data;
+    assert(seg_map);
+    seg_map->vaddr = map_base_vaddr;
+    seg_map->paddr = reinterpret_cast<uint64_t>(phys_buf);
+    seg_map->size = map_size;
   }
   PutStringAndHex("Entry Point", ehdr->e_entry);
 
@@ -130,14 +147,16 @@ ExecutionContext* LoadELFAndLaunchProcess(File& file) {
 
   const int kNumOfStackPages = 32;
   info.stack.size = kNumOfStackPages << kPageSizeExponent;
-  uint64_t stack_phys_base_addr = liumos->dram_allocator->AllocPages<uint64_t>(
+  info.stack.paddr = liumos->dram_allocator->AllocPages<uint64_t>(
       ByteSizeToPageSize(info.stack.size));
-  constexpr uint64_t stack_virt_base_addr = 0xBEEF'0000;
-  CreatePageMapping(*liumos->dram_allocator, user_page_table,
-                    stack_virt_base_addr, stack_phys_base_addr, info.stack.size,
+  info.stack.vaddr = 0xBEEF'0000;
+  CreatePageMapping(*liumos->dram_allocator, user_page_table, info.stack.vaddr,
+                    info.stack.paddr, info.stack.size,
                     kPageAttrPresent | kPageAttrUser | kPageAttrWritable);
   void* stack_pointer =
-      reinterpret_cast<void*>(stack_virt_base_addr + info.stack.size);
+      reinterpret_cast<void*>(info.stack.vaddr + info.stack.size);
+
+  info.Print();
 
   ExecutionContext* ctx = liumos->exec_ctx_ctrl->Create(
       reinterpret_cast<void (*)(void)>(entry_point), GDT::kUserCS64Selector,
