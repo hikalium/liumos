@@ -2,6 +2,8 @@
 
 #include "generic.h"
 
+#include "paging.h"
+
 class KernelVirtualHeapAllocator {
  public:
   KernelVirtualHeapAllocator(IA_PML4& pml4,

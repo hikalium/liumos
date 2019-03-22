@@ -5,6 +5,7 @@
 #include "asm.h"
 #include "console.h"
 #include "efi.h"
+#include "elf.h"
 #include "gdt.h"
 #include "generic.h"
 #include "githash.h"
@@ -16,6 +17,7 @@
 #include "keyid.h"
 #include "paging.h"
 #include "phys_page_allocator.h"
+#include "process.h"
 #include "serial.h"
 #include "sheet.h"
 #include "sys_constant.h"
@@ -38,14 +40,9 @@ void ShowSLIT(void);
 void ShowEFIMemoryMap(void);
 void Free(void);
 void Time(void);
-void Process(TextBox& tbox);
+void Run(TextBox& tbox);
 void WaitAndProcess(TextBox& tbox);
 }  // namespace ConsoleCommand
-
-// @elf.cc
-class File;
-ExecutionContext* LoadELFAndLaunchProcess(File& file);
-void LoadKernelELF(File& file);
 
 // @file.cc
 class File {
@@ -111,7 +108,8 @@ packed_struct LiumOS {
   IA_PML4* kernel_pml4;
   Scheduler* scheduler;
   ExecutionContextController* exec_ctx_ctrl;
-  ExecutionContext* current_context;
+  ProcessController* proc_ctrl;
+  // ExecutionContext* current_context;
   IDT* idt;
 };
 extern LiumOS* liumos;

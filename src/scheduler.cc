@@ -1,34 +1,36 @@
 #include "scheduler.h"
 #include "liumos.h"
 
-void Scheduler::RegisterExecutionContext(ExecutionContext* context) {
-  assert(number_of_contexts_ < kNumberOfContexts);
-  assert(context->GetStatus() == ExecutionContext::Status::kNotScheduled);
-  contexts_[number_of_contexts_] = context;
-  context->SetSchedulerIndex(number_of_contexts_);
-  number_of_contexts_++;
+void Scheduler::RegisterProcess(Process& proc) {
+  using Status = Process::Status;
+  assert(number_of_process_ < kNumberOfProcess);
+  assert(proc.GetStatus() == Process::Status::kNotScheduled);
+  process_[number_of_process_] = &proc;
+  proc.SetSchedulerIndex(number_of_process_);
+  number_of_process_++;
 
-  context->SetStatus(ExecutionContext::Status::kSleeping);
+  proc.SetStatus(Status::kSleeping);
 }
 
-ExecutionContext* Scheduler::SwitchContext() {
+Process* Scheduler::SwitchProcess() {
+  using Status = Process::Status;
   const int base_index = current_->GetSchedulerIndex();
-  for (int i = 1; i < number_of_contexts_; i++) {
-    ExecutionContext* context =
-        contexts_[(base_index + i) % number_of_contexts_];
-    if (!context)
+  for (int i = 1; i < number_of_process_; i++) {
+    Process* proc = process_[(base_index + i) % number_of_process_];
+    if (!proc)
       continue;
-    if (context->GetStatus() == ExecutionContext::Status::kSleeping) {
-      if (current_->GetStatus() == ExecutionContext::Status::kRunning)
-        current_->SetStatus(ExecutionContext::Status::kSleeping);
-      context->SetStatus(ExecutionContext::Status::kRunning);
-      current_ = context;
-      return context;
+    if (proc->GetStatus() == Status::kSleeping) {
+      if (current_->GetStatus() == Status::kRunning)
+        current_->SetStatus(Status::kSleeping);
+      proc->SetStatus(Status::kRunning);
+      current_ = proc;
+      return proc;
     }
   }
   return nullptr;
 }
 
-void Scheduler::KillCurrentContext() {
-  current_->SetStatus(ExecutionContext::Status::kKilled);
+void Scheduler::KillCurrentProcess() {
+  using Status = Process::Status;
+  current_->SetStatus(Status::kKilled);
 }

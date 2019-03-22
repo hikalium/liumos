@@ -25,9 +25,10 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
   } else if (idx == kSyscallIndex_sys_exit) {
     const uint64_t exit_code = args[1];
     PutStringAndHex("exit: exit_code", exit_code);
-    liumos->scheduler->KillCurrentContext();
-    ExecutionContext* ctx = liumos->scheduler->GetCurrentContext();
-    ChangeRSP(ctx->GetKernelRSP());
+    liumos->scheduler->KillCurrentProcess();
+    ExecutionContext& ctx =
+        liumos->scheduler->GetCurrentProcess().GetExecutionContext();
+    ChangeRSP(ctx.GetKernelRSP());
     for (;;) {
       StoreIntFlagAndHalt();
     };

@@ -1,31 +1,8 @@
 #include "lib/musl/include/elf.h"
+
 #include "liumos.h"
 
-struct SegmentMapping {
-  uint64_t paddr;
-  uint64_t vaddr;
-  uint64_t size;
-  void Print() {
-    PutString("vaddr:");
-    PutHex64ZeroFilled(vaddr);
-    PutString(" paddr:");
-    PutHex64ZeroFilled(paddr);
-    PutString(" size:");
-    PutHex64(size);
-    PutChar('\n');
-  }
-};
-
-struct ProcessMappingInfo {
-  SegmentMapping code;
-  SegmentMapping data;
-  SegmentMapping stack;
-  void Print() {
-    code.Print();
-    data.Print();
-    stack.Print();
-  }
-};
+#include "execution_context.h"
 
 static void PrintProgramHeader(const Elf64_Phdr* phdr) {
   PutString(" flags:");
@@ -135,12 +112,11 @@ const Elf64_Ehdr* LoadELF(File& file,
   return ehdr;
 }
 
-ExecutionContext* LoadELFAndLaunchProcess(File& file) {
+Process& LoadELFAndLaunchProcess(File& file) {
   ProcessMappingInfo info;
   IA_PML4& user_page_table = CreatePageTable();
   const Elf64_Ehdr* ehdr = LoadELF(file, user_page_table, info);
-  if (!ehdr)
-    return nullptr;
+  assert(ehdr);
 
   uint8_t* entry_point = reinterpret_cast<uint8_t*>(ehdr->e_entry);
   PutStringAndHex("Entry address: ", entry_point);
@@ -158,7 +134,7 @@ ExecutionContext* LoadELFAndLaunchProcess(File& file) {
 
   info.Print();
 
-  ExecutionContext* ctx = liumos->exec_ctx_ctrl->Create(
+  ExecutionContext& ctx = liumos->exec_ctx_ctrl->Create(
       reinterpret_cast<void (*)(void)>(entry_point), GDT::kUserCS64Selector,
       stack_pointer, GDT::kUserDSSelector,
       reinterpret_cast<uint64_t>(&user_page_table), kRFlagsInterruptEnable,
@@ -166,8 +142,10 @@ ExecutionContext* LoadELFAndLaunchProcess(File& file) {
           kKernelStackPagesForEachProcess,
           kPageAttrPresent | kPageAttrWritable) +
           kPageSize * kKernelStackPagesForEachProcess);
-  liumos->scheduler->RegisterExecutionContext(ctx);
-  return ctx;
+  Process& proc = liumos->proc_ctrl->Create();
+  proc.InitAsEphemeralProcess(ctx);
+  liumos->scheduler->RegisterProcess(proc);
+  return proc;
 }
 
 void LoadKernelELF(File& file) {

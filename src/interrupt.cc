@@ -8,7 +8,6 @@ __attribute__((ms_abi)) extern "C" void IntHandler(uint64_t intcode,
 
 void IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
   if (ReadRSP() < kKernelBaseAddr) {
-    ExecutionContext* current_context = liumos->scheduler->GetCurrentContext();
     PutStringAndHex("Int#", intcode);
     PutStringAndHex("at CPL", info->int_ctx.cs & 3);
     PutStringAndHex("RIP", info->int_ctx.rip);
@@ -16,26 +15,27 @@ void IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
     PutStringAndHex("SS      ", info->int_ctx.ss);
     PutStringAndHex("RSP", info->int_ctx.rsp);
     PutStringAndHex("Error Code", info->error_code);
-    PutStringAndHex("Context#", current_context->GetID());
+    Process& proc = liumos->scheduler->GetCurrentProcess();
+    PutStringAndHex("Context#", proc.GetID());
     Panic("Handling exception in user mode stack");
   }
   if (intcode <= 0xFF && handler_list_[intcode]) {
     handler_list_[intcode](intcode, info);
     return;
   }
-  ExecutionContext* current_context = liumos->scheduler->GetCurrentContext();
+  Process& proc = liumos->scheduler->GetCurrentProcess();
   if (intcode == 0x20) {
     liumos->bsp_local_apic->SendEndOfInterrupt();
-    ExecutionContext* next_context = liumos->scheduler->SwitchContext();
-    if (!next_context) {
+    Process* next_proc = liumos->scheduler->SwitchProcess();
+    if (!next_proc) {
       // no need to switching context.
       return;
     }
-    auto from = current_context->GetCPUContext();
+    auto from = proc.GetExecutionContext().GetCPUContext();
     from->cr3 = ReadCR3();
     from->greg = info->greg;
     from->int_ctx = info->int_ctx;
-    auto to = next_context->GetCPUContext();
+    auto to = next_proc->GetExecutionContext().GetCPUContext();
     info->greg = to->greg;
     info->int_ctx = to->int_ctx;
     if (from->cr3 == to->cr3)
@@ -50,7 +50,7 @@ void IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
   PutStringAndHex("SS      ", info->int_ctx.ss);
   PutStringAndHex("RSP", info->int_ctx.rsp);
   PutStringAndHex("Error Code", info->error_code);
-  PutStringAndHex("Context#", current_context->GetID());
+  PutStringAndHex("Context#", proc.GetID());
   if (intcode == 0x08) {
     Panic("Double Fault");
   }

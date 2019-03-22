@@ -49,10 +49,13 @@ void LaunchSubTask(KernelVirtualHeapAllocator& kernel_heap_allocator) {
       (kNumOfStackPages << kPageSizeExponent));
   PutStringAndHex("SubTask stack base", sub_context_stack_base);
 
-  ExecutionContext* sub_context = liumos->exec_ctx_ctrl->Create(
+  ExecutionContext& sub_context = liumos->exec_ctx_ctrl->Create(
       SubTask, GDT::kKernelCSSelector, sub_context_rsp, GDT::kKernelDSSelector,
       reinterpret_cast<uint64_t>(&GetKernelPML4()), kRFlagsInterruptEnable, 0);
-  liumos->scheduler->RegisterExecutionContext(sub_context);
+
+  Process& proc = liumos->proc_ctrl->Create();
+  proc.InitAsEphemeralProcess(sub_context);
+  liumos->scheduler->RegisterProcess(proc);
 }
 
 extern "C" void KernelEntry(LiumOS* liumos_passed) {
@@ -81,10 +84,14 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
   ExecutionContextController exec_ctx_ctrl_(kernel_heap_allocator);
   liumos->exec_ctx_ctrl = &exec_ctx_ctrl_;
 
-  ExecutionContext* root_context =
-      liumos->exec_ctx_ctrl->Create(nullptr, 0, nullptr, 0, ReadCR3(), 0, 0);
+  ProcessController proc_ctrl_(kernel_heap_allocator);
+  liumos->proc_ctrl = &proc_ctrl_;
 
-  Scheduler scheduler_(root_context);
+  ExecutionContext& root_context =
+      liumos->exec_ctx_ctrl->Create(nullptr, 0, nullptr, 0, ReadCR3(), 0, 0);
+  Process& root_process = liumos->proc_ctrl->Create();
+  root_process.InitAsEphemeralProcess(root_context);
+  Scheduler scheduler_(root_process);
   liumos->scheduler = &scheduler_;
 
   PutString("Hello from kernel!\n");

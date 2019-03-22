@@ -544,7 +544,7 @@ void Time() {
   PutStringAndHex("HPET main counter", liumos->hpet->ReadMainCounterValue());
 }
 
-void Process(TextBox& tbox) {
+void Run(TextBox& tbox) {
   const char* line = tbox.GetRecordedString();
   if (IsEqualString(line, "hello")) {
     PutString("Hello, world!\n");
@@ -607,11 +607,11 @@ void Process(TextBox& tbox) {
   } else if (IsEqualString(line, "time")) {
     Time();
   } else if (IsEqualString(line, "hello.bin")) {
-    ExecutionContext* ctx = LoadELFAndLaunchProcess(*liumos->hello_bin_file);
-    ctx->WaitUntilExit();
+    Process& proc = LoadELFAndLaunchProcess(*liumos->hello_bin_file);
+    proc.WaitUntilExit();
   } else if (IsEqualString(line, "pi.bin")) {
-    ExecutionContext* ctx = LoadELFAndLaunchProcess(*liumos->pi_bin_file);
-    ctx->WaitUntilExit();
+    Process& proc = LoadELFAndLaunchProcess(*liumos->pi_bin_file);
+    proc.WaitUntilExit();
   } else if (IsEqualString(line, "cpuid")) {
     assert(liumos->cpu_features);
     CPUFeatureSet& f = *liumos->cpu_features;
@@ -672,7 +672,7 @@ void WaitAndProcess(TextBox& tbox) {
       if (keyid == '\n') {
         tbox.StopRecording();
         tbox.putc('\n');
-        ConsoleCommand::Process(tbox);
+        ConsoleCommand::Run(tbox);
         return;
       }
       tbox.putc(keyid);
