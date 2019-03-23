@@ -1,13 +1,12 @@
 #pragma once
 
-#include "lib/musl/include/elf.h"
-
-#include "execution_context.h"
 #include "generic.h"
 
 class File;
 class Process;
+class PersistentMemoryManager;
 
 Process& LoadELFAndLaunchEphemeralProcess(File& file);
-Process& LoadELFAndLaunchPersistentProcess(File& file);
+Process& LoadELFAndLaunchPersistentProcess(File& file,
+                                           PersistentMemoryManager& pmem);
 void LoadKernelELF(File& file);

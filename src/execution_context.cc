@@ -11,9 +11,9 @@ void SegmentMapping::Print() {
 }
 
 void ProcessMappingInfo::Print() {
-  PutString("code: ");
+  PutString("code : ");
   code.Print();
-  PutString("data: ");
+  PutString("data : ");
   data.Print();
   PutString("stack: ");
   stack.Print();

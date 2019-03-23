@@ -588,8 +588,13 @@ void Run(TextBox& tbox) {
       PutString("PMEM not found\n");
       return;
     }
-    uint64_t obj_addr = liumos->pmem[0]->AllocatePages<uint64_t>(3);
+    uint64_t obj_addr = liumos->pmem[0]->AllocPages<uint64_t>(3);
     PutStringAndHex("Allocated object at", obj_addr);
+  } else if (IsEqualString(line, "pmem run pi.bin")) {
+    assert(liumos->pmem[0]);
+    Process& proc = LoadELFAndLaunchPersistentProcess(*liumos->pi_bin_file,
+                                                      *liumos->pmem[0]);
+    proc.WaitUntilExit();
   } else if (strncmp(line, "test mem ", 9) == 0) {
     int proximity_domain = atoi(&line[9]);
     TestMem(liumos->dram_allocator, proximity_domain);
@@ -611,9 +616,6 @@ void Run(TextBox& tbox) {
     proc.WaitUntilExit();
   } else if (IsEqualString(line, "pi.bin")) {
     Process& proc = LoadELFAndLaunchEphemeralProcess(*liumos->pi_bin_file);
-    proc.WaitUntilExit();
-  } else if (IsEqualString(line, "pr pi.bin")) {
-    Process& proc = LoadELFAndLaunchPersistentProcess(*liumos->pi_bin_file);
     proc.WaitUntilExit();
   } else if (IsEqualString(line, "cpuid")) {
     assert(liumos->cpu_features);

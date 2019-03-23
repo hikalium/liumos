@@ -1,4 +1,6 @@
+#include "lib/musl/include/elf.h"
 #include "liumos.h"
+#include "pmem.h"
 
 static void PrintProgramHeader(const Elf64_Phdr* phdr) {
   PutString(" flags:");
@@ -202,7 +204,47 @@ Process& LoadELFAndLaunchEphemeralProcess(File& file) {
   return proc;
 }
 
-Process& LoadELFAndLaunchPersistentProcess(File&) {
+Process& LoadELFAndLaunchPersistentProcess(File& file,
+                                           PersistentMemoryManager& pmem) {
+  ProcessMappingInfo map_info;
+  PhdrMappingInfo phdr_map_info;
+  IA_PML4& user_page_table = CreatePageTable();
+
+  const Elf64_Ehdr* ehdr = ParseProgramHeader(file, map_info, phdr_map_info);
+  assert(ehdr);
+
+  map_info.code.paddr =
+      pmem.AllocPages<uint64_t>(ByteSizeToPageSize(map_info.code.size));
+  map_info.data.paddr =
+      pmem.AllocPages<uint64_t>(ByteSizeToPageSize(map_info.data.size));
+
+  const int kNumOfStackPages = 32;
+  map_info.stack.size = kNumOfStackPages << kPageSizeExponent;
+  map_info.stack.paddr =
+      pmem.AllocPages<uint64_t>(ByteSizeToPageSize(map_info.stack.size));
+  map_info.stack.vaddr = 0xBEEF'0000;
+
+  map_info.Print();
+  LoadAndMap(user_page_table, map_info, phdr_map_info, kPageAttrUser);
+
+  uint8_t* entry_point = reinterpret_cast<uint8_t*>(ehdr->e_entry);
+  PutStringAndHex("Entry address: ", entry_point);
+
+  void* stack_pointer =
+      reinterpret_cast<void*>(map_info.stack.vaddr + map_info.stack.size);
+
+  ExecutionContext& ctx = liumos->exec_ctx_ctrl->Create(
+      reinterpret_cast<void (*)(void)>(entry_point), GDT::kUserCS64Selector,
+      stack_pointer, GDT::kUserDSSelector,
+      reinterpret_cast<uint64_t>(&user_page_table), kRFlagsInterruptEnable,
+      liumos->kernel_heap_allocator->AllocPages<uint64_t>(
+          kKernelStackPagesForEachProcess,
+          kPageAttrPresent | kPageAttrWritable) +
+          kPageSize * kKernelStackPagesForEachProcess);
+  Process& proc = liumos->proc_ctrl->Create();
+  proc.InitAsEphemeralProcess(ctx);
+  liumos->scheduler->RegisterProcess(proc);
+  return proc;
   Panic("not implemented");
 }
 

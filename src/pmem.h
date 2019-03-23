@@ -29,7 +29,7 @@ class PersistentMemoryManager {
  public:
   bool IsValid() { return signature_ == kSignature && head_; }
   template <typename T>
-  T AllocatePages(uint64_t num_of_pages_requested) {
+  T AllocPages(uint64_t num_of_pages_requested) {
     assert(IsValid());
     const uint64_t next_page_idx =
         (head_->GetObjectBase<uint64_t>() >> kPageSizeExponent) +
