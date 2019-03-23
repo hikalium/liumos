@@ -612,6 +612,9 @@ void Run(TextBox& tbox) {
   } else if (IsEqualString(line, "pi.bin")) {
     Process& proc = LoadELFAndLaunchEphemeralProcess(*liumos->pi_bin_file);
     proc.WaitUntilExit();
+  } else if (IsEqualString(line, "pr pi.bin")) {
+    Process& proc = LoadELFAndLaunchPersistentProcess(*liumos->pi_bin_file);
+    proc.WaitUntilExit();
   } else if (IsEqualString(line, "cpuid")) {
     assert(liumos->cpu_features);
     CPUFeatureSet& f = *liumos->cpu_features;

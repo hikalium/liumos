@@ -9,6 +9,11 @@ struct SegmentMapping {
   uint64_t vaddr;
   uint64_t size;
   void Print();
+  void Clear() {
+    paddr = 0;
+    vaddr = 0;
+    size = 0;
+  }
 };
 
 struct ProcessMappingInfo {
@@ -16,6 +21,11 @@ struct ProcessMappingInfo {
   SegmentMapping data;
   SegmentMapping stack;
   void Print();
+  void Clear() {
+    code.Clear();
+    data.Clear();
+    stack.Clear();
+  }
 };
 
 class ExecutionContext {
@@ -58,4 +68,9 @@ class ExecutionContextController {
 
  private:
   KernelVirtualHeapAllocator& kernel_heap_allocator_;
+};
+
+struct PersistentProcessInfo {
+  ExecutionContext ctx[3];
+  int save_completed_ctx_idx;
 };

@@ -23,6 +23,9 @@ static inline uint64_t FloorToPageAlignment(uint64_t v) {
 static inline bool IsAlignedToPageSize(uint64_t v) {
   return (v & kPageAddrMask) == 0;
 }
+static inline bool IsAlignedToPageSize(const void* a) {
+  return IsAlignedToPageSize(reinterpret_cast<uint64_t>(a));
+}
 
 template <typename TableType>
 uint64_t v2p(TableType& table, uint64_t vaddr) {

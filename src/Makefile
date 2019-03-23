@@ -26,32 +26,26 @@ CLANG_WARNINGS = \
 		-Wall -Wpedantic -Wextra -Wconditional-uninitialized -Wshorten-64-to-32
 CXX_STD = -std=c++17
 		
-CFLAGS= \
+CFLAGS_LOADER= \
 		-target x86_64-pc-win32-coff \
-		-fno-stack-protector -fshort-wchar \
+		-fno-stack-protector -fno-exceptions -fshort-wchar \
 		-mno-red-zone \
 		-nostdlibinc \
 		$(CLANG_WARNINGS) -std=c11 \
 		-Imusl_supplement -Imusl/include
 
+CXXFLAGS_LOADER= \
+		-target x86_64-pc-win32-coff \
+		-fno-stack-protector -fno-exceptions -fshort-wchar \
+		-mno-red-zone \
+		-nostdlibinc -nostdlib\
+		$(CLANG_WARNINGS) $(CXX_STD)
+
+
 CFLAGS_KERNEL= \
 		-target x86_64-unknown-none-elf \
-		-fno-stack-protector -fshort-wchar \
+		-fno-stack-protector -fno-exceptions -fshort-wchar \
 		-mno-red-zone -mstack-alignment=8 -mno-sse\
-		-nostdlibinc \
-		$(CLANG_WARNINGS) $(CXX_STD)
-
-CXXFLAGS= \
-		-target x86_64-pc-win32-coff \
-		-fno-stack-protector -fshort-wchar \
-		-mno-red-zone \
-		-nostdlibinc \
-		$(CLANG_WARNINGS) $(CXX_STD)
-
-CFLAGS_ELF= \
-		-target x86_64-unknown-none-elf \
-		-fno-stack-protector -fshort-wchar \
-		-mno-red-zone \
 		-nostdlibinc \
 		$(CLANG_WARNINGS) $(CXX_STD)
 
@@ -73,19 +67,19 @@ lib/musl/include/%.h : lib/musl/include/Makefile
 	make -C lib/musl/include/ $*.h
 
 %.o : %.c $(HEADERS) Makefile
-	$(CC) $(CFLAGS) \
+	$(CC) $(CFLAGS_LOADER) \
 		-c -o $*.o $*.c
 
 liumos.o : liumos.cc githash.h $(HEADERS) Makefile
-	$(CC) $(CXXFLAGS) \
+	$(CC) $(CXXFLAGS_LOADER) \
 		-c -o $*.o $*.cc
 
 %.o : %.cc $(HEADERS) Makefile
-	$(CC) $(CXXFLAGS) \
+	$(CC) $(CXXFLAGS_LOADER) \
 		-c -o $*.o $*.cc
 
 %.o : %.S Makefile
-	$(CC) $(CFLAGS) \
+	$(CC) $(CFLAGS_LOADER) \
 		-c -o $*.o $*.S
 
 %.o.dump.txt : %.o Makefile
