@@ -5,5 +5,5 @@
 class File;
 class Process;
 
-Process& LoadELFAndLaunchProcess(File& file);
+Process& LoadELFAndLaunchEphemeralProcess(File& file);
 void LoadKernelELF(File& file);

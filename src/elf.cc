@@ -112,7 +112,7 @@ const Elf64_Ehdr* LoadELF(File& file,
   return ehdr;
 }
 
-Process& LoadELFAndLaunchProcess(File& file) {
+Process& LoadELFAndLaunchEphemeralProcess(File& file) {
   ProcessMappingInfo info;
   IA_PML4& user_page_table = CreatePageTable();
   const Elf64_Ehdr* ehdr = LoadELF(file, user_page_table, info);

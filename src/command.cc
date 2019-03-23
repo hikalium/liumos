@@ -607,10 +607,10 @@ void Run(TextBox& tbox) {
   } else if (IsEqualString(line, "time")) {
     Time();
   } else if (IsEqualString(line, "hello.bin")) {
-    Process& proc = LoadELFAndLaunchProcess(*liumos->hello_bin_file);
+    Process& proc = LoadELFAndLaunchEphemeralProcess(*liumos->hello_bin_file);
     proc.WaitUntilExit();
   } else if (IsEqualString(line, "pi.bin")) {
-    Process& proc = LoadELFAndLaunchProcess(*liumos->pi_bin_file);
+    Process& proc = LoadELFAndLaunchEphemeralProcess(*liumos->pi_bin_file);
     proc.WaitUntilExit();
   } else if (IsEqualString(line, "cpuid")) {
     assert(liumos->cpu_features);
