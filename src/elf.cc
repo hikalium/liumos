@@ -125,6 +125,14 @@ static const Elf64_Ehdr* ParseProgramHeader(File& file,
   return ehdr;
 }
 
+static void MapSegment(IA_PML4& page_root,
+                       SegmentMapping& seg_map,
+                       uint64_t page_attr) {
+  assert(seg_map.paddr);
+  CreatePageMapping(*liumos->dram_allocator, page_root, seg_map.vaddr,
+                    seg_map.paddr, seg_map.size, page_attr);
+}
+
 static void LoadAndMapSegment(IA_PML4& page_root,
                               SegmentMapping& seg_map,
                               PhdrInfo& phdr_info,
@@ -136,19 +144,20 @@ static void LoadAndMapSegment(IA_PML4& page_root,
   memcpy(phys_buf, phdr_info.data, phdr_info.copy_size);
   bzero(phys_buf + phdr_info.copy_size,
         phdr_info.map_size - phdr_info.copy_size);
-  CreatePageMapping(*liumos->dram_allocator, page_root, seg_map.vaddr,
-                    seg_map.paddr, seg_map.size, page_attr);
+  MapSegment(page_root, seg_map, page_attr);
 }
 
 static void LoadAndMap(IA_PML4& page_root,
                        ProcessMappingInfo& proc_map_info,
-                       PhdrMappingInfo& phdr_map_info) {
-  uint64_t page_attr = kPageAttrPresent | kPageAttrUser;
+                       PhdrMappingInfo& phdr_map_info,
+                       uint64_t base_attr) {
+  uint64_t page_attr = kPageAttrPresent | base_attr;
 
   LoadAndMapSegment(page_root, proc_map_info.code, phdr_map_info.code,
                     page_attr);
   LoadAndMapSegment(page_root, proc_map_info.data, phdr_map_info.data,
                     page_attr | kPageAttrWritable);
+  MapSegment(page_root, proc_map_info.stack, page_attr | kPageAttrWritable);
 }
 
 Process& LoadELFAndLaunchEphemeralProcess(File& file) {
@@ -164,21 +173,18 @@ Process& LoadELFAndLaunchEphemeralProcess(File& file) {
   map_info.data.paddr = liumos->dram_allocator->AllocPages<uint64_t>(
       ByteSizeToPageSize(map_info.data.size));
 
-  map_info.Print();
-  LoadAndMap(user_page_table, map_info, phdr_map_info);
-
-  uint8_t* entry_point = reinterpret_cast<uint8_t*>(ehdr->e_entry);
-  PutStringAndHex("Entry address: ", entry_point);
-
   const int kNumOfStackPages = 32;
   map_info.stack.size = kNumOfStackPages << kPageSizeExponent;
   map_info.stack.paddr = liumos->dram_allocator->AllocPages<uint64_t>(
       ByteSizeToPageSize(map_info.stack.size));
   map_info.stack.vaddr = 0xBEEF'0000;
-  CreatePageMapping(*liumos->dram_allocator, user_page_table,
-                    map_info.stack.vaddr, map_info.stack.paddr,
-                    map_info.stack.size,
-                    kPageAttrPresent | kPageAttrUser | kPageAttrWritable);
+
+  map_info.Print();
+  LoadAndMap(user_page_table, map_info, phdr_map_info, kPageAttrUser);
+
+  uint8_t* entry_point = reinterpret_cast<uint8_t*>(ehdr->e_entry);
+  PutStringAndHex("Entry address: ", entry_point);
+
   void* stack_pointer =
       reinterpret_cast<void*>(map_info.stack.vaddr + map_info.stack.size);
 
@@ -203,6 +209,7 @@ Process& LoadELFAndLaunchPersistentProcess(File&) {
 void LoadKernelELF(File& file) {
   ProcessMappingInfo map_info;
   PhdrMappingInfo phdr_map_info;
+
   const Elf64_Ehdr* ehdr = ParseProgramHeader(file, map_info, phdr_map_info);
   assert(ehdr);
 
@@ -211,26 +218,19 @@ void LoadKernelELF(File& file) {
   map_info.data.paddr = liumos->dram_allocator->AllocPages<uint64_t>(
       ByteSizeToPageSize(map_info.data.size));
 
-  LoadAndMap(GetKernelPML4(), map_info, phdr_map_info);
+  constexpr uint64_t kNumOfKernelMainStackPages = 2;
+  uint64_t kernel_main_stack_virtual_base = 0xFFFF'FFFF'4000'0000ULL;
+
+  map_info.stack.size = kNumOfKernelMainStackPages << kPageSizeExponent;
+  map_info.stack.paddr = liumos->dram_allocator->AllocPages<uint64_t>(
+      ByteSizeToPageSize(map_info.stack.size));
+  map_info.stack.vaddr = kernel_main_stack_virtual_base;
+
+  LoadAndMap(GetKernelPML4(), map_info, phdr_map_info, 0);
 
   uint8_t* entry_point = reinterpret_cast<uint8_t*>(ehdr->e_entry);
   PutStringAndHex("Entry address: ", entry_point);
-  PutString("Data at entrypoint: ");
-  for (int i = 0; i < 16; i++) {
-    PutHex8ZeroFilled(entry_point[i]);
-    PutChar(' ');
-  }
-  PutChar('\n');
 
-  constexpr uint64_t kNumOfKernelMainStackPages = 2;
-  uint64_t kernel_main_stack_physical_base =
-      liumos->dram_allocator->AllocPages<uint64_t>(kNumOfKernelMainStackPages);
-  uint64_t kernel_main_stack_virtual_base = 0xFFFF'FFFF'4000'0000ULL;
-  CreatePageMapping(*liumos->dram_allocator, GetKernelPML4(),
-                    kernel_main_stack_virtual_base,
-                    kernel_main_stack_physical_base,
-                    kNumOfKernelMainStackPages << kPageSizeExponent,
-                    kPageAttrPresent | kPageAttrWritable);
   uint64_t kernel_main_stack_pointer =
       kernel_main_stack_virtual_base +
       (kNumOfKernelMainStackPages << kPageSizeExponent);
