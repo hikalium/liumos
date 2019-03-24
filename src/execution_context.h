@@ -4,16 +4,34 @@
 #include "kernel_virtual_heap_allocator.h"
 #include "paging.h"
 
-struct SegmentMapping {
-  uint64_t paddr;
-  uint64_t vaddr;
-  uint64_t size;
-  void Print();
-  void Clear() {
-    paddr = 0;
-    vaddr = 0;
-    size = 0;
+class SegmentMapping {
+ public:
+  void Set(uint64_t vaddr, uint64_t paddr, uint64_t map_size) {
+    vaddr_ = vaddr;
+    paddr_ = paddr;
+    map_size_ = map_size;
+    CLFlush(this);
   }
+  uint64_t GetPhysAddr() { return paddr_; }
+  void SetPhysAddr(uint64_t paddr) {
+    paddr_ = paddr;
+    CLFlush(&paddr);
+  }
+  uint64_t GetVirtAddr() { return vaddr_; }
+  uint64_t GetMapSize() { return map_size_; }
+  uint64_t GetVirtEndAddr() { return vaddr_ + map_size_; }
+  void Clear() {
+    paddr_ = 0;
+    vaddr_ = 0;
+    map_size_ = 0;
+    CLFlush(this);
+  }
+  void Print();
+
+ private:
+  uint64_t vaddr_;
+  uint64_t paddr_;
+  uint64_t map_size_;
 };
 
 struct ProcessMappingInfo {
@@ -26,6 +44,20 @@ struct ProcessMappingInfo {
     data.Clear();
     stack.Clear();
   }
+};
+
+struct PersistentProcessInfo {
+  bool IsValid() { return signature_ == kSignature; }
+  void Print();
+  void Init() {
+    pmap[0].Clear();
+    pmap[1].Clear();
+    signature_ = kSignature;
+    CLFlush(&signature_);
+  }
+  static constexpr uint64_t kSignature = 0x4F50534F6D75696CULL;
+  ProcessMappingInfo pmap[2];
+  uint64_t signature_;
 };
 
 class ExecutionContext {
@@ -68,9 +100,4 @@ class ExecutionContextController {
 
  private:
   KernelVirtualHeapAllocator& kernel_heap_allocator_;
-};
-
-struct PersistentProcessInfo {
-  ExecutionContext ctx[3];
-  int save_completed_ctx_idx;
 };

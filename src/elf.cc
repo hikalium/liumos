@@ -114,15 +114,15 @@ static const Elf64_Ehdr* ParseProgramHeader(File& file,
       phdr_info = &phdr_map_info.data;
     }
     assert(seg_map);
-    seg_map->paddr = 0;
-    seg_map->vaddr = FloorToPageAlignment(phdr->p_vaddr);
-    seg_map->size =
-        CeilToPageAlignment(phdr->p_memsz + (phdr->p_vaddr - seg_map->vaddr));
+    uint64_t vaddr = FloorToPageAlignment(phdr->p_vaddr);
+    seg_map->Set(vaddr, 0,
+                 CeilToPageAlignment(phdr->p_memsz + (phdr->p_vaddr - vaddr)));
     assert(phdr_info);
     phdr_info->data = buf + FloorToPageAlignment(phdr->p_offset);
-    phdr_info->vaddr = seg_map->vaddr;
-    phdr_info->map_size = seg_map->size;
-    phdr_info->copy_size = phdr->p_filesz + (phdr->p_vaddr - seg_map->vaddr);
+    phdr_info->vaddr = seg_map->GetVirtAddr();
+    phdr_info->map_size = seg_map->GetMapSize();
+    phdr_info->copy_size =
+        phdr->p_filesz + (phdr->p_vaddr - seg_map->GetVirtAddr());
   }
   return ehdr;
 }
@@ -130,19 +130,19 @@ static const Elf64_Ehdr* ParseProgramHeader(File& file,
 static void MapSegment(IA_PML4& page_root,
                        SegmentMapping& seg_map,
                        uint64_t page_attr) {
-  assert(seg_map.paddr);
-  CreatePageMapping(*liumos->dram_allocator, page_root, seg_map.vaddr,
-                    seg_map.paddr, seg_map.size, page_attr);
+  assert(seg_map.GetPhysAddr());
+  CreatePageMapping(*liumos->dram_allocator, page_root, seg_map.GetVirtAddr(),
+                    seg_map.GetPhysAddr(), seg_map.GetMapSize(), page_attr);
 }
 
 static void LoadAndMapSegment(IA_PML4& page_root,
                               SegmentMapping& seg_map,
                               PhdrInfo& phdr_info,
                               uint64_t page_attr) {
-  assert(seg_map.vaddr == phdr_info.vaddr);
-  assert(seg_map.size == phdr_info.map_size);
-  assert(seg_map.paddr);
-  uint8_t* phys_buf = reinterpret_cast<uint8_t*>(seg_map.paddr);
+  assert(seg_map.GetVirtAddr() == phdr_info.vaddr);
+  assert(seg_map.GetMapSize() == phdr_info.map_size);
+  assert(seg_map.GetPhysAddr());
+  uint8_t* phys_buf = reinterpret_cast<uint8_t*>(seg_map.GetPhysAddr());
   memcpy(phys_buf, phdr_info.data, phdr_info.copy_size);
   bzero(phys_buf + phdr_info.copy_size,
         phdr_info.map_size - phdr_info.copy_size);
@@ -170,16 +170,16 @@ Process& LoadELFAndLaunchEphemeralProcess(File& file) {
   const Elf64_Ehdr* ehdr = ParseProgramHeader(file, map_info, phdr_map_info);
   assert(ehdr);
 
-  map_info.code.paddr = liumos->dram_allocator->AllocPages<uint64_t>(
-      ByteSizeToPageSize(map_info.code.size));
-  map_info.data.paddr = liumos->dram_allocator->AllocPages<uint64_t>(
-      ByteSizeToPageSize(map_info.data.size));
+  map_info.code.SetPhysAddr(liumos->dram_allocator->AllocPages<uint64_t>(
+      ByteSizeToPageSize(map_info.code.GetMapSize())));
+  map_info.data.SetPhysAddr(liumos->dram_allocator->AllocPages<uint64_t>(
+      ByteSizeToPageSize(map_info.data.GetMapSize())));
 
   const int kNumOfStackPages = 32;
-  map_info.stack.size = kNumOfStackPages << kPageSizeExponent;
-  map_info.stack.paddr = liumos->dram_allocator->AllocPages<uint64_t>(
-      ByteSizeToPageSize(map_info.stack.size));
-  map_info.stack.vaddr = 0xBEEF'0000;
+  map_info.stack.Set(
+      0xBEEF'0000,
+      liumos->dram_allocator->AllocPages<uint64_t>(kNumOfStackPages),
+      kNumOfStackPages << kPageSizeExponent);
 
   map_info.Print();
   LoadAndMap(user_page_table, map_info, phdr_map_info, kPageAttrUser);
@@ -188,7 +188,7 @@ Process& LoadELFAndLaunchEphemeralProcess(File& file) {
   PutStringAndHex("Entry address: ", entry_point);
 
   void* stack_pointer =
-      reinterpret_cast<void*>(map_info.stack.vaddr + map_info.stack.size);
+      reinterpret_cast<void*>(map_info.stack.GetVirtEndAddr());
 
   ExecutionContext& ctx = liumos->exec_ctx_ctrl->Create(
       reinterpret_cast<void (*)(void)>(entry_point), GDT::kUserCS64Selector,
@@ -206,23 +206,23 @@ Process& LoadELFAndLaunchEphemeralProcess(File& file) {
 
 Process& LoadELFAndLaunchPersistentProcess(File& file,
                                            PersistentMemoryManager& pmem) {
-  ProcessMappingInfo map_info;
+  PersistentProcessInfo& pp_info = *pmem.AllocPersistentProcessInfo();
+  pp_info.Init();
+  ProcessMappingInfo& map_info = pp_info.pmap[0];
   PhdrMappingInfo phdr_map_info;
   IA_PML4& user_page_table = CreatePageTable();
 
   const Elf64_Ehdr* ehdr = ParseProgramHeader(file, map_info, phdr_map_info);
   assert(ehdr);
 
-  map_info.code.paddr =
-      pmem.AllocPages<uint64_t>(ByteSizeToPageSize(map_info.code.size));
-  map_info.data.paddr =
-      pmem.AllocPages<uint64_t>(ByteSizeToPageSize(map_info.data.size));
+  map_info.code.SetPhysAddr(pmem.AllocPages<uint64_t>(
+      ByteSizeToPageSize(map_info.code.GetMapSize())));
+  map_info.data.SetPhysAddr(pmem.AllocPages<uint64_t>(
+      ByteSizeToPageSize(map_info.data.GetMapSize())));
 
   const int kNumOfStackPages = 32;
-  map_info.stack.size = kNumOfStackPages << kPageSizeExponent;
-  map_info.stack.paddr =
-      pmem.AllocPages<uint64_t>(ByteSizeToPageSize(map_info.stack.size));
-  map_info.stack.vaddr = 0xBEEF'0000;
+  map_info.stack.Set(0xBEEF'0000, pmem.AllocPages<uint64_t>(kNumOfStackPages),
+                     kNumOfStackPages << kPageSizeExponent);
 
   map_info.Print();
   LoadAndMap(user_page_table, map_info, phdr_map_info, kPageAttrUser);
@@ -231,7 +231,7 @@ Process& LoadELFAndLaunchPersistentProcess(File& file,
   PutStringAndHex("Entry address: ", entry_point);
 
   void* stack_pointer =
-      reinterpret_cast<void*>(map_info.stack.vaddr + map_info.stack.size);
+      reinterpret_cast<void*>(map_info.stack.GetVirtEndAddr());
 
   ExecutionContext& ctx = liumos->exec_ctx_ctrl->Create(
       reinterpret_cast<void (*)(void)>(entry_point), GDT::kUserCS64Selector,
@@ -245,7 +245,6 @@ Process& LoadELFAndLaunchPersistentProcess(File& file,
   proc.InitAsEphemeralProcess(ctx);
   liumos->scheduler->RegisterProcess(proc);
   return proc;
-  Panic("not implemented");
 }
 
 void LoadKernelELF(File& file) {
@@ -255,18 +254,18 @@ void LoadKernelELF(File& file) {
   const Elf64_Ehdr* ehdr = ParseProgramHeader(file, map_info, phdr_map_info);
   assert(ehdr);
 
-  map_info.code.paddr = liumos->dram_allocator->AllocPages<uint64_t>(
-      ByteSizeToPageSize(map_info.code.size));
-  map_info.data.paddr = liumos->dram_allocator->AllocPages<uint64_t>(
-      ByteSizeToPageSize(map_info.data.size));
+  map_info.code.SetPhysAddr(liumos->dram_allocator->AllocPages<uint64_t>(
+      ByteSizeToPageSize(map_info.code.GetMapSize())));
+  map_info.data.SetPhysAddr(liumos->dram_allocator->AllocPages<uint64_t>(
+      ByteSizeToPageSize(map_info.data.GetMapSize())));
 
   constexpr uint64_t kNumOfKernelMainStackPages = 2;
   uint64_t kernel_main_stack_virtual_base = 0xFFFF'FFFF'4000'0000ULL;
 
-  map_info.stack.size = kNumOfKernelMainStackPages << kPageSizeExponent;
-  map_info.stack.paddr = liumos->dram_allocator->AllocPages<uint64_t>(
-      ByteSizeToPageSize(map_info.stack.size));
-  map_info.stack.vaddr = kernel_main_stack_virtual_base;
+  map_info.stack.Set(
+      kernel_main_stack_virtual_base,
+      liumos->dram_allocator->AllocPages<uint64_t>(kNumOfKernelMainStackPages),
+      kNumOfKernelMainStackPages << kPageSizeExponent);
 
   LoadAndMap(GetKernelPML4(), map_info, phdr_map_info, 0);
 

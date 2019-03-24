@@ -50,6 +50,7 @@ void PersistentMemoryManager::Init() {
     num_of_pages_ =
         spa_range->system_physical_address_range_length >> kPageSizeExponent;
     head_ = nullptr;
+    last_persistent_process_info_ = nullptr;
     signature_ = kSignature;
     CLFlush(this);
 
@@ -59,6 +60,14 @@ void PersistentMemoryManager::Init() {
     return;
   }
   assert(false);
+}
+
+PersistentProcessInfo* PersistentMemoryManager::AllocPersistentProcessInfo() {
+  PersistentProcessInfo* info = AllocPages<PersistentProcessInfo*>(
+      ByteSizeToPageSize(sizeof(PersistentProcessInfo)));
+  last_persistent_process_info_ = info;
+  CLFlush(&last_persistent_process_info_);
+  return last_persistent_process_info_;
 }
 
 void PersistentMemoryManager::Print() {

@@ -590,9 +590,22 @@ void Run(TextBox& tbox) {
     }
     uint64_t obj_addr = liumos->pmem[0]->AllocPages<uint64_t>(3);
     PutStringAndHex("Allocated object at", obj_addr);
+  } else if (IsEqualString(line, "pmem ls")) {
+    if (!liumos->pmem[0]) {
+      PutString("PMEM not found\n");
+      return;
+    }
+    PersistentProcessInfo* pp_info =
+        liumos->pmem[0]->GetLastPersistentProcessInfo();
+    pp_info->Print();
   } else if (IsEqualString(line, "pmem run pi.bin")) {
     assert(liumos->pmem[0]);
     Process& proc = LoadELFAndLaunchPersistentProcess(*liumos->pi_bin_file,
+                                                      *liumos->pmem[0]);
+    proc.WaitUntilExit();
+  } else if (IsEqualString(line, "pmem run hello.bin")) {
+    assert(liumos->pmem[0]);
+    Process& proc = LoadELFAndLaunchPersistentProcess(*liumos->hello_bin_file,
                                                       *liumos->pmem[0]);
     proc.WaitUntilExit();
   } else if (strncmp(line, "test mem ", 9) == 0) {

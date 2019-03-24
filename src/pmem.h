@@ -1,4 +1,5 @@
 #pragma once
+#include "execution_context.h"
 #include "generic.h"
 
 class PersistentObjectHeader {
@@ -43,6 +44,10 @@ class PersistentMemoryManager {
     SetHead(h);
     return head_->GetObjectBase<T>();
   }
+  PersistentProcessInfo* AllocPersistentProcessInfo();
+  PersistentProcessInfo* GetLastPersistentProcessInfo() {
+    return last_persistent_process_info_;
+  };
 
   void Init();
   void Print();
@@ -53,6 +58,7 @@ class PersistentMemoryManager {
   uint64_t page_idx_;
   uint64_t num_of_pages_;
   PersistentObjectHeader* head_;
+  PersistentProcessInfo* last_persistent_process_info_;
   PersistentObjectHeader sentinel_;
   uint64_t signature_;
 };

@@ -2,11 +2,11 @@
 
 void SegmentMapping::Print() {
   PutString("vaddr:");
-  PutHex64ZeroFilled(vaddr);
+  PutHex64ZeroFilled(vaddr_);
   PutString(" paddr:");
-  PutHex64ZeroFilled(paddr);
+  PutHex64ZeroFilled(paddr_);
   PutString(" size:");
-  PutHex64(size);
+  PutHex64(map_size_);
   PutChar('\n');
 }
 
@@ -17,6 +17,16 @@ void ProcessMappingInfo::Print() {
   data.Print();
   PutString("stack: ");
   stack.Print();
+}
+
+void PersistentProcessInfo::Print() {
+  if (!IsValid()) {
+    PutString("Invalid Persistent Process Info\n");
+    return;
+  }
+  PutString("Persistent Process Info:\n");
+  PutString("seg_map[0]:\n");
+  pmap[0].Print();
 }
 
 ExecutionContext& ExecutionContextController::Create(void (*rip)(),
