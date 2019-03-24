@@ -38,11 +38,13 @@ struct ProcessMappingInfo {
   SegmentMapping code;
   SegmentMapping data;
   SegmentMapping stack;
+  SegmentMapping kernel_stack;
   void Print();
   void Clear() {
     code.Clear();
     data.Clear();
     stack.Clear();
+    kernel_stack.Clear();
   }
 };
 
@@ -64,16 +66,13 @@ class ExecutionContext {
  public:
   CPUContext* GetCPUContext() { return &cpu_context_; }
   uint64_t GetKernelRSP() { return kernel_rsp_; }
-  friend class ExecutionContextController;
-
- private:
-  ExecutionContext(void (*rip)(),
-                   uint16_t cs,
-                   void* rsp,
-                   uint16_t ss,
-                   uint64_t cr3,
-                   uint64_t rflags,
-                   uint64_t kernel_rsp) {
+  void Init(void (*rip)(),
+            uint16_t cs,
+            void* rsp,
+            uint16_t ss,
+            uint64_t cr3,
+            uint64_t rflags,
+            uint64_t kernel_rsp) {
     cpu_context_.int_ctx.rip = reinterpret_cast<uint64_t>(rip);
     cpu_context_.int_ctx.cs = cs;
     cpu_context_.int_ctx.rsp = reinterpret_cast<uint64_t>(rsp);
@@ -82,22 +81,8 @@ class ExecutionContext {
     cpu_context_.cr3 = cr3;
     kernel_rsp_ = kernel_rsp;
   }
-  CPUContext cpu_context_;
-  uint64_t kernel_rsp_;
-};
-
-class ExecutionContextController {
- public:
-  ExecutionContextController(KernelVirtualHeapAllocator& kernel_heap_allocator)
-      : kernel_heap_allocator_(kernel_heap_allocator){};
-  ExecutionContext& Create(void (*rip)(),
-                           uint16_t cs,
-                           void* rsp,
-                           uint16_t ss,
-                           uint64_t cr3,
-                           uint64_t rflags,
-                           uint64_t kernel_rsp);
 
  private:
-  KernelVirtualHeapAllocator& kernel_heap_allocator_;
+  CPUContext cpu_context_;
+  uint64_t kernel_rsp_;
 };

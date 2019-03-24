@@ -190,14 +190,15 @@ Process& LoadELFAndLaunchEphemeralProcess(File& file) {
   void* stack_pointer =
       reinterpret_cast<void*>(map_info.stack.GetVirtEndAddr());
 
-  ExecutionContext& ctx = liumos->exec_ctx_ctrl->Create(
-      reinterpret_cast<void (*)(void)>(entry_point), GDT::kUserCS64Selector,
-      stack_pointer, GDT::kUserDSSelector,
-      reinterpret_cast<uint64_t>(&user_page_table), kRFlagsInterruptEnable,
-      liumos->kernel_heap_allocator->AllocPages<uint64_t>(
-          kKernelStackPagesForEachProcess,
-          kPageAttrPresent | kPageAttrWritable) +
-          kPageSize * kKernelStackPagesForEachProcess);
+  ExecutionContext& ctx =
+      *liumos->kernel_heap_allocator->Alloc<ExecutionContext>();
+  ctx.Init(reinterpret_cast<void (*)(void)>(entry_point),
+           GDT::kUserCS64Selector, stack_pointer, GDT::kUserDSSelector,
+           reinterpret_cast<uint64_t>(&user_page_table), kRFlagsInterruptEnable,
+           liumos->kernel_heap_allocator->AllocPages<uint64_t>(
+               kKernelStackPagesForEachProcess,
+               kPageAttrPresent | kPageAttrWritable) +
+               kPageSize * kKernelStackPagesForEachProcess);
   Process& proc = liumos->proc_ctrl->Create();
   proc.InitAsEphemeralProcess(ctx);
   liumos->scheduler->RegisterProcess(proc);
@@ -233,14 +234,15 @@ Process& LoadELFAndLaunchPersistentProcess(File& file,
   void* stack_pointer =
       reinterpret_cast<void*>(map_info.stack.GetVirtEndAddr());
 
-  ExecutionContext& ctx = liumos->exec_ctx_ctrl->Create(
-      reinterpret_cast<void (*)(void)>(entry_point), GDT::kUserCS64Selector,
-      stack_pointer, GDT::kUserDSSelector,
-      reinterpret_cast<uint64_t>(&user_page_table), kRFlagsInterruptEnable,
-      liumos->kernel_heap_allocator->AllocPages<uint64_t>(
-          kKernelStackPagesForEachProcess,
-          kPageAttrPresent | kPageAttrWritable) +
-          kPageSize * kKernelStackPagesForEachProcess);
+  ExecutionContext& ctx =
+      *liumos->kernel_heap_allocator->Alloc<ExecutionContext>();
+  ctx.Init(reinterpret_cast<void (*)(void)>(entry_point),
+           GDT::kUserCS64Selector, stack_pointer, GDT::kUserDSSelector,
+           reinterpret_cast<uint64_t>(&user_page_table), kRFlagsInterruptEnable,
+           liumos->kernel_heap_allocator->AllocPages<uint64_t>(
+               kKernelStackPagesForEachProcess,
+               kPageAttrPresent | kPageAttrWritable) +
+               kPageSize * kKernelStackPagesForEachProcess);
   Process& proc = liumos->proc_ctrl->Create();
   proc.InitAsEphemeralProcess(ctx);
   liumos->scheduler->RegisterProcess(proc);

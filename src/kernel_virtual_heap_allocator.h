@@ -25,6 +25,12 @@ class KernelVirtualHeapAllocator {
     return reinterpret_cast<T>(vaddr);
   }
 
+  template <typename T>
+  T* Alloc() {
+    return AllocPages<T*>(ByteSizeToPageSize(sizeof(T)),
+                          kPageAttrPresent | kPageAttrWritable);
+  }
+
  private:
   static constexpr uint64_t kKernelHeapBaseAddr = 0xFFFF'FFFF'9000'0000;
   static constexpr uint64_t kKernelHeapSize = 0x0000'0000'4000'0000;

@@ -107,7 +107,6 @@ packed_struct LiumOS {
   File* pi_bin_file;
   IA_PML4* kernel_pml4;
   Scheduler* scheduler;
-  ExecutionContextController* exec_ctx_ctrl;
   ProcessController* proc_ctrl;
   // ExecutionContext* current_context;
   IDT* idt;
