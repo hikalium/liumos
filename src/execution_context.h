@@ -38,41 +38,26 @@ struct ProcessMappingInfo {
   SegmentMapping code;
   SegmentMapping data;
   SegmentMapping stack;
-  SegmentMapping kernel_stack;
   void Print();
   void Clear() {
     code.Clear();
     data.Clear();
     stack.Clear();
-    kernel_stack.Clear();
   }
-};
-
-struct PersistentProcessInfo {
-  bool IsValid() { return signature_ == kSignature; }
-  void Print();
-  void Init() {
-    pmap[0].Clear();
-    pmap[1].Clear();
-    signature_ = kSignature;
-    CLFlush(&signature_);
-  }
-  static constexpr uint64_t kSignature = 0x4F50534F6D75696CULL;
-  ProcessMappingInfo pmap[2];
-  uint64_t signature_;
 };
 
 class ExecutionContext {
  public:
   CPUContext* GetCPUContext() { return &cpu_context_; }
+  ProcessMappingInfo& GetProcessMappingInfo() { return map_info_; };
   uint64_t GetKernelRSP() { return kernel_rsp_; }
-  void Init(void (*rip)(),
-            uint16_t cs,
-            void* rsp,
-            uint16_t ss,
-            uint64_t cr3,
-            uint64_t rflags,
-            uint64_t kernel_rsp) {
+  void SetRegisters(void (*rip)(),
+                    uint16_t cs,
+                    void* rsp,
+                    uint16_t ss,
+                    uint64_t cr3,
+                    uint64_t rflags,
+                    uint64_t kernel_rsp) {
     cpu_context_.int_ctx.rip = reinterpret_cast<uint64_t>(rip);
     cpu_context_.int_ctx.cs = cs;
     cpu_context_.int_ctx.rsp = reinterpret_cast<uint64_t>(rsp);
@@ -84,5 +69,18 @@ class ExecutionContext {
 
  private:
   CPUContext cpu_context_;
+  ProcessMappingInfo map_info_;
   uint64_t kernel_rsp_;
+};
+
+struct PersistentProcessInfo {
+  bool IsValid() { return signature_ == kSignature; }
+  void Print();
+  void Init() {
+    signature_ = kSignature;
+    CLFlush(&signature_);
+  }
+  static constexpr uint64_t kSignature = 0x4F50534F6D75696CULL;
+  ExecutionContext ctx[2];
+  uint64_t signature_;
 };

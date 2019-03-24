@@ -26,5 +26,5 @@ void PersistentProcessInfo::Print() {
   }
   PutString("Persistent Process Info:\n");
   PutString("seg_map[0]:\n");
-  pmap[0].Print();
+  ctx[0].GetProcessMappingInfo().Print();
 }

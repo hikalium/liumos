@@ -163,7 +163,9 @@ static void LoadAndMap(IA_PML4& page_root,
 }
 
 Process& LoadELFAndLaunchEphemeralProcess(File& file) {
-  ProcessMappingInfo map_info;
+  ExecutionContext& ctx =
+      *liumos->kernel_heap_allocator->Alloc<ExecutionContext>();
+  ProcessMappingInfo& map_info = ctx.GetProcessMappingInfo();
   PhdrMappingInfo phdr_map_info;
   IA_PML4& user_page_table = CreatePageTable();
 
@@ -190,15 +192,14 @@ Process& LoadELFAndLaunchEphemeralProcess(File& file) {
   void* stack_pointer =
       reinterpret_cast<void*>(map_info.stack.GetVirtEndAddr());
 
-  ExecutionContext& ctx =
-      *liumos->kernel_heap_allocator->Alloc<ExecutionContext>();
-  ctx.Init(reinterpret_cast<void (*)(void)>(entry_point),
-           GDT::kUserCS64Selector, stack_pointer, GDT::kUserDSSelector,
-           reinterpret_cast<uint64_t>(&user_page_table), kRFlagsInterruptEnable,
-           liumos->kernel_heap_allocator->AllocPages<uint64_t>(
-               kKernelStackPagesForEachProcess,
-               kPageAttrPresent | kPageAttrWritable) +
-               kPageSize * kKernelStackPagesForEachProcess);
+  ctx.SetRegisters(reinterpret_cast<void (*)(void)>(entry_point),
+                   GDT::kUserCS64Selector, stack_pointer, GDT::kUserDSSelector,
+                   reinterpret_cast<uint64_t>(&user_page_table),
+                   kRFlagsInterruptEnable,
+                   liumos->kernel_heap_allocator->AllocPages<uint64_t>(
+                       kKernelStackPagesForEachProcess,
+                       kPageAttrPresent | kPageAttrWritable) +
+                       kPageSize * kKernelStackPagesForEachProcess);
   Process& proc = liumos->proc_ctrl->Create();
   proc.InitAsEphemeralProcess(ctx);
   liumos->scheduler->RegisterProcess(proc);
@@ -207,9 +208,15 @@ Process& LoadELFAndLaunchEphemeralProcess(File& file) {
 
 Process& LoadELFAndLaunchPersistentProcess(File& file,
                                            PersistentMemoryManager& pmem) {
-  PersistentProcessInfo& pp_info = *pmem.AllocPersistentProcessInfo();
+  PersistentProcessInfo* pp_info_in_paddr = pmem.AllocPersistentProcessInfo();
+  PersistentProcessInfo& pp_info =
+      *liumos->kernel_heap_allocator->MapPages<PersistentProcessInfo*>(
+          reinterpret_cast<uint64_t>(pp_info_in_paddr),
+          ByteSizeToPageSize(sizeof(PersistentProcessInfo)),
+          kPageAttrPresent | kPageAttrWritable);
   pp_info.Init();
-  ProcessMappingInfo& map_info = pp_info.pmap[0];
+  ExecutionContext& ctx = pp_info.ctx[0];
+  ProcessMappingInfo& map_info = ctx.GetProcessMappingInfo();
   PhdrMappingInfo phdr_map_info;
   IA_PML4& user_page_table = CreatePageTable();
 
@@ -234,15 +241,14 @@ Process& LoadELFAndLaunchPersistentProcess(File& file,
   void* stack_pointer =
       reinterpret_cast<void*>(map_info.stack.GetVirtEndAddr());
 
-  ExecutionContext& ctx =
-      *liumos->kernel_heap_allocator->Alloc<ExecutionContext>();
-  ctx.Init(reinterpret_cast<void (*)(void)>(entry_point),
-           GDT::kUserCS64Selector, stack_pointer, GDT::kUserDSSelector,
-           reinterpret_cast<uint64_t>(&user_page_table), kRFlagsInterruptEnable,
-           liumos->kernel_heap_allocator->AllocPages<uint64_t>(
-               kKernelStackPagesForEachProcess,
-               kPageAttrPresent | kPageAttrWritable) +
-               kPageSize * kKernelStackPagesForEachProcess);
+  ctx.SetRegisters(reinterpret_cast<void (*)(void)>(entry_point),
+                   GDT::kUserCS64Selector, stack_pointer, GDT::kUserDSSelector,
+                   reinterpret_cast<uint64_t>(&user_page_table),
+                   kRFlagsInterruptEnable,
+                   liumos->kernel_heap_allocator->AllocPages<uint64_t>(
+                       kKernelStackPagesForEachProcess,
+                       kPageAttrPresent | kPageAttrWritable) +
+                       kPageSize * kKernelStackPagesForEachProcess);
   Process& proc = liumos->proc_ctrl->Create();
   proc.InitAsEphemeralProcess(ctx);
   liumos->scheduler->RegisterProcess(proc);

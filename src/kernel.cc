@@ -51,7 +51,7 @@ void LaunchSubTask(KernelVirtualHeapAllocator& kernel_heap_allocator) {
 
   ExecutionContext& sub_context =
       *liumos->kernel_heap_allocator->Alloc<ExecutionContext>();
-  sub_context.Init(
+  sub_context.SetRegisters(
       SubTask, GDT::kKernelCSSelector, sub_context_rsp, GDT::kKernelDSSelector,
       reinterpret_cast<uint64_t>(&GetKernelPML4()), kRFlagsInterruptEnable, 0);
 
@@ -88,7 +88,7 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
 
   ExecutionContext& root_context =
       *liumos->kernel_heap_allocator->Alloc<ExecutionContext>();
-  root_context.Init(nullptr, 0, nullptr, 0, ReadCR3(), 0, 0);
+  root_context.SetRegisters(nullptr, 0, nullptr, 0, ReadCR3(), 0, 0);
   Process& root_process = liumos->proc_ctrl->Create();
   root_process.InitAsEphemeralProcess(root_context);
   Scheduler scheduler_(root_process);
