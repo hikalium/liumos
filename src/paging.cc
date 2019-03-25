@@ -172,28 +172,11 @@ void InitPaging() {
   kernel_pml4->ClearMapping();
 
   // mapping pages for real memory & memory mapped IOs
-  uint64_t phys_page_attr =
-      kPageAttrPresent | kPageAttrWritable | kPageAttrUser;
-  for (uint64_t addr = 0; addr < direct_mapping_end;) {
-    if (addr >= direct_mapping_end)
-      break;
-    IA_PDPT* pdpt = liumos->dram_allocator->AllocPages<IA_PDPT*>(1);
-    pdpt->ClearMapping();
-    kernel_pml4->SetTableBaseForAddr(addr, pdpt, phys_page_attr);
-    for (int i = 0; i < IA_PDPT::kNumOfEntries; i++) {
-      if (addr >= direct_mapping_end)
-        break;
-      IA_PDT* pdt = liumos->dram_allocator->AllocPages<IA_PDT*>(1);
-      pdt->ClearMapping();
-      pdpt->SetTableBaseForAddr(addr, pdt, phys_page_attr);
-      for (int i = 0; i < IA_PDT::kNumOfEntries; i++) {
-        if (addr >= direct_mapping_end)
-          break;
-        pdt->SetPageBaseForAddr(addr, addr, phys_page_attr);
-        addr += 2 * 1024 * 1024;
-      }
-    }
-  }
+  CreatePageMapping(*liumos->dram_allocator, *kernel_pml4, 0, 0,
+                    direct_mapping_end, kPageAttrPresent | kPageAttrWritable);
+  CreatePageMapping(*liumos->dram_allocator, *kernel_pml4,
+                    liumos->cpu_features->kernel_phys_page_map_begin, 0,
+                    direct_mapping_end, kPageAttrPresent | kPageAttrWritable);
 
   CreatePageMapping(*liumos->dram_allocator, *kernel_pml4,
                     kLAPICRegisterAreaVirtBase, kLAPICRegisterAreaPhysBase,

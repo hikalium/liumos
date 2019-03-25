@@ -207,6 +207,16 @@ void inline CreatePageMapping(PhysicalPageAllocator& allocator,
            num_of_4k_pages && pdt_idx < IA_PDT::kNumOfEntries; pdt_idx++) {
         auto& pdte = pdt->GetEntryForAddr(vaddr);
         if (!pdte.IsPresent()) {
+          if (num_of_4k_pages >= IA_PT::kNumOfEntries &&
+              (vaddr & IA_PDE::kOffsetMask) == 0 &&
+              (paddr & IA_PDE::kOffsetMask) == 0) {
+            // 2MB mapping
+            pdte.SetPageBaseAddr(paddr, attr);
+            vaddr += (1 << 21);
+            paddr += (1 << 21);
+            num_of_4k_pages -= IA_PT::kNumOfEntries;
+            continue;
+          }
           IA_PT* new_pt = allocator.AllocPages<IA_PT*>(1);
           new_pt->ClearMapping();
           pdte.SetTableAddr(new_pt, attr);

@@ -28,13 +28,16 @@ static void PrepareContextForRestoringPersistentProcess(ExecutionContext& ctx) {
                    (kKernelStackPagesForEachProcess << kPageSizeExponent));
 }
 
+template <typename T>
+T GetKernelVirtAddrForPhysAddr(T paddr) {
+  return reinterpret_cast<T>(reinterpret_cast<uint64_t>(paddr) +
+                             liumos->cpu_features->kernel_phys_page_map_begin);
+}
+
 Process& ProcessController::RestoreFromPersistentProcessInfo(
     PersistentProcessInfo& pp_info_in_paddr) {
   PersistentProcessInfo& pp_info =
-      *liumos->kernel_heap_allocator->MapPages<PersistentProcessInfo*>(
-          reinterpret_cast<uint64_t>(&pp_info_in_paddr),
-          ByteSizeToPageSize(sizeof(PersistentProcessInfo)),
-          kPageAttrPresent | kPageAttrWritable);
+      *GetKernelVirtAddrForPhysAddr(&pp_info_in_paddr);
 
   ExecutionContext& valid_ctx = pp_info.GetValidContext();
   ExecutionContext& working_ctx = pp_info.GetWorkingContext();

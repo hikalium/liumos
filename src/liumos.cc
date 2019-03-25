@@ -199,6 +199,7 @@ void IdentifyCPU() {
     f.max_phy_addr = 36;
   }
   f.phy_addr_mask = (1ULL << f.max_phy_addr) - 1;
+  f.kernel_phys_page_map_begin = ~((1ULL << (f.max_phy_addr - 1)) - 1);
   liumos->cpu_features = &f;
 }
 
