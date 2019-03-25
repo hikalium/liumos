@@ -208,6 +208,8 @@ Process& LoadELFAndLaunchEphemeralProcess(File& file) {
 
 Process& LoadELFAndLaunchPersistentProcess(File& file,
                                            PersistentMemoryManager& pmem) {
+  constexpr uint64_t kUserStackBaseAddr = 0xBEEF'0000;
+  const int kNumOfStackPages = 32;
   PersistentProcessInfo* pp_info_in_paddr = pmem.AllocPersistentProcessInfo();
   PersistentProcessInfo& pp_info =
       *liumos->kernel_heap_allocator->MapPages<PersistentProcessInfo*>(
@@ -215,22 +217,20 @@ Process& LoadELFAndLaunchPersistentProcess(File& file,
           ByteSizeToPageSize(sizeof(PersistentProcessInfo)),
           kPageAttrPresent | kPageAttrWritable);
   pp_info.Init();
-  ExecutionContext& ctx = pp_info.ctx[0];
+  ExecutionContext& ctx = pp_info.GetContext(0);
+  pp_info.SetValidContextIndex(1);
   ProcessMappingInfo& map_info = ctx.GetProcessMappingInfo();
   PhdrMappingInfo phdr_map_info;
   IA_PML4& user_page_table = CreatePageTable();
 
   const Elf64_Ehdr* ehdr = ParseProgramHeader(file, map_info, phdr_map_info);
   assert(ehdr);
-
-  map_info.code.SetPhysAddr(pmem.AllocPages<uint64_t>(
-      ByteSizeToPageSize(map_info.code.GetMapSize())));
-  map_info.data.SetPhysAddr(pmem.AllocPages<uint64_t>(
-      ByteSizeToPageSize(map_info.data.GetMapSize())));
-
-  const int kNumOfStackPages = 32;
-  map_info.stack.Set(0xBEEF'0000, pmem.AllocPages<uint64_t>(kNumOfStackPages),
+  map_info.stack.Set(kUserStackBaseAddr, 0,
                      kNumOfStackPages << kPageSizeExponent);
+
+  map_info.code.AllocSegmentFromPersistentMemory(pmem);
+  map_info.data.AllocSegmentFromPersistentMemory(pmem);
+  map_info.stack.AllocSegmentFromPersistentMemory(pmem);
 
   map_info.Print();
   LoadAndMap(user_page_table, map_info, phdr_map_info, kPageAttrUser);
@@ -249,8 +249,15 @@ Process& LoadELFAndLaunchPersistentProcess(File& file,
                        kKernelStackPagesForEachProcess,
                        kPageAttrPresent | kPageAttrWritable) +
                        kPageSize * kKernelStackPagesForEachProcess);
+
+  ExecutionContext& working_ctx = pp_info.GetContext(1);
+  working_ctx = ctx;
+  ProcessMappingInfo& working_ctx_map = working_ctx.GetProcessMappingInfo();
+  working_ctx_map.data.AllocSegmentFromPersistentMemory(pmem);
+  working_ctx_map.stack.AllocSegmentFromPersistentMemory(pmem);
+
   Process& proc = liumos->proc_ctrl->Create();
-  proc.InitAsEphemeralProcess(ctx);
+  proc.InitAsPersistentProcess(pp_info);
   liumos->scheduler->RegisterProcess(proc);
   return proc;
 }

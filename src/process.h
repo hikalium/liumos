@@ -8,6 +8,7 @@
 class Process {
  public:
   enum class Status {
+    kNotInitialized,
     kNotScheduled,
     kSleeping,
     kRunning,
@@ -21,19 +22,39 @@ class Process {
   Status GetStatus() const { return status_; };
   void SetStatus(Status status) { status_ = status; }
   void WaitUntilExit();
-  void InitAsEphemeralProcess(ExecutionContext& ctx) { ctx_ = &ctx; }
+  void InitAsEphemeralProcess(ExecutionContext& ctx) {
+    assert(status_ == Status::kNotInitialized);
+    assert(!ctx_);
+    assert(!pp_info_);
+    ctx_ = &ctx;
+    status_ = Status::kNotScheduled;
+  }
+  void InitAsPersistentProcess(PersistentProcessInfo& pp_info) {
+    assert(status_ == Status::kNotInitialized);
+    assert(!ctx_);
+    assert(!pp_info_);
+    pp_info_ = &pp_info;
+    status_ = Status::kNotScheduled;
+  }
   ExecutionContext& GetExecutionContext() {
-    assert(ctx_);
-    return *ctx_;
+    if (ctx_)
+      return *ctx_;
+    assert(pp_info_);
+    return pp_info_->GetWorkingContext();
   }
   friend class ProcessController;
 
  private:
-  Process(uint64_t id) : id_(id){};
+  Process(uint64_t id)
+      : id_(id),
+        status_(Status::kNotInitialized),
+        ctx_(nullptr),
+        pp_info_(nullptr){};
   uint64_t id_;
   volatile Status status_;
   int scheduler_index_;
   ExecutionContext* ctx_;
+  PersistentProcessInfo* pp_info_;
 };
 
 class ProcessController {

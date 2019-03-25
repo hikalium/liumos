@@ -31,16 +31,16 @@ void IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
       // no need to switching context.
       return;
     }
-    auto from = proc.GetExecutionContext().GetCPUContext();
-    from->cr3 = ReadCR3();
-    from->greg = info->greg;
-    from->int_ctx = info->int_ctx;
-    auto to = next_proc->GetExecutionContext().GetCPUContext();
-    info->greg = to->greg;
-    info->int_ctx = to->int_ctx;
-    if (from->cr3 == to->cr3)
+    CPUContext& from = proc.GetExecutionContext().GetCPUContext();
+    from.cr3 = ReadCR3();
+    from.greg = info->greg;
+    from.int_ctx = info->int_ctx;
+    CPUContext& to = next_proc->GetExecutionContext().GetCPUContext();
+    info->greg = to.greg;
+    info->int_ctx = to.int_ctx;
+    if (from.cr3 == to.cr3)
       return;
-    WriteCR3(to->cr3);
+    WriteCR3(to.cr3);
     return;
   }
   PutStringAndHex("Int#", intcode);

@@ -1,4 +1,5 @@
 #include "liumos.h"
+#include "pmem.h"
 
 void SegmentMapping::Print() {
   PutString("vaddr:");
@@ -8,6 +9,11 @@ void SegmentMapping::Print() {
   PutString(" size:");
   PutHex64(map_size_);
   PutChar('\n');
+}
+
+void SegmentMapping::AllocSegmentFromPersistentMemory(
+    PersistentMemoryManager& pmem) {
+  SetPhysAddr(pmem.AllocPages<uint64_t>(ByteSizeToPageSize(GetMapSize())));
 }
 
 void ProcessMappingInfo::Print() {
@@ -26,5 +32,10 @@ void PersistentProcessInfo::Print() {
   }
   PutString("Persistent Process Info:\n");
   PutString("seg_map[0]:\n");
-  ctx[0].GetProcessMappingInfo().Print();
+  ctx_[0].GetProcessMappingInfo().Print();
+  PutStringAndHex("RIP", ctx_[0].GetCPUContext().int_ctx.rip);
+  PutString("seg_map[1]:\n");
+  ctx_[1].GetProcessMappingInfo().Print();
+  PutStringAndHex("RIP", ctx_[1].GetCPUContext().int_ctx.rip);
+  PutStringAndHex("valid_ctx_idx_", valid_ctx_idx_);
 }

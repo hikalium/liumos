@@ -4,6 +4,8 @@
 #include "kernel_virtual_heap_allocator.h"
 #include "paging.h"
 
+class PersistentMemoryManager;
+
 class SegmentMapping {
  public:
   void Set(uint64_t vaddr, uint64_t paddr, uint64_t map_size) {
@@ -26,6 +28,7 @@ class SegmentMapping {
     map_size_ = 0;
     CLFlush(this);
   }
+  void AllocSegmentFromPersistentMemory(PersistentMemoryManager& pmem);
   void Print();
 
  private:
@@ -48,7 +51,7 @@ struct ProcessMappingInfo {
 
 class ExecutionContext {
  public:
-  CPUContext* GetCPUContext() { return &cpu_context_; }
+  CPUContext& GetCPUContext() { return cpu_context_; }
   ProcessMappingInfo& GetProcessMappingInfo() { return map_info_; };
   uint64_t GetKernelRSP() { return kernel_rsp_; }
   void SetRegisters(void (*rip)(),
@@ -73,14 +76,33 @@ class ExecutionContext {
   uint64_t kernel_rsp_;
 };
 
-struct PersistentProcessInfo {
+class PersistentProcessInfo {
+ public:
   bool IsValid() { return signature_ == kSignature; }
   void Print();
   void Init() {
+    valid_ctx_idx_ = kNumOfExecutionContext;
+    CLFlush(&valid_ctx_idx_);
     signature_ = kSignature;
     CLFlush(&signature_);
   }
+  ExecutionContext& GetContext(int idx) {
+    assert(0 <= idx && idx < kNumOfExecutionContext);
+    return ctx_[idx];
+  }
+  ExecutionContext& GetWorkingContext() {
+    assert(0 <= valid_ctx_idx_ && valid_ctx_idx_ < kNumOfExecutionContext);
+    return ctx_[1 - valid_ctx_idx_];
+  }
+  void SetValidContextIndex(int idx) {
+    valid_ctx_idx_ = idx;
+    CLFlush(&valid_ctx_idx_);
+  }
   static constexpr uint64_t kSignature = 0x4F50534F6D75696CULL;
-  ExecutionContext ctx[2];
+  static constexpr int kNumOfExecutionContext = 2;
+
+ private:
+  ExecutionContext ctx_[kNumOfExecutionContext];
+  int valid_ctx_idx_;
   uint64_t signature_;
 };
