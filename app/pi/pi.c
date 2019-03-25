@@ -33,6 +33,7 @@ int main() {
     printf04d(digit + carry / base);
     first = 1;
   }
+  write(1, "\n", 1);
   exit(0);
   return 0;
 }
