@@ -598,6 +598,23 @@ void Run(TextBox& tbox) {
     PersistentProcessInfo* pp_info =
         liumos->pmem[0]->GetLastPersistentProcessInfo();
     pp_info->Print();
+  } else if (IsEqualString(line, "pmem restore")) {
+    if (!liumos->pmem[0]) {
+      PutString("PMEM not found\n");
+      return;
+    }
+    PersistentProcessInfo* pp_info =
+        liumos->pmem[0]->GetLastPersistentProcessInfo();
+    if (!pp_info) {
+      PutString("No persistent process info found.\n");
+      return;
+    }
+    PutString("Restoring process...\n");
+    pp_info->Print();
+    Process& proc =
+        liumos->proc_ctrl->RestoreFromPersistentProcessInfo(*pp_info);
+    liumos->scheduler->RegisterProcess(proc);
+    proc.WaitUntilExit();
   } else if (IsEqualString(line, "pmem run pi.bin")) {
     assert(liumos->pmem[0]);
     Process& proc = LoadELFAndLaunchPersistentProcess(*liumos->pi_bin_file,

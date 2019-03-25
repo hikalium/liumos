@@ -30,6 +30,8 @@ class SegmentMapping {
   }
   void AllocSegmentFromPersistentMemory(PersistentMemoryManager& pmem);
   void Print();
+  void CopyDataFrom(SegmentMapping& from);
+  void Map(IA_PML4& page_root, uint64_t attr);
 
  private:
   uint64_t vaddr_;
@@ -54,6 +56,8 @@ class ExecutionContext {
   CPUContext& GetCPUContext() { return cpu_context_; }
   ProcessMappingInfo& GetProcessMappingInfo() { return map_info_; };
   uint64_t GetKernelRSP() { return kernel_rsp_; }
+  void SetKernelRSP(uint64_t kernel_rsp) { kernel_rsp_ = kernel_rsp; }
+  void SetCR3(uint64_t cr3) { cpu_context_.cr3 = cr3; }
   void SetRegisters(void (*rip)(),
                     uint16_t cs,
                     void* rsp,
@@ -89,6 +93,10 @@ class PersistentProcessInfo {
   ExecutionContext& GetContext(int idx) {
     assert(0 <= idx && idx < kNumOfExecutionContext);
     return ctx_[idx];
+  }
+  ExecutionContext& GetValidContext() {
+    assert(0 <= valid_ctx_idx_ && valid_ctx_idx_ < kNumOfExecutionContext);
+    return ctx_[valid_ctx_idx_];
   }
   ExecutionContext& GetWorkingContext() {
     assert(0 <= valid_ctx_idx_ && valid_ctx_idx_ < kNumOfExecutionContext);

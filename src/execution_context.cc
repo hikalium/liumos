@@ -16,6 +16,12 @@ void SegmentMapping::AllocSegmentFromPersistentMemory(
   SetPhysAddr(pmem.AllocPages<uint64_t>(ByteSizeToPageSize(GetMapSize())));
 }
 
+void SegmentMapping::CopyDataFrom(SegmentMapping& from) {
+  assert(map_size_ == from.map_size_);
+  memcpy(reinterpret_cast<void*>(paddr_), reinterpret_cast<void*>(from.paddr_),
+         map_size_);
+};
+
 void ProcessMappingInfo::Print() {
   PutString("code : ");
   code.Print();

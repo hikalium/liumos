@@ -62,6 +62,7 @@ class ProcessController {
   ProcessController(KernelVirtualHeapAllocator& kernel_heap_allocator)
       : last_id_(0), kernel_heap_allocator_(kernel_heap_allocator){};
   Process& Create();
+  Process& RestoreFromPersistentProcessInfo(PersistentProcessInfo& pp_info);
 
  private:
   uint64_t last_id_;
