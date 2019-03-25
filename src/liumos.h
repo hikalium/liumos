@@ -113,6 +113,12 @@ packed_struct LiumOS {
 };
 extern LiumOS* liumos;
 
+template <typename T>
+T GetKernelVirtAddrForPhysAddr(T paddr) {
+  return reinterpret_cast<T>(reinterpret_cast<uint64_t>(paddr) +
+                             liumos->cpu_features->kernel_phys_page_map_begin);
+}
+
 void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table);
 
 // @syscall.cc

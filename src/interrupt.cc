@@ -35,6 +35,8 @@ void IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
     from.cr3 = ReadCR3();
     from.greg = info->greg;
     from.int_ctx = info->int_ctx;
+    proc.NotifyContextSaving();
+
     CPUContext& to = next_proc->GetExecutionContext().GetCPUContext();
     info->greg = to.greg;
     info->int_ctx = to.int_ctx;

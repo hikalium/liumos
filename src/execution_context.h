@@ -32,6 +32,7 @@ class SegmentMapping {
   void Print();
   void CopyDataFrom(SegmentMapping& from);
   void Map(IA_PML4& page_root, uint64_t attr);
+  void Flush();
 
  private:
   uint64_t vaddr_;
@@ -48,6 +49,11 @@ struct ProcessMappingInfo {
     code.Clear();
     data.Clear();
     stack.Clear();
+  }
+  void Flush() {
+    code.Flush();
+    data.Flush();
+    stack.Flush();
   }
 };
 
@@ -72,6 +78,15 @@ class ExecutionContext {
     cpu_context_.int_ctx.rflags = rflags | 2;
     cpu_context_.cr3 = cr3;
     kernel_rsp_ = kernel_rsp;
+  }
+  void Flush();
+  void CopyContextFrom(ExecutionContext& from) {
+    uint64_t cr3 = cpu_context_.cr3;
+    cpu_context_ = from.cpu_context_;
+    cpu_context_.cr3 = cr3;
+
+    map_info_.data.CopyDataFrom(from.map_info_.data);
+    map_info_.stack.CopyDataFrom(from.map_info_.stack);
   }
 
  private:
@@ -108,6 +123,7 @@ class PersistentProcessInfo {
   }
   static constexpr uint64_t kSignature = 0x4F50534F6D75696CULL;
   static constexpr int kNumOfExecutionContext = 2;
+  void SwitchContext();
 
  private:
   ExecutionContext ctx_[kNumOfExecutionContext];

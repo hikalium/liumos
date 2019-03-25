@@ -127,12 +127,6 @@ static const Elf64_Ehdr* ParseProgramHeader(File& file,
   return ehdr;
 }
 
-void SegmentMapping::Map(IA_PML4& page_root, uint64_t page_attr) {
-  assert(GetPhysAddr());
-  CreatePageMapping(*liumos->dram_allocator, page_root, GetVirtAddr(),
-                    GetPhysAddr(), GetMapSize(), kPageAttrPresent | page_attr);
-}
-
 static void LoadAndMapSegment(IA_PML4& page_root,
                               SegmentMapping& seg_map,
                               PhdrInfo& phdr_info,

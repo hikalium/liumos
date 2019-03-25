@@ -18,9 +18,22 @@ void SegmentMapping::AllocSegmentFromPersistentMemory(
 
 void SegmentMapping::CopyDataFrom(SegmentMapping& from) {
   assert(map_size_ == from.map_size_);
-  memcpy(reinterpret_cast<void*>(paddr_), reinterpret_cast<void*>(from.paddr_),
+  memcpy(reinterpret_cast<void*>(GetKernelVirtAddrForPhysAddr(paddr_)),
+         reinterpret_cast<void*>(GetKernelVirtAddrForPhysAddr(from.paddr_)),
          map_size_);
 };
+
+void SegmentMapping::Map(IA_PML4& page_root, uint64_t page_attr) {
+  assert(GetPhysAddr());
+  CreatePageMapping(*liumos->dram_allocator, page_root, GetVirtAddr(),
+                    GetPhysAddr(), GetMapSize(), kPageAttrPresent | page_attr);
+}
+
+void SegmentMapping::Flush() {
+  uint8_t* buf =
+      GetKernelVirtAddrForPhysAddr(reinterpret_cast<uint8_t*>(GetPhysAddr()));
+  CLFlush(buf, GetMapSize());
+}
 
 void ProcessMappingInfo::Print() {
   PutString("code : ");
@@ -29,6 +42,11 @@ void ProcessMappingInfo::Print() {
   data.Print();
   PutString("stack: ");
   stack.Print();
+}
+
+void ExecutionContext::Flush() {
+  map_info_.Flush();
+  CLFlush(this, sizeof(*this));
 }
 
 void PersistentProcessInfo::Print() {
@@ -44,4 +62,10 @@ void PersistentProcessInfo::Print() {
   ctx_[1].GetProcessMappingInfo().Print();
   PutStringAndHex("RIP", ctx_[1].GetCPUContext().int_ctx.rip);
   PutStringAndHex("valid_ctx_idx_", valid_ctx_idx_);
+}
+
+void PersistentProcessInfo::SwitchContext() {
+  GetWorkingContext().Flush();
+  SetValidContextIndex(1 - valid_ctx_idx_);
+  GetWorkingContext().CopyContextFrom(GetValidContext());
 }

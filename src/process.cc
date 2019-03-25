@@ -6,6 +6,12 @@ void Process::WaitUntilExit() {
   }
 }
 
+void Process::NotifyContextSaving() {
+  if (!IsPersistent())
+    return;
+  pp_info_->SwitchContext();
+}
+
 Process& ProcessController::Create() {
   Process* proc = kernel_heap_allocator_.AllocPages<Process*>(
       ByteSizeToPageSize(sizeof(Process)),
@@ -28,12 +34,6 @@ static void PrepareContextForRestoringPersistentProcess(ExecutionContext& ctx) {
                    (kKernelStackPagesForEachProcess << kPageSizeExponent));
 }
 
-template <typename T>
-T GetKernelVirtAddrForPhysAddr(T paddr) {
-  return reinterpret_cast<T>(reinterpret_cast<uint64_t>(paddr) +
-                             liumos->cpu_features->kernel_phys_page_map_begin);
-}
-
 Process& ProcessController::RestoreFromPersistentProcessInfo(
     PersistentProcessInfo& pp_info_in_paddr) {
   PersistentProcessInfo& pp_info =
@@ -41,12 +41,8 @@ Process& ProcessController::RestoreFromPersistentProcessInfo(
 
   ExecutionContext& valid_ctx = pp_info.GetValidContext();
   ExecutionContext& working_ctx = pp_info.GetWorkingContext();
-  ProcessMappingInfo& valid_map_info = valid_ctx.GetProcessMappingInfo();
-  ProcessMappingInfo& working_map_info = working_ctx.GetProcessMappingInfo();
 
-  working_ctx.GetCPUContext() = valid_ctx.GetCPUContext();
-  working_map_info.data.CopyDataFrom(valid_map_info.data);
-  working_map_info.stack.CopyDataFrom(valid_map_info.stack);
+  working_ctx.CopyContextFrom(valid_ctx);
 
   PrepareContextForRestoringPersistentProcess(valid_ctx);
   PrepareContextForRestoringPersistentProcess(working_ctx);

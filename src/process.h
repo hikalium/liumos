@@ -14,6 +14,14 @@ class Process {
     kRunning,
     kKilled,
   };
+  bool IsPersistent() {
+    if (ctx_) {
+      assert(!pp_info_);
+      return false;
+    }
+    assert(pp_info_);
+    return true;
+  }
   uint64_t GetID() { return id_; }
   int GetSchedulerIndex() const { return scheduler_index_; }
   void SetSchedulerIndex(int scheduler_index) {
@@ -37,11 +45,9 @@ class Process {
     status_ = Status::kNotScheduled;
   }
   ExecutionContext& GetExecutionContext() {
-    if (ctx_)
-      return *ctx_;
-    assert(pp_info_);
-    return pp_info_->GetWorkingContext();
+    return IsPersistent() ? pp_info_->GetWorkingContext() : *ctx_;
   }
+  void NotifyContextSaving();
   friend class ProcessController;
 
  private:

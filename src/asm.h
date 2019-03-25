@@ -20,6 +20,8 @@ constexpr uint64_t kLocalAPICBaseBitx2APICEnabled = (1 << 10);
 
 constexpr uint64_t kRFlagsInterruptEnable = (1ULL << 9);
 
+constexpr uint64_t kCacheLineSize = 64;
+
 packed_struct CPUFeatureSet {
   uint64_t max_phy_addr;
   uint64_t phy_addr_mask;               // = (1ULL << max_phy_addr) - 1
@@ -208,6 +210,11 @@ __attribute__((ms_abi)) void SwapGS(void);
 __attribute__((ms_abi)) uint64_t ReadRSP(void);
 __attribute__((ms_abi)) void ChangeRSP(uint64_t);
 __attribute__((ms_abi)) void CLFlush(const void*);
+static inline void CLFlush(const void* buf, size_t size) {
+  for (size_t i = 0; i < size; i += kCacheLineSize) {
+    CLFlush(reinterpret_cast<const uint8_t*>(buf) + i);
+  }
+}
 __attribute__((ms_abi)) void CLFlushOptimized(const void*);
 __attribute__((ms_abi)) void JumpToKernel(void* kernel_entry_point,
                                           void* vram_sheet,
