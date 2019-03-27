@@ -49,6 +49,12 @@ class Process {
   }
   void NotifyContextSaving();
   uint64_t GetNumberOfContextSwitch() { return number_of_ctx_switch_; }
+  uint64_t GetProcTimeFemtoSec() { return proc_time_femto_sec_; }
+  void ResetProcTimeFemtoSec() { proc_time_femto_sec_ = 0; }
+  void AddProcTimeFemtoSec(uint64_t fs) { proc_time_femto_sec_ += fs; }
+  uint64_t GetSysTimeFemtoSec() { return sys_time_femto_sec_; }
+  void ResetSysTime() { sys_time_femto_sec_ = 0; }
+  void AddSysTimeFemtoSec(uint64_t fs) { sys_time_femto_sec_ += fs; }
   friend class ProcessController;
 
  private:
@@ -57,13 +63,16 @@ class Process {
         status_(Status::kNotInitialized),
         ctx_(nullptr),
         pp_info_(nullptr),
-        number_of_ctx_switch_(0){};
+        number_of_ctx_switch_(0),
+        proc_time_femto_sec_(0){};
   uint64_t id_;
   volatile Status status_;
   int scheduler_index_;
   ExecutionContext* ctx_;
   PersistentProcessInfo* pp_info_;
   uint64_t number_of_ctx_switch_;
+  uint64_t proc_time_femto_sec_;
+  uint64_t sys_time_femto_sec_;
 };
 
 class ProcessController {

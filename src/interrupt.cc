@@ -7,6 +7,7 @@ __attribute__((ms_abi)) extern "C" void IntHandler(uint64_t intcode,
 }
 
 void IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
+  static uint64_t proc_last_time_count = 0;
   if (ReadRSP() < kKernelBaseAddr) {
     PutStringAndHex("Int#", intcode);
     PutStringAndHex("at CPL", info->int_ctx.cs & 3);
@@ -31,6 +32,9 @@ void IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
       // no need to switching context.
       return;
     }
+    proc.AddProcTimeFemtoSec(
+        (liumos->hpet->ReadMainCounterValue() - proc_last_time_count) *
+        liumos->hpet->GetFemtosecndPerCount());
     CPUContext& from = proc.GetExecutionContext().GetCPUContext();
     from.cr3 = ReadCR3();
     from.greg = info->greg;
@@ -40,6 +44,7 @@ void IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
     CPUContext& to = next_proc->GetExecutionContext().GetCPUContext();
     info->greg = to.greg;
     info->int_ctx = to.int_ctx;
+    proc_last_time_count = liumos->hpet->ReadMainCounterValue();
     if (from.cr3 == to.cr3)
       return;
     WriteCR3(to.cr3);

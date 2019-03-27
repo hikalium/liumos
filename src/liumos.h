@@ -107,8 +107,9 @@ packed_struct LiumOS {
   IA_PML4* kernel_pml4;
   Scheduler* scheduler;
   ProcessController* proc_ctrl;
-  // ExecutionContext* current_context;
   IDT* idt;
+  Process* root_process;
+  Process* sub_process;
 };
 extern LiumOS* liumos;
 

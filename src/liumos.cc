@@ -261,7 +261,7 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
       liumos->acpi.hpet->base_address.address));
   liumos->hpet = &hpet;
   hpet.SetTimerMs(
-      0, 10, HPET::TimerConfig::kUsePeriodicMode | HPET::TimerConfig::kEnable);
+      0, 20, HPET::TimerConfig::kUsePeriodicMode | HPET::TimerConfig::kEnable);
 
   GetKernelPML4().Print();
 

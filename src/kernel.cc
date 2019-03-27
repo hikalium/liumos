@@ -58,6 +58,7 @@ void LaunchSubTask(KernelVirtualHeapAllocator& kernel_heap_allocator) {
   Process& proc = liumos->proc_ctrl->Create();
   proc.InitAsEphemeralProcess(sub_context);
   liumos->scheduler->RegisterProcess(proc);
+  liumos->sub_process = &proc;
 }
 
 extern "C" void KernelEntry(LiumOS* liumos_passed) {
@@ -89,9 +90,9 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
   ExecutionContext& root_context =
       *liumos->kernel_heap_allocator->Alloc<ExecutionContext>();
   root_context.SetRegisters(nullptr, 0, nullptr, 0, ReadCR3(), 0, 0);
-  Process& root_process = liumos->proc_ctrl->Create();
-  root_process.InitAsEphemeralProcess(root_context);
-  Scheduler scheduler_(root_process);
+  liumos->root_process = &liumos->proc_ctrl->Create();
+  liumos->root_process->InitAsEphemeralProcess(root_context);
+  Scheduler scheduler_(*liumos->root_process);
   liumos->scheduler = &scheduler_;
 
   PutString("Hello from kernel!\n");

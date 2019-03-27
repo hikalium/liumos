@@ -11,6 +11,7 @@ constexpr uint64_t kArchSetFS = 0x1002;
 __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
   uint64_t idx = args[0];
   if (idx == kSyscallIndex_sys_write) {
+    uint64_t t0 = liumos->hpet->ReadMainCounterValue();
     const uint64_t fildes = args[1];
     const uint8_t* buf = reinterpret_cast<uint8_t*>(args[2]);
     uint64_t nbyte = args[3];
@@ -18,9 +19,14 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
       PutStringAndHex("fildes", fildes);
       Panic("Only stdout is supported for now.");
     }
+    /*
     while (nbyte--) {
       PutChar(*(buf++));
     }
+    */
+    uint64_t t1 = liumos->hpet->ReadMainCounterValue();
+    liumos->scheduler->GetCurrentProcess().AddSysTimeFemtoSec(
+        (t1 - t0) * liumos->hpet->GetFemtosecndPerCount());
     return;
   } else if (idx == kSyscallIndex_sys_exit) {
     const uint64_t exit_code = args[1];

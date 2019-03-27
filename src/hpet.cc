@@ -60,7 +60,9 @@ void HPET::SetTimerMs(int timer_index,
 }
 
 uint64_t HPET::ReadMainCounterValue() {
-  return registers_->main_counter_value;
+  return GetKernelVirtAddrForPhysAddr(
+             GetKernelVirtAddrForPhysAddr(this)->registers_)
+      ->main_counter_value;
 }
 
 void HPET::BusyWait(uint64_t ms) {
@@ -68,6 +70,9 @@ void HPET::BusyWait(uint64_t ms) {
                    ReadMainCounterValue();
   while (ReadMainCounterValue() < count)
     ;
+}
+uint64_t HPET::GetFemtosecndPerCount() {
+  return GetKernelVirtAddrForPhysAddr(this)->femtosecond_per_count_;
 }
 
 void HPET::Print() {
