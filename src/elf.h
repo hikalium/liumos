@@ -6,7 +6,7 @@ class File;
 class Process;
 class PersistentMemoryManager;
 
-Process& LoadELFAndLaunchEphemeralProcess(File& file);
-Process& LoadELFAndLaunchPersistentProcess(File& file,
+Process& LoadELFAndCreateEphemeralProcess(File& file);
+Process& LoadELFAndCreatePersistentProcess(File& file,
                                            PersistentMemoryManager& pmem);
 void LoadKernelELF(File& file);

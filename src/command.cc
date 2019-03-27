@@ -617,13 +617,20 @@ void Run(TextBox& tbox) {
     proc.WaitUntilExit();
   } else if (IsEqualString(line, "pmem run pi.bin")) {
     assert(liumos->pmem[0]);
-    Process& proc = LoadELFAndLaunchPersistentProcess(*liumos->pi_bin_file,
+    Process& proc = LoadELFAndCreatePersistentProcess(*liumos->pi_bin_file,
                                                       *liumos->pmem[0]);
+    uint64_t t0 = liumos->hpet->ReadMainCounterValue();
+    liumos->scheduler->RegisterProcess(proc);
     proc.WaitUntilExit();
+    uint64_t t1 = liumos->hpet->ReadMainCounterValue();
+    PutStringAndHex(
+        "Nano Second",
+        (t1 - t0) * liumos->hpet->GetFemtosecndPerCount() / 1000'000);
   } else if (IsEqualString(line, "pmem run hello.bin")) {
     assert(liumos->pmem[0]);
-    Process& proc = LoadELFAndLaunchPersistentProcess(*liumos->hello_bin_file,
+    Process& proc = LoadELFAndCreatePersistentProcess(*liumos->hello_bin_file,
                                                       *liumos->pmem[0]);
+    liumos->scheduler->RegisterProcess(proc);
     proc.WaitUntilExit();
   } else if (strncmp(line, "test mem ", 9) == 0) {
     int proximity_domain = atoi(&line[9]);
@@ -642,11 +649,17 @@ void Run(TextBox& tbox) {
   } else if (IsEqualString(line, "time")) {
     Time();
   } else if (IsEqualString(line, "hello.bin")) {
-    Process& proc = LoadELFAndLaunchEphemeralProcess(*liumos->hello_bin_file);
+    Process& proc = LoadELFAndCreateEphemeralProcess(*liumos->hello_bin_file);
     proc.WaitUntilExit();
   } else if (IsEqualString(line, "pi.bin")) {
-    Process& proc = LoadELFAndLaunchEphemeralProcess(*liumos->pi_bin_file);
+    Process& proc = LoadELFAndCreateEphemeralProcess(*liumos->pi_bin_file);
+    uint64_t t0 = liumos->hpet->ReadMainCounterValue();
+    liumos->scheduler->RegisterProcess(proc);
     proc.WaitUntilExit();
+    uint64_t t1 = liumos->hpet->ReadMainCounterValue();
+    PutStringAndHex(
+        "Nano Second",
+        (t1 - t0) * liumos->hpet->GetFemtosecndPerCount() / 1000'000);
   } else if (IsEqualString(line, "cpuid")) {
     assert(liumos->cpu_features);
     CPUFeatureSet& f = *liumos->cpu_features;

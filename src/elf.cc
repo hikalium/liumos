@@ -154,7 +154,7 @@ static void LoadAndMap(IA_PML4& page_root,
   proc_map_info.stack.Map(page_root, page_attr | kPageAttrWritable);
 }
 
-Process& LoadELFAndLaunchEphemeralProcess(File& file) {
+Process& LoadELFAndCreateEphemeralProcess(File& file) {
   ExecutionContext& ctx =
       *liumos->kernel_heap_allocator->Alloc<ExecutionContext>();
   ProcessMappingInfo& map_info = ctx.GetProcessMappingInfo();
@@ -194,11 +194,10 @@ Process& LoadELFAndLaunchEphemeralProcess(File& file) {
                        kPageSize * kKernelStackPagesForEachProcess);
   Process& proc = liumos->proc_ctrl->Create();
   proc.InitAsEphemeralProcess(ctx);
-  liumos->scheduler->RegisterProcess(proc);
   return proc;
 }
 
-Process& LoadELFAndLaunchPersistentProcess(File& file,
+Process& LoadELFAndCreatePersistentProcess(File& file,
                                            PersistentMemoryManager& pmem) {
   constexpr uint64_t kUserStackBaseAddr = 0xBEEF'0000;
   const int kNumOfStackPages = 32;
@@ -239,9 +238,7 @@ Process& LoadELFAndLaunchPersistentProcess(File& file,
   working_ctx_map.data.AllocSegmentFromPersistentMemory(pmem);
   working_ctx_map.stack.AllocSegmentFromPersistentMemory(pmem);
 
-  Process& proc = liumos->proc_ctrl->RestoreFromPersistentProcessInfo(pp_info);
-  liumos->scheduler->RegisterProcess(proc);
-  return proc;
+  return liumos->proc_ctrl->RestoreFromPersistentProcessInfo(pp_info);
 }
 
 void LoadKernelELF(File& file) {
