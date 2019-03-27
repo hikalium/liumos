@@ -7,6 +7,7 @@ void Process::WaitUntilExit() {
 }
 
 void Process::NotifyContextSaving() {
+  number_of_ctx_switch_++;
   if (!IsPersistent())
     return;
   pp_info_->SwitchContext();

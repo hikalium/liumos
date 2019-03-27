@@ -626,6 +626,7 @@ void Run(TextBox& tbox) {
     PutStringAndHex(
         "Nano Second",
         (t1 - t0) * liumos->hpet->GetFemtosecndPerCount() / 1000'000);
+    PutStringAndHex("NumOfCtxSw", proc.GetNumberOfContextSwitch());
   } else if (IsEqualString(line, "pmem run hello.bin")) {
     assert(liumos->pmem[0]);
     Process& proc = LoadELFAndCreatePersistentProcess(*liumos->hello_bin_file,
@@ -657,6 +658,7 @@ void Run(TextBox& tbox) {
     PutStringAndHex(
         "Nano Second",
         (t1 - t0) * liumos->hpet->GetFemtosecndPerCount() / 1000'000);
+    PutStringAndHex("NumOfCtxSw", proc.GetNumberOfContextSwitch());
   } else if (IsEqualString(line, "cpuid")) {
     assert(liumos->cpu_features);
     CPUFeatureSet& f = *liumos->cpu_features;

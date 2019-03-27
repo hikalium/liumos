@@ -48,6 +48,7 @@ class Process {
     return IsPersistent() ? pp_info_->GetWorkingContext() : *ctx_;
   }
   void NotifyContextSaving();
+  uint64_t GetNumberOfContextSwitch() { return number_of_ctx_switch_; }
   friend class ProcessController;
 
  private:
@@ -55,12 +56,14 @@ class Process {
       : id_(id),
         status_(Status::kNotInitialized),
         ctx_(nullptr),
-        pp_info_(nullptr){};
+        pp_info_(nullptr),
+        number_of_ctx_switch_(0){};
   uint64_t id_;
   volatile Status status_;
   int scheduler_index_;
   ExecutionContext* ctx_;
   PersistentProcessInfo* pp_info_;
+  uint64_t number_of_ctx_switch_;
 };
 
 class ProcessController {
