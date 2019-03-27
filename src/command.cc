@@ -315,8 +315,6 @@ void ShowEFIMemoryMap() {
 void Free() {
   PutString("DRAM Free List:\n");
   liumos->dram_allocator->Print();
-  PutString("PMEM Free List:\n");
-  liumos->pmem_allocator->Print();
 }
 
 bool IsEqualString(const char* a, const char* b) {
@@ -619,10 +617,12 @@ void Run(TextBox& tbox) {
     assert(liumos->pmem[0]);
     Process& proc = LoadELFAndCreatePersistentProcess(*liumos->pi_bin_file,
                                                       *liumos->pmem[0]);
+    liumos->main_console->SetSerial(nullptr);
     uint64_t t0 = liumos->hpet->ReadMainCounterValue();
     liumos->scheduler->RegisterProcess(proc);
     proc.WaitUntilExit();
     uint64_t t1 = liumos->hpet->ReadMainCounterValue();
+    liumos->main_console->SetSerial(liumos->com1);
     PutStringAndHex(
         "Nano Second",
         (t1 - t0) * liumos->hpet->GetFemtosecndPerCount() / 1000'000);
@@ -635,12 +635,6 @@ void Run(TextBox& tbox) {
   } else if (strncmp(line, "test mem ", 9) == 0) {
     int proximity_domain = atoi(&line[9]);
     TestMem(liumos->dram_allocator, proximity_domain);
-  } else if (strncmp(line, "test pmem ", 10) == 0) {
-    int proximity_domain = atoi(&line[10]);
-    TestMem(liumos->pmem_allocator, proximity_domain);
-  } else if (strncmp(line, "test pmemw ", 11) == 0) {
-    int proximity_domain = atoi(&line[11]);
-    TestMemWrite(liumos->pmem_allocator, proximity_domain);
   } else if (strncmp(line, "test memw ", 10) == 0) {
     int proximity_domain = atoi(&line[10]);
     TestMemWrite(liumos->dram_allocator, proximity_domain);
@@ -653,10 +647,12 @@ void Run(TextBox& tbox) {
     proc.WaitUntilExit();
   } else if (IsEqualString(line, "pi.bin")) {
     Process& proc = LoadELFAndCreateEphemeralProcess(*liumos->pi_bin_file);
+    liumos->main_console->SetSerial(nullptr);
     uint64_t t0 = liumos->hpet->ReadMainCounterValue();
     liumos->scheduler->RegisterProcess(proc);
     proc.WaitUntilExit();
     uint64_t t1 = liumos->hpet->ReadMainCounterValue();
+    liumos->main_console->SetSerial(liumos->com1);
     PutStringAndHex(
         "Nano Second",
         (t1 - t0) * liumos->hpet->GetFemtosecndPerCount() / 1000'000);
@@ -686,6 +682,13 @@ void Run(TextBox& tbox) {
     PutString("test mem: Test memory access \n");
     PutString("free: show memory free entries\n");
     PutString("time: show HPET main counter value\n");
+  } else if (IsEqualString(line, "testscroll")) {
+    uint64_t t0 = liumos->hpet->ReadMainCounterValue();
+    uint64_t t1 =
+        t0 + 3 * 1000'000'000'000'000 / liumos->hpet->GetFemtosecndPerCount();
+    for (int i = 0; liumos->hpet->ReadMainCounterValue() < t1; i++) {
+      PutStringAndHex("Line", i + 1);
+    }
   } else {
     PutString("Command not found: ");
     PutString(tbox.GetRecordedString());

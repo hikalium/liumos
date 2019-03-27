@@ -52,7 +52,7 @@ void PersistentMemoryManager::Init() {
     head_ = nullptr;
     last_persistent_process_info_ = nullptr;
     signature_ = kSignature;
-    CLFlush(this);
+    CLFlush(this, sizeof(*this));
 
     sentinel_.Init(0, 0);
     SetHead(&sentinel_);

@@ -99,7 +99,6 @@ packed_struct LiumOS {
   LocalAPIC* bsp_local_apic;
   CPUFeatureSet* cpu_features;
   PhysicalPageAllocator* dram_allocator;
-  PhysicalPageAllocator* pmem_allocator;
   KernelVirtualHeapAllocator* kernel_heap_allocator;
   HPET* hpet;
   EFI::MemoryMap* efi_memory_map;

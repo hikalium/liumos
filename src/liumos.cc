@@ -16,7 +16,6 @@ HPET hpet;
 
 LiumOS liumos_;
 PhysicalPageAllocator dram_allocator_;
-PhysicalPageAllocator pmem_allocator_;
 Console main_console_;
 KeyboardController keyboard_ctrl_;
 

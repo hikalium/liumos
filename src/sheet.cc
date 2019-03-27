@@ -19,10 +19,11 @@ void Sheet::DrawCharacter(char c, int px, int py) {
 void Sheet::DrawRectWithoutFlush(int px, int py, int w, int h, uint32_t col) {
   if (!buf_)
     return;
+  uint32_t* b32 = reinterpret_cast<uint32_t*>(buf_);
   for (int y = py; y < py + h; y++) {
     for (int x = px; x < px + w; x++) {
       for (int i = 0; i < 4; i++) {
-        buf_[4 * (y * pixels_per_scan_line_ + x) + i] = (col >> (i * 8)) & 0xff;
+        b32[y * pixels_per_scan_line_ + x] = col;
       }
     }
   }
@@ -38,13 +39,11 @@ void Sheet::BlockTransfer(int to_x,
                           int from_y,
                           int w,
                           int h) {
+  uint32_t* b32 = reinterpret_cast<uint32_t*>(buf_);
   for (int dy = 0; dy < h; dy++) {
     for (int dx = 0; dx < w; dx++) {
-      for (int i = 0; i < 4; i++) {
-        buf_[4 * ((to_y + dy) * pixels_per_scan_line_ + (to_x + dx)) + i] =
-            buf_[4 * ((from_y + dy) * pixels_per_scan_line_ + (from_x + dx)) +
-                 i];
-      }
+      b32[(to_y + dy) * pixels_per_scan_line_ + (to_x + dx)] =
+          b32[(from_y + dy) * pixels_per_scan_line_ + (from_x + dx)];
     }
   }
   Flush(to_x, to_y, w, h);
