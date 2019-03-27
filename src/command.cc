@@ -644,6 +644,7 @@ void Run(TextBox& tbox) {
     Time();
   } else if (IsEqualString(line, "hello.bin")) {
     Process& proc = LoadELFAndCreateEphemeralProcess(*liumos->hello_bin_file);
+    liumos->scheduler->RegisterProcess(proc);
     proc.WaitUntilExit();
   } else if (IsEqualString(line, "pi.bin")) {
     Process& proc = LoadELFAndCreateEphemeralProcess(*liumos->pi_bin_file);
@@ -689,6 +690,11 @@ void Run(TextBox& tbox) {
     for (int i = 0; liumos->hpet->ReadMainCounterValue() < t1; i++) {
       PutStringAndHex("Line", i + 1);
     }
+  } else if (IsEqualString(line, "ascii")) {
+    for (int i = 0; i < 0x100; i++) {
+      PutChar(i);
+    }
+    PutChar('\n');
   } else {
     PutString("Command not found: ");
     PutString(tbox.GetRecordedString());
@@ -716,6 +722,9 @@ void WaitAndProcess(TextBox& tbox) {
         }
         if (keyid == '\r') {
           keyid = '\n';
+        }
+        if (keyid == 0x7f) {
+          keyid = KeyID::kBackspace;
         }
       } else {
         break;
