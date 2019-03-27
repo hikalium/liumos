@@ -617,22 +617,12 @@ void Run(TextBox& tbox) {
     assert(liumos->pmem[0]);
     Process& proc = LoadELFAndCreatePersistentProcess(*liumos->pi_bin_file,
                                                       *liumos->pmem[0]);
-    liumos->main_console->SetSerial(nullptr);
-    uint64_t t0 = liumos->hpet->ReadMainCounterValue();
-    liumos->scheduler->RegisterProcess(proc);
-    proc.WaitUntilExit();
-    uint64_t t1 = liumos->hpet->ReadMainCounterValue();
-    liumos->main_console->SetSerial(liumos->com1);
-    PutStringAndHex(
-        "Nano Second",
-        (t1 - t0) * liumos->hpet->GetFemtosecndPerCount() / 1000'000);
-    PutStringAndHex("NumOfCtxSw", proc.GetNumberOfContextSwitch());
+    liumos->scheduler->LaunchAndWaitUntilExit(proc);
   } else if (IsEqualString(line, "pmem run hello.bin")) {
     assert(liumos->pmem[0]);
     Process& proc = LoadELFAndCreatePersistentProcess(*liumos->hello_bin_file,
                                                       *liumos->pmem[0]);
-    liumos->scheduler->RegisterProcess(proc);
-    proc.WaitUntilExit();
+    liumos->scheduler->LaunchAndWaitUntilExit(proc);
   } else if (strncmp(line, "test mem ", 9) == 0) {
     int proximity_domain = atoi(&line[9]);
     TestMem(liumos->dram_allocator, proximity_domain);
@@ -645,20 +635,10 @@ void Run(TextBox& tbox) {
     Time();
   } else if (IsEqualString(line, "hello.bin")) {
     Process& proc = LoadELFAndCreateEphemeralProcess(*liumos->hello_bin_file);
-    liumos->scheduler->RegisterProcess(proc);
-    proc.WaitUntilExit();
+    liumos->scheduler->LaunchAndWaitUntilExit(proc);
   } else if (IsEqualString(line, "pi.bin")) {
     Process& proc = LoadELFAndCreateEphemeralProcess(*liumos->pi_bin_file);
-    liumos->main_console->SetSerial(nullptr);
-    uint64_t t0 = liumos->hpet->ReadMainCounterValue();
-    liumos->scheduler->RegisterProcess(proc);
-    proc.WaitUntilExit();
-    uint64_t t1 = liumos->hpet->ReadMainCounterValue();
-    liumos->main_console->SetSerial(liumos->com1);
-    PutStringAndHex(
-        "Nano Second",
-        (t1 - t0) * liumos->hpet->GetFemtosecndPerCount() / 1000'000);
-    PutStringAndHex("NumOfCtxSw", proc.GetNumberOfContextSwitch());
+    liumos->scheduler->LaunchAndWaitUntilExit(proc);
   } else if (IsEqualString(line, "cpuid")) {
     assert(liumos->cpu_features);
     CPUFeatureSet& f = *liumos->cpu_features;
