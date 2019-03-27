@@ -18,7 +18,7 @@ class Scheduler {
   void KillCurrentProcess();
 
  private:
-  const static int kNumberOfProcess = 16;
+  const static int kNumberOfProcess = 256;
   Process* process_[kNumberOfProcess];
   int number_of_process_;
   Process* current_;
