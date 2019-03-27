@@ -15,6 +15,9 @@ class HPET {
   void SetTimerMs(int timer_index,
                   uint64_t milliseconds,
                   HPET::TimerConfig flags);
+  void SetTimerNs(int timer_index,
+                  uint64_t nanoseconds,
+                  HPET::TimerConfig flags);
   uint64_t ReadMainCounterValue();
   uint64_t GetFemtosecndPerCount();
   void BusyWait(uint64_t ms);

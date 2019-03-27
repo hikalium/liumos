@@ -639,6 +639,43 @@ void Run(TextBox& tbox) {
   } else if (IsEqualString(line, "pi.bin")) {
     Process& proc = LoadELFAndCreateEphemeralProcess(*liumos->pi_bin_file);
     liumos->scheduler->LaunchAndWaitUntilExit(proc);
+  } else if (strncmp(line, "eval ", 5) == 0) {
+    int us = atoi(&line[5]);
+    PutStringAndHex("Eval in time slice", us);
+    ClearIntFlag();
+    liumos->hpet->SetTimerNs(
+        0, us,
+        HPET::TimerConfig::kUsePeriodicMode | HPET::TimerConfig::kEnable);
+
+    StoreIntFlag();
+
+    assert(liumos->pmem[0]);
+    constexpr int kNumOfTestRun = 5;
+
+    PutString("Ephemeral Process:\n");
+    uint64_t ns_sum_ephemeral = 0;
+    for (int i = 0; i < kNumOfTestRun; i++) {
+      Process& proc = LoadELFAndCreateEphemeralProcess(*liumos->pi_bin_file);
+      ns_sum_ephemeral += liumos->scheduler->LaunchAndWaitUntilExit(proc);
+    }
+
+    PutString("Persistent Process:\n");
+    uint64_t ns_sum_persistent = 0;
+    for (int i = 0; i < kNumOfTestRun; i++) {
+      Process& proc = LoadELFAndCreatePersistentProcess(*liumos->pi_bin_file,
+                                                        *liumos->pmem[0]);
+      ns_sum_persistent += liumos->scheduler->LaunchAndWaitUntilExit(proc);
+    }
+    PutString("timeslice(us), ephemeral avg(ns), persistent avg(ns)\n");
+    PutString("0x");
+    PutHex64(us);
+    PutString(",");
+    PutString("0x");
+    PutHex64(ns_sum_ephemeral / kNumOfTestRun);
+    PutString(",");
+    PutString("0x");
+    PutHex64(ns_sum_persistent / kNumOfTestRun);
+    PutString("\n");
   } else if (IsEqualString(line, "cpuid")) {
     assert(liumos->cpu_features);
     CPUFeatureSet& f = *liumos->cpu_features;

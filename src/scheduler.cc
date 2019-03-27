@@ -12,7 +12,7 @@ void Scheduler::RegisterProcess(Process& proc) {
   proc.SetStatus(Status::kSleeping);
 }
 
-void Scheduler::LaunchAndWaitUntilExit(Process& proc) {
+uint64_t Scheduler::LaunchAndWaitUntilExit(Process& proc) {
   liumos->main_console->SetSerial(nullptr);
   liumos->root_process->ResetProcTimeFemtoSec();
   liumos->sub_process->ResetProcTimeFemtoSec();
@@ -21,8 +21,8 @@ void Scheduler::LaunchAndWaitUntilExit(Process& proc) {
   proc.WaitUntilExit();
   uint64_t t1 = liumos->hpet->ReadMainCounterValue();
   liumos->main_console->SetSerial(liumos->com1);
-  PutStringAndHex("Nano Second",
-                  (t1 - t0) * liumos->hpet->GetFemtosecndPerCount() / 1000'000);
+  uint64_t ns = (t1 - t0) * liumos->hpet->GetFemtosecndPerCount() / 1000'000;
+  PutStringAndHex("Nano Second", ns);
   PutStringAndHex("NumOfCtxSw", proc.GetNumberOfContextSwitch());
   PutStringAndHex("TimeInTask(ns)         ",
                   proc.GetProcTimeFemtoSec() / 1000'000);
@@ -32,6 +32,7 @@ void Scheduler::LaunchAndWaitUntilExit(Process& proc) {
                   liumos->root_process->GetProcTimeFemtoSec() / 1000'000);
   PutStringAndHex("TimeInTask(ns) subtask ",
                   liumos->sub_process->GetProcTimeFemtoSec() / 1000'000);
+  return ns;
 }
 
 Process* Scheduler::SwitchProcess() {

@@ -46,7 +46,11 @@ void HPET::Init(HPET::RegisterSpace* registers) {
 void HPET::SetTimerMs(int timer_index,
                       uint64_t milliseconds,
                       TimerConfig flags) {
-  uint64_t count = 1e12 * milliseconds / femtosecond_per_count_;
+  SetTimerNs(timer_index, 1e3 * milliseconds, flags);
+}
+
+void HPET::SetTimerNs(int timer_index, uint64_t ns, TimerConfig flags) {
+  uint64_t count = 1e9 * ns / femtosecond_per_count_;
   TimerRegister* entry = &registers_->timers[timer_index];
   TimerConfig config = entry->configuration_and_capability;
   TimerConfig mask = TimerConfig::kUseLevelTriggeredInterrupt |

@@ -9,7 +9,7 @@ class Scheduler {
     root_process.SetStatus(Process::Status::kRunning);
   }
   void RegisterProcess(Process& proc);
-  void LaunchAndWaitUntilExit(Process& proc);
+  uint64_t LaunchAndWaitUntilExit(Process& proc);
   Process* SwitchProcess();
   Process& GetCurrentProcess() {
     assert(current_);

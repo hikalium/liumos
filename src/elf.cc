@@ -49,7 +49,6 @@ struct PhdrMappingInfo {
 
 static const Elf64_Ehdr* EnsureLoadable(const uint8_t* buf,
                                         uint64_t file_size) {
-  PutStringAndHex("File Size", file_size);
   if (strncmp(reinterpret_cast<const char*>(buf), ELFMAG, SELFMAG) != 0) {
     PutString("Not an ELF file\n");
     return nullptr;
@@ -75,7 +74,6 @@ static const Elf64_Ehdr* EnsureLoadable(const uint8_t* buf,
     PutString("Not for x86_64");
     return nullptr;
   }
-  PutString("This is an ELF file\n");
   return ehdr;
 }
 
@@ -86,20 +84,15 @@ static const Elf64_Ehdr* ParseProgramHeader(File& file,
   phdr_map_info.Clear();
   const uint8_t* buf = file.GetBuf();
   assert(IsAlignedToPageSize(buf));
-  PutString("Loading ELF...\n");
   const Elf64_Ehdr* ehdr = EnsureLoadable(buf, file.GetFileSize());
   if (!ehdr)
     return nullptr;
 
-  PutString("Program headers to be loaded:\n");
   for (int i = 0; i < ehdr->e_phnum; i++) {
     const Elf64_Phdr* phdr = reinterpret_cast<const Elf64_Phdr*>(
         buf + ehdr->e_phoff + ehdr->e_phentsize * i);
     if (phdr->p_type != PT_LOAD)
       continue;
-    PutString("Phdr #");
-    PutHex64(i);
-    PrintProgramHeader(phdr);
 
     assert(IsAlignedToPageSize(phdr->p_align));
 
@@ -179,7 +172,6 @@ Process& LoadELFAndCreateEphemeralProcess(File& file) {
   LoadAndMap(user_page_table, map_info, phdr_map_info, kPageAttrUser);
 
   uint8_t* entry_point = reinterpret_cast<uint8_t*>(ehdr->e_entry);
-  PutStringAndHex("Entry address: ", entry_point);
 
   void* stack_pointer =
       reinterpret_cast<void*>(map_info.stack.GetVirtEndAddr());
@@ -222,7 +214,6 @@ Process& LoadELFAndCreatePersistentProcess(File& file,
   LoadAndMap(user_page_table, map_info, phdr_map_info, kPageAttrUser);
 
   uint8_t* entry_point = reinterpret_cast<uint8_t*>(ehdr->e_entry);
-  PutStringAndHex("Entry address: ", entry_point);
 
   void* stack_pointer =
       reinterpret_cast<void*>(map_info.stack.GetVirtEndAddr());
