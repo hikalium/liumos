@@ -8,7 +8,7 @@ LOADER_SRCS= acpi.cc apic.cc asm.S \
 						 libfunc.cc loader.cc \
 						 paging.cc phys_page_allocator.cc pmem.cc process.cc \
 						 scheduler.cc serial.cc sheet.cc \
-						 sys_constant.cc syscall.cc \
+						 sys_constant.cc \
 						 text_box.cc \
 						 font.gen.c
 KERNEL_SRCS= acpi.cc apic.cc asm.S \
@@ -21,7 +21,7 @@ KERNEL_SRCS= acpi.cc apic.cc asm.S \
 						 libfunc.cc \
 						 paging.cc phys_page_allocator.cc pmem.cc process.cc\
 						 scheduler.cc serial.cc sheet.cc subtask.cc \
-						 sys_constant.cc syscall.cc \
+						 sys_constant.cc syscall.cc syscall_handler.S\
 						 text_box.cc \
 						 font.gen.cc
 LOADER_OBJS= $(addsuffix .o, $(basename $(LOADER_SRCS)))
