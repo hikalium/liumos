@@ -615,13 +615,13 @@ void Run(TextBox& tbox) {
     proc.WaitUntilExit();
   } else if (IsEqualString(line, "pmem run pi.bin")) {
     assert(liumos->pmem[0]);
-    Process& proc = LoadELFAndCreatePersistentProcess(*liumos->pi_bin_file,
-                                                      *liumos->pmem[0]);
+    Process& proc = LoadELFAndCreatePersistentProcess(
+        *liumos->loader_info.files.pi_bin, *liumos->pmem[0]);
     liumos->scheduler->LaunchAndWaitUntilExit(proc);
   } else if (IsEqualString(line, "pmem run hello.bin")) {
     assert(liumos->pmem[0]);
-    Process& proc = LoadELFAndCreatePersistentProcess(*liumos->hello_bin_file,
-                                                      *liumos->pmem[0]);
+    Process& proc = LoadELFAndCreatePersistentProcess(
+        *liumos->loader_info.files.hello_bin, *liumos->pmem[0]);
     liumos->scheduler->LaunchAndWaitUntilExit(proc);
   } else if (strncmp(line, "test mem ", 9) == 0) {
     int proximity_domain = atoi(&line[9]);
@@ -634,10 +634,12 @@ void Run(TextBox& tbox) {
   } else if (IsEqualString(line, "time")) {
     Time();
   } else if (IsEqualString(line, "hello.bin")) {
-    Process& proc = LoadELFAndCreateEphemeralProcess(*liumos->hello_bin_file);
+    Process& proc =
+        LoadELFAndCreateEphemeralProcess(*liumos->loader_info.files.hello_bin);
     liumos->scheduler->LaunchAndWaitUntilExit(proc);
   } else if (IsEqualString(line, "pi.bin")) {
-    Process& proc = LoadELFAndCreateEphemeralProcess(*liumos->pi_bin_file);
+    Process& proc =
+        LoadELFAndCreateEphemeralProcess(*liumos->loader_info.files.pi_bin);
     liumos->scheduler->LaunchAndWaitUntilExit(proc);
   } else if (strncmp(line, "eval ", 5) == 0) {
     int us = atoi(&line[5]);
@@ -655,15 +657,16 @@ void Run(TextBox& tbox) {
     PutString("Ephemeral Process:\n");
     uint64_t ns_sum_ephemeral = 0;
     for (int i = 0; i < kNumOfTestRun; i++) {
-      Process& proc = LoadELFAndCreateEphemeralProcess(*liumos->pi_bin_file);
+      Process& proc =
+          LoadELFAndCreateEphemeralProcess(*liumos->loader_info.files.pi_bin);
       ns_sum_ephemeral += liumos->scheduler->LaunchAndWaitUntilExit(proc);
     }
 
     PutString("Persistent Process:\n");
     uint64_t ns_sum_persistent = 0;
     for (int i = 0; i < kNumOfTestRun; i++) {
-      Process& proc = LoadELFAndCreatePersistentProcess(*liumos->pi_bin_file,
-                                                        *liumos->pmem[0]);
+      Process& proc = LoadELFAndCreatePersistentProcess(
+          *liumos->loader_info.files.pi_bin, *liumos->pmem[0]);
       ns_sum_persistent += liumos->scheduler->LaunchAndWaitUntilExit(proc);
     }
     PutString("timeslice(us), ephemeral avg(ns), persistent avg(ns)\n");

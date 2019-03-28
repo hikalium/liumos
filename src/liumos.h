@@ -79,9 +79,14 @@ inline T min(T a, T b) {
 }
 
 // @liumos.c
+packed_struct LoaderInfo {
+  struct {
+    File* hello_bin;
+    File* pi_bin;
+  } files;
+};
 class PersistentMemoryManager;
 packed_struct LiumOS {
-  static constexpr int kNumOfPMEMManagers = 4;
   struct {
     ACPI::RSDT* rsdt;
     ACPI::NFIT* nfit;
@@ -90,6 +95,8 @@ packed_struct LiumOS {
     ACPI::SRAT* srat;
     ACPI::SLIT* slit;
   } acpi;
+  LoaderInfo loader_info;
+  static constexpr int kNumOfPMEMManagers = 4;
   PersistentMemoryManager* pmem[kNumOfPMEMManagers];
   Sheet* vram_sheet;
   Sheet* screen_sheet;
@@ -102,8 +109,6 @@ packed_struct LiumOS {
   KernelVirtualHeapAllocator* kernel_heap_allocator;
   HPET* hpet;
   EFI::MemoryMap* efi_memory_map;
-  File* hello_bin_file;
-  File* pi_bin_file;
   IA_PML4* kernel_pml4;
   Scheduler* scheduler;
   ProcessController* proc_ctrl;

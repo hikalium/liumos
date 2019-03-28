@@ -205,9 +205,9 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   EFI::ConOut::ClearScreen();
   logo_file.LoadFromEFISimpleFS(L"logo.ppm");
   hello_bin_file.LoadFromEFISimpleFS(L"hello.bin");
-  liumos->hello_bin_file = &hello_bin_file;
+  liumos_.loader_info.files.hello_bin = &hello_bin_file;
   pi_bin_file.LoadFromEFISimpleFS(L"pi.bin");
-  liumos->pi_bin_file = &pi_bin_file;
+  liumos_.loader_info.files.pi_bin = &pi_bin_file;
   liumos_elf_file.LoadFromEFISimpleFS(L"LIUMOS.ELF");
   InitGraphics();
   main_console_.SetSheet(liumos->screen_sheet);
