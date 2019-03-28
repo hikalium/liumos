@@ -19,11 +19,9 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
       PutStringAndHex("fildes", fildes);
       Panic("Only stdout is supported for now.");
     }
-    /*
     while (nbyte--) {
       PutChar(*(buf++));
     }
-    */
     uint64_t t1 = liumos->hpet->ReadMainCounterValue();
     liumos->scheduler->GetCurrentProcess().AddSysTimeFemtoSec(
         (t1 - t0) * liumos->hpet->GetFemtosecndPerCount());
