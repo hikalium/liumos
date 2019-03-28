@@ -62,6 +62,31 @@ void LaunchSubTask(KernelVirtualHeapAllocator& kernel_heap_allocator) {
   liumos->sub_process = &proc;
 }
 
+void TimerHandler(uint64_t, InterruptInfo* info) {
+  static uint64_t proc_last_time_count = 0;
+  Process& proc = liumos->scheduler->GetCurrentProcess();
+  liumos->bsp_local_apic->SendEndOfInterrupt();
+  Process* next_proc = liumos->scheduler->SwitchProcess();
+  if (!next_proc)
+    return;  // no need to switching context.
+  proc.AddProcTimeFemtoSec(
+      (liumos->hpet->ReadMainCounterValue() - proc_last_time_count) *
+      liumos->hpet->GetFemtosecondPerCount());
+  CPUContext& from = proc.GetExecutionContext().GetCPUContext();
+  from.cr3 = ReadCR3();
+  from.greg = info->greg;
+  from.int_ctx = info->int_ctx;
+  proc.NotifyContextSaving();
+
+  CPUContext& to = next_proc->GetExecutionContext().GetCPUContext();
+  info->greg = to.greg;
+  info->int_ctx = to.int_ctx;
+  proc_last_time_count = liumos->hpet->ReadMainCounterValue();
+  if (from.cr3 == to.cr3)
+    return;
+  WriteCR3(to.cr3);
+}
+
 extern "C" void KernelEntry(LiumOS* liumos_passed) {
   liumos_ = *liumos_passed;
   liumos = &liumos_;
@@ -132,6 +157,8 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
             ist1_virt_base + (kNumOfKernelStackPages << kPageSizeExponent));
   idt_.Init();
   keyboard_ctrl_.Init();
+
+  idt_.SetIntHandler(0x20, TimerHandler);
 
   StoreIntFlag();
 

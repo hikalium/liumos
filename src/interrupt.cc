@@ -7,7 +7,6 @@ __attribute__((ms_abi)) extern "C" void IntHandler(uint64_t intcode,
 }
 
 void IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
-  static uint64_t proc_last_time_count = 0;
   if (ReadRSP() < kKernelBaseAddr) {
     PutStringAndHex("Int#", intcode);
     PutStringAndHex("at CPL", info->int_ctx.cs & 3);
@@ -24,32 +23,6 @@ void IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
     handler_list_[intcode](intcode, info);
     return;
   }
-  Process& proc = liumos->scheduler->GetCurrentProcess();
-  if (intcode == 0x20) {
-    liumos->bsp_local_apic->SendEndOfInterrupt();
-    Process* next_proc = liumos->scheduler->SwitchProcess();
-    if (!next_proc) {
-      // no need to switching context.
-      return;
-    }
-    proc.AddProcTimeFemtoSec(
-        (liumos->hpet->ReadMainCounterValue() - proc_last_time_count) *
-        liumos->hpet->GetFemtosecondPerCount());
-    CPUContext& from = proc.GetExecutionContext().GetCPUContext();
-    from.cr3 = ReadCR3();
-    from.greg = info->greg;
-    from.int_ctx = info->int_ctx;
-    proc.NotifyContextSaving();
-
-    CPUContext& to = next_proc->GetExecutionContext().GetCPUContext();
-    info->greg = to.greg;
-    info->int_ctx = to.int_ctx;
-    proc_last_time_count = liumos->hpet->ReadMainCounterValue();
-    if (from.cr3 == to.cr3)
-      return;
-    WriteCR3(to.cr3);
-    return;
-  }
   PutStringAndHex("Int#", intcode);
   PutStringAndHex("at CPL", info->int_ctx.cs & 3);
   PutStringAndHex("RIP", info->int_ctx.rip);
@@ -57,6 +30,7 @@ void IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
   PutStringAndHex("SS      ", info->int_ctx.ss);
   PutStringAndHex("RSP", info->int_ctx.rsp);
   PutStringAndHex("Error Code", info->error_code);
+  Process& proc = liumos->scheduler->GetCurrentProcess();
   PutStringAndHex("Context#", proc.GetID());
   if (intcode == 0x08) {
     Panic("Double Fault");
