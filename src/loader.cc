@@ -220,7 +220,9 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   liumos->main_console->SetSerial(&com1);
 
   PrintLogoFile();
-  PutString("\nliumOS version: " GIT_HASH "\n\n");
+  PutString("\nliumOS version: ");
+  PutString(GetVersionStr());
+  PutString("\n\n");
   IdentifyCPU();
   ClearIntFlag();
 

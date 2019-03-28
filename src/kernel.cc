@@ -108,6 +108,9 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
   liumos->scheduler = &scheduler_;
 
   PutString("Hello from kernel!\n");
+  PutString("\nliumOS version: ");
+  PutString(GetVersionStr());
+  PutString("\n\n");
 
   ClearIntFlag();
 
