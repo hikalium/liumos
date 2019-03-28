@@ -1,6 +1,6 @@
-#include "liumos.h"
 #include "execution_context.h"
 #include "hpet.h"
+#include "liumos.h"
 
 LiumOS* liumos;
 EFI::MemoryMap efi_memory_map;

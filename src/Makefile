@@ -2,7 +2,7 @@ OBJS= acpi.o apic.o asm.o console.o command.o \
 		 efi.o efimain.o elf.o execution_context.o file.o \
 		 gdt.o generic.o graphics.o guid.o \
 		 hpet.o interrupt.o keyboard.o\
-		 libfunc.o liumos.o paging.o phys_page_allocator.o pmem.o process.o \
+		 libfunc.o loader.o paging.o phys_page_allocator.o pmem.o process.o \
 		 scheduler.o serial.o sheet.o sys_constant.o syscall.o text_box.o \
 		 font.gen.o
 KERNEL_SRCS= acpi.cc apic.cc asm.S \
