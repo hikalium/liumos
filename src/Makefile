@@ -1,4 +1,4 @@
-OBJS= acpi.o apic.o asm.o console.o command.o \
+LOADER_SRCS= acpi.o apic.o asm.o console.o command.o \
 		 efi.o efimain.o elf.o execution_context.o file.o \
 		 gdt.o generic.o graphics.o guid.o \
 		 hpet.o interrupt.o keyboard.o\
@@ -17,6 +17,7 @@ KERNEL_SRCS= acpi.cc apic.cc asm.S \
 						 scheduler.cc serial.cc sheet.cc subtask.cc sys_constant.cc syscall.cc \
 						 text_box.cc \
 						 font.gen.cc
+LOADER_OBJS= $(addsuffix .o, $(basename $(LOADER_SRCS)))
 KERNEL_OBJS= $(addsuffix .elf.o, $(basename $(KERNEL_SRCS)))
 HEADERS=$(filter-out githash.h, $(wildcard *.h)) lib/musl/include/elf.h
 OVMF=ovmf/bios64.bin
@@ -90,10 +91,10 @@ test_% : %_test.cc Makefile
 		$(OSX_STD_HEADER_INCLUDE_FLAGS) -Wno-nullability-completeness -Wno-nullability-extension
 	@./$*_test.bin
 
-BOOTX64.EFI : $(OBJS) $(HEADERS) Makefile
+BOOTX64.EFI : $(LOADER_OBJS) $(HEADERS) Makefile
 	$(LLD_LINK) \
 		-subsystem:efi_application -nodefaultlib \
-		-entry:efi_main $(OBJS) -out:$@
+		-entry:efi_main $(LOADER_OBJS) -out:$@
 
 %.elf.o : %.cc $(HEADERS) Makefile
 	$(CC) $(CFLAGS_KERNEL) \
