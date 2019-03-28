@@ -21,7 +21,7 @@ uint64_t Scheduler::LaunchAndWaitUntilExit(Process& proc) {
   proc.WaitUntilExit();
   uint64_t t1 = liumos->hpet->ReadMainCounterValue();
   liumos->main_console->SetSerial(liumos->com1);
-  uint64_t ns = (t1 - t0) * liumos->hpet->GetFemtosecndPerCount() / 1000'000;
+  uint64_t ns = (t1 - t0) * liumos->hpet->GetFemtosecondPerCount() / 1000'000;
   PutStringAndHex("Nano Second", ns);
   PutStringAndHex("NumOfCtxSw", proc.GetNumberOfContextSwitch());
   PutStringAndHex("TimeInTask(ns)         ",

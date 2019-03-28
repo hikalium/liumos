@@ -75,7 +75,7 @@ void HPET::BusyWait(uint64_t ms) {
   while (ReadMainCounterValue() < count)
     ;
 }
-uint64_t HPET::GetFemtosecndPerCount() {
+uint64_t HPET::GetFemtosecondPerCount() {
   return GetKernelVirtAddrForPhysAddr(this)->femtosecond_per_count_;
 }
 

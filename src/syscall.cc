@@ -24,7 +24,7 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     }
     uint64_t t1 = liumos->hpet->ReadMainCounterValue();
     liumos->scheduler->GetCurrentProcess().AddSysTimeFemtoSec(
-        (t1 - t0) * liumos->hpet->GetFemtosecndPerCount());
+        (t1 - t0) * liumos->hpet->GetFemtosecondPerCount());
     return;
   } else if (idx == kSyscallIndex_sys_exit) {
     const uint64_t exit_code = args[1];

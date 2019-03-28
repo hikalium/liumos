@@ -34,7 +34,7 @@ void IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
     }
     proc.AddProcTimeFemtoSec(
         (liumos->hpet->ReadMainCounterValue() - proc_last_time_count) *
-        liumos->hpet->GetFemtosecndPerCount());
+        liumos->hpet->GetFemtosecondPerCount());
     CPUContext& from = proc.GetExecutionContext().GetCPUContext();
     from.cr3 = ReadCR3();
     from.greg = info->greg;

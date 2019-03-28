@@ -368,7 +368,7 @@ void TestMem(PhysicalPageAllocator* allocator, uint32_t proximity_domain) {
   uint64_t steps, tsteps;
   uint64_t t0, t1, tick_sum_overall, tick_sum_loop_only;
   uint64_t kDurationTick =
-      (uint64_t)(0.1 * 1e15) / liumos->hpet->GetFemtosecndPerCount();
+      (uint64_t)(0.1 * 1e15) / liumos->hpet->GetFemtosecondPerCount();
 
   PutString(" ,");
   for (stride = 1; stride <= kRangeMax / 2; stride = stride * 2)
@@ -424,7 +424,7 @@ void TestMem(PhysicalPageAllocator* allocator, uint32_t proximity_domain) {
       const uint64_t tick_sum_of_mem_read =
           tick_sum_overall - tick_sum_loop_only;
       const uint64_t pico_second_per_mem_read =
-          tick_sum_of_mem_read * liumos->hpet->GetFemtosecndPerCount() /
+          tick_sum_of_mem_read * liumos->hpet->GetFemtosecondPerCount() /
           (steps * csize) / 1000;
       PutString("0x");
       PutHex64(pico_second_per_mem_read > 0 ? pico_second_per_mem_read : 1);
@@ -466,7 +466,7 @@ void TestMemWrite(PhysicalPageAllocator* allocator, uint32_t proximity_domain) {
   uint64_t steps, tsteps;
   uint64_t t0, t1;
   uint64_t kDurationTick =
-      (uint64_t)(0.1 * 1e15) / liumos->hpet->GetFemtosecndPerCount();
+      (uint64_t)(0.1 * 1e15) / liumos->hpet->GetFemtosecondPerCount();
 
   PutString(" ,");
   for (stride = 1; stride <= kRangeMax / 2; stride = stride * 2)
@@ -523,7 +523,7 @@ void TestMemWrite(PhysicalPageAllocator* allocator, uint32_t proximity_domain) {
       const uint64_t tick_sum_access_only =
           tick_sum_overall - tick_sum_loop_only;
       const uint64_t pico_second_per_mem_read =
-          tick_sum_access_only * liumos->hpet->GetFemtosecndPerCount() /
+          tick_sum_access_only * liumos->hpet->GetFemtosecondPerCount() /
           (steps * csize) / 1000;
       if (pico_second_per_mem_read == 0) {
         PutString(", ");
@@ -705,7 +705,7 @@ void Run(TextBox& tbox) {
   } else if (IsEqualString(line, "testscroll")) {
     uint64_t t0 = liumos->hpet->ReadMainCounterValue();
     uint64_t t1 =
-        t0 + 3 * 1000'000'000'000'000 / liumos->hpet->GetFemtosecndPerCount();
+        t0 + 3 * 1000'000'000'000'000 / liumos->hpet->GetFemtosecondPerCount();
     for (int i = 0; liumos->hpet->ReadMainCounterValue() < t1; i++) {
       PutStringAndHex("Line", i + 1);
     }
