@@ -14,10 +14,16 @@ void LocalAPIC::Init(void) {
   }
 
   base_addr_ = (base_msr & GetPhysAddrMask()) & ~0xfffULL;
+  kernel_virt_base_addr_ = liumos->kernel_heap_allocator->MapPages<uint64_t>(
+      base_addr_, ByteSizeToPageSize(kRegisterAreaSize),
+      kPageAttrPresent | kPageAttrWritable | kPageAttrWriteThrough |
+          kPageAttrCacheDisable);
 
   PutString("LocalAPIC at 0x");
   PutHex64(base_addr_);
-  PutString(" mode: ");
+  PutString(" is mapped at 0x");
+  PutHex64(kernel_virt_base_addr_);
+  PutString(" in kernel.\nmode: ");
   is_x2apic_ = (base_msr & (1 << 10));
   if (is_x2apic_)
     PutString("x2APIC");
@@ -37,7 +43,7 @@ void LocalAPIC::SendEndOfInterrupt(void) {
     WriteMSR(MSRIndex::kx2APICEndOfInterrupt, 0);
     return;
   }
-  *reinterpret_cast<uint32_t*>(kLAPICRegisterAreaVirtBase + 0xB0ULL) = 0;
+  WriteRegister(0xB0ULL, 0);
 }
 
 static uint32_t ReadIOAPICRegister(uint8_t reg_index) {

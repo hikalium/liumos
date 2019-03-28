@@ -12,6 +12,7 @@ Console virtual_console_;
 LocalAPIC bsp_local_apic_;
 CPUFeatureSet cpu_features_;
 SerialPort com1_;
+HPET hpet_;
 
 void InitializeVRAMForKernel() {
   constexpr uint64_t kernel_virtual_vram_base = 0xFFFF'FFFF'8000'0000ULL;
@@ -65,12 +66,23 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
   liumos_ = *liumos_passed;
   liumos = &liumos_;
 
-  cpu_features_ = *liumos->cpu_features;
-  liumos->cpu_features = &cpu_features_;
-
   KernelVirtualHeapAllocator kernel_heap_allocator(GetKernelPML4(),
                                                    *liumos->dram_allocator);
   liumos->kernel_heap_allocator = &kernel_heap_allocator;
+
+  Disable8259PIC();
+  bsp_local_apic_.Init();
+
+  InitIOAPIC(bsp_local_apic_.GetID());
+
+  hpet_.Init(static_cast<HPET::RegisterSpace*>(
+      liumos->acpi.hpet->base_address.address));
+  liumos->hpet = &hpet_;
+  hpet_.SetTimerNs(
+      0, 100, HPET::TimerConfig::kUsePeriodicMode | HPET::TimerConfig::kEnable);
+
+  cpu_features_ = *liumos->cpu_features;
+  liumos->cpu_features = &cpu_features_;
 
   InitializeVRAMForKernel();
 
@@ -96,7 +108,6 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
   liumos->scheduler = &scheduler_;
 
   PutString("Hello from kernel!\n");
-  PutStringAndHex("RSP: ", ReadRSP());
 
   ClearIntFlag();
 
@@ -120,8 +131,6 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
   keyboard_ctrl_.Init();
 
   StoreIntFlag();
-
-  GetKernelPML4().Print();
 
   LaunchSubTask(kernel_heap_allocator);
 

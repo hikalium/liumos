@@ -6,13 +6,11 @@ LiumOS* liumos;
 EFI::MemoryMap efi_memory_map;
 PhysicalPageAllocator* dram_allocator;
 PhysicalPageAllocator* pmem_allocator;
-LocalAPIC bsp_local_apic;
 CPUFeatureSet cpu_features;
 SerialPort com1;
 File hello_bin_file;
 File pi_bin_file;
 File liumos_elf_file;
-HPET hpet;
 
 LiumOS liumos_;
 PhysicalPageAllocator dram_allocator_;
@@ -251,19 +249,6 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   idt.Init();
   InitPaging();
   keyboard_ctrl_.Init();
-
-  bsp_local_apic.Init();
-  Disable8259PIC();
-
-  InitIOAPIC(bsp_local_apic.GetID());
-
-  hpet.Init(static_cast<HPET::RegisterSpace*>(
-      liumos->acpi.hpet->base_address.address));
-  liumos->hpet = &hpet;
-  hpet.SetTimerNs(
-      0, 100, HPET::TimerConfig::kUsePeriodicMode | HPET::TimerConfig::kEnable);
-
-  GetKernelPML4().Print();
 
   LoadKernelELF(liumos_elf_file);
 }

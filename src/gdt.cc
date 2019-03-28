@@ -23,16 +23,12 @@ void GDT::Init(uint64_t kernel_stack_pointer, uint64_t ist1_pointer) {
 
   gdtr_.base = reinterpret_cast<uint64_t*>(&descriptors_);
   gdtr_.limit = sizeof(GDTDescriptors) - 1;
-  PutStringAndHex("GDT base", gdtr_.base);
-  PutStringAndHex("GDT limit", gdtr_.limit);
 
   WriteGDTR(&gdtr_);
   WriteCSSelector(kKernelCSSelector);
   WriteSSSelector(kKernelDSSelector);
   WriteDataAndExtraSegmentSelectors(kKernelDSSelector);
   WriteTaskRegister(kTSS64Selector);
-
-  Print();
 }
 
 void GDT::Print() {
