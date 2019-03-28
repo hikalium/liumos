@@ -1,11 +1,10 @@
 LOADER_SRCS= acpi.cc apic.cc asm.S \
-						 console.cc command.cc \
+						 console.cc \
 						 efi.cc efimain.cc elf.cc execution_context.cc \
 						 file.cc \
 						 gdt.cc generic.cc graphics.cc guid.cc \
 						 hpet.cc \
 						 interrupt.cc \
-						 keyboard.cc\
 						 libfunc.cc loader.cc \
 						 paging.cc phys_page_allocator.cc pmem.cc process.cc \
 						 scheduler.cc serial.cc sheet.cc \

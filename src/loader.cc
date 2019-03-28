@@ -15,7 +15,6 @@ File liumos_elf_file;
 LiumOS liumos_;
 PhysicalPageAllocator dram_allocator_;
 Console main_console_;
-KeyboardController keyboard_ctrl_;
 
 File logo_file;
 
@@ -248,7 +247,6 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   IDT idt;
   idt.Init();
   InitPaging();
-  keyboard_ctrl_.Init();
 
   LoadKernelELF(liumos_elf_file);
 }
