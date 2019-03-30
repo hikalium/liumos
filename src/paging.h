@@ -97,9 +97,6 @@ struct has_next_table_type<S, std::void_t<typename S::NextTableType>>
     : std::true_type {};
 template <class S>
 inline constexpr bool has_next_table_type_v = has_next_table_type<S>::value;
-template <class S, class T = void>
-using enable_if_it_may_have_table_t =
-    std::enable_if_t<has_next_table_type_v<S>, T>;
 
 template <class S, class = void>
 struct has_k_bits_of_offset_in_page : std::false_type {};
@@ -110,9 +107,6 @@ struct has_k_bits_of_offset_in_page<
 template <class S>
 inline constexpr bool has_k_bits_of_offset_in_page_v =
     has_k_bits_of_offset_in_page<S>::value;
-template <class S, class T = void>
-using enable_if_it_may_have_page_t =
-    std::enable_if_t<has_k_bits_of_offset_in_page_v<S>, T>;
 
 template <class S>
 inline constexpr bool is_page_allowed_v = has_k_bits_of_offset_in_page_v<S>;
