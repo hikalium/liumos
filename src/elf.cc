@@ -128,7 +128,8 @@ Process& LoadELFAndCreateEphemeralProcess(File& file) {
       *liumos->kernel_heap_allocator->Alloc<ExecutionContext>();
   ProcessMappingInfo& map_info = ctx.GetProcessMappingInfo();
   PhdrMappingInfo phdr_map_info;
-  IA_PML4& user_page_table = CreatePageTable();
+  IA_PML4& user_page_table = AllocPageTable();
+  SetKernelPageEntries(user_page_table);
 
   const Elf64_Ehdr* ehdr = ParseProgramHeader(file, map_info, phdr_map_info);
   assert(ehdr);
@@ -175,7 +176,8 @@ Process& LoadELFAndCreatePersistentProcess(File& file,
   pp_info.SetValidContextIndex(0);
   ProcessMappingInfo& map_info = ctx.GetProcessMappingInfo();
   PhdrMappingInfo phdr_map_info;
-  IA_PML4& user_page_table = CreatePageTable();
+  IA_PML4& user_page_table = AllocPageTable();
+  SetKernelPageEntries(user_page_table);
 
   const Elf64_Ehdr* ehdr = ParseProgramHeader(file, map_info, phdr_map_info);
   assert(ehdr);

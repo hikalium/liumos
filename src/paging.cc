@@ -101,14 +101,17 @@ void IA_PML4::DebugPrintEntryForAddr(uint64_t vaddr) {
   e.GetTableAddr()->DebugPrintEntryForAddr(vaddr);
 }
 
-IA_PML4& CreatePageTable() {
+IA_PML4& AllocPageTable() {
   IA_PML4* pml4 = liumos->dram_allocator->AllocPages<IA_PML4*>(1);
   assert(pml4);
   pml4->ClearMapping();
-  for (int i = IA_PML4::kNumOfEntries / 2; i < IA_PML4::kNumOfEntries; i++) {
-    pml4->entries[i] = liumos->kernel_pml4->entries[i];
-  }
   return *pml4;
+}
+
+void SetKernelPageEntries(IA_PML4& pml4) {
+  for (int i = pml4.kNumOfEntries / 2; i < pml4.kNumOfEntries; i++) {
+    pml4.entries[i] = liumos->kernel_pml4->entries[i];
+  }
 }
 
 void InitPaging() {
