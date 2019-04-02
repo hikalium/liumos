@@ -24,7 +24,7 @@ Process& ProcessController::Create() {
 static void PrepareContextForRestoringPersistentProcess(ExecutionContext& ctx) {
   ProcessMappingInfo& map_info = ctx.GetProcessMappingInfo();
 
-  IA_PML4& pt = AllocPageTable();
+  IA_PML4& pt = AllocPageTable(liumos->dram_allocator);
   SetKernelPageEntries(pt);
   map_info.code.Map(pt, kPageAttrUser);
   map_info.data.Map(pt, kPageAttrUser | kPageAttrWritable);

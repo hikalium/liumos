@@ -270,7 +270,14 @@ static_assert(sizeof(IA_PML4) == kPageSize);
 static_assert(!is_page_allowed_v<PML4EStrategy>);
 static_assert(is_table_allowed_v<PML4EStrategy>);
 
-IA_PML4& AllocPageTable();
+template <class TAllocator>
+IA_PML4& AllocPageTable(TAllocator& allocator) {
+  IA_PML4* pml4 = allocator->template AllocPages<IA_PML4*>(1);
+  assert(pml4);
+  pml4->ClearMapping();
+  return *pml4;
+}
+
 void SetKernelPageEntries(IA_PML4& pml4);
 void InitPaging(void);
 IA_PML4& GetKernelPML4(void);
