@@ -4,6 +4,69 @@
 #include "phys_page_allocator.h"
 #include "sys_constant.h"
 
+namespace std {
+
+template <class T, T v>
+struct integral_constant {
+  static constexpr T value = v;
+  typedef T value_type;
+  typedef integral_constant type;  // using injected-class-name
+  constexpr operator value_type() const noexcept { return value; }
+  constexpr value_type operator()() const noexcept {
+    return value;
+  }  // since c++14
+};
+using true_type = integral_constant<bool, true>;
+using false_type = integral_constant<bool, false>;
+
+template <bool B, class T = void>
+struct enable_if {};
+
+template <class T>
+struct enable_if<true, T> {
+  typedef T type;
+};
+
+template <bool B, class T = void>
+using enable_if_t = typename enable_if<B, T>::type;
+
+template <class...>
+using void_t = void;
+
+template <class T, class U>
+struct is_same : false_type {};
+
+template <class T>
+struct is_same<T, T> : true_type {};
+
+template <class T>
+struct remove_const {
+  typedef T type;
+};
+template <class T>
+struct remove_const<const T> {
+  typedef T type;
+};
+
+template <class T>
+struct remove_volatile {
+  typedef T type;
+};
+template <class T>
+struct remove_volatile<volatile T> {
+  typedef T type;
+};
+
+template <class T>
+struct remove_cv {
+  typedef typename remove_volatile<typename remove_const<T>::type>::type type;
+};
+
+template <class T>
+struct is_void : is_same<void, typename remove_cv<T>::type> {};
+
+}  // namespace std
+
 constexpr uint64_t kAddrCannotTranslate =
     0x8000'0000'0000'0000;  // non-canonical address
 
@@ -27,24 +90,28 @@ static inline bool IsAlignedToPageSize(const void* a) {
   return IsAlignedToPageSize(reinterpret_cast<uint64_t>(a));
 }
 
-template <typename TableType>
-uint64_t v2p(TableType& table, uint64_t vaddr) {
-  return v2p(&table, vaddr);
-}
-template <typename TableType>
-uint64_t v2p(TableType* table, uint64_t vaddr) {
-  typename TableType::EntryType& e =
-      table->entries[TableType::addr2index(vaddr)];
-  if (!e.IsPresent())
-    return kAddrCannotTranslate;
-  if (e.IsPage())
-    return (e.GetPageBaseAddr()) | (vaddr & TableType::kOffsetMask);
-  return v2p(e.GetTableAddr(), vaddr);
-}
-template <>
-inline uint64_t v2p(void*, uint64_t) {
-  return kAddrCannotTranslate;
-}
+template <class S, class = void>
+struct has_next_table_type : std::false_type {};
+template <class S>
+struct has_next_table_type<S, std::void_t<typename S::NextTableType>>
+    : std::true_type {};
+template <class S>
+inline constexpr bool has_next_table_type_v = has_next_table_type<S>::value;
+
+template <class S, class = void>
+struct has_k_bits_of_offset_in_page : std::false_type {};
+template <class S>
+struct has_k_bits_of_offset_in_page<
+    S,
+    std::void_t<decltype(S::kBitsOfOffsetInPage)>> : std::true_type {};
+template <class S>
+inline constexpr bool has_k_bits_of_offset_in_page_v =
+    has_k_bits_of_offset_in_page<S>::value;
+
+template <class S>
+inline constexpr bool is_page_allowed_v = has_k_bits_of_offset_in_page_v<S>;
+template <class S>
+inline constexpr bool is_table_allowed_v = has_next_table_type_v<S>;
 
 template <typename TEntryType>
 struct PageTableStruct {
@@ -65,15 +132,17 @@ struct PageTableStruct {
       reinterpret_cast<uint64_t*>(entries)[i] = 0;
     }
   }
-  typename TEntryType::NextTableType* GetTableBaseForAddr(uint64_t vaddr) {
+  template <class S = typename EntryType::Strategy>
+  typename S::NextTableType* GetTableBaseForAddr(uint64_t vaddr) {
     return GetEntryForAddr(vaddr).GetTableAddr();
   }
-  typename TEntryType::NextTableType* SetTableBaseForAddr(
+  template <class S = typename EntryType::Strategy>
+  typename S::NextTableType* SetTableBaseForAddr(
       uint64_t addr,
-      typename TEntryType::NextTableType* new_ent,
+      typename S::NextTableType* new_ent,
       uint64_t attr) {
-    TEntryType& e = GetEntryForAddr(addr);
-    typename TEntryType::NextTableType* old_e = e.GetTableAddr();
+    EntryType& e = GetEntryForAddr(addr);
+    typename S::NextTableType* old_e = e.GetTableAddr();
     e.SetTableAddr(new_ent, attr);
     return old_e;
   }
@@ -82,28 +151,36 @@ struct PageTableStruct {
   }
   void Print(void);
   void DebugPrintEntryForAddr(uint64_t vaddr);
+  uint64_t v2p(uint64_t vaddr) {
+    EntryType& e = GetEntryForAddr(vaddr);
+    if (!e.IsPresent())
+      return kAddrCannotTranslate;
+    if (e.IsPage())
+      return (e.GetPageBaseAddr()) | (vaddr & kOffsetMask);
+    return e.v2pWithTable(vaddr);
+  }
 };
 
 template <int TIndexShift, class TPageStrategy>
 packed_struct PageTableEntryStruct {
-  using NextTableType = typename TPageStrategy::NextTableType;
+  using Strategy = TPageStrategy;
   static constexpr int kIndexShift = TIndexShift;
   static constexpr uint64_t kOffsetMask = (1ULL << kIndexShift) - 1;
   uint64_t data;
   bool IsPresent() { return data & kPageAttrPresent; }
-  bool IsPage() { return TPageStrategy::IsPage(data); }
-  typename TPageStrategy::NextTableType* GetTableAddr() {
+  template <class S = TPageStrategy>
+  typename S::NextTableType* GetTableAddr() {
     if (IsPage())
       return nullptr;
-    return reinterpret_cast<typename TPageStrategy::NextTableType*>(
+    return reinterpret_cast<typename S::NextTableType*>(
         data & GetPhysAddrMask() & ~kPageAddrMask);
   }
-  void SetTableAddr(typename TPageStrategy::NextTableType * table,
-                    uint64_t attr) {
+  template <class S = TPageStrategy>
+  void SetTableAddr(typename S::NextTableType * table, uint64_t attr) {
     const uint64_t addr_mask = (GetPhysAddrMask() & ~kPageAddrMask);
     assert((reinterpret_cast<uint64_t>(table) & ~addr_mask) == 0);
     data = reinterpret_cast<uint64_t>(table) | attr;
-    TPageStrategy::SetIsPage(data, false);
+    SetAttrAsTable();
   }
   uint64_t GetPageBaseAddr(void) {
     const uint64_t addr_mask = (GetPhysAddrMask() & ~kOffsetMask);
@@ -114,59 +191,84 @@ packed_struct PageTableEntryStruct {
     const uint64_t addr_mask = (GetPhysAddrMask() & ~kOffsetMask);
     data &= ~(addr_mask | kPageAttrMask);
     data |= (paddr & addr_mask) | attr;
-    TPageStrategy::SetIsPage(data, true);
+    SetAttrAsPage();
   }
   void SetAttr(uint64_t attr) {
     data &= ~kPageAttrMask;
     data |= kPageAttrMask & attr;
   }
+  template <class S = Strategy>
+  auto v2pWithTable(uint64_t vaddr)
+      ->std::enable_if_t<is_table_allowed_v<S>, uint64_t> {
+    return v2p(GetTableAddr(), vaddr);
+  }
+  uint64_t v2pWithTable(...) { return kAddrCannotTranslate; }
+
+  template <typename S = Strategy>
+  auto IsPage()
+      ->std::enable_if_t<is_page_allowed_v<S> && is_table_allowed_v<S>, bool> {
+    return data & (1 << 7);
+  }
+  template <class S = Strategy>
+  auto IsPage()
+      ->std::enable_if_t<is_page_allowed_v<S> ^ is_table_allowed_v<S>, bool> {
+    return is_page_allowed_v<S>;
+  }
+  template <typename S = Strategy>
+  auto SetAttrAsPage()
+      ->std::enable_if_t<is_page_allowed_v<S> && is_table_allowed_v<S>> {
+    data |= (1ULL << 7);
+  }
+  template <typename S = Strategy>
+  auto SetAttrAsPage()
+      ->std::enable_if_t<is_page_allowed_v<S> ^ is_table_allowed_v<S>> {}
+  template <typename S = Strategy>
+  auto SetAttrAsTable()
+      ->std::enable_if_t<is_page_allowed_v<S> && is_table_allowed_v<S>> {
+    data &= ~(1ULL << 7);
+  }
+  template <typename S = Strategy>
+  auto SetAttrAsTable()
+      ->std::enable_if_t<is_page_allowed_v<S> ^ is_table_allowed_v<S>> {}
 };
 
 struct PTEStrategy {
-  using NextTableType = void;
-  static inline bool IsPage(uint64_t) { return true; }
-  static inline void SetIsPage(uint64_t&, bool is_page) {
-    if (!is_page)
-      Panic("Not reached");
-  }
+  static constexpr int kBitsOfOffsetInPage = 12;
 };
 using IA_PTE = PageTableEntryStruct<12, PTEStrategy>;
 using IA_PT = PageTableStruct<IA_PTE>;
 static_assert(sizeof(IA_PT) == kPageSize);
+static_assert(is_page_allowed_v<PTEStrategy>);
+static_assert(!is_table_allowed_v<PTEStrategy>);
 
 struct PDEStrategy {
   using NextTableType = IA_PT;
-  static inline bool IsPage(uint64_t data) { return data & (1 << 7); }
-  static inline void SetIsPage(uint64_t& data, bool is_page) {
-    data |= is_page ? 1 << 7 : 0;
-  }
+  static constexpr int kBitsOfOffsetInPage = 21;
 };
 using IA_PDE = PageTableEntryStruct<21, PDEStrategy>;
 using IA_PDT = PageTableStruct<IA_PDE>;
 static_assert(sizeof(IA_PDT) == kPageSize);
+static_assert(is_page_allowed_v<PDEStrategy>);
+static_assert(is_table_allowed_v<PDEStrategy>);
 
 struct PDPTEStrategy {
   using NextTableType = IA_PDT;
-  static inline bool IsPage(uint64_t data) { return data & (1 << 7); }
-  static inline void SetIsPage(uint64_t& data, bool is_page) {
-    data |= is_page ? 1 << 7 : 0;
-  }
+  static constexpr int kBitsOfOffsetInPage = 30;
 };
 using IA_PDPTE = PageTableEntryStruct<30, PDPTEStrategy>;
 using IA_PDPT = PageTableStruct<IA_PDPTE>;
 static_assert(sizeof(IA_PDPT) == kPageSize);
+static_assert(is_page_allowed_v<PDPTEStrategy>);
+static_assert(is_table_allowed_v<PDPTEStrategy>);
 
 struct PML4EStrategy {
   using NextTableType = IA_PDPT;
-  static inline bool IsPage(uint64_t) { return false; }
-  static inline void SetIsPage(uint64_t&, bool is_page) {
-    if (is_page)
-      Panic("Not reached");
-  }
 };
 using IA_PML4E = PageTableEntryStruct<39, PML4EStrategy>;
 using IA_PML4 = PageTableStruct<IA_PML4E>;
 static_assert(sizeof(IA_PML4) == kPageSize);
+static_assert(!is_page_allowed_v<PML4EStrategy>);
+static_assert(is_table_allowed_v<PML4EStrategy>);
 
 IA_PML4& CreatePageTable();
 void InitPaging(void);
@@ -235,4 +337,13 @@ void inline CreatePageMapping(PhysicalPageAllocator& allocator,
       }
     }
   }
+}
+
+template <typename TableType>
+uint64_t v2p(TableType& table, uint64_t vaddr) {
+  return v2p(&table, vaddr);
+}
+template <typename TableType>
+uint64_t v2p(TableType* table, uint64_t vaddr) {
+  return table->v2p(vaddr);
 }
