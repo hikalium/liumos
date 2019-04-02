@@ -1,3 +1,4 @@
+#include "corefunc.h"
 #include "liumos.h"
 
 void Console::PutChar(char c) {
@@ -8,11 +9,11 @@ void Console::PutChar(char c) {
   }
   if (!sheet_) {
     if (c == '\n') {
-      EFI::ConOut::PutChar('\r');
-      EFI::ConOut::PutChar('\n');
+      CoreFunc::GetEFI().PutChar('\r');
+      CoreFunc::GetEFI().PutChar('\n');
       return;
     }
-    EFI::ConOut::PutChar(c);
+    CoreFunc::GetEFI().PutChar(c);
     return;
   }
   if (c == '\n') {
@@ -43,7 +44,7 @@ void Console::PutChar(char c) {
 }
 
 void PutChar(char c) {
-  liumos->main_console->PutChar(c);
+  CoreFunc::PutChar(c);
 }
 
 void PutString(const char* s) {

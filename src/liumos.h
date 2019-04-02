@@ -84,6 +84,7 @@ packed_struct LoaderInfo {
     File* hello_bin;
     File* pi_bin;
   } files;
+  EFI* efi;
 };
 class PersistentMemoryManager;
 packed_struct LiumOS {

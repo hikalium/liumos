@@ -1,3 +1,4 @@
+#include "corefunc.h"
 #include "liumos.h"
 
 Sheet* screen_sheet;
@@ -6,12 +7,14 @@ Sheet vram_sheet_;
 Sheet screen_sheet_;
 
 void InitGraphics() {
-  vram_sheet_.Init(
-      static_cast<uint8_t*>(
-          EFI::graphics_output_protocol->mode->frame_buffer_base),
-      EFI::graphics_output_protocol->mode->info->horizontal_resolution,
-      EFI::graphics_output_protocol->mode->info->vertical_resolution,
-      EFI::graphics_output_protocol->mode->info->pixels_per_scan_line);
+  const EFI::GraphicsOutputProtocol::ModeInfo& mode =
+      CoreFunc::GetEFI().GetGraphicsModeInfo();
+  vram_sheet_.Init(static_cast<uint8_t*>(
+
+                       mode.frame_buffer_base),
+                   mode.info->horizontal_resolution,
+                   mode.info->vertical_resolution,
+                   mode.info->pixels_per_scan_line);
   liumos->vram_sheet = &vram_sheet_;
   screen_sheet = &vram_sheet_;
   liumos->screen_sheet = screen_sheet;

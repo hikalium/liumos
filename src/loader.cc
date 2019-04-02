@@ -1,3 +1,4 @@
+#include "corefunc.h"
 #include "execution_context.h"
 #include "hpet.h"
 #include "liumos.h"
@@ -15,6 +16,7 @@ File liumos_elf_file;
 LiumOS liumos_;
 PhysicalPageAllocator dram_allocator_;
 Console main_console_;
+EFI efi_;
 
 File logo_file;
 
@@ -199,10 +201,19 @@ void IdentifyCPU() {
   liumos->cpu_features = &f;
 }
 
+void CoreFunc::PutChar(char c) {
+  main_console_.PutChar(c);
+}
+
+EFI& CoreFunc::GetEFI() {
+  return efi_;
+}
+
 void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   liumos = &liumos_;
-  EFI::Init(system_table);
-  EFI::ConOut::ClearScreen();
+  efi_.Init(system_table);
+  liumos_.loader_info.efi = &efi_;
+  efi_.ClearScreen();
   logo_file.LoadFromEFISimpleFS(L"logo.ppm");
   hello_bin_file.LoadFromEFISimpleFS(L"hello.bin");
   liumos_.loader_info.files.hello_bin = &hello_bin_file;
@@ -212,12 +223,11 @@ void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   InitGraphics();
   main_console_.SetSheet(liumos->screen_sheet);
   liumos->main_console = &main_console_;
-  EFI::GetMemoryMapAndExitBootServices(image_handle, efi_memory_map);
+  efi_.GetMemoryMapAndExitBootServices(image_handle, efi_memory_map);
   liumos->efi_memory_map = &efi_memory_map;
 
   com1.Init(kPortCOM1);
-  liumos->com1 = &com1;
-  liumos->main_console->SetSerial(&com1);
+  main_console_.SetSerial(&com1);
 
   PrintLogoFile();
   PutString("\nliumOS version: ");

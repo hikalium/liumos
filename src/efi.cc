@@ -1,8 +1,5 @@
+#include "corefunc.h"
 #include "liumos.h"
-
-EFI::SystemTable* EFI::system_table;
-EFI::GraphicsOutputProtocol* EFI::graphics_output_protocol;
-EFI::SimpleFileSystemProtocol* EFI::simple_fs;
 
 static EFI::FileProtocol* root_file;
 
@@ -27,22 +24,21 @@ static const GUID kFileInfoGUID = {
     0x11d2,
     {0x8e, 0x39, 0x00, 0xa0, 0xc9, 0x69, 0x72, 0x3b}};
 
-void EFI::ConOut::ClearScreen() {
-  EFI::system_table->con_out->clear_screen(EFI::system_table->con_out);
+void EFI::ClearScreen() {
+  system_table_->con_out->clear_screen(system_table_->con_out);
 }
 
-void EFI::ConOut::PutChar(wchar_t c) {
+void EFI::PutChar(wchar_t c) {
   wchar_t buf[2];
   buf[0] = c;
   buf[1] = 0;
-  EFI::system_table->con_out->output_string(EFI::system_table->con_out, buf);
+  system_table_->con_out->output_string(system_table_->con_out, buf);
 }
 
 wchar_t EFI::GetChar() {
   EFI::InputKey key;
   while (1) {
-    if (!EFI::system_table->con_in->ReadKeyStroke(EFI::system_table->con_in,
-                                                  &key))
+    if (!system_table_->con_in->ReadKeyStroke(system_table_->con_in, &key))
       break;
   }
   return key.UnicodeChar;
@@ -51,8 +47,9 @@ wchar_t EFI::GetChar() {
 void EFI::MemoryMap::Init() {
   uint32_t descriptor_version;
   bytes_used_ = sizeof(buf_);
-  Status status = EFI::system_table->boot_services->GetMemoryMap(
-      &bytes_used_, buf_, &key_, &descriptor_size_, &descriptor_version);
+  EFI::Status status =
+      CoreFunc::GetEFI().system_table_->boot_services->GetMemoryMap(
+          &bytes_used_, buf_, &key_, &descriptor_size_, &descriptor_version);
   if (status == Status::kBufferTooSmall) {
     PutStringAndHex("\nBuffer size needed", bytes_used_);
     Panic("Failed to get memory map (not enough buffer)");
@@ -91,10 +88,9 @@ void EFI::MemoryMap::Print() {
 }
 
 void* EFI::GetConfigurationTableByUUID(const GUID* guid) {
-  for (int i = 0; i < (int)EFI::system_table->number_of_table_entries; i++) {
-    if (IsEqualGUID(guid,
-                    &EFI::system_table->configuration_table[i].vendor_guid))
-      return EFI::system_table->configuration_table[i].vendor_table;
+  for (int i = 0; i < (int)system_table_->number_of_table_entries; i++) {
+    if (IsEqualGUID(guid, &system_table_->configuration_table[i].vendor_guid))
+      return system_table_->configuration_table[i].vendor_table;
   }
   return nullptr;
 }
@@ -106,8 +102,8 @@ void EFI::GetMemoryMapAndExitBootServices(Handle image_handle,
   do {
     PutString(".");
     map.Init();
-    status = EFI::system_table->boot_services->ExitBootServices(image_handle,
-                                                                map.GetKey());
+    status = system_table_->boot_services->ExitBootServices(image_handle,
+                                                            map.GetKey());
   } while (status != EFI::Status::kSuccess);
   PutString(" done.\n");
 }
@@ -130,7 +126,7 @@ void EFI::ReadFileInfo(EFI::FileProtocol* file, EFI::FileInfo* info) {
 
 void* EFI::AllocatePages(UINTN pages) {
   void* mem;
-  Status status = EFI::system_table->boot_services->AllocatePages(
+  Status status = system_table_->boot_services->AllocatePages(
       AllocateType::kAnyPages, MemoryType::kLoaderData, pages, &mem);
   if (status != EFI::Status::kSuccess)
     Panic("Failed to alloc pages");
@@ -138,16 +134,17 @@ void* EFI::AllocatePages(UINTN pages) {
 }
 
 void EFI::Init(SystemTable* system_table) {
-  EFI::system_table = system_table;
-  EFI::system_table->boot_services->SetWatchdogTimer(0, 0, 0, nullptr);
-  EFI::system_table->boot_services->LocateProtocol(
-      &kGraphicsOutputProtocolGUID, nullptr, (void**)&graphics_output_protocol);
-  EFI::system_table->boot_services->LocateProtocol(
-      &kSimpleFileSystemProtocolGUID, nullptr, (void**)&simple_fs);
-  assert(simple_fs);
+  system_table_ = system_table;
+  system_table_->boot_services->SetWatchdogTimer(0, 0, 0, nullptr);
+  system_table_->boot_services->LocateProtocol(
+      &kGraphicsOutputProtocolGUID, nullptr,
+      (void**)&graphics_output_protocol_);
+  system_table_->boot_services->LocateProtocol(&kSimpleFileSystemProtocolGUID,
+                                               nullptr, (void**)&simple_fs_);
+  assert(simple_fs_);
   liumos->acpi.rsdt = static_cast<ACPI::RSDT*>(
       EFI::GetConfigurationTableByUUID(&kACPITableGUID));
   assert(liumos->acpi.rsdt);
-  EFI::Status status = EFI::simple_fs->OpenVolume(EFI::simple_fs, &root_file);
-  assert(status == EFI::Status::kSuccess);
+  Status status = simple_fs_->OpenVolume(simple_fs_, &root_file);
+  assert(status == Status::kSuccess);
 }

@@ -1,3 +1,4 @@
+#include "corefunc.h"
 #include "liumos.h"
 
 void File::LoadFromEFISimpleFS(const wchar_t* file_name) {
@@ -7,12 +8,12 @@ void File::LoadFromEFISimpleFS(const wchar_t* file_name) {
       break;
   }
   file_name_[kFileNameSize] = 0;
-  EFI::FileProtocol* file = EFI::OpenFile(file_name);
+  EFI::FileProtocol* file = CoreFunc::GetEFI().OpenFile(file_name);
   EFI::FileInfo info;
-  EFI::ReadFileInfo(file, &info);
+  CoreFunc::GetEFI().ReadFileInfo(file, &info);
   EFI::UINTN buf_size = info.file_size;
   buf_pages_ = reinterpret_cast<uint8_t*>(
-      EFI::AllocatePages(ByteSizeToPageSize(buf_size)));
+      CoreFunc::GetEFI().AllocatePages(ByteSizeToPageSize(buf_size)));
   if (file->Read(file, &buf_size, buf_pages_) != EFI::Status::kSuccess) {
     PutString("Read failed\n");
     return;

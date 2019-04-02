@@ -1,3 +1,4 @@
+#include "corefunc.h"
 #include "liumos.h"
 
 LiumOS* liumos;
@@ -85,6 +86,15 @@ void TimerHandler(uint64_t, InterruptInfo* info) {
   if (from.cr3 == to.cr3)
     return;
   WriteCR3(to.cr3);
+}
+
+void CoreFunc::PutChar(char c) {
+  liumos->main_console->PutChar(c);
+}
+
+EFI& CoreFunc::GetEFI() {
+  assert(liumos->loader_info.efi);
+  return *liumos->loader_info.efi;
 }
 
 extern "C" void KernelEntry(LiumOS* liumos_passed) {
