@@ -2,29 +2,6 @@
 #include "liumos.h"
 #include "pmem.h"
 
-static void PrintProgramHeader(const Elf64_Phdr* phdr) {
-  PutString(" flags:");
-  if (phdr->p_flags & PF_R)
-    PutChar('R');
-  if (phdr->p_flags & PF_W)
-    PutChar('W');
-  if (phdr->p_flags & PF_X)
-    PutChar('X');
-  PutChar('\n');
-  PutString("  offset:");
-  PutHex64ZeroFilled(phdr->p_offset);
-  PutString(" vaddr:");
-  PutHex64ZeroFilled(phdr->p_vaddr);
-  PutChar('\n');
-  PutString("  filesz:");
-  PutHex64ZeroFilled(phdr->p_filesz);
-  PutString(" memsz:");
-  PutHex64ZeroFilled(phdr->p_memsz);
-  PutString(" align:");
-  PutHex64ZeroFilled(phdr->p_align);
-  PutChar('\n');
-}
-
 struct PhdrInfo {
   const uint8_t* data;
   uint64_t vaddr;
@@ -47,8 +24,7 @@ struct PhdrMappingInfo {
   }
 };
 
-static const Elf64_Ehdr* EnsureLoadable(const uint8_t* buf,
-                                        uint64_t file_size) {
+static const Elf64_Ehdr* EnsureLoadable(const uint8_t* buf) {
   if (strncmp(reinterpret_cast<const char*>(buf), ELFMAG, SELFMAG) != 0) {
     PutString("Not an ELF file\n");
     return nullptr;
@@ -84,7 +60,7 @@ static const Elf64_Ehdr* ParseProgramHeader(File& file,
   phdr_map_info.Clear();
   const uint8_t* buf = file.GetBuf();
   assert(IsAlignedToPageSize(buf));
-  const Elf64_Ehdr* ehdr = EnsureLoadable(buf, file.GetFileSize());
+  const Elf64_Ehdr* ehdr = EnsureLoadable(buf);
   if (!ehdr)
     return nullptr;
 
