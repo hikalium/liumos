@@ -310,6 +310,69 @@ ChangeRSP:
 	push rax
 	ret
 
+.global RepeatMoveBytes
+RepeatMoveBytes:
+	// rcx: count
+	// rdx: dst
+	// r8: src
+	mov rax, [rsp]
+	xchg rdi, rdx
+	xchg rsi, r8
+	rep movsb
+	xchg rdi, rdx
+	xchg rsi, r8
+	ret
+
+.global RepeatMove4Bytes
+RepeatMove4Bytes:
+	// rcx: count
+	// rdx: dst
+	// r8: src
+	mov rax, [rsp]
+	xchg rdi, rdx
+	xchg rsi, r8
+	rep movsd
+	xchg rdi, rdx
+	xchg rsi, r8
+	ret
+
+.global RepeatStore4Bytes
+RepeatStore4Bytes:
+	// rcx: count
+	// rdx: dst
+	// r8: value
+	mov rax, [rsp]
+	xchg rdi, rdx
+	mov rax, r8
+	rep stosd
+	xchg rdi, rdx
+	ret
+
+.global RepeatMove8Bytes
+RepeatMove8Bytes:
+	// rcx: count
+	// rdx: dst
+	// r8: src
+	mov rax, [rsp]
+	xchg rdi, rdx
+	xchg rsi, r8
+	rep movsq
+	xchg rdi, rdx
+	xchg rsi, r8
+	ret
+
+.global RepeatStore8Bytes
+RepeatStore8Bytes:
+	// rcx: count
+	// rdx: dst
+	// r8: value
+	mov rax, [rsp]
+	xchg rdi, rdx
+	mov rax, r8
+	rep stosq
+	xchg rdi, rdx
+	ret
+
 .global CLFlush
 CLFlush:
 	clflush [rcx]
