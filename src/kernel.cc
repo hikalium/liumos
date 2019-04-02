@@ -15,6 +15,38 @@ CPUFeatureSet cpu_features_;
 SerialPort com1_;
 HPET hpet_;
 
+void InitPMEMManagement() {
+  using namespace ACPI;
+  if (!liumos->acpi.nfit) {
+    PutString("NFIT not found. There are no PMEMs on this system.\n");
+    return;
+  }
+  NFIT& nfit = *liumos->acpi.nfit;
+  uint64_t available_pmem_size = 0;
+
+  int pmem_manager_used = 0;
+
+  for (auto& it : nfit) {
+    if (it.type != NFIT::Entry::kTypeSPARangeStructure)
+      continue;
+    NFIT::SPARange* spa_range = reinterpret_cast<NFIT::SPARange*>(&it);
+    if (!IsEqualGUID(
+            reinterpret_cast<GUID*>(&spa_range->address_range_type_guid),
+            &NFIT::SPARange::kByteAdressablePersistentMemory))
+      continue;
+    PutStringAndHex("SPARange #", spa_range->spa_range_structure_index);
+    PutStringAndHex("  Base", spa_range->system_physical_address_range_base);
+    PutStringAndHex("  Length",
+                    spa_range->system_physical_address_range_length);
+    available_pmem_size += spa_range->system_physical_address_range_length;
+    assert(pmem_manager_used < LiumOS::kNumOfPMEMManagers);
+    liumos->pmem[pmem_manager_used++] =
+        reinterpret_cast<PersistentMemoryManager*>(
+            spa_range->system_physical_address_range_base);
+  }
+  PutStringAndHex("Available PMEM (KiB)", available_pmem_size >> 10);
+}
+
 void InitializeVRAMForKernel() {
   constexpr uint64_t kernel_virtual_vram_base = 0xFFFF'FFFF'8000'0000ULL;
   const int xsize = liumos->vram_sheet->GetXSize();
@@ -100,6 +132,8 @@ EFI& CoreFunc::GetEFI() {
 extern "C" void KernelEntry(LiumOS* liumos_passed) {
   liumos_ = *liumos_passed;
   liumos = &liumos_;
+
+  InitPMEMManagement();
 
   KernelVirtualHeapAllocator kernel_heap_allocator(GetKernelPML4(),
                                                    *liumos->dram_allocator);
