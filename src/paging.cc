@@ -116,7 +116,6 @@ void InitPaging() {
   // Even if 4-level paging is supported,
   // whether 1GB pages are supported or not is determined by
   // CPUID.80000001H:EDX.Page1GB [bit 26] = 1.
-  const EFI::MemoryDescriptor* loader_code_desc = nullptr;
   uint64_t direct_mapping_end = 0xffff'ffffULL;
   EFI::MemoryMap& map = *liumos->efi_memory_map;
   for (int i = 0; i < map.GetNumberOfEntries(); i++) {
@@ -125,13 +124,7 @@ void InitPaging() {
         desc->physical_start + (desc->number_of_pages << 12);
     if (map_end_addr > direct_mapping_end)
       direct_mapping_end = map_end_addr;
-    if (desc->type != EFI::MemoryType::kLoaderCode)
-      continue;
-    assert(!loader_code_desc);
-    loader_code_desc = desc;
   }
-  loader_code_desc->Print();
-  PutChar('\n');
 
   // Adjust direct_mapping_end here
   // since VRAM region is not appeared in EFIMemoryMap
@@ -159,7 +152,6 @@ void InitPaging() {
     }
   }
 
-  assert(loader_code_desc->number_of_pages < (1 << 9));
   PutStringAndHex("map_end_addr", direct_mapping_end);
   uint64_t direct_map_1gb_pages = (direct_mapping_end + (1ULL << 30) - 1) >> 30;
   PutStringAndHex("direct map 1gb pages", direct_map_1gb_pages);

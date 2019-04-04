@@ -1,7 +1,6 @@
 #pragma once
 
 #include "generic.h"
-
 #include "paging.h"
 
 class KernelVirtualHeapAllocator {

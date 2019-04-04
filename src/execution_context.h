@@ -31,7 +31,17 @@ class SegmentMapping {
   void AllocSegmentFromPersistentMemory(PersistentMemoryManager& pmem);
   void Print();
   void CopyDataFrom(SegmentMapping& from);
-  void Map(IA_PML4& page_root, uint64_t attr);
+  template <class TAllocator>
+  void Map(TAllocator& allocator,
+           IA_PML4& page_root,
+           uint64_t page_attr,
+           bool shoud_clflush) {
+    assert(GetPhysAddr());
+    CreatePageMapping(allocator, page_root, GetVirtAddr(), GetPhysAddr(),
+                      GetMapSize(), kPageAttrPresent | page_attr,
+                      shoud_clflush);
+  }
+
   void Flush();
 
  private:
@@ -63,7 +73,10 @@ class ExecutionContext {
   ProcessMappingInfo& GetProcessMappingInfo() { return map_info_; };
   uint64_t GetKernelRSP() { return kernel_rsp_; }
   void SetKernelRSP(uint64_t kernel_rsp) { kernel_rsp_ = kernel_rsp; }
-  void SetCR3(uint64_t cr3) { cpu_context_.cr3 = cr3; }
+  void SetCR3(IA_PML4& cr3) {
+    cpu_context_.cr3 = reinterpret_cast<uint64_t>(&cr3);
+  }
+  IA_PML4& GetCR3() { return *reinterpret_cast<IA_PML4*>(cpu_context_.cr3); }
   void SetRegisters(void (*rip)(),
                     uint16_t cs,
                     void* rsp,

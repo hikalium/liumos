@@ -4,6 +4,10 @@
 #include "phys_page_allocator.h"
 #include "sys_constant.h"
 
+#ifndef LIUMOS_TEST
+#include "pmem.h"
+#endif
+
 namespace std {
 
 template <class T, T v>
@@ -165,7 +169,8 @@ template <int TIndexShift, class TPageStrategy>
 packed_struct PageTableEntryStruct {
   using Strategy = TPageStrategy;
   static constexpr int kIndexShift = TIndexShift;
-  static constexpr uint64_t kOffsetMask = (1ULL << kIndexShift) - 1;
+  static constexpr uint64_t kChunkSize = 1ULL << kIndexShift;
+  static constexpr uint64_t kOffsetMask = kChunkSize - 1;
   uint64_t data;
   bool IsPresent() { return data & kPageAttrPresent; }
   template <class S = TPageStrategy>
@@ -272,7 +277,7 @@ static_assert(is_table_allowed_v<PML4EStrategy>);
 
 template <class TAllocator>
 IA_PML4& AllocPageTable(TAllocator& allocator) {
-  IA_PML4* pml4 = allocator->template AllocPages<IA_PML4*>(1);
+  IA_PML4* pml4 = allocator.template AllocPages<IA_PML4*>(1);
   assert(pml4);
   pml4->ClearMapping();
   return *pml4;
@@ -288,7 +293,8 @@ void inline CreatePageMapping(TAllocator& allocator,
                               uint64_t vaddr,
                               uint64_t paddr,
                               uint64_t byte_size,
-                              uint64_t attr) {
+                              uint64_t attr,
+                              bool should_clflush = false) {
   assert((vaddr & kPageAddrMask) == 0);
   assert((paddr & kPageAddrMask) == 0);
   uint64_t num_of_4k_pages = ByteSizeToPageSize(byte_size);
@@ -301,6 +307,8 @@ void inline CreatePageMapping(TAllocator& allocator,
       pml4e.SetTableAddr(new_pdpt, attr);
     }
     pml4e.SetAttr(attr);
+    if (should_clflush)
+      _mm_clflush(&pml4e);
     auto* pdpt = pml4e.GetTableAddr();
     for (int pdpt_idx = IA_PDPT::addr2index(vaddr);
          num_of_4k_pages && pdpt_idx < IA_PDPT::kNumOfEntries; pdpt_idx++) {
@@ -311,6 +319,8 @@ void inline CreatePageMapping(TAllocator& allocator,
         pdpte.SetTableAddr(new_pdt, attr);
       }
       pdpte.SetAttr(attr);
+      if (should_clflush)
+        _mm_clflush(&pdpte);
       if (pdpte.IsPage())
         Panic("Page overwrapping at pdpte");
       auto* pdt = pdpte.GetTableAddr();
@@ -326,19 +336,26 @@ void inline CreatePageMapping(TAllocator& allocator,
             vaddr += (1 << 21);
             paddr += (1 << 21);
             num_of_4k_pages -= IA_PT::kNumOfEntries;
+            if (should_clflush)
+              _mm_clflush(&pdte);
             continue;
           }
           IA_PT* new_pt = allocator.template AllocPages<IA_PT*>(1);
           new_pt->ClearMapping();
           pdte.SetTableAddr(new_pt, attr);
         }
+        if (should_clflush)
+          _mm_clflush(&pdte);
         pdte.SetAttr(attr);
         if (pdte.IsPage())
           Panic("Page overwrapping at pdte");
         auto* pt = pdte.GetTableAddr();
         for (int pt_idx = IA_PT::addr2index(vaddr);
              num_of_4k_pages && pt_idx < IA_PT::kNumOfEntries; pt_idx++) {
-          pt->SetPageBaseForAddr(vaddr, paddr, attr);
+          auto& pte = pt->GetEntryForAddr(vaddr);
+          pte.SetPageBaseAddr(paddr, attr);
+          if (should_clflush)
+            _mm_clflush(&pte);
           vaddr += (1 << 12);
           paddr += (1 << 12);
           num_of_4k_pages--;
@@ -347,6 +364,10 @@ void inline CreatePageMapping(TAllocator& allocator,
     }
   }
 }
+
+void CLFlushMappingStructures(IA_PML4& pml4,
+                              uint64_t vaddr,
+                              uint64_t byte_size);
 
 template <typename TableType>
 uint64_t v2p(TableType& table, uint64_t vaddr) {

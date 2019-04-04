@@ -96,10 +96,13 @@ static const Elf64_Ehdr* ParseProgramHeader(File& file,
   return ehdr;
 }
 
-static void LoadAndMapSegment(IA_PML4& page_root,
+template <class TAllocator>
+static void LoadAndMapSegment(TAllocator& allocator,
+                              IA_PML4& page_root,
                               SegmentMapping& seg_map,
                               PhdrInfo& phdr_info,
-                              uint64_t page_attr) {
+                              uint64_t page_attr,
+                              bool should_clflush) {
   assert(seg_map.GetVirtAddr() == phdr_info.vaddr);
   assert(seg_map.GetMapSize() == phdr_info.map_size);
   assert(seg_map.GetPhysAddr());
@@ -107,20 +110,25 @@ static void LoadAndMapSegment(IA_PML4& page_root,
   memcpy(phys_buf, phdr_info.data, phdr_info.copy_size);
   bzero(phys_buf + phdr_info.copy_size,
         phdr_info.map_size - phdr_info.copy_size);
-  seg_map.Map(page_root, page_attr);
+  seg_map.Map(allocator, page_root, page_attr, should_clflush);
 }
 
-static void LoadAndMap(IA_PML4& page_root,
+template <class TAllocator>
+static void LoadAndMap(TAllocator& allocator,
+                       IA_PML4& page_root,
                        ProcessMappingInfo& proc_map_info,
                        PhdrMappingInfo& phdr_map_info,
-                       uint64_t base_attr) {
+                       uint64_t base_attr,
+                       bool should_clflush) {
   uint64_t page_attr = kPageAttrPresent | base_attr;
 
-  LoadAndMapSegment(page_root, proc_map_info.code, phdr_map_info.code,
-                    page_attr);
-  LoadAndMapSegment(page_root, proc_map_info.data, phdr_map_info.data,
-                    page_attr | kPageAttrWritable);
-  proc_map_info.stack.Map(page_root, page_attr | kPageAttrWritable);
+  LoadAndMapSegment(allocator, page_root, proc_map_info.code,
+                    phdr_map_info.code, page_attr, should_clflush);
+  LoadAndMapSegment(allocator, page_root, proc_map_info.data,
+                    phdr_map_info.data, page_attr | kPageAttrWritable,
+                    should_clflush);
+  proc_map_info.stack.Map(allocator, page_root, page_attr | kPageAttrWritable,
+                          should_clflush);
 }
 
 Process& LoadELFAndCreateEphemeralProcess(File& file) {
@@ -128,7 +136,7 @@ Process& LoadELFAndCreateEphemeralProcess(File& file) {
       *liumos->kernel_heap_allocator->Alloc<ExecutionContext>();
   ProcessMappingInfo& map_info = ctx.GetProcessMappingInfo();
   PhdrMappingInfo phdr_map_info;
-  IA_PML4& user_page_table = AllocPageTable(liumos->dram_allocator);
+  IA_PML4& user_page_table = AllocPageTable(*liumos->dram_allocator);
   SetKernelPageEntries(user_page_table);
 
   const Elf64_Ehdr* ehdr = ParseProgramHeader(file, map_info, phdr_map_info);
@@ -146,7 +154,8 @@ Process& LoadELFAndCreateEphemeralProcess(File& file) {
       kNumOfStackPages << kPageSizeExponent);
 
   map_info.Print();
-  LoadAndMap(user_page_table, map_info, phdr_map_info, kPageAttrUser);
+  LoadAndMap(*liumos->dram_allocator, user_page_table, map_info, phdr_map_info,
+             kPageAttrUser, false);
 
   uint8_t* entry_point = reinterpret_cast<uint8_t*>(ehdr->e_entry);
 
@@ -176,8 +185,7 @@ Process& LoadELFAndCreatePersistentProcess(File& file,
   pp_info.SetValidContextIndex(0);
   ProcessMappingInfo& map_info = ctx.GetProcessMappingInfo();
   PhdrMappingInfo phdr_map_info;
-  IA_PML4& user_page_table = AllocPageTable(liumos->dram_allocator);
-  SetKernelPageEntries(user_page_table);
+  IA_PML4& user_page_table = AllocPageTable(pmem);
 
   const Elf64_Ehdr* ehdr = ParseProgramHeader(file, map_info, phdr_map_info);
   assert(ehdr);
@@ -189,7 +197,8 @@ Process& LoadELFAndCreatePersistentProcess(File& file,
   map_info.stack.AllocSegmentFromPersistentMemory(pmem);
 
   map_info.Print();
-  LoadAndMap(user_page_table, map_info, phdr_map_info, kPageAttrUser);
+  LoadAndMap(pmem, user_page_table, map_info, phdr_map_info, kPageAttrUser,
+             true);
 
   uint8_t* entry_point = reinterpret_cast<uint8_t*>(ehdr->e_entry);
 
@@ -206,6 +215,12 @@ Process& LoadELFAndCreatePersistentProcess(File& file,
   ProcessMappingInfo& working_ctx_map = working_ctx.GetProcessMappingInfo();
   working_ctx_map.data.AllocSegmentFromPersistentMemory(pmem);
   working_ctx_map.stack.AllocSegmentFromPersistentMemory(pmem);
+
+  IA_PML4& pt = AllocPageTable(pmem);
+  working_ctx_map.code.Map(pmem, pt, kPageAttrUser, true);
+  working_ctx_map.data.Map(pmem, pt, kPageAttrUser | kPageAttrWritable, true);
+  working_ctx_map.stack.Map(pmem, pt, kPageAttrUser | kPageAttrWritable, true);
+  working_ctx.SetCR3(pt);
 
   return liumos->proc_ctrl->RestoreFromPersistentProcessInfo(pp_info);
 }
@@ -230,7 +245,8 @@ void LoadKernelELF(File& file) {
       liumos->dram_allocator->AllocPages<uint64_t>(kNumOfKernelMainStackPages),
       kNumOfKernelMainStackPages << kPageSizeExponent);
 
-  LoadAndMap(GetKernelPML4(), map_info, phdr_map_info, 0);
+  LoadAndMap(*liumos->dram_allocator, GetKernelPML4(), map_info, phdr_map_info,
+             0, false);
 
   uint8_t* entry_point = reinterpret_cast<uint8_t*>(ehdr->e_entry);
   PutStringAndHex("Entry address: ", entry_point);

@@ -3,6 +3,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "immintrin.h"
+
 #define packed_struct struct __attribute__((__packed__))
 #define packed_union union __attribute__((__packed__))
 

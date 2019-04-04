@@ -1,7 +1,6 @@
 #pragma once
 
 #include "generic.h"
-#include "paging.h"
 
 extern "C" {
 
@@ -19,8 +18,6 @@ constexpr uint64_t kLocalAPICBaseBitAPICEnabled = (1 << 11);
 constexpr uint64_t kLocalAPICBaseBitx2APICEnabled = (1 << 10);
 
 constexpr uint64_t kRFlagsInterruptEnable = (1ULL << 9);
-
-constexpr uint64_t kCacheLineSize = 64;
 
 packed_struct CPUFeatureSet {
   uint64_t max_phy_addr;
@@ -150,16 +147,6 @@ packed_struct IA_CR3_BITS {
   uint64_t pml4_addr : 52;
 };
 
-packed_struct IA_CR3 {
-  union {
-    uint64_t data;
-    IA_CR3_BITS bits;
-  };
-  IA_PML4* GetPML4Addr() {
-    return reinterpret_cast<IA_PML4*>(bits.pml4_addr << 12);
-  }
-};
-
 packed_struct IA_TSS64 {
   uint32_t reserved0;
   uint64_t rsp[3];
@@ -224,12 +211,6 @@ __attribute__((ms_abi)) void RepeatMove8Bytes(size_t count,
 __attribute__((ms_abi)) void RepeatStore8Bytes(size_t count,
                                                const void* dst,
                                                uint64_t data);
-__attribute__((ms_abi)) void CLFlush(const void*);
-static inline void CLFlush(const void* buf, size_t size) {
-  for (size_t i = 0; i < size; i += kCacheLineSize) {
-    CLFlush(reinterpret_cast<const uint8_t*>(buf) + i);
-  }
-}
 __attribute__((ms_abi)) void CLFlushOptimized(const void*);
 __attribute__((ms_abi)) void JumpToKernel(void* kernel_entry_point,
                                           void* vram_sheet,

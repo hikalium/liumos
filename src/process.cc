@@ -22,14 +22,7 @@ Process& ProcessController::Create() {
 }
 
 static void PrepareContextForRestoringPersistentProcess(ExecutionContext& ctx) {
-  ProcessMappingInfo& map_info = ctx.GetProcessMappingInfo();
-
-  IA_PML4& pt = AllocPageTable(liumos->dram_allocator);
-  SetKernelPageEntries(pt);
-  map_info.code.Map(pt, kPageAttrUser);
-  map_info.data.Map(pt, kPageAttrUser | kPageAttrWritable);
-  map_info.stack.Map(pt, kPageAttrUser | kPageAttrWritable);
-  ctx.SetCR3(reinterpret_cast<uint64_t>(&pt));
+  SetKernelPageEntries(ctx.GetCR3());
   ctx.SetKernelRSP(liumos->kernel_heap_allocator->AllocPages<uint64_t>(
                        kKernelStackPagesForEachProcess,
                        kPageAttrPresent | kPageAttrWritable) +

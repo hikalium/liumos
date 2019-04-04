@@ -23,12 +23,6 @@ void SegmentMapping::CopyDataFrom(SegmentMapping& from) {
          map_size_);
 };
 
-void SegmentMapping::Map(IA_PML4& page_root, uint64_t page_attr) {
-  assert(GetPhysAddr());
-  CreatePageMapping(*liumos->dram_allocator, page_root, GetVirtAddr(),
-                    GetPhysAddr(), GetMapSize(), kPageAttrPresent | page_attr);
-}
-
 void SegmentMapping::Flush() {
   uint8_t* buf =
       GetKernelVirtAddrForPhysAddr(reinterpret_cast<uint8_t*>(GetPhysAddr()));

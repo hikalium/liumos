@@ -26,6 +26,7 @@ class PersistentObjectHeader {
   PersistentObjectHeader* next_;
 };
 
+class PersistentProcessInfo;
 class PersistentMemoryManager {
  public:
   bool IsValid() { return signature_ == kSignature && head_; }
