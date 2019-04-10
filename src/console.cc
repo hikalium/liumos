@@ -59,6 +59,42 @@ void Console::PutChars(const char* s, int n) {
   }
 }
 
+void PutDecimal64(uint64_t value) {
+  char s[20];
+  int i = 0;
+  for (; i < 20; i++) {
+    s[i] = value % 10;
+    value /= 10;
+    if (!value)
+      break;
+  }
+  for (; i >= 0; i--) {
+    PutChar('0' + s[i]);
+  }
+}
+
+void PutDecimal64WithPointPos(uint64_t value, int point_pos) {
+  // value = 1, point_pos = 1 -> 0.1
+  // value 1234, point_pos = 2 -> 12.34
+  char s[20];
+  int i = 0;
+  for (; i < point_pos; i++) {
+    s[i] = value % 10;
+    value /= 10;
+  }
+  for (; i < 20; i++) {
+    s[i] = value % 10;
+    value /= 10;
+    if (!value)
+      break;
+  }
+  for (; i >= 0; i--) {
+    PutChar('0' + s[i]);
+    if (i == point_pos)
+      PutChar('.');
+  }
+}
+
 void PutHex64(uint64_t value) {
   int i;
   char s[2];
@@ -108,6 +144,20 @@ void PutHex8ZeroFilled(uint8_t value) {
       s[0] += 'A' - 10;
     PutString(s);
   }
+}
+
+void PutStringAndDecimal(const char* s, uint64_t value) {
+  PutString(s);
+  PutString(": ");
+  PutDecimal64(value);
+  PutString("\n");
+}
+
+void PutStringAndDecimalWithPointPos(const char* s, uint64_t value, int pos) {
+  PutString(s);
+  PutString(": ");
+  PutDecimal64WithPointPos(value, pos);
+  PutString("\n");
 }
 
 void PutStringAndHex(const char* s, uint64_t value) {

@@ -618,11 +618,13 @@ void Run(TextBox& tbox) {
     Process& proc = LoadELFAndCreatePersistentProcess(
         *liumos->loader_info.files.pi_bin, *liumos->pmem[0]);
     liumos->scheduler->LaunchAndWaitUntilExit(proc);
+    proc.PrintStatistics();
   } else if (IsEqualString(line, "pmem run hello.bin")) {
     assert(liumos->pmem[0]);
     Process& proc = LoadELFAndCreatePersistentProcess(
         *liumos->loader_info.files.hello_bin, *liumos->pmem[0]);
     liumos->scheduler->LaunchAndWaitUntilExit(proc);
+    proc.PrintStatistics();
   } else if (strncmp(line, "test mem ", 9) == 0) {
     int proximity_domain = atoi(&line[9]);
     TestMem(liumos->dram_allocator, proximity_domain);

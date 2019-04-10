@@ -34,9 +34,12 @@ class Console {
 
 void PutChar(char c);
 void PutString(const char* s);
+void PutStringAndDecimal(const char* s, uint64_t value);
+void PutStringAndDecimalWithPointPos(const char* s, uint64_t value, int pos);
 void PutStringAndHex(const char* s, uint64_t value);
 void PutStringAndHex(const char* s, void* value);
 void PutStringAndBool(const char* s, bool cond);
+void PutDecimal64(uint64_t value);
 void PutHex64(uint64_t value);
 void PutAddressRange(uint64_t addr, uint64_t size);
 void PutAddressRange(void* addr, uint64_t size);

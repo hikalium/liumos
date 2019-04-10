@@ -210,6 +210,8 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
 
   EnableSyscall();
 
+  PutStringAndDecimal("test", 123490302020);
+
   TextBox console_text_box;
   while (1) {
     ConsoleCommand::WaitAndProcess(console_text_box);

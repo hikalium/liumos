@@ -55,6 +55,7 @@ class Process {
   uint64_t GetSysTimeFemtoSec() { return sys_time_femto_sec_; }
   void ResetSysTime() { sys_time_femto_sec_ = 0; }
   void AddSysTimeFemtoSec(uint64_t fs) { sys_time_femto_sec_ += fs; }
+  void PrintStatistics();
   friend class ProcessController;
 
  private:

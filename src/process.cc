@@ -13,6 +13,14 @@ void Process::NotifyContextSaving() {
   pp_info_->SwitchContext();
 }
 
+void Process::PrintStatistics() {
+  PutStringAndDecimal("Process id", id_);
+  PutStringAndDecimal("  number_of_ctx_switch_", number_of_ctx_switch_);
+  PutStringAndDecimalWithPointPos("  proc_time (sec)", proc_time_femto_sec_,
+                                  15);
+  PutStringAndDecimalWithPointPos("  sys_time  (sec)", sys_time_femto_sec_, 15);
+}
+
 Process& ProcessController::Create() {
   Process* proc = kernel_heap_allocator_.AllocPages<Process*>(
       ByteSizeToPageSize(sizeof(Process)),
