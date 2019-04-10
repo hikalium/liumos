@@ -67,7 +67,8 @@ class Process {
         number_of_ctx_switch_(0),
         proc_time_femto_sec_(0),
         sys_time_femto_sec_(0),
-        copied_bytes_in_ctx_sw_(0){};
+        copied_bytes_in_ctx_sw_(0),
+        num_of_clflush_issued_in_ctx_sw_(0){};
   uint64_t id_;
   volatile Status status_;
   int scheduler_index_;
@@ -77,6 +78,7 @@ class Process {
   uint64_t proc_time_femto_sec_;
   uint64_t sys_time_femto_sec_;
   uint64_t copied_bytes_in_ctx_sw_;
+  uint64_t num_of_clflush_issued_in_ctx_sw_;
 };
 
 class ProcessController {

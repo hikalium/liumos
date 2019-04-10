@@ -42,7 +42,7 @@ class SegmentMapping {
                       shoud_clflush);
   }
 
-  void Flush();
+  void Flush(uint64_t& num_of_clflush_issued);
 
  private:
   uint64_t vaddr_;
@@ -60,10 +60,10 @@ struct ProcessMappingInfo {
     data.Clear();
     stack.Clear();
   }
-  void Flush() {
-    code.Flush();
-    data.Flush();
-    stack.Flush();
+  void Flush(uint64_t& num_of_clflush_issued) {
+    code.Flush(num_of_clflush_issued);
+    data.Flush(num_of_clflush_issued);
+    stack.Flush(num_of_clflush_issued);
   }
 };
 
@@ -92,7 +92,7 @@ class ExecutionContext {
     cpu_context_.cr3 = cr3;
     kernel_rsp_ = kernel_rsp;
   }
-  void Flush();
+  void Flush(uint64_t& stat);
   void CopyContextFrom(ExecutionContext& from, uint64_t& stat_copied_bytes) {
     uint64_t cr3 = cpu_context_.cr3;
     cpu_context_ = from.cpu_context_;
@@ -136,7 +136,8 @@ class PersistentProcessInfo {
   }
   static constexpr uint64_t kSignature = 0x4F50534F6D75696CULL;
   static constexpr int kNumOfExecutionContext = 2;
-  void SwitchContext(uint64_t& stat_copied_bytes);
+  void SwitchContext(uint64_t& stat_copied_bytes,
+                     uint64_t& stat_num_of_clflush);
 
  private:
   ExecutionContext ctx_[kNumOfExecutionContext];

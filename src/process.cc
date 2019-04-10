@@ -10,7 +10,8 @@ void Process::NotifyContextSaving() {
   number_of_ctx_switch_++;
   if (!IsPersistent())
     return;
-  pp_info_->SwitchContext(copied_bytes_in_ctx_sw_);
+  pp_info_->SwitchContext(copied_bytes_in_ctx_sw_,
+                          num_of_clflush_issued_in_ctx_sw_);
 }
 
 void Process::PrintStatistics() {
@@ -21,6 +22,9 @@ void Process::PrintStatistics() {
   PutStringAndDecimalWithPointPos("  sys_time  (sec)", sys_time_femto_sec_, 15);
   PutStringAndDecimalWithPointPos("  copied_bytes_in_ctx_sw  (MB)",
                                   copied_bytes_in_ctx_sw_, 6);
+  PutStringAndDecimalWithPointPos(
+      "  num_of_clflush_issued_in_ctx_sw (x10^6 times)",
+      num_of_clflush_issued_in_ctx_sw_, 6);
 }
 
 Process& ProcessController::Create() {
