@@ -30,7 +30,7 @@ class SegmentMapping {
   }
   void AllocSegmentFromPersistentMemory(PersistentMemoryManager& pmem);
   void Print();
-  void CopyDataFrom(SegmentMapping& from);
+  void CopyDataFrom(SegmentMapping& from, uint64_t& stat_copied_bytes);
   template <class TAllocator>
   void Map(TAllocator& allocator,
            IA_PML4& page_root,
@@ -93,13 +93,13 @@ class ExecutionContext {
     kernel_rsp_ = kernel_rsp;
   }
   void Flush();
-  void CopyContextFrom(ExecutionContext& from) {
+  void CopyContextFrom(ExecutionContext& from, uint64_t& stat_copied_bytes) {
     uint64_t cr3 = cpu_context_.cr3;
     cpu_context_ = from.cpu_context_;
     cpu_context_.cr3 = cr3;
 
-    map_info_.data.CopyDataFrom(from.map_info_.data);
-    map_info_.stack.CopyDataFrom(from.map_info_.stack);
+    map_info_.data.CopyDataFrom(from.map_info_.data, stat_copied_bytes);
+    map_info_.stack.CopyDataFrom(from.map_info_.stack, stat_copied_bytes);
   }
 
  private:
@@ -136,7 +136,7 @@ class PersistentProcessInfo {
   }
   static constexpr uint64_t kSignature = 0x4F50534F6D75696CULL;
   static constexpr int kNumOfExecutionContext = 2;
-  void SwitchContext();
+  void SwitchContext(uint64_t& stat_copied_bytes);
 
  private:
   ExecutionContext ctx_[kNumOfExecutionContext];

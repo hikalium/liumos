@@ -16,11 +16,13 @@ void SegmentMapping::AllocSegmentFromPersistentMemory(
   SetPhysAddr(pmem.AllocPages<uint64_t>(ByteSizeToPageSize(GetMapSize())));
 }
 
-void SegmentMapping::CopyDataFrom(SegmentMapping& from) {
+void SegmentMapping::CopyDataFrom(SegmentMapping& from,
+                                  uint64_t& stat_copied_bytes) {
   assert(map_size_ == from.map_size_);
   memcpy(reinterpret_cast<void*>(GetKernelVirtAddrForPhysAddr(paddr_)),
          reinterpret_cast<void*>(GetKernelVirtAddrForPhysAddr(from.paddr_)),
          map_size_);
+  stat_copied_bytes += map_size_;
 };
 
 void SegmentMapping::Flush() {
@@ -58,8 +60,8 @@ void PersistentProcessInfo::Print() {
   PutStringAndHex("valid_ctx_idx_", valid_ctx_idx_);
 }
 
-void PersistentProcessInfo::SwitchContext() {
+void PersistentProcessInfo::SwitchContext(uint64_t& stat_copied_bytes) {
   GetWorkingContext().Flush();
   SetValidContextIndex(1 - valid_ctx_idx_);
-  GetWorkingContext().CopyContextFrom(GetValidContext());
+  GetWorkingContext().CopyContextFrom(GetValidContext(), stat_copied_bytes);
 }

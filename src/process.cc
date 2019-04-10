@@ -10,7 +10,7 @@ void Process::NotifyContextSaving() {
   number_of_ctx_switch_++;
   if (!IsPersistent())
     return;
-  pp_info_->SwitchContext();
+  pp_info_->SwitchContext(copied_bytes_in_ctx_sw_);
 }
 
 void Process::PrintStatistics() {
@@ -19,6 +19,8 @@ void Process::PrintStatistics() {
   PutStringAndDecimalWithPointPos("  proc_time (sec)", proc_time_femto_sec_,
                                   15);
   PutStringAndDecimalWithPointPos("  sys_time  (sec)", sys_time_femto_sec_, 15);
+  PutStringAndDecimalWithPointPos("  copied_bytes_in_ctx_sw  (MB)",
+                                  copied_bytes_in_ctx_sw_, 6);
 }
 
 Process& ProcessController::Create() {
@@ -45,7 +47,8 @@ Process& ProcessController::RestoreFromPersistentProcessInfo(
   ExecutionContext& valid_ctx = pp_info.GetValidContext();
   ExecutionContext& working_ctx = pp_info.GetWorkingContext();
 
-  working_ctx.CopyContextFrom(valid_ctx);
+  uint64_t dummy_stat;
+  working_ctx.CopyContextFrom(valid_ctx, dummy_stat);
 
   PrepareContextForRestoringPersistentProcess(valid_ctx);
   PrepareContextForRestoringPersistentProcess(working_ctx);
