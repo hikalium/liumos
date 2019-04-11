@@ -20,7 +20,7 @@ KERNEL_SRCS= acpi.cc apic.cc asm.S \
 						 libfunc.cc \
 						 paging.cc phys_page_allocator.cc pmem.cc process.cc\
 						 scheduler.cc serial.cc sheet.cc subtask.cc \
-						 sys_constant.cc syscall.cc syscall_handler.S\
+						 sleep_handler.S sys_constant.cc syscall.cc syscall_handler.S\
 						 text_box.cc \
 						 font.gen.cc
 LOADER_OBJS= $(addsuffix .o, $(basename $(LOADER_SRCS)))

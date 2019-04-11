@@ -164,6 +164,8 @@ IntHandlerWrapper:
 	call IntHandler
 	mov rsp, rbp
 
+.global RestoreRegistersAndIRETQ
+RestoreRegistersAndIRETQ:
   pop rax
   pop rdx
   pop rbx

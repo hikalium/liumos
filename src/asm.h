@@ -167,6 +167,7 @@ enum class MSRIndex : uint32_t {
   kKernelGSBase = 0xC0000102,
 };
 
+__attribute__((ms_abi)) void Sleep(void);
 __attribute__((ms_abi)) void ReadCPUID(CPUID*, uint32_t eax, uint32_t ecx);
 
 __attribute__((ms_abi)) uint64_t ReadMSR(MSRIndex);

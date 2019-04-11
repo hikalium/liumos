@@ -123,14 +123,19 @@ void SwitchContext(InterruptInfo& int_info,
   proc_last_time_count = liumos->hpet->ReadMainCounterValue();
 }
 
-void TimerHandler(uint64_t, InterruptInfo* info) {
-  assert(info);
+__attribute__((ms_abi)) extern "C" void SleepHandler(uint64_t,
+                                                     InterruptInfo* info) {
   Process& proc = liumos->scheduler->GetCurrentProcess();
-  liumos->bsp_local_apic->SendEndOfInterrupt();
   Process* next_proc = liumos->scheduler->SwitchProcess();
   if (!next_proc)
     return;  // no need to switching context.
+  assert(info);
   SwitchContext(*info, proc, *next_proc);
+}
+
+void TimerHandler(uint64_t, InterruptInfo* info) {
+  liumos->bsp_local_apic->SendEndOfInterrupt();
+  SleepHandler(0, info);
 }
 
 void CoreFunc::PutChar(char c) {
