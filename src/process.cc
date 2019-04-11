@@ -16,18 +16,21 @@ void Process::NotifyContextSaving() {
 
 void Process::PrintStatistics() {
   PutStringAndDecimal("Process id", id_);
-  PutStringAndDecimal("  number_of_ctx_switch_", number_of_ctx_switch_);
-  PutStringAndDecimalWithPointPos("  proc_time          (sec)",
-                                  proc_time_femto_sec_, 15);
-  PutStringAndDecimalWithPointPos("  sys_time           (sec)",
-                                  sys_time_femto_sec_, 15);
-  PutStringAndDecimalWithPointPos("  time_for_ctx_save  (sec)",
-                                  time_consumed_in_ctx_save_femto_sec_, 15);
-  PutStringAndDecimalWithPointPos("  copied_bytes_in_ctx_sw  (MB)",
-                                  copied_bytes_in_ctx_sw_, 6);
-  PutStringAndDecimalWithPointPos(
-      "  num_of_clflush_issued_in_ctx_sw (x10^6 times)",
-      num_of_clflush_issued_in_ctx_sw_, 6);
+  PutString(
+      "num of ctx sw, proc time[s], sys time [s], time for ctx save [s], copy "
+      "in ctx save [MB], clflush in ctx sw [M]\n");
+  PutDecimal64(number_of_ctx_switch_);
+  PutString(", ");
+  PutDecimal64WithPointPos(proc_time_femto_sec_, 15);
+  PutString(", ");
+  PutDecimal64WithPointPos(sys_time_femto_sec_, 15);
+  PutString(", ");
+  PutDecimal64WithPointPos(time_consumed_in_ctx_save_femto_sec_, 15);
+  PutString(", ");
+  PutDecimal64WithPointPos(copied_bytes_in_ctx_sw_, 6);
+  PutString(", ");
+  PutDecimal64WithPointPos(num_of_clflush_issued_in_ctx_sw_, 6);
+  PutString("\n");
 }
 
 Process& ProcessController::Create() {

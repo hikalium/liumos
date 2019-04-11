@@ -40,6 +40,7 @@ void PutStringAndHex(const char* s, uint64_t value);
 void PutStringAndHex(const char* s, void* value);
 void PutStringAndBool(const char* s, bool cond);
 void PutDecimal64(uint64_t value);
+void PutDecimal64WithPointPos(uint64_t value, int point_pos);
 void PutHex64(uint64_t value);
 void PutAddressRange(uint64_t addr, uint64_t size);
 void PutAddressRange(void* addr, uint64_t size);
