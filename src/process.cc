@@ -2,7 +2,7 @@
 
 void Process::WaitUntilExit() {
   while (status_ != Status::kKilled) {
-    StoreIntFlagAndHalt();
+    Sleep();
   }
 }
 

@@ -176,6 +176,10 @@ EFI& CoreFunc::GetEFI() {
   return efi_;
 }
 
+void Sleep() {
+  // Fake
+}
+
 void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
   liumos = &liumos_;
   efi_.Init(system_table);

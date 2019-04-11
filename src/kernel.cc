@@ -99,6 +99,9 @@ void SwitchContext(InterruptInfo& int_info,
                    Process& from_proc,
                    Process& to_proc) {
   static uint64_t proc_last_time_count = 0;
+  const uint64_t now_count = liumos->hpet->ReadMainCounterValue();
+  if ((proc_last_time_count - now_count) < liumos->time_slice_count)
+    return;
 
   from_proc.AddProcTimeFemtoSec(
       (liumos->hpet->ReadMainCounterValue() - proc_last_time_count) *
@@ -166,7 +169,9 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
       liumos->acpi.hpet->base_address.address));
   liumos->hpet = &hpet_;
   hpet_.SetTimerNs(
-      0, 100, HPET::TimerConfig::kUsePeriodicMode | HPET::TimerConfig::kEnable);
+      0, 1000,
+      HPET::TimerConfig::kUsePeriodicMode | HPET::TimerConfig::kEnable);
+  liumos->time_slice_count = 1e12 * 100 / hpet_.GetFemtosecondPerCount();
 
   cpu_features_ = *liumos->cpu_features;
   liumos->cpu_features = &cpu_features_;
@@ -227,8 +232,6 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
   LaunchSubTask(kernel_heap_allocator);
 
   EnableSyscall();
-
-  PutStringAndDecimal("test", 123490302020);
 
   TextBox console_text_box;
   while (1) {

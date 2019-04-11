@@ -116,6 +116,7 @@ packed_struct LiumOS {
   IDT* idt;
   Process* root_process;
   Process* sub_process;
+  uint64_t time_slice_count;
 };
 extern LiumOS* liumos;
 
