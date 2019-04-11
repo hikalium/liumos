@@ -55,6 +55,9 @@ class Process {
   uint64_t GetSysTimeFemtoSec() { return sys_time_femto_sec_; }
   void ResetSysTime() { sys_time_femto_sec_ = 0; }
   void AddSysTimeFemtoSec(uint64_t fs) { sys_time_femto_sec_ += fs; }
+  void AddTimeConsumedInContextSavingFemtoSec(uint64_t fs) {
+    time_consumed_in_ctx_save_femto_sec_ += fs;
+  }
   void PrintStatistics();
   friend class ProcessController;
 
@@ -68,7 +71,8 @@ class Process {
         proc_time_femto_sec_(0),
         sys_time_femto_sec_(0),
         copied_bytes_in_ctx_sw_(0),
-        num_of_clflush_issued_in_ctx_sw_(0){};
+        num_of_clflush_issued_in_ctx_sw_(0),
+        time_consumed_in_ctx_save_femto_sec_(0){};
   uint64_t id_;
   volatile Status status_;
   int scheduler_index_;
@@ -79,6 +83,7 @@ class Process {
   uint64_t sys_time_femto_sec_;
   uint64_t copied_bytes_in_ctx_sw_;
   uint64_t num_of_clflush_issued_in_ctx_sw_;
+  uint64_t time_consumed_in_ctx_save_femto_sec_;
 };
 
 class ProcessController {

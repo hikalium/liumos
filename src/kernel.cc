@@ -95,29 +95,42 @@ void LaunchSubTask(KernelVirtualHeapAllocator& kernel_heap_allocator) {
   liumos->sub_process = &proc;
 }
 
-void TimerHandler(uint64_t, InterruptInfo* info) {
+void SwitchContext(InterruptInfo& int_info,
+                   Process& from_proc,
+                   Process& to_proc) {
   static uint64_t proc_last_time_count = 0;
+
+  from_proc.AddProcTimeFemtoSec(
+      (liumos->hpet->ReadMainCounterValue() - proc_last_time_count) *
+      liumos->hpet->GetFemtosecondPerCount());
+
+  CPUContext& from = from_proc.GetExecutionContext().GetCPUContext();
+  const uint64_t t0 = liumos->hpet->ReadMainCounterValue();
+  from.cr3 = ReadCR3();
+  from.greg = int_info.greg;
+  from.int_ctx = int_info.int_ctx;
+  from_proc.NotifyContextSaving();
+  const uint64_t t1 = liumos->hpet->ReadMainCounterValue();
+  from_proc.AddTimeConsumedInContextSavingFemtoSec(
+      (t1 - t0) * liumos->hpet->GetFemtosecondPerCount());
+
+  CPUContext& to = to_proc.GetExecutionContext().GetCPUContext();
+  int_info.greg = to.greg;
+  int_info.int_ctx = to.int_ctx;
+  if (from.cr3 == to.cr3)
+    return;
+  WriteCR3(to.cr3);
+  proc_last_time_count = liumos->hpet->ReadMainCounterValue();
+}
+
+void TimerHandler(uint64_t, InterruptInfo* info) {
+  assert(info);
   Process& proc = liumos->scheduler->GetCurrentProcess();
   liumos->bsp_local_apic->SendEndOfInterrupt();
   Process* next_proc = liumos->scheduler->SwitchProcess();
   if (!next_proc)
     return;  // no need to switching context.
-  proc.AddProcTimeFemtoSec(
-      (liumos->hpet->ReadMainCounterValue() - proc_last_time_count) *
-      liumos->hpet->GetFemtosecondPerCount());
-  CPUContext& from = proc.GetExecutionContext().GetCPUContext();
-  from.cr3 = ReadCR3();
-  from.greg = info->greg;
-  from.int_ctx = info->int_ctx;
-  proc.NotifyContextSaving();
-
-  CPUContext& to = next_proc->GetExecutionContext().GetCPUContext();
-  info->greg = to.greg;
-  info->int_ctx = to.int_ctx;
-  proc_last_time_count = liumos->hpet->ReadMainCounterValue();
-  if (from.cr3 == to.cr3)
-    return;
-  WriteCR3(to.cr3);
+  SwitchContext(*info, proc, *next_proc);
 }
 
 void CoreFunc::PutChar(char c) {

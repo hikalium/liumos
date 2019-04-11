@@ -17,9 +17,12 @@ void Process::NotifyContextSaving() {
 void Process::PrintStatistics() {
   PutStringAndDecimal("Process id", id_);
   PutStringAndDecimal("  number_of_ctx_switch_", number_of_ctx_switch_);
-  PutStringAndDecimalWithPointPos("  proc_time (sec)", proc_time_femto_sec_,
-                                  15);
-  PutStringAndDecimalWithPointPos("  sys_time  (sec)", sys_time_femto_sec_, 15);
+  PutStringAndDecimalWithPointPos("  proc_time          (sec)",
+                                  proc_time_femto_sec_, 15);
+  PutStringAndDecimalWithPointPos("  sys_time           (sec)",
+                                  sys_time_femto_sec_, 15);
+  PutStringAndDecimalWithPointPos("  time_for_ctx_save  (sec)",
+                                  time_consumed_in_ctx_save_femto_sec_, 15);
   PutStringAndDecimalWithPointPos("  copied_bytes_in_ctx_sw  (MB)",
                                   copied_bytes_in_ctx_sw_, 6);
   PutStringAndDecimalWithPointPos(
