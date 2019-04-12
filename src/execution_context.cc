@@ -25,10 +25,8 @@ void SegmentMapping::CopyDataFrom(SegmentMapping& from,
   stat_copied_bytes += map_size_;
 };
 
-void SegmentMapping::Flush(uint64_t& num_of_clflush_issued) {
-  uint8_t* buf =
-      GetKernelVirtAddrForPhysAddr(reinterpret_cast<uint8_t*>(GetPhysAddr()));
-  CLFlush(buf, GetMapSize(), num_of_clflush_issued);
+void SegmentMapping::Flush(IA_PML4& pml4, uint64_t& num_of_clflush_issued) {
+  FlushDirtyPages(pml4, vaddr_, map_size_, num_of_clflush_issued);
 }
 
 void ProcessMappingInfo::Print() {
@@ -40,8 +38,8 @@ void ProcessMappingInfo::Print() {
   stack.Print();
 }
 
-void ExecutionContext::Flush(uint64_t& num_of_clflush_issued) {
-  map_info_.Flush(num_of_clflush_issued);
+void ExecutionContext::Flush(IA_PML4& pml4, uint64_t& num_of_clflush_issued) {
+  map_info_.Flush(pml4, num_of_clflush_issued);
   CLFlush(this, sizeof(*this), num_of_clflush_issued);
 }
 
@@ -62,7 +60,7 @@ void PersistentProcessInfo::Print() {
 
 void PersistentProcessInfo::SwitchContext(uint64_t& stat_copied_bytes,
                                           uint64_t& stat_num_of_clflush) {
-  GetWorkingContext().Flush(stat_num_of_clflush);
+  GetWorkingContext().Flush(GetWorkingContext().GetCR3(), stat_num_of_clflush);
   SetValidContextIndex(1 - valid_ctx_idx_);
   GetWorkingContext().CopyContextFrom(GetValidContext(), stat_copied_bytes);
 }

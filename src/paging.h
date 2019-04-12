@@ -235,6 +235,14 @@ packed_struct PageTableEntryStruct {
   template <typename S = Strategy>
   auto SetAttrAsTable()
       ->std::enable_if_t<is_page_allowed_v<S> ^ is_table_allowed_v<S>> {}
+  template <typename S = Strategy>
+  auto IsDirty()->std::enable_if_t<is_page_allowed_v<S>, bool> {
+    return data & (1 << 6);
+  }
+  template <typename S = Strategy>
+  auto ClearDirtyBit()->std::enable_if_t<is_page_allowed_v<S>, void> {
+    data &= ~(1ULL << 6);
+  }
 };
 
 struct PTEStrategy {
@@ -286,6 +294,10 @@ IA_PML4& AllocPageTable(TAllocator& allocator) {
 void SetKernelPageEntries(IA_PML4& pml4);
 void InitPaging(void);
 IA_PML4& GetKernelPML4(void);
+void FlushDirtyPages(IA_PML4& pml4,
+                     uint64_t vaddr,
+                     uint64_t byte_size,
+                     uint64_t& num_of_clflush_issued);
 
 template <class TAllocator>
 void inline CreatePageMapping(TAllocator& allocator,
@@ -363,6 +375,14 @@ void inline CreatePageMapping(TAllocator& allocator,
       }
     }
   }
+}
+
+static inline void AssertAddressIsInLowerHalf(uint64_t addr) {
+  assert(static_cast<int64_t>(addr) >= 0);
+}
+
+static inline void AssertAddressIsInLowerHalf(const void* addr) {
+  AssertAddressIsInLowerHalf(reinterpret_cast<uint64_t>(addr));
 }
 
 void CLFlushMappingStructures(IA_PML4& pml4,

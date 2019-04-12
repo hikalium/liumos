@@ -42,7 +42,7 @@ class SegmentMapping {
                       shoud_clflush);
   }
 
-  void Flush(uint64_t& num_of_clflush_issued);
+  void Flush(IA_PML4& pml4, uint64_t& num_of_clflush_issued);
 
  private:
   uint64_t vaddr_;
@@ -60,10 +60,10 @@ struct ProcessMappingInfo {
     data.Clear();
     stack.Clear();
   }
-  void Flush(uint64_t& num_of_clflush_issued) {
-    code.Flush(num_of_clflush_issued);
-    data.Flush(num_of_clflush_issued);
-    stack.Flush(num_of_clflush_issued);
+  void Flush(IA_PML4& pml4, uint64_t& num_of_clflush_issued) {
+    code.Flush(pml4, num_of_clflush_issued);
+    data.Flush(pml4, num_of_clflush_issued);
+    stack.Flush(pml4, num_of_clflush_issued);
   }
 };
 
@@ -92,7 +92,7 @@ class ExecutionContext {
     cpu_context_.cr3 = cr3;
     kernel_rsp_ = kernel_rsp;
   }
-  void Flush(uint64_t& stat);
+  void Flush(IA_PML4& pml4, uint64_t& stat);
   void CopyContextFrom(ExecutionContext& from, uint64_t& stat_copied_bytes) {
     uint64_t cr3 = cpu_context_.cr3;
     cpu_context_ = from.cpu_context_;

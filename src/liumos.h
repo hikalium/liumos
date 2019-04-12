@@ -122,6 +122,7 @@ extern LiumOS* liumos;
 
 template <typename T>
 T GetKernelVirtAddrForPhysAddr(T paddr) {
+  AssertAddressIsInLowerHalf(paddr);
   return reinterpret_cast<T>(reinterpret_cast<uint64_t>(paddr) +
                              liumos->cpu_features->kernel_phys_page_map_begin);
 }

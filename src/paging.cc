@@ -180,3 +180,52 @@ void InitPaging() {
 IA_PML4& GetKernelPML4(void) {
   return *liumos->kernel_pml4;
 }
+
+void FlushDirtyPages(IA_PML4& pml4_phys,
+                     uint64_t vaddr,
+                     uint64_t byte_size,
+                     uint64_t& num_of_clflush_issued) {
+  assert((vaddr & kPageAddrMask) == 0);
+  IA_PML4& pml4 = *GetKernelVirtAddrForPhysAddr(&pml4_phys);
+  uint64_t num_of_4k_pages = ByteSizeToPageSize(byte_size);
+  for (int pml4_idx = IA_PML4::addr2index(vaddr);
+       pml4_idx < IA_PML4::kNumOfEntries; pml4_idx++) {
+    auto& pml4e = pml4.GetEntryForAddr(vaddr);
+    if (!pml4e.IsPresent()) {
+      Panic("Not mapped");
+    }
+    auto* pdpt = GetKernelVirtAddrForPhysAddr(pml4e.GetTableAddr());
+    for (int pdpt_idx = IA_PDPT::addr2index(vaddr);
+         num_of_4k_pages && pdpt_idx < IA_PDPT::kNumOfEntries; pdpt_idx++) {
+      auto& pdpte = pdpt->GetEntryForAddr(vaddr);
+      if (!pdpte.IsPresent()) {
+        Panic("Not mapped");
+      }
+      if (pdpte.IsPage())
+        Panic("Page overwrapping at pdpte");
+      auto* pdt = GetKernelVirtAddrForPhysAddr(pdpte.GetTableAddr());
+      for (int pdt_idx = IA_PDT::addr2index(vaddr);
+           num_of_4k_pages && pdt_idx < IA_PDT::kNumOfEntries; pdt_idx++) {
+        auto& pdte = pdt->GetEntryForAddr(vaddr);
+        if (!pdte.IsPresent()) {
+          Panic("Not mapped");
+        }
+        if (pdte.IsPage())
+          Panic("Page overwrapping at pdte");
+        auto* pt = GetKernelVirtAddrForPhysAddr(pdte.GetTableAddr());
+        for (int pt_idx = IA_PT::addr2index(vaddr);
+             num_of_4k_pages && pt_idx < IA_PT::kNumOfEntries; pt_idx++) {
+          auto& pte = pt->GetEntryForAddr(vaddr);
+          if (pte.IsDirty()) {
+            CLFlush(reinterpret_cast<void*>(
+                        GetKernelVirtAddrForPhysAddr(pte.GetPageBaseAddr())),
+                    pte.kChunkSize, num_of_clflush_issued);
+            pte.ClearDirtyBit();
+          }
+          vaddr += (1 << 12);
+          num_of_4k_pages--;
+        }
+      }
+    }
+  }
+}
