@@ -74,12 +74,17 @@ OSX_STD_HEADER_INCLUDE_FLAGS= \
 		-I/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include \
 		-I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include
 
+FONTMAKER=../tools/fontmaker
+
 default: BOOTX64.EFI LIUMOS.ELF
 
 include ../common.mk
 
-font.gen.cc : font.txt
-	../tools/fontmaker font.txt > font.gen.cc
+$(FONTMAKER) :
+	make -C $(dir $(FONTMAKER)) fontmaker
+
+font.gen.cc : font.txt $(FONTMAKER)
+	$(FONTMAKER) font.txt > font.gen.cc
 
 lib/musl/include/%.h : lib/musl/include/Makefile
 	make -C lib/musl/include/ $*.h
@@ -131,7 +136,8 @@ LIUMOS.ELF : $(KERNEL_OBJS) kernel.ld Makefile
 NEWLIB_BUILD_DIR=third_party/newlib-cygwin_build
 
 newlib:
-	git submodule update
+	git submodule init
+	git submodule update --depth=1
 	mkdir -p $(NEWLIB_BUILD_DIR)
 	cd $(NEWLIB_BUILD_DIR) \
 	&& \
