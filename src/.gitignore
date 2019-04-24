@@ -9,7 +9,7 @@
 *.out
 *.gen.mk
 *.dump.txt
-githash.h
+githash.cc
 
 third_party/newlib-cygwin_build/
 third_party/newlib-cygwin_dest/

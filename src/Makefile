@@ -2,7 +2,7 @@ LOADER_SRCS= acpi.cc apic.cc asm.S \
 						 console.cc \
 						 efi.cc efimain.cc elf.cc execution_context.cc \
 						 file.cc \
-						 gdt.cc generic.cc graphics.cc guid.cc \
+						 gdt.cc generic.cc githash.cc graphics.cc guid.cc \
 						 interrupt.cc \
 						 libfunc.cc loader.cc \
 						 paging.cc phys_page_allocator.cc pmem.cc process.cc \
@@ -13,7 +13,7 @@ LOADER_SRCS= acpi.cc apic.cc asm.S \
 KERNEL_SRCS= acpi.cc apic.cc asm.S \
 						 console.cc command.cc\
 						 efi.cc elf.cc execution_context.cc \
-						 gdt.cc generic.cc guid.cc \
+						 gdt.cc generic.cc githash.cc guid.cc \
 						 hpet.cc \
 						 interrupt.cc \
 						 kernel.cc keyboard.cc \
@@ -26,7 +26,7 @@ KERNEL_SRCS= acpi.cc apic.cc asm.S \
 KERNEL_LIBS=third_party/newlib-cygwin_dest/lib/libc.a
 LOADER_OBJS= $(addsuffix .o, $(basename $(LOADER_SRCS)))
 KERNEL_OBJS= $(addsuffix .elf.o, $(basename $(KERNEL_SRCS)))
-HEADERS=$(filter-out githash.h, $(wildcard *.h)) lib/musl/include/elf.h
+HEADERS=$(wildcard *.h) lib/musl/include/elf.h
 OVMF=ovmf/bios64.bin
 QEMU=qemu-system-x86_64
 
@@ -166,6 +166,7 @@ clean :
 	-rm *.gen.c
 	-rm *.gen.cc
 	-rm *.bin
+	-rm githash.cc
 
 format :
 	clang-format -i *.cc *.h
@@ -183,5 +184,5 @@ dump : $(addsuffix .dump.txt, $(OBJS))
 
 FORCE : 
 
-githash.h: FORCE
-	echo '#define GIT_HASH "$(shell git rev-parse HEAD | tr -d "\n") $(shell ./git_modification_check.sh)"' > $@
+githash.cc: FORCE
+	echo 'const char *kGitHash = "$(shell git rev-parse HEAD | tr -d "\n") $(shell ./git_modification_check.sh)";' > $@
