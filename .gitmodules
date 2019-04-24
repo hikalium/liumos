@@ -1,0 +1,3 @@
+[submodule "src/third_party/newlib-cygwin"]
+	path = src/third_party/newlib-cygwin
+	url = git://sourceware.org/git/newlib-cygwin.git

@@ -1,6 +1,8 @@
 #include "liumos.h"
 #include "pmem.h"
 
+#include <stdlib.h>
+
 namespace ConsoleCommand {
 
 static void ShowNFIT_PrintMemoryMappingAttr(uint64_t attr) {

@@ -1,4 +1,6 @@
-#include "liumos.h"
+#include <stdint.h>
+
+extern "C" {
 
 int strncmp(const char* s1, const char* s2, size_t n) {
   for (size_t i = 0; i < n; i++) {
@@ -36,4 +38,5 @@ int atoi(const char* str) {
     break;
   }
   return v;
+}
 }

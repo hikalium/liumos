@@ -69,10 +69,12 @@ void InitDoubleBuffer(void);
 constexpr uint16_t kIOPortKeyboardData = 0x0060;
 
 // @libfunc.cc
+extern "C" {
 int strncmp(const char* s1, const char* s2, size_t n);
-extern "C" void* memcpy(void* dst, const void* src, size_t n);
+void* memcpy(void* dst, const void* src, size_t n);
 void bzero(void* s, size_t n);
 int atoi(const char* str);
+}
 template <typename T>
 inline T min(T a, T b) {
   return a < b ? a : b;

@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "corefunc.h"
 #include "liumos.h"
 
@@ -203,6 +204,10 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
   PutString("\nliumOS version: ");
   PutString(GetVersionStr());
   PutString("\n\n");
+
+  char s[128];
+  snprintf(s, sizeof(s), "123 = 0x%X\n", 123);
+  PutString(s);
 
   ClearIntFlag();
 
