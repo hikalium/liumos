@@ -23,6 +23,8 @@ inline uint64_t ByteSizeToPageSize(uint64_t byte_size) {
   return (byte_size + kPageSize - 1) >> kPageSizeExponent;
 }
 
-inline void* operator new(size_t, void* where) {
-  return where;
-}
+#ifdef LIUMOS_LOADER
+#include "loader_support.h"
+#else
+#include <new>
+#endif

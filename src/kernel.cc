@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <functional>
 #include "corefunc.h"
 #include "liumos.h"
 
@@ -208,6 +209,14 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
   char s[128];
   snprintf(s, sizeof(s), "123 = 0x%X\n", 123);
   PutString(s);
+
+  int v = 123;
+  std::function<void(void)> f = [&]() {
+    snprintf(s, sizeof(s), "v = %d\n", v);
+    PutString(s);
+  };
+  v = 456;
+  f();
 
   ClearIntFlag();
 

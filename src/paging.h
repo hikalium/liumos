@@ -1,8 +1,8 @@
 #pragma once
 
+#include <type_traits>
 #include "generic.h"
 #include "phys_page_allocator.h"
-#include "stl.h"
 #include "sys_constant.h"
 
 #ifndef LIUMOS_TEST

@@ -45,10 +45,12 @@ CFLAGS_LOADER= \
 		-Imusl_supplement -Imusl/include
 
 CXXFLAGS_LOADER= \
+		-DLIUMOS_LOADER \
 		-target x86_64-pc-win32-coff \
 		-fno-stack-protector -fno-exceptions -fshort-wchar \
 		-mno-red-zone \
 		-nostdlibinc -nostdlib \
+		-D_LIBCPP_HAS_NO_THREADS -D_LIBCPP_OBJECT_FORMAT_COFF -Ithird_party/llvm-test/include/c++/v1/ \
 		$(CLANG_WARNINGS) $(CXX_STD)
 
 CFLAGS_KERNEL= \
@@ -65,6 +67,7 @@ CXXFLAGS_KERNEL= \
 		-mno-red-zone -mstack-alignment=8 \
 		-nostdlibinc \
 		-Ithird_party/newlib-cygwin_dest/include/ \
+		-D__ELF__ -D_LIBCPP_HAS_NO_THREADS -Ithird_party/llvm-test/include/c++/v1/ \
 		$(CLANG_WARNINGS) $(CXX_STD)
 
 CXXFLAGS_FOR_TEST= \
