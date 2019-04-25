@@ -4,7 +4,7 @@
 
 extern "C" {
 
-caddr_t sbrk(int incr) {
+caddr_t sbrk(int) {
   errno = ENOMEM;
   return 0;
 }
