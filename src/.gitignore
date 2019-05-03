@@ -11,6 +11,4 @@
 *.dump.txt
 githash.cc
 
-third_party/newlib-cygwin_build/
-third_party/newlib-cygwin_dest/
-third_party/llvm*/
+third_party*

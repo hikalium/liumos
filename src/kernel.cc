@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <functional>
+#include <algorithm>
 #include "corefunc.h"
 #include "liumos.h"
+#include <vector>
 
 LiumOS* liumos;
 
@@ -212,11 +214,31 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
 
   int v = 123;
   std::function<void(void)> f = [&]() {
-    snprintf(s, sizeof(s), "v = %d\n", v);
+    snprintf(s, sizeof(s), "Hello from std::function!\nv = %d\n", v);
     PutString(s);
   };
   v = 456;
   f();
+
+  std::vector<int> vec;
+  vec.push_back(3);
+  vec.push_back(1);
+  vec.push_back(4);
+  vec.push_back(1);
+  vec.push_back(5);
+  vec.push_back(9);
+  for(auto v : vec) {
+    snprintf(s, sizeof(s), "%d ", v);
+    PutString(s);
+  }
+  PutString("\n");
+  /*
+  std::sort(vec.begin(), vec.end());
+  for(auto v : vec) {
+    snprintf(s, sizeof(s), "%d ", v);
+    PutString(s);
+  }
+  */
 
   ClearIntFlag();
 

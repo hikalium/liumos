@@ -1,3 +1,6 @@
 [submodule "src/third_party/newlib-cygwin"]
 	path = src/third_party/newlib-cygwin
 	url = git://sourceware.org/git/newlib-cygwin.git
+[submodule "src/third_party/llvm-project"]
+	path = src/third_party/llvm-project
+	url = https://github.com/llvm/llvm-project.git

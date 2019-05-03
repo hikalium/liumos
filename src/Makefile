@@ -17,6 +17,7 @@ KERNEL_SRCS= acpi.cc apic.cc asm.S \
 						 hpet.cc \
 						 interrupt.cc \
 						 kernel.cc keyboard.cc \
+						 libcxx_support.cc \
 						 newlib_support.cc \
 						 paging.cc phys_page_allocator.cc pmem.cc process.cc\
 						 scheduler.cc serial.cc sheet.cc subtask.cc \
@@ -35,6 +36,9 @@ CLANG_WARNINGS = \
 		-Wno-keyword-macro
 C_STD = -std=c11
 CXX_STD = -std=c++17
+
+LIBCXX_FOR_KERNEL_INC_PATH=third_party_root/include/c++/v1
+LIBCXX_FOR_KERNEL_LIB_PATH=third_party_root/lib
 		
 CFLAGS_LOADER= \
 		-target x86_64-pc-win32-coff \
@@ -57,18 +61,22 @@ CFLAGS_KERNEL= \
 		-target x86_64-unknown-none-elf \
 		-fno-stack-protector -fno-exceptions -fshort-wchar \
 		-mno-red-zone -mstack-alignment=8 \
-		-nostdlibinc \
 		-Ithird_party/newlib-cygwin_dest/include/ \
 		$(CLANG_WARNINGS) $(C_STD)
 
 CXXFLAGS_KERNEL= \
 		-target x86_64-unknown-none-elf \
-		-fno-stack-protector -fno-exceptions -fshort-wchar \
+		-fno-stack-protector -fno-exceptions -fshort-wchar -fno-rtti \
 		-mno-red-zone -mstack-alignment=8 \
-		-nostdlibinc \
 		-Ithird_party/newlib-cygwin_dest/include/ \
-		-D__ELF__ -D_LIBCPP_HAS_NO_THREADS -Ithird_party/llvm-test/include/c++/v1/ \
+		-D__ELF__ \
+		-I$(LIBCXX_FOR_KERNEL_INC_PATH) \
 		$(CLANG_WARNINGS) $(CXX_STD)
+
+LDFLAGS_KERNEL= \
+		-L$(LIBCXX_FOR_KERNEL_LIB_PATH) -lc++ -lc++abi -lunwind \
+	  -Lthird_party/newlib-cygwin_dest/lib -lc \
+    -static # --verbose
 
 CXXFLAGS_FOR_TEST= \
 		$(CLANG_WARNINGS) $(CXX_STD)
@@ -101,7 +109,7 @@ liumos.o : liumos.cc githash.h $(HEADERS) Makefile
 		-c -o $*.o $*.cc
 
 %.o : %.cc $(HEADERS) Makefile
-	$(CC) $(CXXFLAGS_LOADER) \
+	$(CC)++ $(CXXFLAGS_LOADER) \
 		-c -o $*.o $*.cc
 
 %.o : %.S Makefile
@@ -122,7 +130,7 @@ BOOTX64.EFI : $(LOADER_OBJS) $(HEADERS) Makefile
 		-entry:efi_main $(LOADER_OBJS) -out:$@
 
 %.elf.o : %.cc $(HEADERS) Makefile
-	$(CC) $(CXXFLAGS_KERNEL) \
+	$(CC)++ $(CXXFLAGS_KERNEL) \
 		-g -c -fPIC -o $*.elf.o $*.cc
 
 %.elf.o : %.c $(HEADERS) Makefile
@@ -134,7 +142,8 @@ BOOTX64.EFI : $(LOADER_OBJS) $(HEADERS) Makefile
 		-c -o $*.elf.o $*.S
 
 LIUMOS.ELF : $(KERNEL_OBJS) kernel.ld Makefile
-	$(LD_LLD) -o $@ -e KernelEntry -T kernel.ld -L third_party/newlib-cygwin_dest/lib -lc -static $(KERNEL_OBJS)
+	$(LD_LLD) $(LDFLAGS_KERNEL) \
+		-o $@ -e KernelEntry -T kernel.ld $(KERNEL_OBJS)
 
 NEWLIB_BUILD_DIR=third_party/newlib-cygwin_build
 
@@ -154,6 +163,15 @@ newlib:
 	&& \
 	make -j4 install
 
+LLVM_LIBUNWIND_BUILD_DIR=third_party/llvm-project/libunwind/build
+
+libcxx:
+	git submodule init
+	git submodule update --depth=1
+	./libunwind_config_and_install.sh
+	./libcxxabi_config_and_install.sh
+	./libcxx_config_and_install.sh
+
 run:
 	make -C .. run
 
@@ -170,6 +188,8 @@ clean :
 	-rm *.gen.cc
 	-rm *.bin
 	-rm githash.cc
+	-rm -rf third_party_build
+	-rm -rf third_party_root
 
 format :
 	clang-format -i *.cc *.h

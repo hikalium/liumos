@@ -1,6 +1,11 @@
 #pragma once
 
+#ifdef LIUMOS_LOADER
+#include "stl.h"
+#else
 #include <type_traits>
+#endif
+
 #include "generic.h"
 #include "phys_page_allocator.h"
 #include "sys_constant.h"
