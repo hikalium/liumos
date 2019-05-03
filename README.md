@@ -21,9 +21,10 @@ sudo apt install clang lld-4.0 qemu
 
 ```
 
-## Prepare tools
+## Prepare tools and libraries
 ```
 make tools
+make libcxx
 ```
 
 ## How to build
