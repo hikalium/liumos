@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
     else shdr_no_mem_list.push_back(&shdr);
   }
   std::sort(shdr_list.begin(), shdr_list.end(), [](const auto a, const auto b){ return a->sh_addr < b->sh_addr; });
-  std::cout << "Segments on memory:" << std::endl;
+  std::cout << "Segments have address: (sorted in ascending order)" << std::endl;
   for(auto shdrp : shdr_list) {
     Elf64_Shdr &shdr = *shdrp;
     printf("[ 0x%08llx - 0x%08llx ) %s", shdr.sh_addr, shdr.sh_addr + shdr.sh_size, reinterpret_cast<char *>(&buf[str_shdr.sh_offset + shdr.sh_name]));
@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
     std::cout << std::endl;
   }
   std::cout << std::endl;
-  std::cout << "Segments not on memory:" << std::endl;
+  std::cout << "Segments have no address:" << std::endl;
   for(auto shdrp : shdr_no_mem_list) {
     Elf64_Shdr &shdr = *shdrp;
     printf("0x%08llx %s", shdr.sh_addr + shdr.sh_size, reinterpret_cast<char *>(&buf[str_shdr.sh_offset + shdr.sh_name]));
