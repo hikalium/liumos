@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
   std::cout << "Segments have address: (sorted in ascending order)" << std::endl;
   for(auto shdrp : shdr_list) {
     Elf64_Shdr &shdr = *shdrp;
-    printf("[ 0x%08llx - 0x%08llx ) %s", shdr.sh_addr, shdr.sh_addr + shdr.sh_size, reinterpret_cast<char *>(&buf[str_shdr.sh_offset + shdr.sh_name]));
+    printf("[ 0x%016llx - 0x%016llx ) %s", shdr.sh_addr, shdr.sh_addr + shdr.sh_size, reinterpret_cast<char *>(&buf[str_shdr.sh_offset + shdr.sh_name]));
     fflush(stdout);
     if(shdr.sh_type == SHT_PROGBITS) std::cout << " PROGBITS";
     if(shdr.sh_type == SHT_NOBITS) std::cout << " NOBITS";
@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
   std::cout << "Segments have no address:" << std::endl;
   for(auto shdrp : shdr_no_mem_list) {
     Elf64_Shdr &shdr = *shdrp;
-    printf("0x%08llx %s", shdr.sh_addr + shdr.sh_size, reinterpret_cast<char *>(&buf[str_shdr.sh_offset + shdr.sh_name]));
+    printf("0x%016llx %s", shdr.sh_addr + shdr.sh_size, reinterpret_cast<char *>(&buf[str_shdr.sh_offset + shdr.sh_name]));
     fflush(stdout);
     if(shdr.sh_type == SHT_PROGBITS) std::cout << " PROGBITS";
     if(shdr.sh_type == SHT_NOBITS) std::cout << " NOBITS";

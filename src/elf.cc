@@ -237,7 +237,7 @@ void LoadKernelELF(File& file) {
   map_info.data.SetPhysAddr(liumos->dram_allocator->AllocPages<uint64_t>(
       ByteSizeToPageSize(map_info.data.GetMapSize())));
 
-  constexpr uint64_t kNumOfKernelMainStackPages = 2;
+  constexpr uint64_t kNumOfKernelMainStackPages = 4;
   uint64_t kernel_main_stack_virtual_base = 0xFFFF'FFFF'4000'0000ULL;
 
   map_info.stack.Set(

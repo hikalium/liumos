@@ -5,9 +5,9 @@
 
 extern "C" {
 
-caddr_t sbrk(int) {
+caddr_t sbrk(int diff) {
   errno = ENOMEM;
-  return 0;
+  return (caddr_t)-1;
 }
 
 void _exit(int) {
