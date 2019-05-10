@@ -79,7 +79,8 @@ LDFLAGS_KERNEL= \
     -static # --verbose
 
 CXXFLAGS_FOR_TEST= \
-		$(CLANG_WARNINGS) $(CXX_STD)
+		$(CLANG_WARNINGS) $(CXX_STD) -g -stdlib=libc++ \
+		-DLIUMOS_TEST
 
 OSX_STD_HEADER_INCLUDE_FLAGS= \
 		-I/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include \
@@ -101,48 +102,47 @@ lib/musl/include/%.h : lib/musl/include/Makefile
 	make -C lib/musl/include/ $*.h
 
 %.o : %.c $(HEADERS) Makefile
-	$(CC) $(CFLAGS_LOADER) \
+	$(LLVM_CC) $(CFLAGS_LOADER) \
 		-c -o $*.o $*.c
 
 liumos.o : liumos.cc githash.h $(HEADERS) Makefile
-	$(CC) $(CXXFLAGS_LOADER) \
+	$(LLVM_CC) $(CXXFLAGS_LOADER) \
 		-c -o $*.o $*.cc
 
 %.o : %.cc $(HEADERS) Makefile
-	$(CC)++ $(CXXFLAGS_LOADER) \
+	$(LLVM_CXX) $(CXXFLAGS_LOADER) \
 		-c -o $*.o $*.cc
 
 %.o : %.S Makefile
-	$(CC) $(CFLAGS_LOADER) \
+	$(LLVM_CC) $(CFLAGS_LOADER) \
 		-c -o $*.o $*.S
 
 %.o.dump.txt : %.o Makefile
 	objdump -d $*.o > $@
 
 test_% : %_test.cc Makefile
-	$(CC) -g -o $*_test.bin $*_test.cc -DLIUMOS_TEST $(CXXFLAGS_FOR_TEST) \
-		$(OSX_STD_HEADER_INCLUDE_FLAGS) -Wno-nullability-completeness -Wno-nullability-extension
+	$(CXX) $(CXXFLAGS_FOR_TEST) -o $*_test.bin $*_test.cc
 	@./$*_test.bin
 
 BOOTX64.EFI : $(LOADER_OBJS) $(HEADERS) Makefile
-	$(LLD_LINK) \
+	$(LLVM_LLD_LINK) \
 		-subsystem:efi_application -nodefaultlib \
 		-entry:efi_main $(LOADER_OBJS) -out:$@
 
 %.elf.o : %.cc $(HEADERS) Makefile
-	$(CC)++ $(CXXFLAGS_KERNEL) \
+	$(LLVM_CXX) $(CXXFLAGS_KERNEL) \
 		-g -c -fPIC -o $*.elf.o $*.cc
 
 %.elf.o : %.c $(HEADERS) Makefile
-	$(CC) $(CFLAGS_KERNEL) \
+	$(LLVM_CC) $(CFLAGS_KERNEL) \
 		-g -c -fPIC -o $*.elf.o $*.c
 
 %.elf.o : %.S Makefile
-	$(CC) $(CXXFLAGS_KERNEL) \
+	$(LLVM_CC) $(CXXFLAGS_KERNEL) \
 		-c -o $*.elf.o $*.S
 
 LIUMOS.ELF : $(KERNEL_OBJS) kernel.ld Makefile
-	$(LD_LLD) $(LDFLAGS_KERNEL) \
+	$(LLVM_LD_LLD) $(LDFLAGS_KERNEL) \
 		-o $@ -e KernelEntry -T kernel.ld $(KERNEL_OBJS)
 
 NEWLIB_BUILD_DIR=third_party/newlib-cygwin_build
@@ -180,7 +180,6 @@ unittest:
 	make test_paging
 
 clean :
-	-make -C $(NEWLIB_BUILD_DIR) clean
 	-rm *.EFI
 	-rm *.lib
 	-rm *.o
@@ -188,8 +187,14 @@ clean :
 	-rm *.gen.cc
 	-rm *.bin
 	-rm githash.cc
+
+clean_newlib :
+	-make -C $(NEWLIB_BUILD_DIR) clean
+
+clean_thirdparty :
 	-rm -rf third_party_build
 	-rm -rf third_party_root
+
 
 format :
 	clang-format -i *.cc *.h
@@ -201,7 +206,7 @@ sym : LIUMOS.ELF
 	/usr/local/opt/binutils/bin/gobjdump -t LIUMOS.ELF | more
 
 print_cc :
-	@echo "$(CC) $(LD)"
+	@echo "$(LLVM_CC)"
 
 dump : $(addsuffix .dump.txt, $(OBJS))
 
