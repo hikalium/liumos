@@ -38,6 +38,18 @@ void ProcessMappingInfo::Print() {
   stack.Print();
 }
 
+void ExecutionContext::ExpandHeap(int64_t diff) {
+  uint64_t diff_abs = diff < 0 ? -diff : diff;
+  if (diff_abs > map_info_.heap.GetMapSize()) {
+    PutStringAndDecimal("diff_abs", diff_abs);
+    PutStringAndDecimal("map_size", map_info_.heap.GetMapSize());
+    Panic("Too large heap expansion request");
+  }
+  heap_used_size_ += diff;
+  if (heap_used_size_ > map_info_.heap.GetMapSize())
+    Panic("No more heap");
+};
+
 void ExecutionContext::Flush(IA_PML4& pml4, uint64_t& num_of_clflush_issued) {
   map_info_.Flush(pml4, num_of_clflush_issued);
   CLFlush(this, sizeof(*this), num_of_clflush_issued);

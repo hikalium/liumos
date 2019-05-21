@@ -129,6 +129,8 @@ static void LoadAndMap(TAllocator& allocator,
                     should_clflush);
   proc_map_info.stack.Map(allocator, page_root, page_attr | kPageAttrWritable,
                           should_clflush);
+  proc_map_info.heap.Map(allocator, page_root, page_attr | kPageAttrWritable,
+                         should_clflush);
 }
 
 Process& LoadELFAndCreateEphemeralProcess(File& file) {
@@ -244,6 +246,14 @@ void LoadKernelELF(File& file) {
       kernel_main_stack_virtual_base,
       liumos->dram_allocator->AllocPages<uint64_t>(kNumOfKernelMainStackPages),
       kNumOfKernelMainStackPages << kPageSizeExponent);
+
+  constexpr uint64_t kNumOfKernelHeapPages = 4;
+  uint64_t kernel_heap_virtual_base = 0xFFFF'FFFF'5000'0000ULL;
+
+  map_info.heap.Set(
+      kernel_heap_virtual_base,
+      liumos->dram_allocator->AllocPages<uint64_t>(kNumOfKernelHeapPages),
+      kNumOfKernelHeapPages << kPageSizeExponent);
 
   LoadAndMap(*liumos->dram_allocator, GetKernelPML4(), map_info, phdr_map_info,
              0, false);

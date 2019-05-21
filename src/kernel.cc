@@ -198,6 +198,13 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
   ExecutionContext& root_context =
       *liumos->kernel_heap_allocator->Alloc<ExecutionContext>();
   root_context.SetRegisters(nullptr, 0, nullptr, 0, ReadCR3(), 0, 0);
+  ProcessMappingInfo& map_info = root_context.GetProcessMappingInfo();
+  constexpr uint64_t kNumOfKernelHeapPages = 4;
+  uint64_t kernel_heap_virtual_base = 0xFFFF'FFFF'5000'0000ULL;
+  map_info.heap.Set(
+      kernel_heap_virtual_base,
+      liumos->dram_allocator->AllocPages<uint64_t>(kNumOfKernelHeapPages),
+      kNumOfKernelHeapPages << kPageSizeExponent);
   liumos->root_process = &liumos->proc_ctrl->Create();
   liumos->root_process->InitAsEphemeralProcess(root_context);
   Scheduler scheduler_(*liumos->root_process);
@@ -240,8 +247,9 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
   snprintf(s, sizeof(s), "capacity = 0x%lX\n", vec.capacity());
   PutString(s);
   std::sort(vec.begin(), vec.end());
+  PutString("sorted values:\n");
   for (auto& v : vec) {
-    snprintf(s, sizeof(s), "%d %p\n", v, &v);
+    snprintf(s, sizeof(s), "value=%d, addr=%p\n", v, &v);
     PutString(s);
   }
   PutString("\n");

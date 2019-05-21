@@ -2,12 +2,15 @@
 #include <stddef.h>
 #include <sys/types.h>
 #include "generic.h"
+#include "liumos.h"
 
 extern "C" {
 
 caddr_t sbrk(int diff) {
-  errno = ENOMEM;
-  return (caddr_t)-1;
+  Process& proc = liumos->scheduler->GetCurrentProcess();
+  ExecutionContext& ctx = proc.GetExecutionContext();
+  ctx.ExpandHeap(diff);
+  return (caddr_t)ctx.GetHeapEndVirtAddr();
 }
 
 void _exit(int) {

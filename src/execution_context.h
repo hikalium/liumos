@@ -54,16 +54,18 @@ struct ProcessMappingInfo {
   SegmentMapping code;
   SegmentMapping data;
   SegmentMapping stack;
+  SegmentMapping heap;
   void Print();
   void Clear() {
     code.Clear();
     data.Clear();
     stack.Clear();
+    heap.Clear();
   }
   void Flush(IA_PML4& pml4, uint64_t& num_of_clflush_issued) {
     code.Flush(pml4, num_of_clflush_issued);
     data.Flush(pml4, num_of_clflush_issued);
-    stack.Flush(pml4, num_of_clflush_issued);
+    heap.Flush(pml4, num_of_clflush_issued);
   }
 };
 
@@ -73,6 +75,10 @@ class ExecutionContext {
   ProcessMappingInfo& GetProcessMappingInfo() { return map_info_; };
   uint64_t GetKernelRSP() { return kernel_rsp_; }
   void SetKernelRSP(uint64_t kernel_rsp) { kernel_rsp_ = kernel_rsp; }
+  void ExpandHeap(int64_t diff);
+  uint64_t GetHeapEndVirtAddr() {
+    return heap_used_size_ + map_info_.heap.GetVirtAddr();
+  }
   void SetCR3(IA_PML4& cr3) {
     cpu_context_.cr3 = reinterpret_cast<uint64_t>(&cr3);
   }
@@ -106,6 +112,7 @@ class ExecutionContext {
   CPUContext cpu_context_;
   ProcessMappingInfo map_info_;
   uint64_t kernel_rsp_;
+  uint64_t heap_used_size_;
 };
 
 class PersistentProcessInfo {
