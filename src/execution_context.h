@@ -97,6 +97,7 @@ class ExecutionContext {
     cpu_context_.int_ctx.rflags = rflags | 2;
     cpu_context_.cr3 = cr3;
     kernel_rsp_ = kernel_rsp;
+    heap_used_size_ = 0;
   }
   void Flush(IA_PML4& pml4, uint64_t& stat);
   void CopyContextFrom(ExecutionContext& from, uint64_t& stat_copied_bytes) {

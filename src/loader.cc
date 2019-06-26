@@ -180,20 +180,26 @@ void Sleep() {
   // Fake
 }
 
-void MainForBootProcessor(void* image_handle, EFI::SystemTable* system_table) {
+void MainForBootProcessor(EFI::Handle image_handle,
+                          EFI::SystemTable* system_table) {
   liumos = &liumos_;
   efi_.Init(system_table);
   liumos_.loader_info.efi = &efi_;
   efi_.ClearScreen();
+
+  InitGraphics();
+  main_console_.SetSheet(liumos->screen_sheet);
+  liumos->main_console = &main_console_;
+
+  efi_.ListAllFiles();
+
   logo_file.LoadFromEFISimpleFS(L"logo.ppm");
   hello_bin_file.LoadFromEFISimpleFS(L"hello.bin");
   liumos_.loader_info.files.hello_bin = &hello_bin_file;
   pi_bin_file.LoadFromEFISimpleFS(L"pi.bin");
   liumos_.loader_info.files.pi_bin = &pi_bin_file;
   liumos_elf_file.LoadFromEFISimpleFS(L"LIUMOS.ELF");
-  InitGraphics();
-  main_console_.SetSheet(liumos->screen_sheet);
-  liumos->main_console = &main_console_;
+
   efi_.GetMemoryMapAndExitBootServices(image_handle, efi_memory_map);
   liumos->efi_memory_map = &efi_memory_map;
 

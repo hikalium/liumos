@@ -9,11 +9,11 @@ void Console::PutChar(char c) {
   }
   if (!sheet_) {
     if (c == '\n') {
-      CoreFunc::GetEFI().PutChar('\r');
-      CoreFunc::GetEFI().PutChar('\n');
+      CoreFunc::GetEFI().PutWChar('\r');
+      CoreFunc::GetEFI().PutWChar('\n');
       return;
     }
-    CoreFunc::GetEFI().PutChar(c);
+    CoreFunc::GetEFI().PutWChar(c);
     return;
   }
   if (c == '\n') {

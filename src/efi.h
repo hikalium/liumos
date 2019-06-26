@@ -7,10 +7,17 @@ class EFI {
  public:
   typedef uint64_t UINTN;
   typedef void* Handle;
+  enum class Boolean : uint8_t {
+    kFalse = 0,
+    kTrue = 1,
+  };
 
   enum class Status : UINTN {
+    // Appendix D - Status Codes
+    // p.2212-
     kSuccess = 0x0,
     kBufferTooSmall = 0x8000'0000'0000'0005,
+    kNotFound = 0x8000'0000'0000'000E,
   };
 
   typedef enum {
@@ -114,6 +121,17 @@ class EFI {
     wchar_t file_name[kFileNameSize];
   };
 
+  static constexpr int kVolumeLabelSize = 32;
+  struct FileSystemInfo {
+    // EFI_FILE_SYSTEM_INFO
+    uint64_t size;
+    Boolean readonly;
+    uint64_t volume_size;
+    uint64_t free_space;
+    uint32_t block_size;
+    wchar_t volume_label[kVolumeLabelSize];
+  };
+
   enum FileProtocolModes : uint64_t {
     kRead = 1,
   };
@@ -127,7 +145,7 @@ class EFI {
                    uint64_t attr);
     Status (*Close)();
     Status (*Delete)();
-    Status (*Read)(FileProtocol* self, UINTN* buffer_size, uint8_t* buffer);
+    Status (*Read)(FileProtocol* self, UINTN* buffer_size, void* buffer);
     uint64_t (*Write)();
     uint64_t _buf3[2];
     Status (*GetInfo)(FileProtocol* self,
@@ -390,7 +408,7 @@ class EFI {
   };
 
   void ClearScreen();
-  void PutChar(wchar_t c);
+  void PutWChar(wchar_t c);
 
   wchar_t GetChar();
   void* GetConfigurationTableByUUID(const GUID* guid);
@@ -404,6 +422,7 @@ class EFI {
     assert(graphics_output_protocol_->mode);
     return *graphics_output_protocol_->mode;
   }
+  void ListAllFiles();
 
  private:
   SystemTable* system_table_;
