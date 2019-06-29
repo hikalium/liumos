@@ -36,7 +36,8 @@ class SegmentMapping {
            IA_PML4& page_root,
            uint64_t page_attr,
            bool shoud_clflush) {
-    assert(GetPhysAddr());
+    if (!GetPhysAddr())
+      return;  // To avoid mapping null segment
     CreatePageMapping(allocator, page_root, GetVirtAddr(), GetPhysAddr(),
                       GetMapSize(), kPageAttrPresent | page_attr,
                       shoud_clflush);
