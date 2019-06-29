@@ -256,6 +256,20 @@ WriteIOPort8:
   out dx, al
   ret
 
+.global ReadIOPort32
+ReadIOPort32:
+  mov edx, ecx
+  xor rax, rax
+  in eax, dx
+  ret
+
+.global WriteIOPort32
+WriteIOPort32:
+	mov ax, dx
+  mov dx, cx
+  out dx, eax
+  ret
+
 .global WriteCSSelector
 WriteCSSelector:
 	# The MOV instruction CANNOT be used to load the CS register

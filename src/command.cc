@@ -1,6 +1,7 @@
 #include "liumos.h"
 #include "pmem.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 
 namespace ConsoleCommand {
@@ -544,6 +545,39 @@ void Time() {
   PutStringAndHex("HPET main counter", liumos->hpet->ReadMainCounterValue());
 }
 
+static uint32_t ReadPCIRegister(uint32_t bus,
+                                uint32_t device,
+                                uint32_t func,
+                                uint32_t reg) {
+  assert((bus & ~0b1111'1111) == 0);
+  assert((device & ~0b1'1111) == 0);
+  assert((func & ~0b111) == 0);
+  assert((reg & ~0b1111'1100) == 0);
+  constexpr uint16_t kIOAddrPCIConfigAddr = 0x0CF8;
+  constexpr uint16_t kIOAddrPCIConfigData = 0x0CFC;
+  WriteIOPort32(kIOAddrPCIConfigAddr,
+                (1 << 31) | (bus << 16) | (device << 11) | (func << 8) | reg);
+  return ReadIOPort32(kIOAddrPCIConfigData);
+}
+
+static void ListPCIDevices() {
+  PutString("lspci\n");
+  constexpr uint32_t kPCIInvalidVendorID = 0xffff'ffff;
+  char s[128];
+  for (int bus = 0x00; bus < 0xFF; bus++) {
+    for (int device = 0x00; device < 32; device++) {
+      uint32_t func = 0;
+      uint32_t id = ReadPCIRegister(bus, device, func, 0);
+      if (id == kPCIInvalidVendorID)
+        continue;
+      // "/XX/XX/X XXXX:XXXX"
+      snprintf(s, sizeof(s), "/%02X/%02X/%X %04X:%04X\n", bus, device, func,
+               id & 0xFFFF, (id >> 16) & 0xFFFF);
+      PutString(s);
+    }
+  }
+}
+
 void Run(TextBox& tbox) {
   const char* line = tbox.GetRecordedString();
   if (IsEqualString(line, "hello")) {
@@ -695,7 +729,8 @@ void Run(TextBox& tbox) {
     PutStringAndHex("phy_addr_mask", f.phy_addr_mask);
     PutStringAndBool("CLFLUSH supported", f.clfsh);
     PutStringAndBool("CLFLUSHOPT supported", f.clflushopt);
-
+  } else if (IsEqualString(line, "lspci")) {
+    ListPCIDevices();
   } else if (IsEqualString(line, "help")) {
     PutString("hello: Nothing to say.\n");
     PutString("show xsdt: Print XSDT Entries\n");
