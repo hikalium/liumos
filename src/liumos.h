@@ -105,7 +105,6 @@ packed_struct LiumOS {
   Sheet* screen_sheet;
   Console* main_console;
   KeyboardController* keyboard_ctrl;
-  SerialPort* com1;
   LocalAPIC* bsp_local_apic;
   CPUFeatureSet* cpu_features;
   PhysicalPageAllocator* dram_allocator;

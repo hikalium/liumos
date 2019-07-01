@@ -17,6 +17,7 @@ Console virtual_console_;
 LocalAPIC bsp_local_apic_;
 CPUFeatureSet cpu_features_;
 SerialPort com1_;
+SerialPort com2_;
 HPET hpet_;
 
 void InitPMEMManagement() {
@@ -187,8 +188,9 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
   liumos->main_console = &virtual_console_;
 
   com1_.Init(kPortCOM1);
-  liumos->com1 = &com1_;
-  liumos->main_console->SetSerial(&com1_);
+  com2_.Init(kPortCOM2);
+
+  liumos->main_console->SetSerial(&com2_);
 
   bsp_local_apic_.Init();
 

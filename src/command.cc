@@ -765,37 +765,18 @@ void WaitAndProcess(TextBox& tbox) {
   PutString("> ");
   tbox.StartRecording();
   while (1) {
-    StoreIntFlagAndHalt();
-    while (1) {
-      uint16_t keyid;
-      if ((keyid = liumos->keyboard_ctrl->ReadKeyID())) {
-        if (!keyid && keyid & KeyID::kMaskBreak)
-          continue;
-        if (keyid == KeyID::kEnter) {
-          keyid = '\n';
-        }
-      } else if (liumos->com1->IsReceived()) {
-        keyid = liumos->com1->ReadCharReceived();
-        if (keyid == '\n') {
-          continue;
-        }
-        if (keyid == '\r') {
-          keyid = '\n';
-        }
-        if (keyid == 0x7f) {
-          keyid = KeyID::kBackspace;
-        }
-      } else {
-        break;
-      }
-      if (keyid == '\n') {
-        tbox.StopRecording();
-        tbox.putc('\n');
-        ConsoleCommand::Run(tbox);
-        return;
-      }
-      tbox.putc(keyid);
+    uint16_t keyid;
+    while ((keyid = liumos->main_console->GetCharWithoutBlocking()) ==
+           KeyID::kNoInput) {
+      StoreIntFlagAndHalt();
     }
+    if (keyid == '\n') {
+      tbox.StopRecording();
+      tbox.putc('\n');
+      ConsoleCommand::Run(tbox);
+      return;
+    }
+    tbox.putc(keyid);
   }
 }
 

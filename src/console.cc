@@ -43,6 +43,38 @@ void Console::PutChar(char c) {
   }
 }
 
+#ifndef LIUMOS_LOADER
+
+uint16_t Console::GetCharWithoutBlocking() {
+  while (1) {
+    uint16_t keyid;
+    if ((keyid = liumos->keyboard_ctrl->ReadKeyID())) {
+      if (!keyid && keyid & KeyID::kMaskBreak)
+        continue;
+      if (keyid == KeyID::kEnter) {
+        return '\n';
+      }
+    } else if (serial_port_ && serial_port_->IsReceived()) {
+      keyid = serial_port_->ReadCharReceived();
+      if (keyid == '\n') {
+        continue;
+      }
+      if (keyid == '\r') {
+        return '\n';
+      }
+      if (keyid == 0x7f) {
+        return KeyID::kBackspace;
+      }
+    } else {
+      break;
+    }
+    return keyid;
+  }
+  return KeyID::kNoInput;
+}
+
+#endif
+
 void PutChar(char c) {
   CoreFunc::PutChar(c);
 }

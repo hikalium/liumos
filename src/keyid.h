@@ -53,4 +53,5 @@ constexpr uint16_t kEnter = KeyID::kMaskExtended | 0x0042;
 
 constexpr uint16_t kError = KeyID::kMaskExtended | 0x007e;
 constexpr uint16_t kUnknown = KeyID::kMaskExtended | 0x007f;
+constexpr uint16_t kNoInput = KeyID::kMaskExtended | 0x00ff;
 }  // namespace KeyID

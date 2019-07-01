@@ -26,6 +26,10 @@ class Console {
   void PutAddressRange(uint64_t addr, uint64_t size);
   void PutAddressRange(void* addr, uint64_t size);
 
+#ifndef LIUMOS_LOADER
+  uint16_t GetCharWithoutBlocking();
+#endif
+
  private:
   int cursor_x_, cursor_y_;
   Sheet* sheet_;

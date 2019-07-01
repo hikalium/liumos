@@ -1,11 +1,14 @@
 #include "liumos.h"
 
 void SerialPort::Init(uint16_t port) {
+  // https://wiki.osdev.org/Serial_Ports
   port_ = port;
   WriteIOPort8(port_ + 1, 0x00);  // Disable all interrupts
   WriteIOPort8(port_ + 3, 0x80);  // Enable DLAB (set baud rate divisor)
-  WriteIOPort8(port_ + 0, 0x01);  // Set divisor (lo byte) of baud rate
-  WriteIOPort8(port_ + 1, 0x00);  //                  (hi byte)
+  constexpr uint16_t baud_divisor =
+      0x0001;  // baud rate = (115200 / baud_divisor)
+  WriteIOPort8(port_ + 0, baud_divisor & 0xff);
+  WriteIOPort8(port_ + 1, baud_divisor >> 8);
   WriteIOPort8(port_ + 3, 0x03);  // 8 bits, no parity, one stop bit
   WriteIOPort8(port_ + 2,
                0xC7);  // Enable FIFO, clear them, with 14-byte threshold

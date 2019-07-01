@@ -7,6 +7,7 @@ QEMU_ARGS=\
 					 -m 8G,slots=2,maxmem=10G \
 					 -drive format=raw,file=fat:rw:mnt -net none \
 					 -serial tcp::1234,server,nowait \
+					 -serial tcp::1235,server,nowait \
 					 -device qemu-xhci
 
 QEMU_ARGS_PMEM=\
@@ -70,6 +71,9 @@ img : files .FORCE
 liumos.vdi : .FORCE img
 	-rm liumos.vdi
 	vbox-img convert --srcfilename liumos.img --srcformat RAW --dstfilename liumos.vdi --dstformat VDI
+
+serial :
+	screen /dev/tty.usbserial-* 115200
 
 unittest :
 	make -C src unittest

@@ -13,12 +13,10 @@ void Scheduler::RegisterProcess(Process& proc) {
 }
 
 uint64_t Scheduler::LaunchAndWaitUntilExit(Process& proc) {
-  liumos->main_console->SetSerial(nullptr);
   uint64_t t0 = liumos->hpet->ReadMainCounterValue();
   RegisterProcess(proc);
   proc.WaitUntilExit();
   uint64_t t1 = liumos->hpet->ReadMainCounterValue();
-  liumos->main_console->SetSerial(liumos->com1);
   uint64_t real_femto_sec = (t1 - t0) * liumos->hpet->GetFemtosecondPerCount();
   PutStringAndDecimalWithPointPos("  realtime           (sec)", real_femto_sec,
                                   15);

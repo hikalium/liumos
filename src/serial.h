@@ -1,6 +1,7 @@
 #include "generic.h"
 
 constexpr uint16_t kPortCOM1 = 0x3f8;
+constexpr uint16_t kPortCOM2 = 0x2f8;
 
 class SerialPort {
  public:
