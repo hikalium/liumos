@@ -40,6 +40,7 @@ void ShowSLIT(void);
 void ShowEFIMemoryMap(void);
 void Free(void);
 void Time(void);
+void Version();
 void Run(TextBox& tbox);
 void WaitAndProcess(TextBox& tbox);
 }  // namespace ConsoleCommand

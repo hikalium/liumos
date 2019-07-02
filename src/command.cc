@@ -545,6 +545,12 @@ void Time() {
   PutStringAndHex("HPET main counter", liumos->hpet->ReadMainCounterValue());
 }
 
+void Version() {
+  PutString("\nliumOS version: ");
+  PutString(GetVersionStr());
+  PutString("\n\n");
+}
+
 static uint32_t ReadPCIRegister(uint32_t bus,
                                 uint32_t device,
                                 uint32_t func,
@@ -731,6 +737,8 @@ void Run(TextBox& tbox) {
     PutStringAndBool("CLFLUSHOPT supported", f.clflushopt);
   } else if (IsEqualString(line, "lspci")) {
     ListPCIDevices();
+  } else if (IsEqualString(line, "version")) {
+    Version();
   } else if (IsEqualString(line, "help")) {
     PutString("hello: Nothing to say.\n");
     PutString("show xsdt: Print XSDT Entries\n");
