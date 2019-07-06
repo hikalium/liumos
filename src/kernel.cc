@@ -215,45 +215,6 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
   PutString("Hello from kernel!\n");
   ConsoleCommand::Version();
 
-  char s[128];
-  snprintf(s, sizeof(s), "123 = 0x%X\n", 123);
-  PutString(s);
-
-  int v = 123;
-  std::function<void(void)> f = [&]() {
-    snprintf(s, sizeof(s), "Hello from std::function!\nv = %d\n", v);
-    PutString(s);
-  };
-  v = 456;
-  f();
-
-  std::vector<int> vec;
-  snprintf(s, sizeof(s), "capacity = 0x%lX\n", vec.capacity());
-  PutString(s);
-  vec.push_back(3);
-  vec.push_back(1);
-  vec.push_back(4);
-  vec.push_back(1);
-  vec.push_back(5);
-  vec.push_back(9);
-  vec.push_back(2);
-  vec.push_back(6);
-  vec.push_back(5);
-  for (auto& v : vec) {
-    snprintf(s, sizeof(s), "%d ", v);
-    PutString(s);
-  }
-  PutString("\n");
-  snprintf(s, sizeof(s), "capacity = 0x%lX\n", vec.capacity());
-  PutString(s);
-  std::sort(vec.begin(), vec.end());
-  PutString("sorted values:\n");
-  for (auto& v : vec) {
-    snprintf(s, sizeof(s), "value=%d, addr=%p\n", v, &v);
-    PutString(s);
-  }
-  PutString("\n");
-
   ClearIntFlag();
 
   constexpr uint64_t kNumOfKernelStackPages = 128;

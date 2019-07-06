@@ -33,6 +33,7 @@ QEMU=qemu-system-x86_64
 
 CLANG_WARNINGS = \
 		-Wall -Wpedantic -Wextra -Wconditional-uninitialized -Wshorten-64-to-32 \
+		-Werror \
 		-Wno-keyword-macro
 C_STD = -std=c11
 CXX_STD = -std=c++17
@@ -64,6 +65,7 @@ CFLAGS_KERNEL= \
 		-Ithird_party/newlib-cygwin_dest/include/ \
 		$(CLANG_WARNINGS) $(C_STD)
 
+# -Wno-gnu-include-next: avoid warning from third_party/newlib-cygwin_dest/include/limits.h:132:3
 CXXFLAGS_KERNEL= \
 		-target x86_64-unknown-none-elf \
 		-fno-stack-protector -fno-exceptions -fshort-wchar -fno-rtti \
@@ -71,7 +73,10 @@ CXXFLAGS_KERNEL= \
 		-Ithird_party/newlib-cygwin_dest/include/ \
 		-D__ELF__ \
 		-I$(LIBCXX_FOR_KERNEL_INC_PATH) \
-		$(CLANG_WARNINGS) $(CXX_STD)
+		$(CLANG_WARNINGS) \
+		-Wno-gnu-include-next \
+		$(CXX_STD)
+
 
 LDFLAGS_KERNEL= \
 		-L$(LIBCXX_FOR_KERNEL_LIB_PATH) -lc++ -lc++abi -lunwind \
