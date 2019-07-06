@@ -8,9 +8,7 @@ jobs:
             - run:
                 name: Install build tools
                 command: >
-                    apt update && apt install -y build-essential wget software-properties-common python-software-properties libc++-dev &&
-                    apt-get update &&
-                    apt-get install -y clang-7 lld-7
+                    apt update && apt install -y build-essential wget clang-7 lld-7 libc++-7-dev libc++abi-7-dev
             - run:
                 name: Run unit test
                 command: make unittest CXX=clang++-7
