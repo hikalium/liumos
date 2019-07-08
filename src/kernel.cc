@@ -2,8 +2,10 @@
 #include <algorithm>
 #include <functional>
 #include <vector>
+
 #include "corefunc.h"
 #include "liumos.h"
+#include "pci.h"
 
 LiumOS* liumos;
 
@@ -237,6 +239,9 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
   keyboard_ctrl_.Init();
 
   idt_.SetIntHandler(0x20, TimerHandler);
+
+  PCI& pci = *PCI::GetInstance();
+  pci.DetectDevices();
 
   StoreIntFlag();
 

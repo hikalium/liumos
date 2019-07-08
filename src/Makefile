@@ -19,7 +19,7 @@ KERNEL_SRCS= acpi.cc apic.cc asm.S \
 						 kernel.cc keyboard.cc \
 						 libcxx_support.cc \
 						 newlib_support.cc \
-						 paging.cc phys_page_allocator.cc pmem.cc process.cc\
+						 paging.cc pci.cc phys_page_allocator.cc pmem.cc process.cc\
 						 scheduler.cc serial.cc sheet.cc subtask.cc \
 						 sleep_handler.S sys_constant.cc syscall.cc syscall_handler.S\
 						 text_box.cc \
@@ -62,6 +62,7 @@ CFLAGS_KERNEL= \
 		-target x86_64-unknown-none-elf \
 		-fno-stack-protector -fno-exceptions -fshort-wchar \
 		-mno-red-zone -mstack-alignment=8 \
+		-nostdlib -nostdinc\
 		-Ithird_party/newlib-cygwin_dest/include/ \
 		$(CLANG_WARNINGS) $(C_STD)
 
@@ -70,16 +71,18 @@ CXXFLAGS_KERNEL= \
 		-target x86_64-unknown-none-elf \
 		-fno-stack-protector -fno-exceptions -fshort-wchar -fno-rtti \
 		-mno-red-zone -mstack-alignment=8 \
-		-Ithird_party/newlib-cygwin_dest/include/ \
-		-D__ELF__ \
+		-nostdlibinc \
+		-D__ELF__ -D_LDBL_EQ_DBL \
 		-I$(LIBCXX_FOR_KERNEL_INC_PATH) \
+		-Ithird_party/newlib-cygwin_dest/include/ \
+		-I/usr/local/opt/llvm/lib/clang/7.0.1/include/ \
 		$(CLANG_WARNINGS) \
 		-Wno-gnu-include-next \
 		$(CXX_STD)
 
 
 LDFLAGS_KERNEL= \
-		-L$(LIBCXX_FOR_KERNEL_LIB_PATH) -lc++ -lc++abi -lunwind \
+		-L$(LIBCXX_FOR_KERNEL_LIB_PATH) -lc++ -lc++abi -lunwind -lm \
 	  -Lthird_party/newlib-cygwin_dest/lib -lc \
     -static # --verbose
 
@@ -170,9 +173,11 @@ newlib:
 
 LLVM_LIBUNWIND_BUILD_DIR=third_party/llvm-project/libunwind/build
 
-libcxx:
+submodule:
 	git submodule init
 	git submodule update --depth=1
+
+libcxx:
 	./libunwind_config_and_install.sh
 	./libcxxabi_config_and_install.sh
 	./libcxx_config_and_install.sh
