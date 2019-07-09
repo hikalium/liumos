@@ -7,7 +7,7 @@ __attribute__((ms_abi)) extern "C" void IntHandler(uint64_t intcode,
 }
 
 void IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
-  if (ReadRSP() < kKernelBaseAddr) {
+  if (liumos->is_multi_task_enabled && ReadRSP() < kKernelBaseAddr) {
     PutStringAndHex("Int#", intcode);
     PutStringAndHex("at CPL", info->int_ctx.cs & 3);
     PutStringAndHex("RIP", info->int_ctx.rip);
@@ -30,8 +30,10 @@ void IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
   PutStringAndHex("SS      ", info->int_ctx.ss);
   PutStringAndHex("RSP", info->int_ctx.rsp);
   PutStringAndHex("Error Code", info->error_code);
-  Process& proc = liumos->scheduler->GetCurrentProcess();
-  PutStringAndHex("Context#", proc.GetID());
+  if (liumos->is_multi_task_enabled) {
+    Process& proc = liumos->scheduler->GetCurrentProcess();
+    PutStringAndHex("Context#", proc.GetID());
+  }
   if (intcode == 0x08) {
     Panic("Double Fault");
   }

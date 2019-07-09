@@ -72,6 +72,7 @@ constexpr uint16_t kIOPortKeyboardData = 0x0060;
 // @libfunc.cc
 extern "C" {
 int strncmp(const char* s1, const char* s2, size_t n);
+int strcmp(const char* s1, const char* s2);
 void* memcpy(void* dst, const void* src, size_t n);
 void bzero(void* s, size_t n);
 int atoi(const char* str);
@@ -86,6 +87,7 @@ packed_struct LoaderInfo {
   struct {
     File* hello_bin;
     File* pi_bin;
+    File* liumos_elf;
   } files;
   EFI* efi;
 };
@@ -119,6 +121,7 @@ packed_struct LiumOS {
   Process* root_process;
   Process* sub_process;
   uint64_t time_slice_count;
+  bool is_multi_task_enabled;
 };
 extern LiumOS* liumos;
 

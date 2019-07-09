@@ -7,7 +7,6 @@
 extern "C" {
 
 caddr_t sbrk(int diff) {
-  PutStringAndDecimal("sbrk", diff);
   Process& proc = liumos->scheduler->GetCurrentProcess();
   ExecutionContext& ctx = proc.GetExecutionContext();
   ctx.ExpandHeap(diff);

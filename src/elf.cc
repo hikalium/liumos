@@ -53,6 +53,26 @@ static const Elf64_Ehdr* EnsureLoadable(const uint8_t* buf) {
   return ehdr;
 }
 
+const Elf64_Shdr* FindSectionHeader(File& file, const char* name) {
+  const uint8_t* buf = file.GetBuf();
+  const Elf64_Ehdr* ehdr = reinterpret_cast<const Elf64_Ehdr*>(buf);
+  if (!ehdr)
+    return nullptr;
+
+  const Elf64_Shdr* strtab_hdr = reinterpret_cast<const Elf64_Shdr*>(
+      buf + ehdr->e_shoff + ehdr->e_shentsize * ehdr->e_shstrndx);
+  const char* strtab =
+      reinterpret_cast<const char*>(buf + strtab_hdr->sh_offset);
+
+  for (int i = 0; i < ehdr->e_shnum; i++) {
+    const Elf64_Shdr* shdr = reinterpret_cast<const Elf64_Shdr*>(
+        buf + ehdr->e_shoff + ehdr->e_shentsize * i);
+    if (strcmp(&strtab[shdr->sh_name], name) == 0)
+      return shdr;
+  }
+  return nullptr;
+}
+
 static const Elf64_Ehdr* ParseProgramHeader(File& file,
                                             ProcessMappingInfo& proc_map_info,
                                             PhdrMappingInfo& phdr_map_info) {

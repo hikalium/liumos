@@ -88,7 +88,6 @@ void LaunchSubTask(KernelVirtualHeapAllocator& kernel_heap_allocator) {
   void* sub_context_rsp = reinterpret_cast<void*>(
       reinterpret_cast<uint64_t>(sub_context_stack_base) +
       (kNumOfStackPages << kPageSizeExponent));
-  PutStringAndHex("SubTask stack base", sub_context_stack_base);
 
   ExecutionContext& sub_context =
       *liumos->kernel_heap_allocator->Alloc<ExecutionContext>();
@@ -213,6 +212,22 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
   liumos->root_process->InitAsEphemeralProcess(root_context);
   Scheduler scheduler_(*liumos->root_process);
   liumos->scheduler = &scheduler_;
+  liumos->is_multi_task_enabled = true;
+
+  const Elf64_Shdr* sh_ctor =
+      FindSectionHeader(*liumos->loader_info.files.liumos_elf, ".ctors");
+  if (sh_ctor) {
+    PutString("Calling .ctors...\n");
+    void (*const* ctors)() =
+        reinterpret_cast<void (*const*)()>(sh_ctor->sh_addr);
+    auto num = sh_ctor->sh_size / sizeof(ctors);
+    for (decltype(num) i = 0; i < num; i++) {
+      if (i == 1)
+        continue;
+      PutStringAndHex("ctor", reinterpret_cast<const void*>(ctors[i]));
+      ctors[i]();
+    }
+  }
 
   PutString("Hello from kernel!\n");
   ConsoleCommand::Version();

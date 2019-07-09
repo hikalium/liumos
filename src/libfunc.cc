@@ -10,6 +10,14 @@ int strncmp(const char* s1, const char* s2, size_t n) {
   return 0;
 }
 
+int strcmp(const char* s1, const char* s2) {
+  for (size_t i = 0;; i++) {
+    if (s1[i] - s2[i])
+      return s1[i] - s2[i];
+  }
+  return 0;
+}
+
 extern "C" void* memcpy(void* dst, const void* src, size_t n) {
   for (size_t i = 0; i < n; i++) {
     reinterpret_cast<uint8_t*>(dst)[i] =

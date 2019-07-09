@@ -199,7 +199,7 @@ void PutStringAndHex(const char* s, uint64_t value) {
   PutString("\n");
 }
 
-void PutStringAndHex(const char* s, void* value) {
+void PutStringAndHex(const char* s, const void* value) {
   PutStringAndHex(s, reinterpret_cast<uint64_t>(value));
 }
 

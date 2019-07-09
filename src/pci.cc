@@ -3,8 +3,16 @@
 #include "liumos.h"
 
 #include <cstdio>
+#include <string>
 
 PCI* PCI::pci_;
+
+static const std::unordered_multimap<uint32_t, std::string> device_infos = {
+    {0x000D'1B36, "QEMU XHCI Host Controller"},
+    {0x2918'8086, "82801IB (ICH9) LPC Interface Controller"},
+    {0x29c0'8086, "82G33/G31/P35/P31 Express DRAM Controller"},
+    {0x1111'1234, "QEMU Virtual Video Controller"},
+};
 
 static uint32_t ReadPCIRegister(uint32_t bus,
                                 uint32_t device,
@@ -50,8 +58,10 @@ void PCI::PrintDevices() {
   for (auto& e : device_list_) {
     const uint16_t vendor_id = GetVendorID(e.first);
     const uint16_t device_id = GetDeviceID(e.first);
-    snprintf(s, sizeof(s), "/%02X/%02X/%X %04X:%04X\n", e.second.bus,
-             e.second.device, e.second.func, vendor_id, device_id);
+    const auto& it = device_infos.find(e.first);
+    snprintf(s, sizeof(s), "/%02X/%02X/%X %04X:%04X  %s\n", e.second.bus,
+             e.second.device, e.second.func, vendor_id, device_id,
+             it != device_infos.end() ? it->second.c_str() : "");
     PutString(s);
   }
 }

@@ -70,7 +70,7 @@ CFLAGS_KERNEL= \
 CXXFLAGS_KERNEL= \
 		-target x86_64-unknown-none-elf \
 		-fno-stack-protector -fno-exceptions -fshort-wchar -fno-rtti \
-		-mno-red-zone -mstack-alignment=8 \
+		-mno-red-zone -mstack-alignment=8 -mcmodel=large \
 		-nostdlibinc \
 		-D__ELF__ -D_LDBL_EQ_DBL \
 		-I$(LIBCXX_FOR_KERNEL_INC_PATH) \
@@ -139,11 +139,11 @@ BOOTX64.EFI : $(LOADER_OBJS) $(HEADERS) Makefile
 
 %.elf.o : %.cc $(HEADERS) Makefile
 	$(LLVM_CXX) $(CXXFLAGS_KERNEL) \
-		-g -c -fPIC -o $*.elf.o $*.cc
+		-g -c -o $*.elf.o $*.cc
 
 %.elf.o : %.c $(HEADERS) Makefile
 	$(LLVM_CC) $(CFLAGS_KERNEL) \
-		-g -c -fPIC -o $*.elf.o $*.c
+		-g -c -o $*.elf.o $*.c
 
 %.elf.o : %.S Makefile
 	$(LLVM_CC) $(CXXFLAGS_KERNEL) \
@@ -219,6 +219,9 @@ print_cc :
 	@echo "$(LLVM_CC)"
 
 dump : $(addsuffix .dump.txt, $(OBJS))
+
+kerneldump :
+	/usr/local/opt/llvm/bin/llvm-objdump --x86-asm-syntax=intel -d LIUMOS.ELF | more
 
 FORCE : 
 
