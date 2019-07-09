@@ -12,6 +12,7 @@ static const std::unordered_multimap<uint32_t, std::string> device_infos = {
     {0x2918'8086, "82801IB (ICH9) LPC Interface Controller"},
     {0x29c0'8086, "82G33/G31/P35/P31 Express DRAM Controller"},
     {0x1111'1234, "QEMU Virtual Video Controller"},
+    {0x8168'10ec, "RTL8111/8168/8411 PCI Express Gigabit Ethernet Controller"},
 };
 
 static uint32_t ReadPCIRegister(uint32_t bus,
@@ -29,18 +30,29 @@ static uint32_t ReadPCIRegister(uint32_t bus,
   return ReadIOPort32(kIOAddrPCIConfigData);
 }
 
-void PCI::DetectDevices() {
+bool PCI::DetectDevice(int bus, int device, int func) {
   constexpr uint32_t kPCIInvalidVendorID = 0xffff'ffff;
+  uint32_t id = ReadPCIRegister(bus, device, func, 0);
+  if (id == kPCIInvalidVendorID)
+    return false;
+  device_list_.insert({id,
+                       {static_cast<uint8_t>(bus), static_cast<uint8_t>(device),
+                        static_cast<uint8_t>(func)}});
+  return true;
+}
+
+void PCI::DetectDevices() {
   for (int bus = 0x00; bus < 0xFF; bus++) {
     for (int device = 0x00; device < 32; device++) {
-      uint32_t func = 0;
-      uint32_t id = ReadPCIRegister(bus, device, func, 0);
-      if (id == kPCIInvalidVendorID)
+      if (!DetectDevice(bus, device, 0))
         continue;
-      device_list_.insert(
-          {id,
-           {static_cast<uint8_t>(bus), static_cast<uint8_t>(device),
-            static_cast<uint8_t>(func)}});
+      const uint32_t kPCIDeviceHasMultiFuncBit = (1 << 23);
+      if ((ReadPCIRegister(bus, device, 0, 0xC) & kPCIDeviceHasMultiFuncBit) ==
+          0)
+        continue;
+      for (uint32_t func = 1; func < 8; func++) {
+        DetectDevice(bus, device, func);
+      }
     }
   }
 }

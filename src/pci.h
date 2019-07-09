@@ -13,6 +13,8 @@ class PCI {
 
  private:
   PCI(){};
+  bool DetectDevice(int bus, int device, int func);
+
   struct DeviceLocation {
     uint8_t bus;
     uint8_t device;
