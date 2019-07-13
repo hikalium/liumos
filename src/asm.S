@@ -265,7 +265,7 @@ ReadIOPort32:
 
 .global WriteIOPort32
 WriteIOPort32:
-	mov ax, dx
+	mov eax, edx
   mov dx, cx
   out dx, eax
   ret

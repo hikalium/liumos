@@ -5,6 +5,9 @@
 #include <cstdio>
 #include <string>
 
+constexpr uint16_t kIOAddrPCIConfigAddr = 0x0CF8;
+constexpr uint16_t kIOAddrPCIConfigData = 0x0CFC;
+
 PCI* PCI::pci_;
 
 static const std::unordered_multimap<uint32_t, const char*> device_infos = {
@@ -15,24 +18,38 @@ static const std::unordered_multimap<uint32_t, const char*> device_infos = {
     {0x8168'10ec, "RTL8111/8168/8411 PCI Express Gigabit Ethernet Controller"},
 };
 
-uint32_t PCI::ReadConfigRegister(uint32_t bus,
-                                 uint32_t device,
-                                 uint32_t func,
-                                 uint32_t reg) {
+static void SelectRegister(uint32_t bus,
+                           uint32_t device,
+                           uint32_t func,
+                           uint32_t reg) {
   assert((bus & ~0b1111'1111) == 0);
   assert((device & ~0b1'1111) == 0);
   assert((func & ~0b111) == 0);
   assert((reg & ~0b1111'1100) == 0);
-  constexpr uint16_t kIOAddrPCIConfigAddr = 0x0CF8;
-  constexpr uint16_t kIOAddrPCIConfigData = 0x0CFC;
   WriteIOPort32(kIOAddrPCIConfigAddr,
                 (1 << 31) | (bus << 16) | (device << 11) | (func << 8) | reg);
+}
+
+uint32_t PCI::ReadConfigRegister32(uint32_t bus,
+                                   uint32_t device,
+                                   uint32_t func,
+                                   uint32_t reg) {
+  SelectRegister(bus, device, func, reg);
   return ReadIOPort32(kIOAddrPCIConfigData);
+}
+
+void PCI::WriteConfigRegister32(uint32_t bus,
+                                uint32_t device,
+                                uint32_t func,
+                                uint32_t reg,
+                                uint32_t value) {
+  SelectRegister(bus, device, func, reg);
+  WriteIOPort32(kIOAddrPCIConfigData, value);
 }
 
 bool PCI::DetectDevice(int bus, int device, int func) {
   constexpr uint32_t kPCIInvalidVendorID = 0xffff'ffff;
-  uint32_t id = ReadConfigRegister(bus, device, func, 0);
+  uint32_t id = ReadConfigRegister32(bus, device, func, 0);
   if (id == kPCIInvalidVendorID)
     return false;
   device_list_.insert({id,
@@ -47,7 +64,7 @@ void PCI::DetectDevices() {
       if (!DetectDevice(bus, device, 0))
         continue;
       const uint32_t kPCIDeviceHasMultiFuncBit = (1 << 23);
-      if ((ReadConfigRegister(bus, device, 0, 0xC) &
+      if ((ReadConfigRegister32(bus, device, 0, 0xC) &
            kPCIDeviceHasMultiFuncBit) == 0)
         continue;
       for (uint32_t func = 1; func < 8; func++) {
