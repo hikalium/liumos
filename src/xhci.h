@@ -5,10 +5,11 @@ class XHCI {
  public:
   void Init();
 
-  static XHCI* GetInstance() {
+  static XHCI& GetInstance() {
     if (!xhci_)
       xhci_ = new XHCI();
-    return xhci_;
+    assert(xhci_);
+    return *xhci_;
   }
 
  private:

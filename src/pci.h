@@ -14,10 +14,11 @@ class PCI {
   const auto& GetDeviceList() const { return device_list_; }
   static const char* GetDeviceName(uint32_t key);
 
-  static PCI* GetInstance() {
+  static PCI& GetInstance() {
     if (!pci_)
       pci_ = new PCI();
-    return pci_;
+    assert(pci_);
+    return *pci_;
   }
 
  private:

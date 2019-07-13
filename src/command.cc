@@ -556,7 +556,7 @@ void Version() {
 
 static void ListPCIDevices() {
   PutString("lspci:\n");
-  PCI::GetInstance()->PrintDevices();
+  PCI::GetInstance().PrintDevices();
 }
 
 void Run(TextBox& tbox) {

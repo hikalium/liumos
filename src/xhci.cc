@@ -8,7 +8,7 @@ void XHCI::Init() {
   PutString("XHCI::Init()\n");
 
   is_found_ = false;
-  for (auto& it : PCI::GetInstance()->GetDeviceList()) {
+  for (auto& it : PCI::GetInstance().GetDeviceList()) {
     if (it.first != 0x000D'1B36)
       continue;
     is_found_ = true;

@@ -256,10 +256,10 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
 
   idt_.SetIntHandler(0x20, TimerHandler);
 
-  PCI& pci = *PCI::GetInstance();
+  PCI& pci = PCI::GetInstance();
   pci.DetectDevices();
 
-  XHCI& xhci = *XHCI::GetInstance();
+  XHCI& xhci = XHCI::GetInstance();
   xhci.Init();
 
   StoreIntFlag();
