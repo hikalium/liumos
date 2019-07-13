@@ -6,6 +6,7 @@
 #include "corefunc.h"
 #include "liumos.h"
 #include "pci.h"
+#include "xhci.h"
 
 LiumOS* liumos;
 
@@ -257,6 +258,9 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
 
   PCI& pci = *PCI::GetInstance();
   pci.DetectDevices();
+
+  XHCI& xhci = *XHCI::GetInstance();
+  xhci.Init();
 
   StoreIntFlag();
 

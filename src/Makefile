@@ -23,7 +23,8 @@ KERNEL_SRCS= acpi.cc apic.cc asm.S \
 						 scheduler.cc serial.cc sheet.cc subtask.cc \
 						 sleep_handler.S sys_constant.cc syscall.cc syscall_handler.S\
 						 text_box.cc \
-						 font.gen.cc
+						 font.gen.cc \
+						 xhci.cc
 KERNEL_LIBS=third_party/newlib-cygwin_dest/lib/libc.a
 LOADER_OBJS= $(addsuffix .o, $(basename $(LOADER_SRCS)))
 KERNEL_OBJS= $(addsuffix .elf.o, $(basename $(KERNEL_SRCS)))
