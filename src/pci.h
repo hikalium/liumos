@@ -12,6 +12,11 @@ class PCI {
   void DetectDevices();
   void PrintDevices();
   const auto& GetDeviceList() const { return device_list_; }
+
+  static uint32_t ReadConfigRegister(uint32_t bus,
+                                     uint32_t device,
+                                     uint32_t func,
+                                     uint32_t reg);
   static const char* GetDeviceName(uint32_t key);
 
   static PCI& GetInstance() {

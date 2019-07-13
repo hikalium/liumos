@@ -15,10 +15,10 @@ static const std::unordered_multimap<uint32_t, const char*> device_infos = {
     {0x8168'10ec, "RTL8111/8168/8411 PCI Express Gigabit Ethernet Controller"},
 };
 
-static uint32_t ReadPCIRegister(uint32_t bus,
-                                uint32_t device,
-                                uint32_t func,
-                                uint32_t reg) {
+uint32_t PCI::ReadConfigRegister(uint32_t bus,
+                                 uint32_t device,
+                                 uint32_t func,
+                                 uint32_t reg) {
   assert((bus & ~0b1111'1111) == 0);
   assert((device & ~0b1'1111) == 0);
   assert((func & ~0b111) == 0);
@@ -32,7 +32,7 @@ static uint32_t ReadPCIRegister(uint32_t bus,
 
 bool PCI::DetectDevice(int bus, int device, int func) {
   constexpr uint32_t kPCIInvalidVendorID = 0xffff'ffff;
-  uint32_t id = ReadPCIRegister(bus, device, func, 0);
+  uint32_t id = ReadConfigRegister(bus, device, func, 0);
   if (id == kPCIInvalidVendorID)
     return false;
   device_list_.insert({id,
@@ -47,8 +47,8 @@ void PCI::DetectDevices() {
       if (!DetectDevice(bus, device, 0))
         continue;
       const uint32_t kPCIDeviceHasMultiFuncBit = (1 << 23);
-      if ((ReadPCIRegister(bus, device, 0, 0xC) & kPCIDeviceHasMultiFuncBit) ==
-          0)
+      if ((ReadConfigRegister(bus, device, 0, 0xC) &
+           kPCIDeviceHasMultiFuncBit) == 0)
         continue;
       for (uint32_t func = 1; func < 8; func++) {
         DetectDevice(bus, device, func);
