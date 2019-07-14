@@ -38,6 +38,22 @@ class XHCI {
     uint64_t config;
   };
   static_assert(offsetof(OperationalRegisters, config) == 0x38);
+  packed_struct InterrupterRegisterSet {
+    uint32_t management;
+    uint32_t moderation;
+    uint32_t erst_size;
+    uint32_t rsvdp;
+    uint64_t erst_base;
+    uint64_t erdp;
+  };
+  static_assert(sizeof(InterrupterRegisterSet) == 0x20);
+  packed_struct RuntimeRegisters {
+    uint32_t microframe_index;
+    uint32_t rsvdz1[3 + 4];
+    InterrupterRegisterSet irs[1024];
+  };
+  static_assert(offsetof(RuntimeRegisters, irs) == 0x20);
+  static_assert(sizeof(RuntimeRegisters) == 0x8020);
   static XHCI* xhci_;
   bool is_found_;
   PCI::DeviceLocation dev_;

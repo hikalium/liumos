@@ -65,6 +65,13 @@ void XHCI::Init() {
   PutStringAndHex("USBCMD", op_regs.command);
   PutStringAndHex("USBSTS", op_regs.status);
 
+  volatile RuntimeRegisters& rt_regs =
+      *reinterpret_cast<volatile RuntimeRegisters*>(
+          reinterpret_cast<uint64_t>(cap_regs) + cap_regs->rtsoff);
+  PutStringAndHex("RuntimeRegisters", reinterpret_cast<uint64_t>(&rt_regs));
+  PutStringAndHex("  mfi", rt_regs.microframe_index);
+  PutStringAndHex("  mfi", rt_regs.microframe_index);
+
   constexpr uint32_t kUSBCMDMaskRunStop = 0b01;
   constexpr uint32_t kUSBCMDMaskHCReset = 0b10;
   constexpr uint32_t kUSBSTSMaskHCHalted = 0b1;
