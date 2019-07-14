@@ -9,6 +9,20 @@ static uint32_t GetBits(uint32_t v, int hi, int lo) {
   return (v >> lo) & ((1 << (hi - lo + 1)) - 1);
 }
 
+packed_struct EventRingSegmentTableEntry {
+  uint64_t ring_segment_base_address;  // 64-byte aligned
+  uint16_t ring_segment_size;
+  uint16_t rsvdz[3];
+};
+static_assert(sizeof(EventRingSegmentTableEntry) == 0x10);
+
+struct CommandCompletionEventTRB {
+  uint64_t cmd_trb_ptr;
+  uint8_t param[4];
+  uint32_t info;
+};
+static_assert(sizeof(CommandCompletionEventTRB) == 16);
+
 void XHCI::Init() {
   PutString("XHCI::Init()\n");
 
@@ -71,6 +85,35 @@ void XHCI::Init() {
   PutStringAndHex("RuntimeRegisters", reinterpret_cast<uint64_t>(&rt_regs));
   PutStringAndHex("  mfi", rt_regs.microframe_index);
   PutStringAndHex("  mfi", rt_regs.microframe_index);
+
+  constexpr int kNumOfERSForPrimaryEventRing = 1;
+  volatile EventRingSegmentTableEntry* erst =
+      liumos->kernel_heap_allocator
+          ->AllocPages<volatile EventRingSegmentTableEntry*>(
+              ByteSizeToPageSize(sizeof(
+                  EventRingSegmentTableEntry[kNumOfERSForPrimaryEventRing])),
+              kPageAttrCacheDisable | kPageAttrPresent | kPageAttrWritable);
+
+  constexpr int kNumOfTRBForPrimaryEventRing = 32;
+  volatile CommandCompletionEventTRB* trbs =
+      liumos->kernel_heap_allocator
+          ->AllocPages<volatile CommandCompletionEventTRB*>(
+              ByteSizeToPageSize(sizeof(
+                  CommandCompletionEventTRB[kNumOfTRBForPrimaryEventRing])),
+              kPageAttrCacheDisable | kPageAttrPresent | kPageAttrWritable);
+  bzero(const_cast<void*>(reinterpret_cast<volatile void*>(trbs)),
+        sizeof(CommandCompletionEventTRB[kNumOfTRBForPrimaryEventRing]));
+
+  erst[0].ring_segment_base_address =
+      liumos->kernel_pml4->v2p(reinterpret_cast<uint64_t>(trbs));
+  erst[0].ring_segment_size = kNumOfTRBForPrimaryEventRing;
+
+  auto& irs0 = rt_regs.irs[0];
+  irs0.erst_size = 1;
+  irs0.erdp = liumos->kernel_pml4->v2p(reinterpret_cast<uint64_t>(erst));
+  irs0.management = 0;
+  irs0.moderation = 0;
+  irs0.erst_base = irs0.erdp;
 
   constexpr uint32_t kUSBCMDMaskRunStop = 0b01;
   constexpr uint32_t kUSBCMDMaskHCReset = 0b10;
