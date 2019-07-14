@@ -14,7 +14,7 @@ void XHCI::Init() {
 
   is_found_ = false;
   for (auto& it : PCI::GetInstance().GetDeviceList()) {
-    if (it.first != 0x000D'1B36)
+    if (it.first != 0x000D'1B36 && it.first != 0x31A8'8086)
       continue;
     is_found_ = true;
     dev_ = it.second;
@@ -58,4 +58,23 @@ void XHCI::Init() {
   PutStringAndHex("  MaxSlots", kMaxSlots);
   PutStringAndHex("  MaxIntrs", kMaxIntrs);
   PutStringAndHex("  MaxPorts", kMaxPorts);
+
+  volatile OperationalRegisters& op_regs =
+      *reinterpret_cast<volatile OperationalRegisters*>(
+          reinterpret_cast<uint64_t>(cap_regs) + cap_regs->length);
+  PutStringAndHex("USBCMD", op_regs.command);
+  PutStringAndHex("USBSTS", op_regs.status);
+
+  constexpr uint32_t kUSBCMDMaskRunStop = 0b01;
+  constexpr uint32_t kUSBCMDMaskHCReset = 0b10;
+  constexpr uint32_t kUSBSTSMaskHCHalted = 0b1;
+  op_regs.command = op_regs.command & ~kUSBCMDMaskRunStop;
+  while (!(op_regs.status & kUSBSTSMaskHCHalted)) {
+    PutString("Waiting for HCHalt...\n");
+  }
+  op_regs.command = op_regs.command | kUSBCMDMaskHCReset;
+  while (op_regs.command & kUSBCMDMaskHCReset) {
+    PutString("Waiting for HCReset done...\n");
+  }
+  PutString("HCReset done.\n");
 }

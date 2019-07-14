@@ -25,6 +25,18 @@ class XHCI {
     uint32_t cap_params2;
   };
   static_assert(sizeof(CapabilityRegisters) == 0x20);
+  packed_struct OperationalRegisters {
+    uint32_t command;
+    uint32_t status;
+    uint32_t page_size;
+    uint32_t rsvdz1[2];
+    uint32_t notification_ctrl;
+    uint64_t cmd_ring_ctrl;
+    uint64_t rsvdz2[2];
+    uint64_t device_ctx_base_addr_array_ptr;
+    uint64_t config;
+  };
+  static_assert(offsetof(OperationalRegisters, config) == 0x38);
   static XHCI* xhci_;
   bool is_found_;
   PCI::DeviceLocation dev_;

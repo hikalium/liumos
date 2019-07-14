@@ -14,6 +14,7 @@ static const std::unordered_multimap<uint32_t, const char*> device_infos = {
     {0x000D'1B36, "QEMU XHCI Host Controller"},
     {0x2918'8086, "82801IB (ICH9) LPC Interface Controller"},
     {0x29c0'8086, "82G33/G31/P35/P31 Express DRAM Controller"},
+    {0x31A8'8086, "Intel XHCI Controller"},
     {0x1111'1234, "QEMU Virtual Video Controller"},
     {0x8168'10ec, "RTL8111/8168/8411 PCI Express Gigabit Ethernet Controller"},
 };
