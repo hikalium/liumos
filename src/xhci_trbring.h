@@ -2,9 +2,18 @@
 
 #include <cstdint>
 
+struct BasicTRB {
+  uint64_t data;
+  uint32_t option;
+  uint32_t control;
+};
+static_assert(sizeof(BasicTRB) == 16);
+
 template <int N>
 class TransferRequestBlockRing {
  public:
+  static_assert(1 <= N && N <= 256);
+
   void Init(uint64_t paddr) {
     next_enqueue_idx_ = 0;
     current_cycle_state_ = 1;
@@ -39,14 +48,6 @@ class TransferRequestBlockRing {
   int GetCurrentCycleState() { return current_cycle_state_; }
 
  private:
-  struct BasicTRB {
-    uint64_t data;
-    uint32_t option;
-    uint32_t control;
-  };
-  static_assert(sizeof(BasicTRB) == 16);
-  static_assert(1 <= N && N <= 256);
-
   void AdvanceEnqueueIndexAndUpdateCycleBit() {
     uint32_t& ctrl = entry_[next_enqueue_idx_].control;
     ctrl = (ctrl & ~0b1) | current_cycle_state_;

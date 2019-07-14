@@ -54,12 +54,45 @@ class XHCI {
   };
   static_assert(offsetof(RuntimeRegisters, irs) == 0x20);
   static_assert(sizeof(RuntimeRegisters) == 0x8020);
+
+  packed_struct EventRingSegmentTableEntry {
+    uint64_t ring_segment_base_address;  // 64-byte aligned
+    uint16_t ring_segment_size;
+    uint16_t rsvdz[3];
+  };
+  static_assert(sizeof(EventRingSegmentTableEntry) == 0x10);
+
+  struct CommandCompletionEventTRB {
+    uint64_t cmd_trb_ptr;
+    uint8_t param[4];
+    uint32_t info;
+  };
+  static_assert(sizeof(CommandCompletionEventTRB) == 16);
+
+  static constexpr int kNumOfCmdTRBRingEntries = 255;
+  static constexpr int kNumOfERSForEventRing = 1;
+  static constexpr int kNumOfTRBForEventRing = 32;
+
+  void ResetHostController();
+  void InitPrimaryInterrupter();
+  void InitSlotsAndContexts();
+  void InitCommandRing();
+  void NotifyHostControllerDoorbell();
+
   static XHCI* xhci_;
   bool is_found_;
   PCI::DeviceLocation dev_;
-  static constexpr int kNumOfCmdTRBRingEntries = 255;
   TransferRequestBlockRing<kNumOfCmdTRBRingEntries>* cmd_ring_;
   uint64_t cmd_ring_phys_addr_;
   volatile uint64_t* device_context_base_array_;
   uint64_t device_context_base_array_phys_addr_;
+  volatile CapabilityRegisters* cap_regs_;
+  volatile OperationalRegisters* op_regs_;
+  volatile RuntimeRegisters* rt_regs_;
+  volatile uint32_t* db_regs_;
+  volatile CommandCompletionEventTRB* primary_event_ring_buf_;
+  uint8_t max_slots_;
+  uint8_t max_intrs_;
+  uint8_t max_ports_;
+  int num_of_slots_enabled_;
 };

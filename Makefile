@@ -8,7 +8,7 @@ QEMU_ARGS=\
 					 -drive format=raw,file=fat:rw:mnt -net none \
 					 -serial tcp::1234,server,nowait \
 					 -serial tcp::1235,server,nowait \
-					 -device qemu-xhci
+					 -device qemu-xhci -device usb-kbd
 
 QEMU_ARGS_PMEM=\
 					 $(QEMU_ARGS) \
