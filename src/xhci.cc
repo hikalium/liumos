@@ -84,6 +84,19 @@ void XHCI::Init() {
                    (max_slots_enabled & kOPREGConfigMaskMaxSlotsEn);
   PutStringAndHex("MaxSlotsEn", op_regs.config & kOPREGConfigMaskMaxSlotsEn);
 
+  device_context_base_array_ =
+      liumos->kernel_heap_allocator->AllocPages<uint64_t*>(
+          1, kPageAttrCacheDisable | kPageAttrPresent | kPageAttrWritable);
+  for (int i = 0; i <= kMaxSlots; i++) {
+    device_context_base_array_[i] = 0;
+  }
+  device_context_base_array_phys_addr_ = liumos->kernel_pml4->v2p(
+      reinterpret_cast<uint64_t>(device_context_base_array_));
+  op_regs.device_ctx_base_addr_array_ptr = device_context_base_array_phys_addr_;
+  PutStringAndHex("DCBAAP(Virt)",
+                  reinterpret_cast<uint64_t>(device_context_base_array_));
+  PutStringAndHex("DCBAAP(Phys)", op_regs.device_ctx_base_addr_array_ptr);
+
   cmd_ring_ =
       liumos->kernel_heap_allocator
           ->AllocPages<TransferRequestBlockRing<kNumOfCmdTRBRingEntries>*>(

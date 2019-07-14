@@ -44,4 +44,6 @@ class XHCI {
   static constexpr int kNumOfCmdTRBRingEntries = 255;
   TransferRequestBlockRing<kNumOfCmdTRBRingEntries>* cmd_ring_;
   uint64_t cmd_ring_phys_addr_;
+  volatile uint64_t* device_context_base_array_;
+  uint64_t device_context_base_array_phys_addr_;
 };
