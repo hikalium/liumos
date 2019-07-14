@@ -189,7 +189,7 @@ run:
 unittest:
 	make test_ring_buffer
 	make test_paging
-	make test_xhci_trb
+	make test_xhci_trbring
 
 clean :
 	-rm *.EFI

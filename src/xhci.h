@@ -1,6 +1,7 @@
 #pragma once
 #include "liumos.h"
 #include "pci.h"
+#include "xhci_trbring.h"
 
 class XHCI {
  public:
@@ -40,4 +41,7 @@ class XHCI {
   static XHCI* xhci_;
   bool is_found_;
   PCI::DeviceLocation dev_;
+  static constexpr int kNumOfCmdTRBRingEntries = 255;
+  TransferRequestBlockRing<kNumOfCmdTRBRingEntries>* cmd_ring_;
+  uint64_t cmd_ring_phys_addr_;
 };

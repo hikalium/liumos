@@ -77,4 +77,28 @@ void XHCI::Init() {
     PutString("Waiting for HCReset done...\n");
   }
   PutString("HCReset done.\n");
+
+  int max_slots_enabled = kMaxSlots;
+  constexpr uint64_t kOPREGConfigMaskMaxSlotsEn = 0b1111'1111;
+  op_regs.config = (op_regs.config & ~kOPREGConfigMaskMaxSlotsEn) |
+                   (max_slots_enabled & kOPREGConfigMaskMaxSlotsEn);
+  PutStringAndHex("MaxSlotsEn", op_regs.config & kOPREGConfigMaskMaxSlotsEn);
+
+  cmd_ring_ =
+      liumos->kernel_heap_allocator
+          ->AllocPages<TransferRequestBlockRing<kNumOfCmdTRBRingEntries>*>(
+              ByteSizeToPageSize(
+                  sizeof(TransferRequestBlockRing<kNumOfCmdTRBRingEntries>)),
+              kPageAttrCacheDisable | kPageAttrPresent | kPageAttrWritable);
+  cmd_ring_phys_addr_ =
+      liumos->kernel_pml4->v2p(reinterpret_cast<uint64_t>(cmd_ring_));
+  cmd_ring_->Init(cmd_ring_phys_addr_);
+  constexpr uint64_t kOPREGCRCRMaskRsvdP = 0b11'0000;
+  constexpr uint64_t kOPREGCRCRMaskRingPtr = ~0b11'1111ULL;
+  volatile uint64_t& crcr = op_regs.cmd_ring_ctrl;
+  crcr = (crcr & kOPREGCRCRMaskRsvdP) |
+         (cmd_ring_phys_addr_ & kOPREGCRCRMaskRingPtr);
+  PutStringAndHex("CmdRing(Virt)", cmd_ring_);
+  PutStringAndHex("CmdRing(Phys)", cmd_ring_phys_addr_);
+  PutStringAndHex("CRCR", crcr);
 }

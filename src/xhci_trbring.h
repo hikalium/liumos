@@ -3,11 +3,20 @@
 #include <cstdint>
 
 template <int N>
-class TransferRequestBlock {
+class TransferRequestBlockRing {
  public:
-  void Init() {
+  void Init(uint64_t paddr) {
     next_enqueue_idx_ = 0;
     current_cycle_state_ = 1;
+
+    // 6.4.4.1 Link TRB
+    // Table 6-91: TRB Type Definitions
+    constexpr uint32_t kTRBTypeLink = 0x06;
+    auto& link_trb = entry_[N];
+    link_trb.data = paddr;
+    link_trb.option = 0;
+    link_trb.control = kTRBTypeLink << 10;
+
     for (int i = 0; i < N; i++) {
       Push();
     }
