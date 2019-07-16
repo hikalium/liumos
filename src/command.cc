@@ -2,6 +2,7 @@
 
 #include "pci.h"
 #include "pmem.h"
+#include "xhci.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -790,6 +791,7 @@ void WaitAndProcess(TextBox& tbox) {
     uint16_t keyid;
     while ((keyid = liumos->main_console->GetCharWithoutBlocking()) ==
            KeyID::kNoInput) {
+      XHCI::GetInstance().PollEvents();
       StoreIntFlagAndHalt();
     }
     if (keyid == '\n') {

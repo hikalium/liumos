@@ -6,6 +6,7 @@
 class XHCI {
  public:
   void Init();
+  void PollEvents();
 
   static XHCI& GetInstance() {
     if (!xhci_)

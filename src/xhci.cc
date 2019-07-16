@@ -13,6 +13,9 @@ constexpr uint64_t kPCIRegCommandAndStatusMaskBusMasterEnable = 1 << 2;
 constexpr uint32_t kUSBCMDMaskRunStop = 0b01;
 constexpr uint32_t kUSBCMDMaskHCReset = 0b10;
 constexpr uint32_t kUSBSTSMaskHCHalted = 0b1;
+constexpr uint32_t kTRBTypeNoOpCommand = 23;
+constexpr uint32_t kTRBTypeCommandCompletionEvent = 33;
+constexpr uint32_t kTRBTypePortStatusChanggeEvent = 34;
 
 static uint32_t GetBits(uint32_t v, int hi, int lo) {
   assert(hi > lo);
@@ -70,9 +73,9 @@ void XHCI::InitPrimaryInterrupter() {
 
   auto& irs0 = rt_regs_->irs[0];
   irs0.erst_size = 1;
-  irs0.erdp = liumos->kernel_pml4->v2p(reinterpret_cast<uint64_t>(erst));
+  irs0.erdp = liumos->kernel_pml4->v2p(reinterpret_cast<uint64_t>(trbs));
   irs0.management = 0;
-  irs0.erst_base = irs0.erdp;
+  irs0.erst_base = liumos->kernel_pml4->v2p(reinterpret_cast<uint64_t>(erst));
   irs0.management = 1;
 
   primary_event_ring_buf_ = trbs;
@@ -115,7 +118,7 @@ void XHCI::InitCommandRing() {
   constexpr uint64_t kOPREGCRCRMaskRingPtr = ~0b11'1111ULL;
   volatile uint64_t& crcr = op_regs_->cmd_ring_ctrl;
   crcr = (crcr & kOPREGCRCRMaskRsvdP) |
-         (cmd_ring_phys_addr_ & kOPREGCRCRMaskRingPtr);
+         (cmd_ring_phys_addr_ & kOPREGCRCRMaskRingPtr) | 1;
   PutStringAndHex("CmdRing(Virt)", cmd_ring_);
   PutStringAndHex("CmdRing(Phys)", cmd_ring_phys_addr_);
   PutStringAndHex("CRCR", crcr);
@@ -179,11 +182,18 @@ void XHCI::Init() {
   InitSlotsAndContexts();
   InitCommandRing();
 
-  BasicTRB* no_op_trb = cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
-  constexpr uint32_t kTRBTypeNoOp = 23;
+  volatile BasicTRB* no_op_trb = cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
+  PutStringAndHex("no_op_trb", liumos->kernel_pml4->v2p(
+                                   reinterpret_cast<uint64_t>(&no_op_trb[0])));
   no_op_trb[0].data = 0;
   no_op_trb[0].option = 0;
-  no_op_trb[0].control = (kTRBTypeNoOp << 10) | 1;
+  no_op_trb[0].control = (kTRBTypeNoOpCommand << 10) | 1;
+  no_op_trb[1].data = 0;
+  no_op_trb[1].option = 0;
+  no_op_trb[1].control = (kTRBTypeNoOpCommand << 10) | 1;
+  no_op_trb[2].data = 0;
+  no_op_trb[2].option = 0;
+  no_op_trb[2].control = 0;
 
   auto& irs0 = rt_regs_->irs[0];
   PutStringAndHex("IRS[0].management", irs0.management);
@@ -199,14 +209,31 @@ void XHCI::Init() {
   PutStringAndHex("Event.info", primary_event_ring_buf_[0].info);
 
   NotifyHostControllerDoorbell();
+}
 
-  for (int i = 0; i < 3; i++) {
-    PutStringAndHex("#", i);
-    PutStringAndHex("op.cmd", op_regs_->command);
-    PutStringAndHex("op.status", op_regs_->status);
-    PutStringAndHex("e.cmd_trb_ptr", primary_event_ring_buf_[i].cmd_trb_ptr);
-    PutStringAndHex("e.ccode", primary_event_ring_buf_[i].param[3]);
-    PutStringAndHex("e.info", primary_event_ring_buf_[i].info);
-    PutStringAndHex("e.type", GetBits(primary_event_ring_buf_[i].info, 15, 10));
+void XHCI::PollEvents() {
+  static int idx = 0;
+  if (primary_event_ring_buf_[idx].info & 1) {
+    PutStringAndHex("#", idx);
+    volatile BasicTRB& e =
+        *reinterpret_cast<volatile BasicTRB*>(&primary_event_ring_buf_[idx]);
+
+    idx++;
+
+    uint8_t type = GetBits(e.control, 15, 10);
+
+    switch (type) {
+      case kTRBTypeCommandCompletionEvent:
+        PutString("CommandCompletionEvent\n");
+        PutStringAndHex("CompletionCode", GetBits(e.option, 31, 24));
+        break;
+      case kTRBTypePortStatusChanggeEvent:
+        PutString("PortStatusChanggeEvent\n");
+        break;
+    }
+    PutStringAndHex("e.type", type);
+    PutStringAndHex("e.data", e.data);
+    PutStringAndHex("e.opt ", e.option);
+    PutStringAndHex("e.ctrl", e.control);
   }
 }
