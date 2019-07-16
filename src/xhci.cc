@@ -228,7 +228,7 @@ void XHCI::PollEvents() {
         PutStringAndHex("CompletionCode", GetBits(e.option, 31, 24));
         break;
       case kTRBTypePortStatusChanggeEvent:
-        PutString("PortStatusChanggeEvent\n");
+        PutString("PortStatusChangeEvent\n");
         break;
     }
     PutStringAndHex("e.type", type);
