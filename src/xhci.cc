@@ -182,6 +182,11 @@ void XHCI::Init() {
   InitSlotsAndContexts();
   InitCommandRing();
 
+  op_regs_->command = op_regs_->command | kUSBCMDMaskRunStop | (1 << 3);
+  while (op_regs_->status & kUSBSTSMaskHCHalted) {
+    PutString("Waiting for HCHalt == 0...\n");
+  }
+
   volatile BasicTRB* no_op_trb = cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
   PutStringAndHex("no_op_trb", liumos->kernel_pml4->v2p(
                                    reinterpret_cast<uint64_t>(&no_op_trb[0])));
@@ -194,19 +199,6 @@ void XHCI::Init() {
   no_op_trb[2].data = 0;
   no_op_trb[2].option = 0;
   no_op_trb[2].control = 0;
-
-  auto& irs0 = rt_regs_->irs[0];
-  PutStringAndHex("IRS[0].management", irs0.management);
-  PutStringAndHex("IRS[0].erst_size", irs0.erst_size);
-  PutStringAndHex("IRS[0].erst_base", irs0.erst_base);
-  PutStringAndHex("IRS[0].erdp", irs0.erdp);
-
-  op_regs_->command = op_regs_->command | kUSBCMDMaskRunStop | (1 << 3);
-  while (op_regs_->status & kUSBSTSMaskHCHalted) {
-    PutString("Waiting for HCHalt == 0...\n");
-  }
-
-  PutStringAndHex("Event.info", primary_event_ring_buf_[0].info);
 
   NotifyHostControllerDoorbell();
 }
@@ -230,8 +222,11 @@ void XHCI::PollEvents() {
       case kTRBTypePortStatusChanggeEvent:
         PutString("PortStatusChangeEvent\n");
         break;
+      default:
+        PutString("Event ");
+        PutStringAndHex("e.type", type);
+        break;
     }
-    PutStringAndHex("e.type", type);
     PutStringAndHex("e.data", e.data);
     PutStringAndHex("e.opt ", e.option);
     PutStringAndHex("e.ctrl", e.control);
