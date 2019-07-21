@@ -31,6 +31,5 @@ rm CMakeCache.txt ; cmake \
 	-DLIBCXX_ENABLE_SHARED=False \
 	-DLIBCXX_ENABLE_STATIC=True \
 	-DLIBCXX_ENABLE_THREADS=False \
-	-DLIBCXX_HAS_GCC_S_LIB=0 \
 	${SRC_ROOT} && \
 make install
