@@ -1,4 +1,5 @@
 #pragma once
+
 #include "liumos.h"
 #include "pci.h"
 #include "xhci_trbring.h"
@@ -83,6 +84,8 @@ class XHCI {
   void NotifyHostControllerDoorbell();
   uint32_t ReadPORTSC(int slot);
   void WritePORTSC(int slot, uint32_t data);
+  void HandlePortStatusChange(int port);
+  void HandleEnableSlotCompleted(int slot);
 
   static XHCI* xhci_;
   bool is_found_;

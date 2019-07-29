@@ -13,6 +13,7 @@ constexpr uint64_t kPCIRegCommandAndStatusMaskBusMasterEnable = 1 << 2;
 constexpr uint32_t kUSBCMDMaskRunStop = 0b01;
 constexpr uint32_t kUSBCMDMaskHCReset = 0b10;
 constexpr uint32_t kUSBSTSMaskHCHalted = 0b1;
+constexpr uint32_t kTRBTypeEnableSlotCommand = 9;
 constexpr uint32_t kTRBTypeNoOpCommand = 23;
 constexpr uint32_t kTRBTypeCommandCompletionEvent = 33;
 constexpr uint32_t kTRBTypePortStatusChangeEvent = 34;
@@ -62,7 +63,7 @@ class XHCI::EventRing {
                     ByteSizeToPageSize(erst_size), kMapAttr);
     const size_t trbs_size =
         sizeof(XHCI::CommandCompletionEventTRB) * num_of_trb_;
-    trbs_ = liumos->kernel_heap_allocator->AllocPages<volatile BasicTRB*>(
+    trbs_ = liumos->kernel_heap_allocator->AllocPages<BasicTRB*>(
         ByteSizeToPageSize(trbs_size), kMapAttr);
     bzero(const_cast<void*>(reinterpret_cast<volatile void*>(trbs_)),
           trbs_size);
@@ -80,7 +81,7 @@ class XHCI::EventRing {
     return liumos->kernel_pml4->v2p(reinterpret_cast<uint64_t>(trbs_));
   }
   bool HasNextEvent() { return (trbs_[index_].control & 1) == cycle_state_; }
-  volatile BasicTRB& PeekEvent() {
+  BasicTRB& PeekEvent() {
     assert(HasNextEvent());
     return trbs_[index_];
   }
@@ -98,7 +99,7 @@ class XHCI::EventRing {
   int index_;
   const int num_of_trb_;
   volatile XHCI::EventRingSegmentTableEntry* erst_;
-  volatile BasicTRB* trbs_;
+  BasicTRB* trbs_;
 };
 
 void XHCI::InitPrimaryInterrupter() {
@@ -245,36 +246,62 @@ void XHCI::Init() {
 
   NotifyHostControllerDoorbell();
 
+  // 4.3.1 Resetting a Root Hub Port
   for (int slot = 1; slot <= num_of_slots_enabled_; slot++) {
     PutStringAndHex("Port Reset", slot);
     WritePORTSC(slot, kPortSCBitPortReset);
   }
 }
 
+void XHCI::HandlePortStatusChange(int port) {
+  uint32_t portsc = ReadPORTSC(port);
+  if (!(portsc & kPortSCBitConnectStatusChange))
+    return;
+  PutStringAndHex("XHCI Connect Status Changed", port);
+  PutStringAndHex("  PORTSC", portsc);
+  WritePORTSC(port, kPortSCBitConnectStatusChange);
+  PutString((portsc & 1) ? "  Connected\n" : "  Disconnected\n");
+  assert(portsc & 1);
+
+  // 4.3.2 Device Slot Assignment
+  // 4.6.3 Enable Slot
+  volatile BasicTRB* no_op_trb = cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
+  no_op_trb[0].data = 0;
+  no_op_trb[0].option = 0;
+  no_op_trb[0].control = (kTRBTypeEnableSlotCommand << 10);
+  cmd_ring_->Push();
+  NotifyHostControllerDoorbell();
+}
+
+void XHCI::HandleEnableSlotCompleted(int slot) {
+  PutStringAndHex("Slot enabled. Slot ID", slot);
+  // 4.3.3 Device Slot Initialization
+}
+
 void XHCI::PollEvents() {
   if (!primary_event_ring_)
     return;
-  for (int slot = 1; slot <= num_of_slots_enabled_; slot++) {
-    uint32_t portsc = ReadPORTSC(slot);
-    if (!(portsc & kPortSCBitConnectStatusChange))
-      continue;
-    PutStringAndHex("XHCI Connect Status Changed", slot);
-    PutStringAndHex("  PORTSC", portsc);
-    WritePORTSC(slot, kPortSCBitConnectStatusChange);
-  }
   if (primary_event_ring_->HasNextEvent()) {
-    volatile BasicTRB& e = primary_event_ring_->PeekEvent();
-    uint8_t type = GetBits(e.control, 15, 10);
+    BasicTRB& e = primary_event_ring_->PeekEvent();
+    uint8_t type = e.GetTRBType();
 
     switch (type) {
       case kTRBTypeCommandCompletionEvent:
         PutString("CommandCompletionEvent\n");
         PutStringAndHex("  CompletionCode", GetBits(e.option, 31, 24));
+        {
+          BasicTRB& cmd_trb = cmd_ring_->GetEntryFromPhysAddr(e.data);
+          PutStringAndHex("  CommandType", cmd_trb.GetTRBType());
+          if (cmd_trb.GetTRBType() == kTRBTypeEnableSlotCommand) {
+            HandleEnableSlotCompleted(GetBits(e.control, 31, 24));
+          }
+        }
         break;
       case kTRBTypePortStatusChangeEvent:
         PutString("PortStatusChangeEvent\n");
         PutStringAndHex("  Port ID", GetBits(e.data, 31, 24));
         PutStringAndHex("  CompletionCode", GetBits(e.option, 31, 24));
+        HandlePortStatusChange(static_cast<int>(GetBits(e.data, 31, 24)));
         break;
       default:
         PutString("Event ");
