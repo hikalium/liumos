@@ -7,8 +7,9 @@ QEMU_ARGS=\
 					 -m 8G,slots=2,maxmem=10G \
 					 -drive format=raw,file=fat:rw:mnt -net none \
 					 -serial tcp::1234,server,nowait \
-					 -serial tcp::1235,server,nowait \
-					 -device qemu-xhci -device usb-kbd
+					 -serial tcp::1235,server,nowait
+
+QEMU_ARGS_XHCI=      -device qemu-xhci -device usb-kbd
 
 QEMU_ARGS_PMEM=\
 					 $(QEMU_ARGS) \
@@ -49,6 +50,9 @@ files : src/BOOTX64.EFI $(APPS) src/LIUMOS.ELF .FORCE
 
 run_nopmem : files .FORCE
 	$(QEMU) $(QEMU_ARGS)
+
+run_xhci : files .FORCE
+	$(QEMU) $(QEMU_ARGS_XHCI) $(QEMU_ARGS)
 	
 run : files pmem.img .FORCE
 	$(QEMU) $(QEMU_ARGS_PMEM)
