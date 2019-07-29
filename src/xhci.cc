@@ -15,7 +15,7 @@ constexpr uint32_t kUSBCMDMaskHCReset = 0b10;
 constexpr uint32_t kUSBSTSMaskHCHalted = 0b1;
 constexpr uint32_t kTRBTypeNoOpCommand = 23;
 constexpr uint32_t kTRBTypeCommandCompletionEvent = 33;
-constexpr uint32_t kTRBTypePortStatusChanggeEvent = 34;
+constexpr uint32_t kTRBTypePortStatusChangeEvent = 34;
 constexpr uint32_t kPortSCBitConnectStatusChange = 1 << 17;
 constexpr uint32_t kPortSCBitPortReset = 1 << 4;
 
@@ -271,7 +271,7 @@ void XHCI::PollEvents() {
         PutString("CommandCompletionEvent\n");
         PutStringAndHex("  CompletionCode", GetBits(e.option, 31, 24));
         break;
-      case kTRBTypePortStatusChanggeEvent:
+      case kTRBTypePortStatusChangeEvent:
         PutString("PortStatusChangeEvent\n");
         PutStringAndHex("  Port ID", GetBits(e.data, 31, 24));
         PutStringAndHex("  CompletionCode", GetBits(e.option, 31, 24));
