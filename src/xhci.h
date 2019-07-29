@@ -15,7 +15,6 @@ class XHCI {
     return *xhci_;
   }
 
- private:
   packed_struct CapabilityRegisters {
     uint8_t length;
     uint8_t reserved;
@@ -70,6 +69,9 @@ class XHCI {
   };
   static_assert(sizeof(CommandCompletionEventTRB) == 16);
 
+ private:
+  class EventRing;
+
   static constexpr int kNumOfCmdTRBRingEntries = 255;
   static constexpr int kNumOfERSForEventRing = 1;
   static constexpr int kNumOfTRBForEventRing = 32;
@@ -91,7 +93,7 @@ class XHCI {
   volatile OperationalRegisters* op_regs_;
   volatile RuntimeRegisters* rt_regs_;
   volatile uint32_t* db_regs_;
-  volatile CommandCompletionEventTRB* primary_event_ring_buf_;
+  EventRing* primary_event_ring_;
   uint8_t max_slots_;
   uint8_t max_intrs_;
   uint8_t max_ports_;

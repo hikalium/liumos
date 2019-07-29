@@ -43,42 +43,72 @@ void XHCI::ResetHostController() {
   PutString("HCReset done.\n");
 }
 
+class XHCI::EventRing {
+ public:
+  EventRing(int num_of_trb)
+      : cycle_state_(1), index_(0), num_of_trb_(num_of_trb) {
+    constexpr int kMapAttr =
+        kPageAttrCacheDisable | kPageAttrPresent | kPageAttrWritable;
+    const int erst_size = sizeof(XHCI::EventRingSegmentTableEntry[1]);
+    erst_ = liumos->kernel_heap_allocator
+                ->AllocPages<volatile XHCI::EventRingSegmentTableEntry*>(
+                    ByteSizeToPageSize(erst_size), kMapAttr);
+    const size_t trbs_size =
+        sizeof(XHCI::CommandCompletionEventTRB) * num_of_trb_;
+    trbs_ = liumos->kernel_heap_allocator->AllocPages<volatile BasicTRB*>(
+        ByteSizeToPageSize(trbs_size), kMapAttr);
+    bzero(const_cast<void*>(reinterpret_cast<volatile void*>(trbs_)),
+          trbs_size);
+    erst_[0].ring_segment_base_address = GetTRBSPhysAddr();
+    erst_[0].ring_segment_size = num_of_trb_;
+    PutStringAndHex("erst phys", GetERSTPhysAddr());
+    PutStringAndHex("erst[0].ring_segment_base_address",
+                    erst_[0].ring_segment_base_address);
+    PutStringAndHex("erst[0].ring_segment_size", erst_[0].ring_segment_size);
+  }
+  uint64_t GetERSTPhysAddr() {
+    return liumos->kernel_pml4->v2p(reinterpret_cast<uint64_t>(erst_));
+  }
+  uint64_t GetTRBSPhysAddr() {
+    return liumos->kernel_pml4->v2p(reinterpret_cast<uint64_t>(trbs_));
+  }
+  bool HasNextEvent() { return (trbs_[index_].control & 1) == cycle_state_; }
+  volatile BasicTRB& PeekEvent() {
+    assert(HasNextEvent());
+    return trbs_[index_];
+  }
+  void PopEvent() {
+    assert(HasNextEvent());
+    index_++;
+    if (index_ == num_of_trb_) {
+      cycle_state_ ^= 1;
+      index_ = 0;
+    }
+  }
+
+ private:
+  int cycle_state_;
+  int index_;
+  const int num_of_trb_;
+  volatile XHCI::EventRingSegmentTableEntry* erst_;
+  volatile BasicTRB* trbs_;
+};
+
 void XHCI::InitPrimaryInterrupter() {
   // 5.5.2 Interrupter Register Set
   // All registers of the Primary Interrupter shall be initialized
   // before setting the Run/Stop (RS) flag in the USBCMD register to 1.
 
-  size_t erst_size = sizeof(EventRingSegmentTableEntry[kNumOfERSForEventRing]);
-  volatile EventRingSegmentTableEntry* erst =
-      liumos->kernel_heap_allocator
-          ->AllocPages<volatile EventRingSegmentTableEntry*>(
-              ByteSizeToPageSize(erst_size),
-              kPageAttrCacheDisable | kPageAttrPresent | kPageAttrWritable);
-  size_t trbs_size = sizeof(CommandCompletionEventTRB[kNumOfTRBForEventRing]);
-  volatile CommandCompletionEventTRB* trbs =
-      liumos->kernel_heap_allocator
-          ->AllocPages<volatile CommandCompletionEventTRB*>(
-              ByteSizeToPageSize(trbs_size),
-              kPageAttrCacheDisable | kPageAttrPresent | kPageAttrWritable);
-  bzero(const_cast<void*>(reinterpret_cast<volatile void*>(trbs)), trbs_size);
-
-  erst[0].ring_segment_base_address =
-      liumos->kernel_pml4->v2p(reinterpret_cast<uint64_t>(trbs));
-  erst[0].ring_segment_size = kNumOfTRBForEventRing;
-  PutStringAndHex("erst phys",
-                  liumos->kernel_pml4->v2p(reinterpret_cast<uint64_t>(erst)));
-  PutStringAndHex("erst[0].ring_segment_base_address",
-                  erst[0].ring_segment_base_address);
-  PutStringAndHex("erst[0].ring_segment_size", erst[0].ring_segment_size);
+  class EventRing& primary_event_ring = *new EventRing(kNumOfTRBForEventRing);
 
   auto& irs0 = rt_regs_->irs[0];
   irs0.erst_size = 1;
-  irs0.erdp = liumos->kernel_pml4->v2p(reinterpret_cast<uint64_t>(trbs));
+  irs0.erdp = primary_event_ring.GetTRBSPhysAddr();
   irs0.management = 0;
-  irs0.erst_base = liumos->kernel_pml4->v2p(reinterpret_cast<uint64_t>(erst));
+  irs0.erst_base = primary_event_ring.GetERSTPhysAddr();
   irs0.management = 1;
 
-  primary_event_ring_buf_ = trbs;
+  primary_event_ring_ = &primary_event_ring;
 };
 
 void XHCI::InitSlotsAndContexts() {
@@ -204,14 +234,10 @@ void XHCI::Init() {
 }
 
 void XHCI::PollEvents() {
-  static int idx = 0;
-  if (primary_event_ring_buf_[idx].info & 1) {
-    PutStringAndHex("#", idx);
-    volatile BasicTRB& e =
-        *reinterpret_cast<volatile BasicTRB*>(&primary_event_ring_buf_[idx]);
-
-    idx++;
-
+  if (!primary_event_ring_)
+    return;
+  if (primary_event_ring_->HasNextEvent()) {
+    volatile BasicTRB& e = primary_event_ring_->PeekEvent();
     uint8_t type = GetBits(e.control, 15, 10);
 
     switch (type) {
@@ -230,5 +256,6 @@ void XHCI::PollEvents() {
     PutStringAndHex("e.data", e.data);
     PutStringAndHex("e.opt ", e.option);
     PutStringAndHex("e.ctrl", e.control);
+    primary_event_ring_->PopEvent();
   }
 }
