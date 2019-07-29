@@ -16,8 +16,15 @@ constexpr uint32_t kUSBSTSMaskHCHalted = 0b1;
 constexpr uint32_t kTRBTypeNoOpCommand = 23;
 constexpr uint32_t kTRBTypeCommandCompletionEvent = 33;
 constexpr uint32_t kTRBTypePortStatusChanggeEvent = 34;
+constexpr uint32_t kPortSCBitConnectStatusChange = 1 << 17;
+constexpr uint32_t kPortSCBitPortReset = 1 << 4;
 
 static uint32_t GetBits(uint32_t v, int hi, int lo) {
+  assert(hi > lo);
+  return (v >> lo) & ((1 << (hi - lo + 1)) - 1);
+}
+
+static uint64_t GetBits(uint64_t v, int hi, int lo) {
   assert(hi > lo);
   return (v >> lo) & ((1 << (hi - lo + 1)) - 1);
 }
@@ -140,10 +147,6 @@ void XHCI::InitCommandRing() {
       liumos->kernel_pml4->v2p(reinterpret_cast<uint64_t>(cmd_ring_));
   cmd_ring_->Init(cmd_ring_phys_addr_);
 
-  BasicTRB* ent = cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
-  for (int i = 0; i < kNumOfCmdTRBRingEntries; i++) {
-    ent[i].control = 0;
-  }
   constexpr uint64_t kOPREGCRCRMaskRsvdP = 0b11'0000;
   constexpr uint64_t kOPREGCRCRMaskRingPtr = ~0b11'1111ULL;
   volatile uint64_t& crcr = op_regs_->cmd_ring_ctrl;
@@ -156,6 +159,14 @@ void XHCI::InitCommandRing() {
 
 void XHCI::NotifyHostControllerDoorbell() {
   db_regs_[0] = 0;
+}
+uint32_t XHCI::ReadPORTSC(int slot) {
+  return *reinterpret_cast<uint32_t*>(reinterpret_cast<uint64_t>(op_regs_) +
+                                      0x400 + 0x10 * (slot - 1));
+}
+void XHCI::WritePORTSC(int slot, uint32_t data) {
+  *reinterpret_cast<uint32_t*>(reinterpret_cast<uint64_t>(op_regs_) + 0x400 +
+                               0x10 * (slot - 1)) = data;
 }
 
 void XHCI::Init() {
@@ -217,25 +228,40 @@ void XHCI::Init() {
     PutString("Waiting for HCHalt == 0...\n");
   }
 
-  volatile BasicTRB* no_op_trb = cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
-  PutStringAndHex("no_op_trb", liumos->kernel_pml4->v2p(
-                                   reinterpret_cast<uint64_t>(&no_op_trb[0])));
-  no_op_trb[0].data = 0;
-  no_op_trb[0].option = 0;
-  no_op_trb[0].control = (kTRBTypeNoOpCommand << 10) | 1;
-  no_op_trb[1].data = 0;
-  no_op_trb[1].option = 0;
-  no_op_trb[1].control = (kTRBTypeNoOpCommand << 10) | 1;
-  no_op_trb[2].data = 0;
-  no_op_trb[2].option = 0;
-  no_op_trb[2].control = 0;
+  {
+    volatile BasicTRB* no_op_trb = cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
+    no_op_trb[0].data = 0;
+    no_op_trb[0].option = 0;
+    no_op_trb[0].control = (kTRBTypeNoOpCommand << 10);
+    cmd_ring_->Push();
+  }
+  {
+    volatile BasicTRB* no_op_trb = cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
+    no_op_trb[0].data = 0;
+    no_op_trb[0].option = 0;
+    no_op_trb[0].control = (kTRBTypeNoOpCommand << 10);
+    cmd_ring_->Push();
+  }
 
   NotifyHostControllerDoorbell();
+
+  for (int slot = 1; slot <= num_of_slots_enabled_; slot++) {
+    PutStringAndHex("Port Reset", slot);
+    WritePORTSC(slot, kPortSCBitPortReset);
+  }
 }
 
 void XHCI::PollEvents() {
   if (!primary_event_ring_)
     return;
+  for (int slot = 1; slot <= num_of_slots_enabled_; slot++) {
+    uint32_t portsc = ReadPORTSC(slot);
+    if (!(portsc & kPortSCBitConnectStatusChange))
+      continue;
+    PutStringAndHex("XHCI Connect Status Changed", slot);
+    PutStringAndHex("  PORTSC", portsc);
+    WritePORTSC(slot, kPortSCBitConnectStatusChange);
+  }
   if (primary_event_ring_->HasNextEvent()) {
     volatile BasicTRB& e = primary_event_ring_->PeekEvent();
     uint8_t type = GetBits(e.control, 15, 10);
@@ -243,19 +269,21 @@ void XHCI::PollEvents() {
     switch (type) {
       case kTRBTypeCommandCompletionEvent:
         PutString("CommandCompletionEvent\n");
-        PutStringAndHex("CompletionCode", GetBits(e.option, 31, 24));
+        PutStringAndHex("  CompletionCode", GetBits(e.option, 31, 24));
         break;
       case kTRBTypePortStatusChanggeEvent:
         PutString("PortStatusChangeEvent\n");
+        PutStringAndHex("  Port ID", GetBits(e.data, 31, 24));
+        PutStringAndHex("  CompletionCode", GetBits(e.option, 31, 24));
         break;
       default:
         PutString("Event ");
-        PutStringAndHex("e.type", type);
+        PutStringAndHex("type", type);
+        PutStringAndHex("  e.data", e.data);
+        PutStringAndHex("  e.opt ", e.option);
+        PutStringAndHex("  e.ctrl", e.control);
         break;
     }
-    PutStringAndHex("e.data", e.data);
-    PutStringAndHex("e.opt ", e.option);
-    PutStringAndHex("e.ctrl", e.control);
     primary_event_ring_->PopEvent();
   }
 }

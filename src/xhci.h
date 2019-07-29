@@ -81,6 +81,8 @@ class XHCI {
   void InitSlotsAndContexts();
   void InitCommandRing();
   void NotifyHostControllerDoorbell();
+  uint32_t ReadPORTSC(int slot);
+  void WritePORTSC(int slot, uint32_t data);
 
   static XHCI* xhci_;
   bool is_found_;

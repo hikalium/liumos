@@ -16,7 +16,7 @@ class TransferRequestBlockRing {
 
   void Init(uint64_t paddr) {
     next_enqueue_idx_ = 0;
-    current_cycle_state_ = 1;
+    current_cycle_state_ = 0;
 
     // 6.4.4.1 Link TRB
     // Table 6-91: TRB Type Definitions

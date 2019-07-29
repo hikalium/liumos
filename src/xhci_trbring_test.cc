@@ -14,18 +14,18 @@ void TestTransferRequestBlockRing() {
     assert(ring.GetNextEnqueueIndex() == i);
     assert(reinterpret_cast<uint64_t>(&ring) + 16 * i ==
            ring.template GetNextEnqueueEntry<uint64_t>());
-    assert(ring.GetCurrentCycleState() == 0);
-    assert(ring.Push() == 0);
+    assert(ring.GetCurrentCycleState() == 1);
+    assert(ring.Push() == 1);
   }
   for (int i = 0; i < N; i++) {
     assert(ring.GetNextEnqueueIndex() == i);
     assert(reinterpret_cast<uint64_t>(&ring) + 16 * i ==
            ring.template GetNextEnqueueEntry<uint64_t>());
-    assert(ring.GetCurrentCycleState() == 1);
-    assert(ring.Push() == 1);
+    assert(ring.GetCurrentCycleState() == 0);
+    assert(ring.Push() == 0);
   }
   assert(ring.GetNextEnqueueIndex() == 0);
-  assert(ring.GetCurrentCycleState() == 0);
+  assert(ring.GetCurrentCycleState() == 1);
 }
 
 int main() {
