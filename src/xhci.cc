@@ -2,7 +2,11 @@
 
 #include "liumos.h"
 
+#include <unordered_map>
+
 XHCI* XHCI::xhci_;
+
+static std::unordered_map<uint64_t, int> slot_request_for_port;
 
 constexpr uint32_t kPCIRegOffsetBAR = 0x10;
 constexpr uint32_t kPCIRegOffsetCommandAndStatus = 0x04;
@@ -265,17 +269,43 @@ void XHCI::HandlePortStatusChange(int port) {
 
   // 4.3.2 Device Slot Assignment
   // 4.6.3 Enable Slot
-  volatile BasicTRB* no_op_trb = cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
-  no_op_trb[0].data = 0;
-  no_op_trb[0].option = 0;
-  no_op_trb[0].control = (kTRBTypeEnableSlotCommand << 10);
+  volatile BasicTRB* enable_slot_trb =
+      cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
+  slot_request_for_port.insert(
+      {liumos->kernel_pml4->v2p(reinterpret_cast<uint64_t>(enable_slot_trb)),
+       port});
+  enable_slot_trb[0].data = 0;
+  enable_slot_trb[0].option = 0;
+  enable_slot_trb[0].control = (kTRBTypeEnableSlotCommand << 10);
   cmd_ring_->Push();
   NotifyHostControllerDoorbell();
 }
 
-void XHCI::HandleEnableSlotCompleted(int slot) {
+class InputContext {
+ public:
+  static InputContext& Alloc(int num_of_ctx) {
+    constexpr int kMapAttr =
+        kPageAttrCacheDisable | kPageAttrPresent | kPageAttrWritable;
+    assert(1 <= num_of_ctx && num_of_ctx <= 33);
+    size_t size = 0x20 * num_of_ctx;
+    InputContext* ctx =
+        liumos->kernel_heap_allocator->AllocPages<InputContext*>(
+            ByteSizeToPageSize(size), kMapAttr);
+    bzero(ctx, size);
+    if (num_of_ctx > 1) {
+      volatile uint32_t* add_ctx_flags = reinterpret_cast<uint32_t*>(ctx) + 1;
+      *add_ctx_flags = (1 << (num_of_ctx - 1)) - 1;
+    }
+    return *ctx;
+  }
+};
+
+void XHCI::HandleEnableSlotCompleted(int slot, int port) {
   PutStringAndHex("Slot enabled. Slot ID", slot);
+  PutStringAndHex("  Use RootPort", port);
   // 4.3.3 Device Slot Initialization
+  InputContext& ctx = InputContext::Alloc(1 + 2);
+  (void)ctx;
 }
 
 void XHCI::PollEvents() {
@@ -293,7 +323,11 @@ void XHCI::PollEvents() {
           BasicTRB& cmd_trb = cmd_ring_->GetEntryFromPhysAddr(e.data);
           PutStringAndHex("  CommandType", cmd_trb.GetTRBType());
           if (cmd_trb.GetTRBType() == kTRBTypeEnableSlotCommand) {
-            HandleEnableSlotCompleted(GetBits(e.control, 31, 24));
+            uint64_t cmd_trb_phys_addr = e.data;
+            auto it = slot_request_for_port.find(cmd_trb_phys_addr);
+            assert(it != slot_request_for_port.end());
+            HandleEnableSlotCompleted(GetBits(e.control, 31, 24), it->second);
+            slot_request_for_port.erase(it);
           }
         }
         break;

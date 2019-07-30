@@ -85,7 +85,7 @@ class XHCI {
   uint32_t ReadPORTSC(int slot);
   void WritePORTSC(int slot, uint32_t data);
   void HandlePortStatusChange(int port);
-  void HandleEnableSlotCompleted(int slot);
+  void HandleEnableSlotCompleted(int slot, int port);
 
   static XHCI* xhci_;
   bool is_found_;
