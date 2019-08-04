@@ -8,6 +8,8 @@ class XHCI {
  public:
   void Init();
   void PollEvents();
+  void PrintPortSC();
+  void PrintUSBSTS();
 
   static XHCI& GetInstance() {
     if (!xhci_)
@@ -40,17 +42,17 @@ class XHCI {
   };
   static_assert(offsetof(OperationalRegisters, config) == 0x38);
   packed_struct InterrupterRegisterSet {
-    uint32_t management;
-    uint32_t moderation;
-    uint32_t erst_size;
-    uint32_t rsvdp;
-    uint64_t erst_base;
-    uint64_t erdp;
+    volatile uint32_t management;
+    volatile uint32_t moderation;
+    volatile uint32_t erst_size;
+    volatile uint32_t rsvdp;
+    volatile uint64_t erst_base;
+    volatile uint64_t erdp;
   };
   static_assert(sizeof(InterrupterRegisterSet) == 0x20);
   packed_struct RuntimeRegisters {
-    uint32_t microframe_index;
-    uint32_t rsvdz1[3 + 4];
+    volatile uint32_t microframe_index;
+    volatile uint32_t rsvdz1[3 + 4];
     InterrupterRegisterSet irs[1024];
   };
   static_assert(offsetof(RuntimeRegisters, irs) == 0x20);
@@ -75,7 +77,7 @@ class XHCI {
 
   static constexpr int kNumOfCmdTRBRingEntries = 255;
   static constexpr int kNumOfERSForEventRing = 1;
-  static constexpr int kNumOfTRBForEventRing = 32;
+  static constexpr int kNumOfTRBForEventRing = 64;
 
   void ResetHostController();
   void InitPrimaryInterrupter();
@@ -96,7 +98,7 @@ class XHCI {
   uint64_t device_context_base_array_phys_addr_;
   volatile CapabilityRegisters* cap_regs_;
   volatile OperationalRegisters* op_regs_;
-  volatile RuntimeRegisters* rt_regs_;
+  RuntimeRegisters* rt_regs_;
   volatile uint32_t* db_regs_;
   EventRing* primary_event_ring_;
   uint8_t max_slots_;

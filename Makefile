@@ -57,6 +57,10 @@ run_xhci : files .FORCE
 run : files pmem.img .FORCE
 	$(QEMU) $(QEMU_ARGS_PMEM)
 
+install : files .FORCE
+	@read -p "Write LIUMOS to /Volumes/LIUMOS. Are you sure? [Enter to proceed, or Ctrl-C to abort] " && \
+		cp -r mnt/* /Volumes/LIUMOS/ && diskutil eject /Volumes/LIUMOS/ && echo "install done."
+
 run_vb_dbg : .FORCE
 	- VBoxManage storageattach liumOS --storagectl SATA --port 0 --medium none
 	- VBoxManage closemedium disk liumos.vdi --delete

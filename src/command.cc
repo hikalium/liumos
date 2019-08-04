@@ -733,6 +733,15 @@ void Run(TextBox& tbox) {
     for (int i = 0; liumos->hpet->ReadMainCounterValue() < t1; i++) {
       PutStringAndHex("Line", i + 1);
     }
+  } else if (IsEqualString(line, "xhci init")) {
+    XHCI& xhci = XHCI::GetInstance();
+    xhci.Init();
+  } else if (IsEqualString(line, "xhci show portsc")) {
+    XHCI& xhci = XHCI::GetInstance();
+    xhci.PrintPortSC();
+  } else if (IsEqualString(line, "xhci show status")) {
+    XHCI& xhci = XHCI::GetInstance();
+    xhci.PrintUSBSTS();
   } else if (IsEqualString(line, "teststl")) {
     char s[128];
     snprintf(s, sizeof(s), "123 = 0x%X\n", 123);

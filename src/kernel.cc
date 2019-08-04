@@ -259,9 +259,6 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
   PCI& pci = PCI::GetInstance();
   pci.DetectDevices();
 
-  XHCI& xhci = XHCI::GetInstance();
-  xhci.Init();
-
   StoreIntFlag();
 
   LaunchSubTask(kernel_heap_allocator);
