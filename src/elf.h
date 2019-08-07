@@ -4,13 +4,13 @@
 
 #include "lib/musl/include/elf.h"
 
-class File;
+class EFIFile;
 class Process;
 class PersistentMemoryManager;
 
-const Elf64_Shdr* FindSectionHeader(File& file, const char* name);
+const Elf64_Shdr* FindSectionHeader(EFIFile& file, const char* name);
 
-Process& LoadELFAndCreateEphemeralProcess(File& file);
-Process& LoadELFAndCreatePersistentProcess(File& file,
+Process& LoadELFAndCreateEphemeralProcess(EFIFile& file);
+Process& LoadELFAndCreatePersistentProcess(EFIFile& file,
                                            PersistentMemoryManager& pmem);
-void LoadKernelELF(File& file);
+void LoadKernelELF(EFIFile& file);

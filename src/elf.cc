@@ -53,7 +53,7 @@ static const Elf64_Ehdr* EnsureLoadable(const uint8_t* buf) {
   return ehdr;
 }
 
-const Elf64_Shdr* FindSectionHeader(File& file, const char* name) {
+const Elf64_Shdr* FindSectionHeader(EFIFile& file, const char* name) {
   const uint8_t* buf = file.GetBuf();
   const Elf64_Ehdr* ehdr = reinterpret_cast<const Elf64_Ehdr*>(buf);
   if (!ehdr)
@@ -73,7 +73,7 @@ const Elf64_Shdr* FindSectionHeader(File& file, const char* name) {
   return nullptr;
 }
 
-static const Elf64_Ehdr* ParseProgramHeader(File& file,
+static const Elf64_Ehdr* ParseProgramHeader(EFIFile& file,
                                             ProcessMappingInfo& proc_map_info,
                                             PhdrMappingInfo& phdr_map_info) {
   proc_map_info.Clear();
@@ -153,7 +153,7 @@ static void LoadAndMap(TAllocator& allocator,
                          should_clflush);
 }
 
-Process& LoadELFAndCreateEphemeralProcess(File& file) {
+Process& LoadELFAndCreateEphemeralProcess(EFIFile& file) {
   ExecutionContext& ctx =
       *liumos->kernel_heap_allocator->Alloc<ExecutionContext>();
   ProcessMappingInfo& map_info = ctx.GetProcessMappingInfo();
@@ -197,7 +197,7 @@ Process& LoadELFAndCreateEphemeralProcess(File& file) {
   return proc;
 }
 
-Process& LoadELFAndCreatePersistentProcess(File& file,
+Process& LoadELFAndCreatePersistentProcess(EFIFile& file,
                                            PersistentMemoryManager& pmem) {
   constexpr uint64_t kUserStackBaseAddr = 0xBEEF'0000;
   const int kNumOfStackPages = 32;
@@ -247,7 +247,7 @@ Process& LoadELFAndCreatePersistentProcess(File& file,
   return liumos->proc_ctrl->RestoreFromPersistentProcessInfo(pp_info);
 }
 
-void LoadKernelELF(File& file) {
+void LoadKernelELF(EFIFile& file) {
   ProcessMappingInfo map_info;
   PhdrMappingInfo phdr_map_info;
 

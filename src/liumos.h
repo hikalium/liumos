@@ -5,6 +5,7 @@
 #include "asm.h"
 #include "console.h"
 #include "efi.h"
+#include "efi_file.h"
 #include "elf.h"
 #include "gdt.h"
 #include "generic.h"
@@ -45,20 +46,6 @@ void Run(TextBox& tbox);
 void WaitAndProcess(TextBox& tbox);
 }  // namespace ConsoleCommand
 
-// @file.cc
-class File {
- public:
-  void LoadFromEFISimpleFS(const wchar_t* file_name);
-  const uint8_t* GetBuf() { return buf_pages_; }
-  uint64_t GetFileSize() { return file_size_; }
-
- private:
-  static constexpr int kFileNameSize = 16;
-  char file_name_[kFileNameSize + 1];
-  uint64_t file_size_;
-  uint8_t* buf_pages_;
-};
-
 // @font.gen.c
 extern uint8_t font[0x100][16];
 
@@ -85,9 +72,9 @@ inline T min(T a, T b) {
 // @liumos.c
 packed_struct LoaderInfo {
   struct {
-    File* hello_bin;
-    File* pi_bin;
-    File* liumos_elf;
+    EFIFile* hello_bin;
+    EFIFile* pi_bin;
+    EFIFile* liumos_elf;
   } files;
   EFI* efi;
 };

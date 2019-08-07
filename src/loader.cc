@@ -1,4 +1,5 @@
 #include "corefunc.h"
+#include "efi_file_manager.h"
 #include "execution_context.h"
 #include "hpet.h"
 #include "liumos.h"
@@ -9,16 +10,16 @@ PhysicalPageAllocator* dram_allocator;
 PhysicalPageAllocator* pmem_allocator;
 CPUFeatureSet cpu_features;
 SerialPort com1;
-File hello_bin_file;
-File pi_bin_file;
-File liumos_elf_file;
+EFIFile hello_bin_file;
+EFIFile pi_bin_file;
+EFIFile liumos_elf_file;
 
 LiumOS liumos_;
 PhysicalPageAllocator dram_allocator_;
 Console main_console_;
 EFI efi_;
 
-File logo_file;
+EFIFile logo_file;
 
 void FreePages(PhysicalPageAllocator* allocator,
                void* phys_addr,
@@ -193,12 +194,11 @@ void MainForBootProcessor(EFI::Handle image_handle,
 
   efi_.ListAllFiles();
 
-  logo_file.LoadFromEFISimpleFS(L"logo.ppm");
-  hello_bin_file.LoadFromEFISimpleFS(L"hello.bin");
+  EFIFileManager::Load(logo_file, L"logo.ppm");
   liumos_.loader_info.files.hello_bin = &hello_bin_file;
-  pi_bin_file.LoadFromEFISimpleFS(L"pi.bin");
+  EFIFileManager::Load(pi_bin_file, L"pi.bin");
   liumos_.loader_info.files.pi_bin = &pi_bin_file;
-  liumos_elf_file.LoadFromEFISimpleFS(L"LIUMOS.ELF");
+  EFIFileManager::Load(liumos_elf_file, L"LIUMOS.ELF");
   liumos_.loader_info.files.liumos_elf = &liumos_elf_file;
 
   efi_.GetMemoryMapAndExitBootServices(image_handle, efi_memory_map);

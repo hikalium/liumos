@@ -12,7 +12,7 @@ COMMON_SRCS= \
 
 LOADER_SRCS= $(COMMON_SRCS) \
 			 efimain.cc \
-			 file.cc \
+			 efi_file_manager.cc \
 			 graphics.cc \
 			 libfunc.cc loader.cc
 
