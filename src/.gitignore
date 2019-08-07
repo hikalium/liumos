@@ -9,6 +9,7 @@
 *.out
 *.gen.mk
 *.dump.txt
+*.d
 githash.cc
 
 third_party*

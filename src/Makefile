@@ -1,99 +1,100 @@
 LOADER_SRCS= acpi.cc apic.cc asm.S \
-						 console.cc \
-						 efi.cc efimain.cc elf.cc execution_context.cc \
-						 file.cc \
-						 gdt.cc generic.cc githash.cc graphics.cc guid.cc \
-						 interrupt.cc \
-						 libfunc.cc loader.cc \
-						 paging.cc phys_page_allocator.cc pmem.cc process.cc \
-						 serial.cc sheet.cc \
-						 sys_constant.cc \
-						 text_box.cc \
-						 font.gen.c
+			 console.cc \
+			 efi.cc efimain.cc elf.cc execution_context.cc \
+			 file.cc \
+			 gdt.cc generic.cc githash.cc graphics.cc guid.cc \
+			 interrupt.cc \
+			 libfunc.cc loader.cc \
+			 paging.cc phys_page_allocator.cc pmem.cc process.cc \
+			 serial.cc sheet.cc \
+			 sys_constant.cc \
+			 text_box.cc \
+			 font.gen.c
 KERNEL_SRCS= acpi.cc apic.cc asm.S \
-						 console.cc command.cc\
-						 efi.cc elf.cc execution_context.cc \
-						 gdt.cc generic.cc githash.cc guid.cc \
-						 hpet.cc \
-						 interrupt.cc \
-						 kernel.cc keyboard.cc \
-						 libcxx_support.cc \
-						 newlib_support.cc \
-						 paging.cc pci.cc phys_page_allocator.cc pmem.cc process.cc\
-						 scheduler.cc serial.cc sheet.cc subtask.cc \
-						 sleep_handler.S sys_constant.cc syscall.cc syscall_handler.S\
-						 text_box.cc \
-						 font.gen.cc \
-						 xhci.cc
+			 console.cc command.cc\
+			 efi.cc elf.cc execution_context.cc \
+			 gdt.cc generic.cc githash.cc guid.cc \
+			 hpet.cc \
+			 interrupt.cc \
+			 kernel.cc keyboard.cc \
+			 libcxx_support.cc \
+			 newlib_support.cc \
+			 paging.cc pci.cc phys_page_allocator.cc pmem.cc process.cc\
+			 scheduler.cc serial.cc sheet.cc subtask.cc \
+			 sleep_handler.S sys_constant.cc syscall.cc syscall_handler.S\
+			 text_box.cc \
+			 font.gen.cc \
+			 xhci.cc
 KERNEL_LIBS=third_party/newlib-cygwin_dest/lib/libc.a
 LOADER_OBJS= $(addsuffix .o, $(basename $(LOADER_SRCS)))
+LOADER_DEPS= $(addsuffix .o.d, $(basename $(LOADER_SRCS)))
 KERNEL_OBJS= $(addsuffix .elf.o, $(basename $(KERNEL_SRCS)))
-HEADERS=$(wildcard *.h) lib/musl/include/elf.h
+KERNEL_DEPS= $(addsuffix .elf.d, $(basename $(KERNEL_SRCS)))
 OVMF=ovmf/bios64.bin
 QEMU=qemu-system-x86_64
 
 CLANG_WARNINGS = \
-		-Wall -Wpedantic -Wextra -Wconditional-uninitialized -Wshorten-64-to-32 \
-		-Werror \
-		-Wno-keyword-macro
+				 -Wall -Wpedantic -Wextra -Wconditional-uninitialized -Wshorten-64-to-32 \
+				 -Werror \
+				 -Wno-keyword-macro
 C_STD = -std=c11
 CXX_STD = -std=c++17
 
 LIBCXX_FOR_KERNEL_INC_PATH=third_party_root/include/c++/v1
 LIBCXX_FOR_KERNEL_LIB_PATH=third_party_root/lib
-		
+
 CFLAGS_LOADER= \
-		-target x86_64-pc-win32-coff \
-		-fno-stack-protector -fno-exceptions -fshort-wchar \
-		-mno-red-zone \
-		-nostdlibinc \
-		$(CLANG_WARNINGS) $(C_STD) \
-		-Imusl_supplement -Imusl/include
+			   -target x86_64-pc-win32-coff \
+			   -fno-stack-protector -fno-exceptions -fshort-wchar \
+			   -mno-red-zone \
+			   -nostdlibinc \
+			   $(CLANG_WARNINGS) $(C_STD) \
+			   -Imusl_supplement -Imusl/include
 
 CXXFLAGS_LOADER= \
-		-DLIUMOS_LOADER \
-		-target x86_64-pc-win32-coff \
-		-fno-stack-protector -fno-exceptions -fshort-wchar \
-		-mno-red-zone \
-		-nostdlibinc -nostdlib \
-		-D_LIBCPP_HAS_NO_THREADS -D_LIBCPP_OBJECT_FORMAT_COFF -Ithird_party/llvm-test/include/c++/v1/ \
-		$(CLANG_WARNINGS) $(CXX_STD)
+				 -DLIUMOS_LOADER \
+				 -target x86_64-pc-win32-coff \
+				 -fno-stack-protector -fno-exceptions -fshort-wchar \
+				 -mno-red-zone \
+				 -nostdlibinc -nostdlib \
+				 -D_LIBCPP_HAS_NO_THREADS -D_LIBCPP_OBJECT_FORMAT_COFF -Ithird_party/llvm-test/include/c++/v1/ \
+				 $(CLANG_WARNINGS) $(CXX_STD)
 
 CFLAGS_KERNEL= \
-		-target x86_64-unknown-none-elf \
-		-fno-stack-protector -fno-exceptions -fshort-wchar \
-		-mno-red-zone -mstack-alignment=8 \
-		-nostdlib -nostdinc\
-		-Ithird_party/newlib-cygwin_dest/include/ \
-		$(CLANG_WARNINGS) $(C_STD)
+			   -target x86_64-unknown-none-elf \
+			   -fno-stack-protector -fno-exceptions -fshort-wchar \
+			   -mno-red-zone -mstack-alignment=8 \
+			   -nostdlib -nostdinc\
+			   -Ithird_party/newlib-cygwin_dest/include/ \
+			   $(CLANG_WARNINGS) $(C_STD)
 
 # -Wno-gnu-include-next: avoid warning from third_party/newlib-cygwin_dest/include/limits.h:132:3
 CXXFLAGS_KERNEL= \
-		-target x86_64-unknown-none-elf \
-		-fno-stack-protector -fno-exceptions -fshort-wchar -fno-rtti \
-		-mno-red-zone -mstack-alignment=8 -mcmodel=large \
-		-nostdlibinc \
-		-D__ELF__ -D_LDBL_EQ_DBL \
-		-I$(LIBCXX_FOR_KERNEL_INC_PATH) \
-		-Ithird_party/newlib-cygwin_dest/include/ \
-		-I/usr/local/opt/llvm/lib/clang/7.0.1/include/ \
-		$(CLANG_WARNINGS) \
-		-Wno-gnu-include-next \
-		$(CXX_STD)
+				 -target x86_64-unknown-none-elf \
+				 -fno-stack-protector -fno-exceptions -fshort-wchar -fno-rtti \
+				 -mno-red-zone -mstack-alignment=8 -mcmodel=large \
+				 -nostdlibinc \
+				 -D__ELF__ -D_LDBL_EQ_DBL \
+				 -I$(LIBCXX_FOR_KERNEL_INC_PATH) \
+				 -Ithird_party/newlib-cygwin_dest/include/ \
+				 -I/usr/local/opt/llvm/lib/clang/7.0.1/include/ \
+				 $(CLANG_WARNINGS) \
+				 -Wno-gnu-include-next \
+				 $(CXX_STD)
 
 
 LDFLAGS_KERNEL= \
-		-L$(LIBCXX_FOR_KERNEL_LIB_PATH) -lc++ -lc++abi -lunwind -lm \
-	  -Lthird_party/newlib-cygwin_dest/lib -lc \
-    -static # --verbose
+				-L$(LIBCXX_FOR_KERNEL_LIB_PATH) -lc++ -lc++abi -lunwind -lm \
+				-Lthird_party/newlib-cygwin_dest/lib -lc \
+				-static # --verbose
 
 CXXFLAGS_FOR_TEST= \
-		$(CLANG_WARNINGS) $(CXX_STD) -g -stdlib=libc++ \
-		-DLIUMOS_TEST
+				   $(CLANG_WARNINGS) $(CXX_STD) -g -stdlib=libc++ \
+				   -DLIUMOS_TEST
 
 OSX_STD_HEADER_INCLUDE_FLAGS= \
-		-I/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include \
-		-I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include
+							  -I/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include \
+							  -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include
 
 FONTMAKER=../tools/fontmaker
 
@@ -110,49 +111,66 @@ font.gen.cc : font.txt $(FONTMAKER)
 lib/musl/include/%.h : lib/musl/include/Makefile
 	make -C lib/musl/include/ $*.h
 
-%.o : %.c $(HEADERS) Makefile
-	$(LLVM_CC) $(CFLAGS_LOADER) \
-		-c -o $*.o $*.c
-
-liumos.o : liumos.cc githash.h $(HEADERS) Makefile
-	$(LLVM_CC) $(CXXFLAGS_LOADER) \
-		-c -o $*.o $*.cc
-
-%.o : %.cc $(HEADERS) Makefile
-	$(LLVM_CXX) $(CXXFLAGS_LOADER) \
-		-c -o $*.o $*.cc
-
-%.o : %.S Makefile
-	$(LLVM_CC) $(CFLAGS_LOADER) \
-		-c -o $*.o $*.S
-
-%.o.dump.txt : %.o Makefile
-	objdump -d $*.o > $@
-
+# Test rules
 test_% : %_test.cc Makefile
 	$(CXX) $(CXXFLAGS_FOR_TEST) -o $*_test.bin $*_test.cc
 	@./$*_test.bin
 
-BOOTX64.EFI : $(LOADER_OBJS) $(HEADERS) Makefile
+# Loader rules
+
+%.o : %.c Makefile
+	$(LLVM_CC) $(CFLAGS_LOADER) \
+		-c -o $*.o $*.c
+%.o.d : %.c Makefile
+	$(LLVM_CC) $(CXXFLAGS_LOADER) \
+		-MD -MF $@ -c -o $*.o $*.c
+
+%.o : %.cc Makefile
+	$(LLVM_CXX) $(CXXFLAGS_LOADER) \
+		-c -o $*.o $*.cc
+%.o.d : %.cc Makefile
+	$(LLVM_CXX) $(CXXFLAGS_LOADER) \
+		-MD -MF $@ -c -o $*.o $*.cc
+
+%.o : %.S Makefile
+	$(LLVM_CC) $(CFLAGS_LOADER) \
+		-c -o $*.o $*.S
+%.o.d : %.S Makefile
+	touch $@ # generate dummy
+
+%.o.dump.txt : %.o Makefile
+	objdump -d $*.o > $@
+
+BOOTX64.EFI : $(LOADER_OBJS) Makefile
 	$(LLVM_LLD_LINK) \
 		-subsystem:efi_application -nodefaultlib \
-		-entry:efi_main $(LOADER_OBJS) -out:$@
+		-entry:efi_main $(LOADER_OBJS) -out:BOOTX64.EFI
 
-%.elf.o : %.cc $(HEADERS) Makefile
+# Kernel rules
+
+%.elf.o : %.cc Makefile
 	$(LLVM_CXX) $(CXXFLAGS_KERNEL) \
 		-g -c -o $*.elf.o $*.cc
+%.elf.d : %.cc Makefile
+	$(LLVM_CXX) $(CXXFLAGS_KERNEL) \
+		-MD -MF $@ -c -o $*.elf.o $*.cc
 
-%.elf.o : %.c $(HEADERS) Makefile
+%.elf.o : %.c Makefile
 	$(LLVM_CC) $(CFLAGS_KERNEL) \
 		-g -c -o $*.elf.o $*.c
+%.elf.d : %.c Makefile
+	$(LLVM_CXX) $(CXXFLAGS_KERNEL) \
+		-MD -MF $@ -c -o $*.elf.o $*.c
 
 %.elf.o : %.S Makefile
 	$(LLVM_CC) $(CXXFLAGS_KERNEL) \
 		-c -o $*.elf.o $*.S
+%.elf.d : %.S Makefile
+	touch $@ # generate dummy
 
 LIUMOS.ELF : $(KERNEL_OBJS) kernel.ld Makefile
 	$(LLVM_LD_LLD) $(LDFLAGS_KERNEL) \
-		-o $@ -e KernelEntry -T kernel.ld $(KERNEL_OBJS)
+		-o LIUMOS.ELF -e KernelEntry -T kernel.ld $(KERNEL_OBJS)
 
 NEWLIB_BUILD_DIR=third_party/newlib-cygwin_build
 
@@ -161,16 +179,16 @@ newlib:
 	git submodule update --depth=1
 	mkdir -p $(NEWLIB_BUILD_DIR)
 	cd $(NEWLIB_BUILD_DIR) \
-	&& \
-	CC=/usr/local/opt/llvm/bin/clang \
+		&& \
+		CC=/usr/local/opt/llvm/bin/clang \
 		AR=/usr/local/opt/llvm/bin/llvm-ar \
 		RANLIB=/usr/local/opt/llvm/bin/llvm-ranlib \
 		../newlib-cygwin/newlib/configure \
 		CFLAGS="-nostdlibinc -O2 -target x86_64-unknown-none-elf -mcmodel=large" \
 		--target=x86_64-elf --disable-multilib \
 		--prefix=$$(dirname `pwd`)/newlib-cygwin_dest \
-	&& \
-	make -j4 install
+		&& \
+		make -j4 install
 
 LLVM_LIBUNWIND_BUILD_DIR=third_party/llvm-project/libunwind/build
 
@@ -195,6 +213,7 @@ clean :
 	-rm *.EFI
 	-rm *.lib
 	-rm *.o
+	-rm *.d
 	-rm *.gen.c
 	-rm *.gen.cc
 	-rm *.bin
@@ -228,4 +247,7 @@ kerneldump :
 FORCE : 
 
 githash.cc: FORCE
-	echo 'const char *kGitHash = "$(shell git rev-parse HEAD | tr -d "\n") $(shell ./git_modification_check.sh)";' > $@
+	./update_githash_cc.sh
+
+-include $(LOADER_DEPS)
+-include $(KERNEL_DEPS)
