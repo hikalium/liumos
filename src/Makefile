@@ -1,30 +1,32 @@
-LOADER_SRCS= acpi.cc apic.cc asm.S \
+COMMON_SRCS= \
+			 acpi.cc apic.cc asm.S \
 			 console.cc \
-			 efi.cc efimain.cc elf.cc execution_context.cc \
-			 file.cc \
-			 gdt.cc generic.cc githash.cc graphics.cc guid.cc \
+			 efi.cc elf.cc execution_context.cc \
+			 gdt.cc generic.cc githash.cc guid.cc \
 			 interrupt.cc \
-			 libfunc.cc loader.cc \
 			 paging.cc phys_page_allocator.cc pmem.cc process.cc \
 			 serial.cc sheet.cc \
 			 sys_constant.cc \
 			 text_box.cc \
-			 font.gen.c
-KERNEL_SRCS= acpi.cc apic.cc asm.S \
-			 console.cc command.cc\
-			 efi.cc elf.cc execution_context.cc \
-			 gdt.cc generic.cc githash.cc guid.cc \
+			 font.gen.cc \
+
+LOADER_SRCS= $(COMMON_SRCS) \
+			 efimain.cc \
+			 file.cc \
+			 graphics.cc \
+			 libfunc.cc loader.cc
+
+KERNEL_SRCS= $(COMMON_SRCS) \
+			 command.cc \
 			 hpet.cc \
-			 interrupt.cc \
 			 kernel.cc keyboard.cc \
 			 libcxx_support.cc \
 			 newlib_support.cc \
-			 paging.cc pci.cc phys_page_allocator.cc pmem.cc process.cc\
-			 scheduler.cc serial.cc sheet.cc subtask.cc \
-			 sleep_handler.S sys_constant.cc syscall.cc syscall_handler.S\
-			 text_box.cc \
-			 font.gen.cc \
+			 pci.cc \
+			 scheduler.cc subtask.cc \
+			 sleep_handler.S syscall.cc syscall_handler.S \
 			 xhci.cc
+
 KERNEL_LIBS=third_party/newlib-cygwin_dest/lib/libc.a
 LOADER_OBJS= $(addsuffix .o, $(basename $(LOADER_SRCS)))
 LOADER_DEPS= $(addsuffix .o.d, $(basename $(LOADER_SRCS)))
