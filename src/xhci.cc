@@ -35,16 +35,6 @@ constexpr uint32_t kPortSCPreserveMask = 0b00001110000000011100001111100000;
 constexpr uint32_t kUSBSTSBitHCHalted = 0b1;
 constexpr uint32_t kUSBSTSBitHCError = 1 << 12;
 
-static uint32_t GetBits(uint32_t v, int hi, int lo) {
-  assert(hi > lo);
-  return (v >> lo) & ((1 << (hi - lo + 1)) - 1);
-}
-
-static uint64_t GetBits(uint64_t v, int hi, int lo) {
-  assert(hi > lo);
-  return (v >> lo) & ((1 << (hi - lo + 1)) - 1);
-}
-
 void EnsureBusMasterEnabled(PCI::DeviceLocation& dev) {
   uint32_t cmd_and_status =
       PCI::ReadConfigRegister32(dev, kPCIRegOffsetCommandAndStatus);
@@ -227,9 +217,9 @@ void XHCI::Init() {
       kPageAttrPresent | kPageAttrWritable | kPageAttrCacheDisable);
 
   const uint32_t kHCSPARAMS1 = cap_regs_->params[0];
-  max_slots_ = GetBits(kHCSPARAMS1, 31, 24);
-  max_intrs_ = GetBits(kHCSPARAMS1, 18, 8);
-  max_ports_ = GetBits(kHCSPARAMS1, 7, 0);
+  max_slots_ = GetBits<31, 24, uint8_t>(kHCSPARAMS1);
+  max_intrs_ = GetBits<18, 8, uint8_t>(kHCSPARAMS1);
+  max_ports_ = GetBits<7, 0, uint8_t>(kHCSPARAMS1);
 
   op_regs_ = reinterpret_cast<volatile OperationalRegisters*>(
       reinterpret_cast<uint64_t>(cap_regs_) + cap_regs_->length);
@@ -302,7 +292,7 @@ void XHCI::HandlePortStatusChange(int port) {
   }
   if (portsc & kPortSCBitPortLinkStateChange) {
     PutString("  LinkState: 0x");
-    PutHex64(GetBits(portsc, 8, 5));
+    PutHex64(GetBits<8, 5, uint32_t>(portsc));
     PutString("\n");
   }
 
@@ -515,7 +505,7 @@ void XHCI::PrintPortSC() {
     PutString(") ");
     // 7.2.2.1.1 Default USB Speed ID Mapping
     PutString("Speed=0x");
-    PutHex64(GetBits(portsc, 13, 10));
+    PutHex64(GetBits<13, 10, uint32_t>(portsc));
 
     PutString("\n");
   }
@@ -539,7 +529,7 @@ void XHCI::PollEvents() {
     switch (type) {
       case kTRBTypeCommandCompletionEvent:
         PutString("CommandCompletionEvent\n");
-        PutStringAndHex("  CompletionCode", GetBits(e.option, 31, 24));
+        PutStringAndHex("  CompletionCode", e.GetCompletionCode());
         {
           BasicTRB& cmd_trb = cmd_ring_->GetEntryFromPhysAddr(e.data);
           PutStringAndHex("  CommandType", cmd_trb.GetTRBType());
@@ -547,21 +537,22 @@ void XHCI::PollEvents() {
             uint64_t cmd_trb_phys_addr = e.data;
             auto it = slot_request_for_port.find(cmd_trb_phys_addr);
             assert(it != slot_request_for_port.end());
-            HandleEnableSlotCompleted(GetBits(e.control, 31, 24), it->second);
+            HandleEnableSlotCompleted(e.GetSlotID(), it->second);
             slot_request_for_port.erase(it);
             break;
           }
           if (cmd_trb.GetTRBType() == kTRBTypeAddressDeviceCommand) {
-            HandleAddressDeviceCompleted(GetBits(e.control, 31, 24));
+            HandleAddressDeviceCompleted(e.GetSlotID());
             break;
           }
         }
         break;
       case kTRBTypePortStatusChangeEvent:
         PutString("PortStatusChangeEvent\n");
-        PutStringAndHex("  Port ID", GetBits(e.data, 31, 24));
-        PutStringAndHex("  CompletionCode", GetBits(e.option, 31, 24));
-        HandlePortStatusChange(static_cast<int>(GetBits(e.data, 31, 24)));
+        PutStringAndHex("  Port ID", GetBits<31, 24, uint64_t>(e.data));
+        PutStringAndHex("  CompletionCode", e.GetCompletionCode());
+        HandlePortStatusChange(
+            static_cast<int>(GetBits<31, 24, uint64_t>(e.data)));
         PutString("kTRBTypePortStatusChangeEvent end\n");
         break;
       default:
