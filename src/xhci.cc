@@ -1,5 +1,6 @@
 #include "xhci.h"
 
+#include "kernel.h"
 #include "liumos.h"
 
 #include <unordered_map>
@@ -16,10 +17,13 @@ constexpr uint64_t kPCIBARBitsType64bitMemorySpace = 0b100;
 constexpr uint64_t kPCIRegCommandAndStatusMaskBusMasterEnable = 1 << 2;
 constexpr uint32_t kUSBCMDMaskRunStop = 0b01;
 constexpr uint32_t kUSBCMDMaskHCReset = 0b10;
+
 constexpr uint32_t kTRBTypeEnableSlotCommand = 9;
+constexpr uint32_t kTRBTypeAddressDeviceCommand = 11;
 constexpr uint32_t kTRBTypeNoOpCommand = 23;
 constexpr uint32_t kTRBTypeCommandCompletionEvent = 33;
 constexpr uint32_t kTRBTypePortStatusChangeEvent = 34;
+
 constexpr uint32_t kPortSCBitConnectStatusChange = 1 << 17;
 constexpr uint32_t kPortSCBitEnableStatusChange = 1 << 18;
 constexpr uint32_t kPortSCBitPortResetChange = 1 << 21;
@@ -143,7 +147,7 @@ void XHCI::InitSlotsAndContexts() {
                      (num_of_slots_enabled_ & kOPREGConfigMaskMaxSlotsEn);
 
   device_context_base_array_ =
-      liumos->kernel_heap_allocator->AllocPages<uint64_t*>(
+      liumos->kernel_heap_allocator->AllocPages<DeviceContext volatile**>(
           1, kPageAttrCacheDisable | kPageAttrPresent | kPageAttrWritable);
   for (int i = 0; i <= num_of_slots_enabled_; i++) {
     device_context_base_array_[i] = 0;
@@ -320,21 +324,21 @@ void XHCI::HandlePortStatusChange(int port) {
   NotifyHostControllerDoorbell();
 }
 
-class InputContext {
+class XHCI::DeviceContext {
+  friend class InputContext;
+
  public:
-  static InputContext& Alloc(int num_of_ctx) {
+  static constexpr int kDCIEPContext0 = 1;
+  static constexpr int kEPTypeControl = 4;
+  static DeviceContext& Alloc(int max_dci) {
     constexpr int kMapAttr =
         kPageAttrCacheDisable | kPageAttrPresent | kPageAttrWritable;
-    assert(1 <= num_of_ctx && num_of_ctx <= 33);
+    const int num_of_ctx = max_dci + 1;
     size_t size = 0x20 * num_of_ctx;
-    InputContext* ctx =
-        liumos->kernel_heap_allocator->AllocPages<InputContext*>(
+    DeviceContext* ctx =
+        liumos->kernel_heap_allocator->AllocPages<DeviceContext*>(
             ByteSizeToPageSize(size), kMapAttr);
-    bzero(ctx, size);
-    if (num_of_ctx > 1) {
-      volatile uint32_t* add_ctx_flags = reinterpret_cast<uint32_t*>(ctx) + 1;
-      *add_ctx_flags = (1 << (num_of_ctx - 1)) - 1;
-    }
+    new (ctx) DeviceContext(max_dci);
     return *ctx;
   }
   void SetContextEntries(uint32_t num_of_ent) {
@@ -375,24 +379,87 @@ class InputContext {
     endpoint_ctx[dci][1] &= ~kMask;
     endpoint_ctx[dci][1] |= (c_err << kMaskShift) & kMask;
   }
-  static constexpr int kDCIEPContext0 = 1;
+  void SetMaxPacketSize(int dci, uint16_t max_packet_size) {
+    endpoint_ctx[dci][1] &= 0xFFFF;
+    endpoint_ctx[dci][1] |= static_cast<uint32_t>(max_packet_size) << 16;
+  }
 
-  static constexpr int kEPTypeControl = 4;
-
-  volatile uint32_t input_ctrl_ctx[8];
+ private:
+  DeviceContext(int max_dci) {
+    assert(0 <= max_dci && max_dci <= 31);
+    bzero(this, 0x20 * (max_dci + 1));
+  }
   volatile uint32_t slot_ctx[8];
   volatile uint32_t endpoint_ctx[31][8];
 };
-static_assert(offsetof(InputContext, slot_ctx) == 0x20);
-static_assert(sizeof(InputContext) == 0x420);
+
+class XHCI::InputContext {
+ public:
+  static InputContext& Alloc(int num_of_ctx) {
+    static_assert(offsetof(InputContext, device_ctx_) == 0x20);
+    constexpr int kMapAttr =
+        kPageAttrCacheDisable | kPageAttrPresent | kPageAttrWritable;
+    assert(1 <= num_of_ctx && num_of_ctx <= 33);
+    size_t size = 0x20 * num_of_ctx;
+    InputContext& ctx =
+        *liumos->kernel_heap_allocator->AllocPages<InputContext*>(
+            ByteSizeToPageSize(size), kMapAttr);
+    bzero(&ctx.input_ctrl_ctx_[0], sizeof(input_ctrl_ctx_));
+    if (num_of_ctx > 1) {
+      volatile uint32_t& add_ctx_flags = ctx.input_ctrl_ctx_[1];
+      add_ctx_flags = (1 << (num_of_ctx - 1)) - 1;
+    }
+    new (&ctx.device_ctx_) DeviceContext(num_of_ctx - 2);
+    return ctx;
+  }
+
+  InputContext() = delete;
+  DeviceContext& GetDeviceContext() { return device_ctx_; }
+
+ private:
+  volatile uint32_t input_ctrl_ctx_[8];
+  DeviceContext device_ctx_;
+};
+static_assert(sizeof(XHCI::InputContext) == 0x420);
+
+constexpr uint32_t kPortSpeedLS = 2;
+constexpr uint32_t kPortSpeedHS = 3;
+constexpr uint32_t kPortSpeedSS = 4;
+
+static uint16_t GetMaxPacketSizeFromPORTSCPortSpeed(uint32_t port_speed) {
+  // 4.3 USB Device Initialization
+  // 7. For LS, HS, and SS devices; 8, 64, and 512 bytes, respectively,
+  // are the only packet sizes allowed for the Default Control Endpoint
+  //    • Max Packet Size = The default maximum packet size for the Default
+  //    Control Endpoint, as function of the PORTSC Port Speed field.
+  // 7.2.2.1.1 Default USB Speed ID Mapping
+  if (port_speed == kPortSpeedLS)
+    return 8;
+  if (port_speed == kPortSpeedHS)
+    return 64;
+  if (port_speed == kPortSpeedSS)
+    return 512;
+  Panic("GetMaxPacketSizeFromPORTSCPortSpeed: Not supported speed");
+}
+
+static const char* GetSpeedNameFromPORTSCPortSpeed(uint32_t port_speed) {
+  if (port_speed == kPortSpeedLS)
+    return "Low-speed";
+  if (port_speed == kPortSpeedHS)
+    return "High-speed";
+  if (port_speed == kPortSpeedSS)
+    return "SuperSpeed Gen1 x1";
+  Panic("GetSpeedNameFromPORTSCPortSpeed: Not supported speed");
+}
 
 void XHCI::HandleEnableSlotCompleted(int slot, int port) {
   PutStringAndHex("Slot enabled. Slot ID", slot);
   PutStringAndHex("  Use RootPort", port);
   // 4.3.3 Device Slot Initialization
   InputContext& ctx = InputContext::Alloc(1 + 2);
-  ctx.SetRootHubPortNumber(port);
-  ctx.SetContextEntries(1);
+  DeviceContext& dctx = ctx.GetDeviceContext();
+  dctx.SetRootHubPortNumber(port);
+  dctx.SetContextEntries(1);
   // Allocate and initialize the Transfer Ring for the Default Control Endpoint
   constexpr int kNumOfCtrlEPRingEntries = 32;
   TransferRequestBlockRing<kNumOfCtrlEPRingEntries>* ctrl_ep_tring =
@@ -406,15 +473,27 @@ void XHCI::HandleEnableSlotCompleted(int slot, int port) {
   ctrl_ep_tring->Init(ctrl_ep_tring_phys_addr);
 
   // Initialize the Input default control Endpoint 0 Context (6.2.3).
-  ctx.SetEPType(InputContext::kDCIEPContext0, InputContext::kEPTypeControl);
-  ctx.SetTRDequeuePointer(InputContext::kDCIEPContext0,
-                          ctrl_ep_tring_phys_addr);
-  ctx.SetDequeueCycleState(InputContext::kDCIEPContext0, 1);
-  ctx.SetErrorCount(InputContext::kDCIEPContext0, 3);
-  // 7. For LS, HS, and SS devices; 8, 64, and 512 bytes, respectively,
-  // are the only packet sizes allowed for the Default Control Endpoint
-  //    • Max Packet Size = The default maximum packet size for the Default
-  //    Control Endpoint, as function of the PORTSC Port Speed field.
+  dctx.SetEPType(DeviceContext::kDCIEPContext0, DeviceContext::kEPTypeControl);
+  dctx.SetTRDequeuePointer(DeviceContext::kDCIEPContext0,
+                           ctrl_ep_tring_phys_addr);
+  dctx.SetDequeueCycleState(DeviceContext::kDCIEPContext0, 1);
+  dctx.SetErrorCount(DeviceContext::kDCIEPContext0, 3);
+  uint32_t portsc = ReadPORTSC(port);
+  uint32_t port_speed = GetBits<13, 10, uint32_t, uint32_t>(portsc);
+  PutString("  Port Speed: ");
+  PutString(GetSpeedNameFromPORTSCPortSpeed(port_speed));
+  PutString("\n");
+  dctx.SetMaxPacketSize(DeviceContext::kDCIEPContext0,
+                        GetMaxPacketSizeFromPORTSCPortSpeed(port_speed));
+  DeviceContext& out_device_ctx = DeviceContext::Alloc(1);
+  device_context_base_array_[slot] = &out_device_ctx;
+  // 8. Issue an Address Device Command for the Device Slot
+  volatile BasicTRB& trb = *cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
+  trb.data = v2p<InputContext*, uint64_t>(&ctx);
+  trb.option = 0;
+  trb.control = (kTRBTypeAddressDeviceCommand << 10) | (slot << 24);
+  cmd_ring_->Push();
+  NotifyHostControllerDoorbell();
 }
 
 void XHCI::PrintPortSC() {

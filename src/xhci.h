@@ -6,6 +6,8 @@
 
 class XHCI {
  public:
+  class DeviceContext;
+  class InputContext;
   void Init();
   void PollEvents();
   void PrintPortSC();
@@ -94,7 +96,7 @@ class XHCI {
   PCI::DeviceLocation dev_;
   TransferRequestBlockRing<kNumOfCmdTRBRingEntries>* cmd_ring_;
   uint64_t cmd_ring_phys_addr_;
-  volatile uint64_t* device_context_base_array_;
+  DeviceContext volatile** device_context_base_array_;
   uint64_t device_context_base_array_phys_addr_;
   volatile CapabilityRegisters* cap_regs_;
   volatile OperationalRegisters* op_regs_;

@@ -26,9 +26,9 @@ extern "C" void* memcpy(void* dst, const void* src, size_t n) {
   return dst;
 }
 
-void bzero(void* s, size_t n) {
+void bzero(volatile void* s, size_t n) {
   for (size_t i = 0; i < n; i++) {
-    reinterpret_cast<uint8_t*>(s)[i] = 0;
+    reinterpret_cast<volatile uint8_t*>(s)[i] = 0;
   }
 }
 
