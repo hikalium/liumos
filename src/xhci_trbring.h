@@ -3,19 +3,8 @@
 #include <cassert>
 #include <cstdint>
 
-template <int hi, int lo, typename TReturn, typename Texpr>
-constexpr TReturn GetBits(Texpr v) {
-  assert(hi >= lo);
-  return static_cast<TReturn>((v >> lo) & ((1 << (hi - lo + 1)) - 1));
-}
-
-struct BasicTRB {
-  volatile uint64_t data;
-  volatile uint32_t option;
-  volatile uint32_t control;
-  uint8_t GetTRBType() const { return GetBits<15, 10, uint8_t>(control); }
-};
-static_assert(sizeof(BasicTRB) == 16);
+#include "util.h"
+#include "xhci_trb.h"
 
 template <int N>
 class TransferRequestBlockRing {

@@ -2,6 +2,7 @@
 
 #include "liumos.h"
 #include "pci.h"
+#include "xhci_trb.h"
 #include "xhci_trbring.h"
 
 class XHCI {
