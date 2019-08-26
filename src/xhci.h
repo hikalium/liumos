@@ -90,6 +90,7 @@ class XHCI {
   void WritePORTSC(int slot, uint32_t data);
   void HandlePortStatusChange(int port);
   void HandleEnableSlotCompleted(int slot, int port);
+  void HandleAddressDeviceCompleted(int slot);
 
   static XHCI* xhci_;
   bool is_found_;

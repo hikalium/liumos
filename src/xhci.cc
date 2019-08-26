@@ -496,6 +496,10 @@ void XHCI::HandleEnableSlotCompleted(int slot, int port) {
   NotifyHostControllerDoorbell();
 }
 
+void XHCI::HandleAddressDeviceCompleted(int slot) {
+  PutStringAndHex("Address Device Completed. Slot ID", slot);
+}
+
 void XHCI::PrintPortSC() {
   for (int slot = 1; slot <= num_of_slots_enabled_; slot++) {
     uint32_t portsc = ReadPORTSC(slot);
@@ -545,6 +549,11 @@ void XHCI::PollEvents() {
             assert(it != slot_request_for_port.end());
             HandleEnableSlotCompleted(GetBits(e.control, 31, 24), it->second);
             slot_request_for_port.erase(it);
+            break;
+          }
+          if (cmd_trb.GetTRBType() == kTRBTypeAddressDeviceCommand) {
+            HandleAddressDeviceCompleted(GetBits(e.control, 31, 24));
+            break;
           }
         }
         break;
