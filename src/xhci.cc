@@ -16,7 +16,6 @@ constexpr uint64_t kPCIBARBitsType64bitMemorySpace = 0b100;
 constexpr uint64_t kPCIRegCommandAndStatusMaskBusMasterEnable = 1 << 2;
 constexpr uint32_t kUSBCMDMaskRunStop = 0b01;
 constexpr uint32_t kUSBCMDMaskHCReset = 0b10;
-constexpr uint32_t kUSBSTSMaskHCHalted = 0b1;
 constexpr uint32_t kTRBTypeEnableSlotCommand = 9;
 constexpr uint32_t kTRBTypeNoOpCommand = 23;
 constexpr uint32_t kTRBTypeCommandCompletionEvent = 33;
@@ -28,6 +27,9 @@ constexpr uint32_t kPortSCBitPortLinkStateChange = 1 << 22;
 constexpr uint32_t kPortSCBitPortReset = 1 << 4;
 constexpr uint32_t kPortSCBitPortPower = 1 << 9;
 constexpr uint32_t kPortSCPreserveMask = 0b00001110000000011100001111100000;
+
+constexpr uint32_t kUSBSTSBitHCHalted = 0b1;
+constexpr uint32_t kUSBSTSBitHCError = 1 << 12;
 
 static uint32_t GetBits(uint32_t v, int hi, int lo) {
   assert(hi > lo);
@@ -50,7 +52,7 @@ void EnsureBusMasterEnabled(PCI::DeviceLocation& dev) {
 
 void XHCI::ResetHostController() {
   op_regs_->command = op_regs_->command & ~kUSBCMDMaskRunStop;
-  while (!(op_regs_->status & kUSBSTSMaskHCHalted)) {
+  while (!(op_regs_->status & kUSBSTSBitHCHalted)) {
     PutString("Waiting for HCHalt...\n");
   }
   op_regs_->command = op_regs_->command | kUSBCMDMaskHCReset;
@@ -87,7 +89,7 @@ class XHCI::EventRing {
     irs_.erdp = GetTRBSPhysAddr();
     irs_.management = 0;
     irs_.erst_base = GetERSTPhysAddr();
-    irs_.management = 1;
+    irs_.management = 0;
   }
   uint64_t GetERSTPhysAddr() {
     return liumos->kernel_pml4->v2p(reinterpret_cast<uint64_t>(erst_));
@@ -102,12 +104,17 @@ class XHCI::EventRing {
   }
   void PopEvent() {
     assert(HasNextEvent());
-    irs_.erdp = (GetERSTPhysAddr() + sizeof(BasicTRB) * index_);
+    AdvanceERDP();
     index_++;
     if (index_ == num_of_trb_) {
       cycle_state_ ^= 1;
       index_ = 0;
     }
+  }
+  void AdvanceERDP() {
+    uint64_t kERDPPreserveMask = 0b1111;
+    irs_.erdp = (GetTRBSPhysAddr() + sizeof(BasicTRB) * index_) |
+                (irs_.erdp & kERDPPreserveMask);
   }
 
  private:
@@ -235,24 +242,10 @@ void XHCI::Init() {
   InitCommandRing();
 
   op_regs_->command = op_regs_->command | kUSBCMDMaskRunStop | (1 << 3);
-  while (op_regs_->status & kUSBSTSMaskHCHalted) {
+  while (op_regs_->status & kUSBSTSBitHCHalted) {
     PutString("Waiting for HCHalt == 0...\n");
   }
 
-  {
-    volatile BasicTRB* no_op_trb = cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
-    no_op_trb[0].data = 0;
-    no_op_trb[0].option = 0;
-    no_op_trb[0].control = (kTRBTypeNoOpCommand << 10);
-    cmd_ring_->Push();
-  }
-  {
-    volatile BasicTRB* no_op_trb = cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
-    no_op_trb[0].data = 0;
-    no_op_trb[0].option = 0;
-    no_op_trb[0].control = (kTRBTypeNoOpCommand << 10);
-    cmd_ring_->Push();
-  }
   {
     volatile BasicTRB* no_op_trb = cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
     no_op_trb[0].data = 0;
@@ -313,11 +306,10 @@ void XHCI::HandlePortStatusChange(int port) {
   if ((portsc & 1) == 0)
     return;
 
-  /*
   // 4.3.2 Device Slot Assignment
   // 4.6.3 Enable Slot
-  BasicTRB& enable_slot_trb =
-      *cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
+  PutString("  Send Enable Slot\n");
+  BasicTRB& enable_slot_trb = *cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
   slot_request_for_port.insert(
       {liumos->kernel_pml4->v2p(reinterpret_cast<uint64_t>(&enable_slot_trb)),
        port});
@@ -326,7 +318,6 @@ void XHCI::HandlePortStatusChange(int port) {
   enable_slot_trb.control = (kTRBTypeEnableSlotCommand << 10);
   cmd_ring_->Push();
   NotifyHostControllerDoorbell();
-  */
 }
 
 class InputContext {
@@ -447,7 +438,12 @@ void XHCI::PrintPortSC() {
   }
 }
 void XHCI::PrintUSBSTS() {
-  PutStringAndHex("USBSTS", op_regs_->status);
+  const uint32_t status = op_regs_->status;
+  PutStringAndHex("USBSTS", status);
+  PutString((status & kUSBSTSBitHCHalted) ? " Halted\n" : " Runnning\n");
+  if (status & kUSBSTSBitHCError) {
+    PutString(" HC Error Detected!\n");
+  }
 }
 
 void XHCI::PollEvents() {

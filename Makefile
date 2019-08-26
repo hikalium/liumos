@@ -52,10 +52,10 @@ run_nopmem : files .FORCE
 	$(QEMU) $(QEMU_ARGS)
 
 run_xhci : files .FORCE
-	$(QEMU) $(QEMU_ARGS_XHCI) $(QEMU_ARGS)
+	$(QEMU) $(QEMU_ARGS_XHCI) $(QEMU_ARGS) || reset
 	
 run : files pmem.img .FORCE
-	$(QEMU) $(QEMU_ARGS_PMEM)
+	$(QEMU) $(QEMU_ARGS_PMEM) || reset
 
 install : files .FORCE
 	@read -p "Write LIUMOS to /Volumes/LIUMOS. Are you sure? [Enter to proceed, or Ctrl-C to abort] " && \
