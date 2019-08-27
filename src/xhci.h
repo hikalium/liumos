@@ -87,6 +87,7 @@ class Controller {
   static constexpr int kSizeOfDescriptorBuffer = 4096;
 
   static constexpr uint8_t kDescriptorTypeDevice = 1;
+  static constexpr uint8_t kDescriptorTypeConfig = 2;
 
   struct DeviceDescriptor {
     uint8_t length;
@@ -106,6 +107,35 @@ class Controller {
   };
   static_assert(sizeof(DeviceDescriptor) == 18);
 
+  packed_struct ConfigDescriptor {
+    uint8_t length;
+    uint8_t type;
+    uint16_t total_length;
+    uint8_t num_of_interfaces;
+    uint8_t config_value;
+    uint8_t config_index;
+    uint8_t attribute;
+    uint8_t max_power;
+  };
+  static_assert(sizeof(ConfigDescriptor) == 9);
+
+  packed_struct InterfaceDescriptor {
+    uint8_t length;
+    uint8_t type;
+    uint8_t interface_number;
+    uint8_t alt_setting;
+    uint8_t num_of_endpoints;
+    uint8_t interface_class;
+    uint8_t interface_subclass;
+    uint8_t interface_protocol;
+    uint8_t interface_index;
+
+    static constexpr uint8_t kClassHID = 3;
+    static constexpr uint8_t kSubClassSupportBootProtocol = 1;
+    static constexpr uint8_t kProtocolKeyboard = 1;
+  };
+  static_assert(sizeof(InterfaceDescriptor) == 9);
+
   void ResetHostController();
   void InitPrimaryInterrupter();
   void InitSlotsAndContexts();
@@ -118,6 +148,10 @@ class Controller {
   void HandleEnableSlotCompleted(int slot, int port);
   void HandleAddressDeviceCompleted(int slot);
   void RequestDeviceDescriptor(int slot);
+  void RequestConfigDescriptor(int slot);
+  void SetConfig(int slot, uint8_t config_value);
+  void SetHIDBootProtocol(int slot);
+  void GetHIDReport(int slot);
   void HandleTransferEvent(BasicTRB& e);
 
   static Controller* xhci_;
@@ -140,6 +174,10 @@ class Controller {
   enum SlotState {
     kUndefined,
     kCheckingIfHIDClass,
+    kCheckingConfigDescriptor,
+    kSettingConfiguration,
+    kSettingBootProtocol,
+    kGettingReport,
     kNotSupportedDevice,
   } slot_state_[kMaxNumOfSlots];
 };

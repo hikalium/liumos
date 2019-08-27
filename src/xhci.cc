@@ -539,7 +539,9 @@ struct SetupStageTRB {
   static constexpr uint8_t kReqTypeBitRecipientInterface = 1;
 
   static constexpr uint8_t kReqGetDescriptor = 6;
+  static constexpr uint8_t kReqSetConfiguration = 9;
 
+  static constexpr uint32_t kTransferTypeNoDataStage = 0;
   static constexpr uint32_t kTransferTypeInDataStage = 3;
 };
 static_assert(sizeof(SetupStageTRB) == 16);
@@ -574,18 +576,35 @@ static void ConfigureSetupStageTRBForGetDescriptorRequest(
                 (SetupStageTRB::kTransferTypeInDataStage << 16);
 }
 
-static void ConfigureDataStageTRBForInput(struct DataStageTRB& trb,
-                                          uint64_t ptr,
-                                          uint32_t length) {
-  trb.buf = ptr;
-  trb.option = length;
-  trb.control = (1 << 16) | (kTRBTypeDataStage << 10) | (1 << 5);
+static void ConfigureSetupStageTRBForSetConfiguration(struct SetupStageTRB& trb,
+                                                      uint32_t slot,
+                                                      uint16_t config_value) {
+  trb.request_type = 0;
+  trb.request = SetupStageTRB::kReqSetConfiguration;
+  trb.value = config_value;
+  trb.index = 0;
+  trb.length = 0;
+  trb.option = 8;
+  trb.control = (1 << 6) | (kTRBTypeSetupStage << 10) | (slot << 24) |
+                (SetupStageTRB::kTransferTypeNoDataStage << 16);
 }
 
-static void ConfigureStatusStageTRBForInput(struct StatusStageTRB& trb) {
+static void ConfigureDataStageTRBForInput(struct DataStageTRB& trb,
+                                          uint64_t ptr,
+                                          uint32_t length,
+                                          bool interrupt_on_completion) {
+  trb.buf = ptr;
+  trb.option = length;
+  trb.control = (1 << 16) | (kTRBTypeDataStage << 10) |
+                (interrupt_on_completion ? 1 << 5 : 0);
+}
+
+static void ConfigureStatusStageTRBForInput(struct StatusStageTRB& trb,
+                                            bool interrupt_on_completion) {
   trb.reserved = 0;
   trb.option = 0;
-  trb.control = (1 << 16) | (kTRBTypeStatusStage << 10);
+  trb.control = (1 << 16) | (kTRBTypeStatusStage << 10) |
+                (interrupt_on_completion ? 1 << 5 : 0);
 }
 
 void Controller::RequestDeviceDescriptor(int slot) {
@@ -598,13 +617,93 @@ void Controller::RequestDeviceDescriptor(int slot) {
   DataStageTRB& data = *tring.GetNextEnqueueEntry<DataStageTRB*>();
   ConfigureDataStageTRBForInput(
       data, v2p<uint8_t*, uint64_t>(descriptor_buffers_[slot]),
-      kSizeOfDescriptorBuffer);
+      kSizeOfDescriptorBuffer, true);
   tring.Push();
   StatusStageTRB& status = *tring.GetNextEnqueueEntry<StatusStageTRB*>();
-  ConfigureStatusStageTRBForInput(status);
+  ConfigureStatusStageTRBForInput(status, false);
   tring.Push();
 
   slot_state_[slot] = kCheckingIfHIDClass;
+  NotifyDeviceContextDoorbell(slot, 1);
+}
+
+void Controller::RequestConfigDescriptor(int slot) {
+  assert(ctrl_ep_trings[slot]);
+  auto& tring = *ctrl_ep_trings[slot];
+  SetupStageTRB& setup = *tring.GetNextEnqueueEntry<SetupStageTRB*>();
+  ConfigureSetupStageTRBForGetDescriptorRequest(
+      setup, slot, kDescriptorTypeConfig, 0, kSizeOfDescriptorBuffer);
+  tring.Push();
+  DataStageTRB& data = *tring.GetNextEnqueueEntry<DataStageTRB*>();
+  ConfigureDataStageTRBForInput(
+      data, v2p<uint8_t*, uint64_t>(descriptor_buffers_[slot]),
+      kSizeOfDescriptorBuffer, true);
+  tring.Push();
+  StatusStageTRB& status = *tring.GetNextEnqueueEntry<StatusStageTRB*>();
+  ConfigureStatusStageTRBForInput(status, false);
+  tring.Push();
+
+  slot_state_[slot] = kCheckingConfigDescriptor;
+  NotifyDeviceContextDoorbell(slot, 1);
+}
+
+void Controller::SetConfig(int slot, uint8_t config_value) {
+  assert(ctrl_ep_trings[slot]);
+  auto& tring = *ctrl_ep_trings[slot];
+  SetupStageTRB& setup = *tring.GetNextEnqueueEntry<SetupStageTRB*>();
+  ConfigureSetupStageTRBForSetConfiguration(setup, slot, config_value);
+  tring.Push();
+  StatusStageTRB& status = *tring.GetNextEnqueueEntry<StatusStageTRB*>();
+  ConfigureStatusStageTRBForInput(status, true);
+  tring.Push();
+
+  slot_state_[slot] = kSettingConfiguration;
+  NotifyDeviceContextDoorbell(slot, 1);
+}
+
+void Controller::SetHIDBootProtocol(int slot) {
+  assert(ctrl_ep_trings[slot]);
+  auto& tring = *ctrl_ep_trings[slot];
+  SetupStageTRB& setup = *tring.GetNextEnqueueEntry<SetupStageTRB*>();
+  setup.request_type = 0b00100001;
+  setup.request = 0x0B;
+  setup.value = 0;
+  setup.index = 0;
+  setup.length = 0;
+  setup.option = 8;
+  setup.control = (1 << 6) | (kTRBTypeSetupStage << 10) | (slot << 24) |
+                  (SetupStageTRB::kTransferTypeNoDataStage << 16);
+  tring.Push();
+  StatusStageTRB& status = *tring.GetNextEnqueueEntry<StatusStageTRB*>();
+  ConfigureStatusStageTRBForInput(status, true);
+  tring.Push();
+
+  slot_state_[slot] = kSettingBootProtocol;
+  NotifyDeviceContextDoorbell(slot, 1);
+}
+void Controller::GetHIDReport(int slot) {
+  assert(ctrl_ep_trings[slot]);
+  auto& tring = *ctrl_ep_trings[slot];
+  SetupStageTRB& setup = *tring.GetNextEnqueueEntry<SetupStageTRB*>();
+  setup.request_type = 0b10100001;
+  setup.request = 0x01;
+  setup.value = 0x2201;
+  setup.index = 0;
+  setup.length = kSizeOfDescriptorBuffer;
+  setup.option = 8;
+  setup.control = (1 << 6) | (kTRBTypeSetupStage << 10) | (slot << 24) |
+                  (SetupStageTRB::kTransferTypeInDataStage << 16);
+  tring.Push();
+  DataStageTRB& data = *tring.GetNextEnqueueEntry<DataStageTRB*>();
+  ConfigureDataStageTRBForInput(
+      data, v2p<uint8_t*, uint64_t>(descriptor_buffers_[slot]),
+      kSizeOfDescriptorBuffer, true);
+  tring.Push();
+  StatusStageTRB& status = *tring.GetNextEnqueueEntry<StatusStageTRB*>();
+  ConfigureStatusStageTRBForInput(status, false);
+  tring.Push();
+
+  slot_state_[slot] = kGettingReport;
   NotifyDeviceContextDoorbell(slot, 1);
 }
 
@@ -640,10 +739,68 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
         return;
       }
       PutStringAndHex("  Num of Config", device_desc.num_of_config);
+      RequestConfigDescriptor(slot);
     } break;
-    default:
+    case kCheckingConfigDescriptor: {
+      ConfigDescriptor& config_desc =
+          *reinterpret_cast<ConfigDescriptor*>(descriptor_buffers_[slot]);
+      PutStringAndHex("  Num of Interfaces", config_desc.num_of_interfaces);
+      InterfaceDescriptor& interface_desc =
+          *reinterpret_cast<InterfaceDescriptor*>(descriptor_buffers_[slot] +
+                                                  config_desc.length);
+      PutStringAndHex("  Interface #       ", interface_desc.interface_number);
+      PutStringAndHex("  Interface Class   ", interface_desc.interface_class);
+      PutStringAndHex("  Interface SubClass",
+                      interface_desc.interface_subclass);
+      PutStringAndHex("  Interface Protocol",
+                      interface_desc.interface_protocol);
+      if (interface_desc.interface_class != InterfaceDescriptor::kClassHID ||
+          interface_desc.interface_subclass !=
+              InterfaceDescriptor::kSubClassSupportBootProtocol ||
+          interface_desc.interface_protocol !=
+              InterfaceDescriptor::kProtocolKeyboard) {
+        PutString("Not supported interface\n");
+        slot_state_[slot] = kNotSupportedDevice;
+        return;
+      }
+      PutString("Found USB HID Keyboard (with boot protocol)\n");
+      SetConfig(slot, config_desc.config_value);
+    } break;
+    case kSettingConfiguration:
+      PutString("Configuration done\n");
+      SetHIDBootProtocol(slot);
+      break;
+    case kSettingBootProtocol:
+      PutString("Setting Boot Protocol done\n");
+      GetHIDReport(slot);
+      break;
+    case kGettingReport: {
+      int size = kSizeOfDescriptorBuffer - e.GetTransferSize();
+      PutStringAndHex("  Transfered Size", size);
+      for (int i = 0; i < size; i++) {
+        PutHex8ZeroFilled(descriptor_buffers_[slot][i]);
+        if ((i & 0b1111) == 0b1111)
+          PutChar('\n');
+        else
+          PutChar(' ');
+      }
+      PutChar('\n');
+      GetHIDReport(slot);
+    } break;
+    default: {
+      int size = kSizeOfDescriptorBuffer - e.GetTransferSize();
+      PutStringAndHex("  Transfered Size", size);
+      for (int i = 0; i < size; i++) {
+        PutHex8ZeroFilled(descriptor_buffers_[slot][i]);
+        if ((i & 0b1111) == 0b1111)
+          PutChar('\n');
+        else
+          PutChar(' ');
+      }
+      PutChar('\n');
       PutStringAndHex("Unexpected Transfer Event In Slot State",
                       slot_state_[slot]);
+    }
       return;
   }
 }
