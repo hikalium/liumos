@@ -22,7 +22,7 @@ class TransferRequestBlockRing {
     auto& link_trb = entry_[N];
     link_trb.data = paddr;
     link_trb.option = 0;
-    link_trb.control = kTRBTypeLink << 10;
+    link_trb.control = (kTRBTypeLink << 10) | 2;
 
     for (int i = 0; i < N; i++) {
       Push();

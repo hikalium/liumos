@@ -27,6 +27,7 @@ constexpr uint32_t kTRBTypeStatusStage = 4;
 constexpr uint32_t kTRBTypeEnableSlotCommand = 9;
 constexpr uint32_t kTRBTypeAddressDeviceCommand = 11;
 constexpr uint32_t kTRBTypeNoOpCommand = 23;
+constexpr uint32_t kTRBTypeTransferEvent = 32;
 constexpr uint32_t kTRBTypeCommandCompletionEvent = 33;
 constexpr uint32_t kTRBTypePortStatusChangeEvent = 34;
 
@@ -326,6 +327,7 @@ class Controller::DeviceContext {
   friend class InputContext;
 
  public:
+  static constexpr int kDCISlotContext = 0;
   static constexpr int kDCIEPContext0 = 1;
   static constexpr int kEPTypeControl = 4;
   static DeviceContext& Alloc(int max_dci) {
@@ -338,10 +340,12 @@ class Controller::DeviceContext {
     return *ctx;
   }
   void SetContextEntries(uint32_t num_of_ent) {
-    slot_ctx[0] = CombineFieldBits<31, 27>(slot_ctx[0], num_of_ent);
+    endpoint_ctx[kDCISlotContext][0] =
+        CombineFieldBits<31, 27>(endpoint_ctx[kDCISlotContext][0], num_of_ent);
   }
   void SetRootHubPortNumber(uint32_t root_port_num) {
-    slot_ctx[1] = CombineFieldBits<23, 16>(slot_ctx[1], root_port_num);
+    endpoint_ctx[kDCISlotContext][1] = CombineFieldBits<23, 16>(
+        endpoint_ctx[kDCISlotContext][1], root_port_num);
   }
   void SetEPType(int dci, uint32_t type) {
     endpoint_ctx[dci][1] = CombineFieldBits<5, 3>(endpoint_ctx[dci][1], type);
@@ -350,6 +354,10 @@ class Controller::DeviceContext {
     endpoint_ctx[dci][2] = CombineFieldBits<31, 4>(
         endpoint_ctx[dci][2], static_cast<uint32_t>(tr_deq_ptr >> 4));
     endpoint_ctx[dci][3] = static_cast<uint32_t>(tr_deq_ptr >> 32);
+  }
+  uint64_t GetTRDequeuePointer(int dci) {
+    return (static_cast<uint64_t>(endpoint_ctx[dci][3]) << 32) |
+           endpoint_ctx[dci][2];
   }
   void SetDequeueCycleState(int dci, uint32_t dcs) {
     endpoint_ctx[dci][2] = CombineFieldBits<0, 0>(endpoint_ctx[dci][2], dcs);
@@ -361,9 +369,29 @@ class Controller::DeviceContext {
     endpoint_ctx[dci][1] =
         CombineFieldBits<31, 16>(endpoint_ctx[dci][1], max_packet_size);
   }
-  uint8_t GetSlotState() { return GetBits<31, 27, uint8_t>(slot_ctx[3]); }
+  uint8_t GetSlotState() {
+    return GetBits<31, 27, uint8_t>(endpoint_ctx[kDCISlotContext][3]);
+  }
   uint8_t GetEPState(int dci) {
     return GetBits<2, 0, uint8_t>(endpoint_ctx[dci][0]);
+  }
+  void DumpSlotContext() {
+    PutString("Slot Context:\n");
+    for (int i = 0; i < 8; i++) {
+      for (int x = 3; x >= 0; x--) {
+        PutHex8ZeroFilled(endpoint_ctx[kDCISlotContext][i] >> (x * 8));
+      }
+      PutString("\n");
+    }
+  }
+  void DumpEPContext(int dci) {
+    PutStringAndHex("EP Context", dci);
+    for (int i = 0; i < 8; i++) {
+      for (int x = 3; x >= 0; x--) {
+        PutHex8ZeroFilled(endpoint_ctx[dci][i] >> (x * 8));
+      }
+      PutString("\n");
+    }
   }
 
  private:
@@ -371,8 +399,7 @@ class Controller::DeviceContext {
     assert(0 <= max_dci && max_dci <= 31);
     bzero(this, 0x20 * (max_dci + 1));
   }
-  volatile uint32_t slot_ctx[8];
-  volatile uint32_t endpoint_ctx[31][8];
+  volatile uint32_t endpoint_ctx[32][8];
 };
 
 class Controller::InputContext {
@@ -392,6 +419,16 @@ class Controller::InputContext {
     }
     new (&ctx.device_ctx_) DeviceContext(max_dci);
     return ctx;
+  }
+
+  void DumpInputControlContext() {
+    PutString("Input Control Context\n");
+    for (int i = 0; i < 8; i++) {
+      for (int x = 3; x >= 0; x--) {
+        PutHex8ZeroFilled(input_ctrl_ctx_[i] >> (x * 8));
+      }
+      PutString("\n");
+    }
   }
 
   InputContext() = delete;
@@ -463,18 +500,18 @@ void Controller::HandleEnableSlotCompleted(int slot, int port) {
   PutString(GetSpeedNameFromPORTSCPortSpeed(port_speed));
   PutString("\n");
   dctx.SetEPType(DeviceContext::kDCIEPContext0, DeviceContext::kEPTypeControl);
+  PutStringAndHex("  IN   TRDeq", dctx.GetTRDequeuePointer(1));
   dctx.SetTRDequeuePointer(DeviceContext::kDCIEPContext0,
                            ctrl_ep_tring_phys_addr);
   dctx.SetDequeueCycleState(DeviceContext::kDCIEPContext0, 1);
   dctx.SetErrorCount(DeviceContext::kDCIEPContext0, 3);
   dctx.SetMaxPacketSize(DeviceContext::kDCIEPContext0,
                         GetMaxPacketSizeFromPORTSCPortSpeed(port_speed));
-  DeviceContext& out_device_ctx = DeviceContext::Alloc(1);
+  DeviceContext& out_device_ctx = DeviceContext::Alloc(31);
   device_context_base_array_[slot] =
       v2p<DeviceContext*, DeviceContext*>(&out_device_ctx);
   device_contexts[slot] = &out_device_ctx;
   PutStringAndHex("  Slot State", device_contexts[slot]->GetSlotState());
-  PutStringAndHex("  EP0  State", device_contexts[slot]->GetEPState(0));
   ctrl_ep_trings[slot] = ctrl_ep_tring;
   // 8. Issue an Address Device Command for the Device Slot
   volatile BasicTRB& trb = *cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
@@ -547,9 +584,6 @@ static void ConfigureStatusStageTRBForInput(struct StatusStageTRB& trb) {
 
 void Controller::HandleAddressDeviceCompleted(int slot) {
   PutStringAndHex("Address Device Completed. Slot ID", slot);
-  PutStringAndHex("  Slot State", device_contexts[slot]->GetSlotState());
-  PutStringAndHex("  EP0  State", device_contexts[slot]->GetEPState(0));
-
   constexpr int buf_size = 64;
   uint8_t* buf = liumos->kernel_heap_allocator->AllocPages<uint8_t*>(
       ByteSizeToPageSize(buf_size),
@@ -571,10 +605,7 @@ void Controller::HandleAddressDeviceCompleted(int slot) {
   ConfigureStatusStageTRBForInput(status);
   tring.Push();
 
-  // NotifyDeviceContextDoorbell(slot, 1);
-
-  PutStringAndHex("  Slot State", device_contexts[slot]->GetSlotState());
-  PutStringAndHex("  EP0  State", device_contexts[slot]->GetEPState(0));
+  NotifyDeviceContextDoorbell(slot, 1);
 }
 
 void Controller::PrintPortSC() {
@@ -647,6 +678,11 @@ void Controller::PollEvents() {
         HandlePortStatusChange(
             static_cast<int>(GetBits<31, 24, uint64_t>(e.data)));
         PutString("kTRBTypePortStatusChangeEvent end\n");
+        break;
+      case kTRBTypeTransferEvent:
+        PutString("TransferEvent\n");
+        PutStringAndHex("  Slot ID", e.GetSlotID());
+        PutStringAndHex("  CompletionCode", e.GetCompletionCode());
         break;
       default:
         PutString("Event ");
