@@ -265,7 +265,7 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
 
   EnableSyscall();
 
-  XHCI::GetInstance().Init();
+  XHCI::Controller::GetInstance().Init();
 
   TextBox console_text_box;
   while (1) {

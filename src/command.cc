@@ -734,14 +734,11 @@ void Run(TextBox& tbox) {
       PutStringAndHex("Line", i + 1);
     }
   } else if (IsEqualString(line, "xhci init")) {
-    XHCI& xhci = XHCI::GetInstance();
-    xhci.Init();
+    XHCI::Controller::GetInstance().Init();
   } else if (IsEqualString(line, "xhci show portsc")) {
-    XHCI& xhci = XHCI::GetInstance();
-    xhci.PrintPortSC();
+    XHCI::Controller::GetInstance().PrintPortSC();
   } else if (IsEqualString(line, "xhci show status")) {
-    XHCI& xhci = XHCI::GetInstance();
-    xhci.PrintUSBSTS();
+    XHCI::Controller::GetInstance().PrintUSBSTS();
   } else if (IsEqualString(line, "teststl")) {
     char s[128];
     snprintf(s, sizeof(s), "123 = 0x%X\n", 123);
@@ -800,7 +797,7 @@ void WaitAndProcess(TextBox& tbox) {
     uint16_t keyid;
     while ((keyid = liumos->main_console->GetCharWithoutBlocking()) ==
            KeyID::kNoInput) {
-      XHCI::GetInstance().PollEvents();
+      XHCI::Controller::GetInstance().PollEvents();
       StoreIntFlagAndHalt();
     }
     if (keyid == '\n') {

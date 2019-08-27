@@ -5,7 +5,9 @@
 
 #include <unordered_map>
 
-XHCI* XHCI::xhci_;
+namespace XHCI {
+
+Controller* Controller::xhci_;
 
 static std::unordered_map<uint64_t, int> slot_request_for_port;
 
@@ -48,7 +50,7 @@ void EnsureBusMasterEnabled(PCI::DeviceLocation& dev) {
   assert(cmd_and_status & kPCIRegCommandAndStatusMaskBusMasterEnable);
 }
 
-void XHCI::ResetHostController() {
+void Controller::ResetHostController() {
   op_regs_->command = op_regs_->command & ~kUSBCMDMaskRunStop;
   while (!(op_regs_->status & kUSBSTSBitHCHalted)) {
     PutString("Waiting for HCHalt...\n");
@@ -60,16 +62,16 @@ void XHCI::ResetHostController() {
   PutString("HCReset done.\n");
 }
 
-class XHCI::EventRing {
+class Controller::EventRing {
  public:
   EventRing(int num_of_trb, InterrupterRegisterSet& irs)
       : cycle_state_(1), index_(0), num_of_trb_(num_of_trb), irs_(irs) {
-    const int erst_size = sizeof(XHCI::EventRingSegmentTableEntry[1]);
+    const int erst_size = sizeof(Controller::EventRingSegmentTableEntry[1]);
     erst_ = liumos->kernel_heap_allocator
-                ->AllocPages<volatile XHCI::EventRingSegmentTableEntry*>(
+                ->AllocPages<volatile Controller::EventRingSegmentTableEntry*>(
                     ByteSizeToPageSize(erst_size), kPageAttrMemMappedIO);
     const size_t trbs_size =
-        sizeof(XHCI::CommandCompletionEventTRB) * num_of_trb_;
+        sizeof(Controller::CommandCompletionEventTRB) * num_of_trb_;
     trbs_ = liumos->kernel_heap_allocator->AllocPages<BasicTRB*>(
         ByteSizeToPageSize(trbs_size), kPageAttrMemMappedIO);
     bzero(const_cast<void*>(reinterpret_cast<volatile void*>(trbs_)),
@@ -117,12 +119,12 @@ class XHCI::EventRing {
   int cycle_state_;
   int index_;
   const int num_of_trb_;
-  volatile XHCI::EventRingSegmentTableEntry* erst_;
+  volatile Controller::EventRingSegmentTableEntry* erst_;
   BasicTRB* trbs_;
   InterrupterRegisterSet& irs_;
 };
 
-void XHCI::InitPrimaryInterrupter() {
+void Controller::InitPrimaryInterrupter() {
   // 5.5.2 Interrupter Register Set
   // All registers of the Primary Interrupter shall be initialized
   // before setting the Run/Stop (RS) flag in the USBCMD register to 1.
@@ -132,7 +134,7 @@ void XHCI::InitPrimaryInterrupter() {
   primary_event_ring_ = &primary_event_ring;
 };
 
-void XHCI::InitSlotsAndContexts() {
+void Controller::InitSlotsAndContexts() {
   num_of_slots_enabled_ = max_slots_;
   constexpr uint64_t kOPREGConfigMaskMaxSlotsEn = 0b1111'1111;
   op_regs_->config = (op_regs_->config & ~kOPREGConfigMaskMaxSlotsEn) |
@@ -150,7 +152,7 @@ void XHCI::InitSlotsAndContexts() {
       device_context_base_array_phys_addr_;
 }
 
-void XHCI::InitCommandRing() {
+void Controller::InitCommandRing() {
   cmd_ring_ =
       liumos->kernel_heap_allocator
           ->AllocPages<TransferRequestBlockRing<kNumOfCmdTRBRingEntries>*>(
@@ -171,23 +173,23 @@ void XHCI::InitCommandRing() {
   PutStringAndHex("CRCR", crcr);
 }
 
-void XHCI::NotifyHostControllerDoorbell() {
+void Controller::NotifyHostControllerDoorbell() {
   db_regs_[0] = 0;
 }
-void XHCI::NotifyDeviceContextDoorbell(int slot, int dci) {
+void Controller::NotifyDeviceContextDoorbell(int slot, int dci) {
   assert(1 <= slot && slot <= 255);
   db_regs_[slot] = dci;
 }
-uint32_t XHCI::ReadPORTSC(int slot) {
+uint32_t Controller::ReadPORTSC(int slot) {
   return *reinterpret_cast<uint32_t*>(reinterpret_cast<uint64_t>(op_regs_) +
                                       0x400 + 0x10 * (slot - 1));
 }
-void XHCI::WritePORTSC(int slot, uint32_t data) {
+void Controller::WritePORTSC(int slot, uint32_t data) {
   *reinterpret_cast<uint32_t*>(reinterpret_cast<uint64_t>(op_regs_) + 0x400 +
                                0x10 * (slot - 1)) = data;
 }
 
-void XHCI::Init() {
+void Controller::Init() {
   PutString("XHCI::Init()\n");
 
   is_found_ = false;
@@ -280,7 +282,7 @@ void XHCI::Init() {
   }
 }
 
-void XHCI::HandlePortStatusChange(int port) {
+void Controller::HandlePortStatusChange(int port) {
   uint32_t portsc = ReadPORTSC(port);
   PutStringAndHex("XHCI Port Status Changed", port);
   PutStringAndHex("  PORTSC", portsc);
@@ -320,7 +322,7 @@ void XHCI::HandlePortStatusChange(int port) {
   NotifyHostControllerDoorbell();
 }
 
-class XHCI::DeviceContext {
+class Controller::DeviceContext {
   friend class InputContext;
 
  public:
@@ -373,7 +375,7 @@ class XHCI::DeviceContext {
   volatile uint32_t endpoint_ctx[31][8];
 };
 
-class XHCI::InputContext {
+class Controller::InputContext {
  public:
   static InputContext& Alloc(int max_dci) {
     static_assert(offsetof(InputContext, device_ctx_) == 0x20);
@@ -399,7 +401,7 @@ class XHCI::InputContext {
   volatile uint32_t input_ctrl_ctx_[8];
   DeviceContext device_ctx_;
 };
-static_assert(sizeof(XHCI::InputContext) == 0x420);
+static_assert(sizeof(Controller::InputContext) == 0x420);
 
 constexpr uint32_t kPortSpeedLS = 2;
 constexpr uint32_t kPortSpeedHS = 3;
@@ -433,9 +435,9 @@ static const char* GetSpeedNameFromPORTSCPortSpeed(uint32_t port_speed) {
 
 constexpr int kNumOfCtrlEPRingEntries = 32;
 TransferRequestBlockRing<kNumOfCtrlEPRingEntries>* ctrl_ep_trings[256];
-XHCI::DeviceContext* device_contexts[256];
+Controller::DeviceContext* device_contexts[256];
 
-void XHCI::HandleEnableSlotCompleted(int slot, int port) {
+void Controller::HandleEnableSlotCompleted(int slot, int port) {
   PutStringAndHex("Slot enabled. Slot ID", slot);
   PutStringAndHex("  Use RootPort", port);
   // 4.3.3 Device Slot Initialization
@@ -543,7 +545,7 @@ static void ConfigureStatusStageTRBForInput(struct StatusStageTRB& trb) {
   trb.control = (1 << 16) | (kTRBTypeStatusStage << 10) | (1 << 5);
 }
 
-void XHCI::HandleAddressDeviceCompleted(int slot) {
+void Controller::HandleAddressDeviceCompleted(int slot) {
   PutStringAndHex("Address Device Completed. Slot ID", slot);
   PutStringAndHex("  Slot State", device_contexts[slot]->GetSlotState());
   PutStringAndHex("  EP0  State", device_contexts[slot]->GetEPState(0));
@@ -575,7 +577,7 @@ void XHCI::HandleAddressDeviceCompleted(int slot) {
   PutStringAndHex("  EP0  State", device_contexts[slot]->GetEPState(0));
 }
 
-void XHCI::PrintPortSC() {
+void Controller::PrintPortSC() {
   for (int slot = 1; slot <= num_of_slots_enabled_; slot++) {
     uint32_t portsc = ReadPORTSC(slot);
     PutStringAndHex("Port", slot);
@@ -595,7 +597,7 @@ void XHCI::PrintPortSC() {
     PutString("\n");
   }
 }
-void XHCI::PrintUSBSTS() {
+void Controller::PrintUSBSTS() {
   const uint32_t status = op_regs_->status;
   PutStringAndHex("USBSTS", status);
   PutString((status & kUSBSTSBitHCHalted) ? " Halted\n" : " Runnning\n");
@@ -604,7 +606,7 @@ void XHCI::PrintUSBSTS() {
   }
 }
 
-void XHCI::PollEvents() {
+void Controller::PollEvents() {
   if (!primary_event_ring_)
     return;
   if (primary_event_ring_->HasNextEvent()) {
@@ -657,3 +659,5 @@ void XHCI::PollEvents() {
     primary_event_ring_->PopEvent();
   }
 }
+
+}  // namespace XHCI

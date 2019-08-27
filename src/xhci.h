@@ -5,7 +5,9 @@
 #include "xhci_trb.h"
 #include "xhci_trbring.h"
 
-class XHCI {
+namespace XHCI {
+
+class Controller {
  public:
   class DeviceContext;
   class InputContext;
@@ -14,9 +16,9 @@ class XHCI {
   void PrintPortSC();
   void PrintUSBSTS();
 
-  static XHCI& GetInstance() {
+  static Controller& GetInstance() {
     if (!xhci_)
-      xhci_ = new XHCI();
+      xhci_ = new Controller();
     assert(xhci_);
     return *xhci_;
   }
@@ -94,7 +96,7 @@ class XHCI {
   void HandleEnableSlotCompleted(int slot, int port);
   void HandleAddressDeviceCompleted(int slot);
 
-  static XHCI* xhci_;
+  static Controller* xhci_;
   bool is_found_;
   PCI::DeviceLocation dev_;
   TransferRequestBlockRing<kNumOfCmdTRBRingEntries>* cmd_ring_;
@@ -111,3 +113,5 @@ class XHCI {
   uint8_t max_ports_;
   int num_of_slots_enabled_;
 };
+
+}  // namespace XHCI
