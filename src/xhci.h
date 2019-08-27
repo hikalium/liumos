@@ -87,6 +87,7 @@ class XHCI {
   void InitSlotsAndContexts();
   void InitCommandRing();
   void NotifyHostControllerDoorbell();
+  void NotifyDeviceContextDoorbell(int slot, int dci);
   uint32_t ReadPORTSC(int slot);
   void WritePORTSC(int slot, uint32_t data);
   void HandlePortStatusChange(int port);

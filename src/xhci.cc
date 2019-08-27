@@ -18,6 +18,10 @@ constexpr uint64_t kPCIRegCommandAndStatusMaskBusMasterEnable = 1 << 2;
 constexpr uint32_t kUSBCMDMaskRunStop = 0b01;
 constexpr uint32_t kUSBCMDMaskHCReset = 0b10;
 
+constexpr uint32_t kTRBTypeSetupStage = 2;
+constexpr uint32_t kTRBTypeDataStage = 3;
+constexpr uint32_t kTRBTypeStatusStage = 4;
+
 constexpr uint32_t kTRBTypeEnableSlotCommand = 9;
 constexpr uint32_t kTRBTypeAddressDeviceCommand = 11;
 constexpr uint32_t kTRBTypeNoOpCommand = 23;
@@ -60,16 +64,14 @@ class XHCI::EventRing {
  public:
   EventRing(int num_of_trb, InterrupterRegisterSet& irs)
       : cycle_state_(1), index_(0), num_of_trb_(num_of_trb), irs_(irs) {
-    constexpr int kMapAttr =
-        kPageAttrCacheDisable | kPageAttrPresent | kPageAttrWritable;
     const int erst_size = sizeof(XHCI::EventRingSegmentTableEntry[1]);
     erst_ = liumos->kernel_heap_allocator
                 ->AllocPages<volatile XHCI::EventRingSegmentTableEntry*>(
-                    ByteSizeToPageSize(erst_size), kMapAttr);
+                    ByteSizeToPageSize(erst_size), kPageAttrMemMappedIO);
     const size_t trbs_size =
         sizeof(XHCI::CommandCompletionEventTRB) * num_of_trb_;
     trbs_ = liumos->kernel_heap_allocator->AllocPages<BasicTRB*>(
-        ByteSizeToPageSize(trbs_size), kMapAttr);
+        ByteSizeToPageSize(trbs_size), kPageAttrMemMappedIO);
     bzero(const_cast<void*>(reinterpret_cast<volatile void*>(trbs_)),
           trbs_size);
     erst_[0].ring_segment_base_address = GetTRBSPhysAddr();
@@ -171,6 +173,10 @@ void XHCI::InitCommandRing() {
 
 void XHCI::NotifyHostControllerDoorbell() {
   db_regs_[0] = 0;
+}
+void XHCI::NotifyDeviceContextDoorbell(int slot, int dci) {
+  assert(1 <= slot && slot <= 255);
+  db_regs_[slot] = dci;
 }
 uint32_t XHCI::ReadPORTSC(int slot) {
   return *reinterpret_cast<uint32_t*>(reinterpret_cast<uint64_t>(op_regs_) +
@@ -321,57 +327,41 @@ class XHCI::DeviceContext {
   static constexpr int kDCIEPContext0 = 1;
   static constexpr int kEPTypeControl = 4;
   static DeviceContext& Alloc(int max_dci) {
-    constexpr int kMapAttr =
-        kPageAttrCacheDisable | kPageAttrPresent | kPageAttrWritable;
     const int num_of_ctx = max_dci + 1;
     size_t size = 0x20 * num_of_ctx;
     DeviceContext* ctx =
         liumos->kernel_heap_allocator->AllocPages<DeviceContext*>(
-            ByteSizeToPageSize(size), kMapAttr);
+            ByteSizeToPageSize(size), kPageAttrMemMappedIO);
     new (ctx) DeviceContext(max_dci);
     return *ctx;
   }
   void SetContextEntries(uint32_t num_of_ent) {
-    constexpr uint32_t kNumOfEntBits = 5;
-    constexpr uint32_t kNumOfEntShift = 27;
-    constexpr uint32_t kNumOfEntMask = ((1 << kNumOfEntBits) - 1)
-                                       << kNumOfEntShift;
-    slot_ctx[0] &= ~kNumOfEntMask;
-    slot_ctx[0] |= (num_of_ent << kNumOfEntShift) & kNumOfEntMask;
+    slot_ctx[0] = CombineFieldBits<31, 27>(slot_ctx[0], num_of_ent);
   }
   void SetRootHubPortNumber(uint32_t root_port_num) {
-    constexpr uint32_t kMaskBits = 8;
-    constexpr uint32_t kMaskShift = 16;
-    constexpr uint32_t kMask = ((1 << kMaskBits) - 1) << kMaskShift;
-    slot_ctx[1] &= ~kMask;
-    slot_ctx[1] |= (root_port_num << kMaskShift) & kMask;
+    slot_ctx[1] = CombineFieldBits<23, 16>(slot_ctx[1], root_port_num);
   }
   void SetEPType(int dci, uint32_t type) {
-    constexpr uint32_t kMaskBits = 3;
-    constexpr uint32_t kMaskShift = 3;
-    constexpr uint32_t kMask = ((1 << kMaskBits) - 1) << kMaskShift;
-    endpoint_ctx[dci][1] &= ~kMask;
-    endpoint_ctx[dci][1] |= (type << kMaskShift) & kMask;
+    endpoint_ctx[dci][1] = CombineFieldBits<5, 3>(endpoint_ctx[dci][1], type);
   }
   void SetTRDequeuePointer(int dci, uint64_t tr_deq_ptr) {
-    endpoint_ctx[dci][2] &= 0b1111;
-    endpoint_ctx[dci][2] |= static_cast<uint32_t>(tr_deq_ptr & ~0b1111ULL);
-    endpoint_ctx[dci][3] |= tr_deq_ptr >> 32;
+    endpoint_ctx[dci][2] = CombineFieldBits<31, 4>(
+        endpoint_ctx[dci][2], static_cast<uint32_t>(tr_deq_ptr >> 4));
+    endpoint_ctx[dci][3] = static_cast<uint32_t>(tr_deq_ptr >> 32);
   }
-  void SetDequeueCycleState(int dci, uint64_t dcs) {
-    endpoint_ctx[dci][2] &= ~0b1;
-    endpoint_ctx[dci][2] |= (dcs & 0b1);
+  void SetDequeueCycleState(int dci, uint32_t dcs) {
+    endpoint_ctx[dci][2] = CombineFieldBits<0, 0>(endpoint_ctx[dci][2], dcs);
   }
   void SetErrorCount(int dci, uint32_t c_err) {
-    constexpr uint32_t kMaskBits = 2;
-    constexpr uint32_t kMaskShift = 1;
-    constexpr uint32_t kMask = ((1 << kMaskBits) - 1) << kMaskShift;
-    endpoint_ctx[dci][1] &= ~kMask;
-    endpoint_ctx[dci][1] |= (c_err << kMaskShift) & kMask;
+    endpoint_ctx[dci][1] = CombineFieldBits<2, 1>(endpoint_ctx[dci][1], c_err);
   }
-  void SetMaxPacketSize(int dci, uint16_t max_packet_size) {
-    endpoint_ctx[dci][1] &= 0xFFFF;
-    endpoint_ctx[dci][1] |= static_cast<uint32_t>(max_packet_size) << 16;
+  void SetMaxPacketSize(int dci, uint32_t max_packet_size) {
+    endpoint_ctx[dci][1] =
+        CombineFieldBits<31, 16>(endpoint_ctx[dci][1], max_packet_size);
+  }
+  uint8_t GetSlotState() { return GetBits<31, 27, uint8_t>(slot_ctx[3]); }
+  uint8_t GetEPState(int dci) {
+    return GetBits<2, 0, uint8_t>(endpoint_ctx[dci][0]);
   }
 
  private:
@@ -385,21 +375,20 @@ class XHCI::DeviceContext {
 
 class XHCI::InputContext {
  public:
-  static InputContext& Alloc(int num_of_ctx) {
+  static InputContext& Alloc(int max_dci) {
     static_assert(offsetof(InputContext, device_ctx_) == 0x20);
-    constexpr int kMapAttr =
-        kPageAttrCacheDisable | kPageAttrPresent | kPageAttrWritable;
-    assert(1 <= num_of_ctx && num_of_ctx <= 33);
+    assert(0 <= max_dci && max_dci <= 31);
+    const int num_of_ctx = max_dci + 2;
     size_t size = 0x20 * num_of_ctx;
     InputContext& ctx =
         *liumos->kernel_heap_allocator->AllocPages<InputContext*>(
-            ByteSizeToPageSize(size), kMapAttr);
-    bzero(&ctx.input_ctrl_ctx_[0], sizeof(input_ctrl_ctx_));
+            ByteSizeToPageSize(size), kPageAttrMemMappedIO);
+    bzero(&ctx, size);
     if (num_of_ctx > 1) {
       volatile uint32_t& add_ctx_flags = ctx.input_ctrl_ctx_[1];
       add_ctx_flags = (1 << (num_of_ctx - 1)) - 1;
     }
-    new (&ctx.device_ctx_) DeviceContext(num_of_ctx - 2);
+    new (&ctx.device_ctx_) DeviceContext(max_dci);
     return ctx;
   }
 
@@ -442,41 +431,49 @@ static const char* GetSpeedNameFromPORTSCPortSpeed(uint32_t port_speed) {
   Panic("GetSpeedNameFromPORTSCPortSpeed: Not supported speed");
 }
 
+constexpr int kNumOfCtrlEPRingEntries = 32;
+TransferRequestBlockRing<kNumOfCtrlEPRingEntries>* ctrl_ep_trings[256];
+XHCI::DeviceContext* device_contexts[256];
+
 void XHCI::HandleEnableSlotCompleted(int slot, int port) {
   PutStringAndHex("Slot enabled. Slot ID", slot);
   PutStringAndHex("  Use RootPort", port);
   // 4.3.3 Device Slot Initialization
-  InputContext& ctx = InputContext::Alloc(1 + 2);
+  InputContext& ctx = InputContext::Alloc(1);
   DeviceContext& dctx = ctx.GetDeviceContext();
+  // 3. Initialize the Input Slot Context data structure (6.2.2)
   dctx.SetRootHubPortNumber(port);
   dctx.SetContextEntries(1);
-  // Allocate and initialize the Transfer Ring for the Default Control Endpoint
-  constexpr int kNumOfCtrlEPRingEntries = 32;
+  // 4. Allocate and initialize the Transfer Ring for the Default Control
+  // Endpoint
   TransferRequestBlockRing<kNumOfCtrlEPRingEntries>* ctrl_ep_tring =
-      liumos->kernel_heap_allocator
-          ->AllocPages<TransferRequestBlockRing<kNumOfCtrlEPRingEntries>*>(
-              ByteSizeToPageSize(
-                  sizeof(TransferRequestBlockRing<kNumOfCtrlEPRingEntries>)),
-              kPageAttrCacheDisable | kPageAttrPresent | kPageAttrWritable);
+      AllocMemoryForMappedIO<
+          TransferRequestBlockRing<kNumOfCtrlEPRingEntries>*>(
+          sizeof(TransferRequestBlockRing<kNumOfCtrlEPRingEntries>));
   uint64_t ctrl_ep_tring_phys_addr =
-      liumos->kernel_pml4->v2p(reinterpret_cast<uint64_t>(ctrl_ep_tring));
+      v2p<TransferRequestBlockRing<kNumOfCtrlEPRingEntries>*, uint64_t>(
+          ctrl_ep_tring);
   ctrl_ep_tring->Init(ctrl_ep_tring_phys_addr);
-
-  // Initialize the Input default control Endpoint 0 Context (6.2.3).
-  dctx.SetEPType(DeviceContext::kDCIEPContext0, DeviceContext::kEPTypeControl);
-  dctx.SetTRDequeuePointer(DeviceContext::kDCIEPContext0,
-                           ctrl_ep_tring_phys_addr);
-  dctx.SetDequeueCycleState(DeviceContext::kDCIEPContext0, 1);
-  dctx.SetErrorCount(DeviceContext::kDCIEPContext0, 3);
+  // 5. Initialize the Input default control Endpoint 0 Context (6.2.3)
   uint32_t portsc = ReadPORTSC(port);
   uint32_t port_speed = GetBits<13, 10, uint32_t, uint32_t>(portsc);
   PutString("  Port Speed: ");
   PutString(GetSpeedNameFromPORTSCPortSpeed(port_speed));
   PutString("\n");
+  dctx.SetEPType(DeviceContext::kDCIEPContext0, DeviceContext::kEPTypeControl);
+  dctx.SetTRDequeuePointer(DeviceContext::kDCIEPContext0,
+                           ctrl_ep_tring_phys_addr);
+  dctx.SetDequeueCycleState(DeviceContext::kDCIEPContext0, 1);
+  dctx.SetErrorCount(DeviceContext::kDCIEPContext0, 3);
   dctx.SetMaxPacketSize(DeviceContext::kDCIEPContext0,
                         GetMaxPacketSizeFromPORTSCPortSpeed(port_speed));
   DeviceContext& out_device_ctx = DeviceContext::Alloc(1);
-  device_context_base_array_[slot] = &out_device_ctx;
+  device_context_base_array_[slot] =
+      v2p<DeviceContext*, DeviceContext*>(&out_device_ctx);
+  device_contexts[slot] = &out_device_ctx;
+  PutStringAndHex("  Slot State", device_contexts[slot]->GetSlotState());
+  PutStringAndHex("  EP0  State", device_contexts[slot]->GetEPState(0));
+  ctrl_ep_trings[slot] = ctrl_ep_tring;
   // 8. Issue an Address Device Command for the Device Slot
   volatile BasicTRB& trb = *cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
   trb.data = v2p<InputContext*, uint64_t>(&ctx);
@@ -486,8 +483,96 @@ void XHCI::HandleEnableSlotCompleted(int slot, int port) {
   NotifyHostControllerDoorbell();
 }
 
+struct SetupStageTRB {
+  volatile uint8_t request_type;
+  volatile uint8_t request;
+  volatile uint16_t value;
+  volatile uint16_t index;
+  volatile uint16_t length;
+  volatile uint32_t option;
+  volatile uint32_t control;
+
+  static constexpr uint8_t kReqTypeBitDirectionDeviceToHost = 1 << 7;
+
+  static constexpr uint8_t kReqGetDescriptor = 6;
+
+  static constexpr uint32_t kTransferTypeInDataStage = 3;
+};
+static_assert(sizeof(SetupStageTRB) == 16);
+
+struct DataStageTRB {
+  volatile uint64_t buf;
+  volatile uint32_t option;
+  volatile uint32_t control;
+};
+static_assert(sizeof(DataStageTRB) == 16);
+
+struct StatusStageTRB {
+  volatile uint64_t reserved;
+  volatile uint32_t option;
+  volatile uint32_t control;
+};
+static_assert(sizeof(StatusStageTRB) == 16);
+
+static void ConfigureSetupStageTRBForGetDescriptorRequest(
+    struct SetupStageTRB& trb,
+    uint32_t slot,
+    uint8_t desc_type,
+    uint16_t desc_length) {
+  trb.request_type = SetupStageTRB::kReqTypeBitDirectionDeviceToHost;
+  trb.request = SetupStageTRB::kReqGetDescriptor;
+  trb.value = desc_type;
+  trb.index = 0;
+  trb.length = desc_length;
+  trb.option = 8;
+  trb.control = (1 << 6) | (kTRBTypeSetupStage << 10) | (slot << 24) |
+                (SetupStageTRB::kTransferTypeInDataStage << 16);
+}
+
+static void ConfigureDataStageTRBForInput(struct DataStageTRB& trb,
+                                          uint64_t ptr,
+                                          uint32_t length) {
+  trb.buf = ptr;
+  trb.option = length;
+  trb.control = (1 << 16) | (kTRBTypeDataStage << 10) | (1 << 5);
+}
+
+static void ConfigureStatusStageTRBForInput(struct StatusStageTRB& trb) {
+  trb.reserved = 0;
+  trb.option = 0;
+  trb.control = (1 << 16) | (kTRBTypeStatusStage << 10) | (1 << 5);
+}
+
 void XHCI::HandleAddressDeviceCompleted(int slot) {
   PutStringAndHex("Address Device Completed. Slot ID", slot);
+  PutStringAndHex("  Slot State", device_contexts[slot]->GetSlotState());
+  PutStringAndHex("  EP0  State", device_contexts[slot]->GetEPState(0));
+
+  constexpr int buf_size = 64;
+  uint8_t* buf = liumos->kernel_heap_allocator->AllocPages<uint8_t*>(
+      ByteSizeToPageSize(buf_size),
+      kPageAttrCacheDisable | kPageAttrPresent | kPageAttrWritable);
+  uint64_t buf_phys_addr = v2p<uint8_t*, uint64_t>(buf);
+
+  assert(ctrl_ep_trings[slot]);
+  auto& tring = *ctrl_ep_trings[slot];
+  SetupStageTRB& setup = *tring.GetNextEnqueueEntry<SetupStageTRB*>();
+  constexpr uint8_t kDescriptorTypeConfiguration = 2;
+  ConfigureSetupStageTRBForGetDescriptorRequest(
+      setup, slot, kDescriptorTypeConfiguration, buf_size);
+
+  tring.Push();
+  DataStageTRB& data = *tring.GetNextEnqueueEntry<DataStageTRB*>();
+  ConfigureDataStageTRBForInput(data, buf_phys_addr, buf_size);
+  tring.Push();
+  StatusStageTRB& status = *tring.GetNextEnqueueEntry<StatusStageTRB*>();
+  ConfigureStatusStageTRBForInput(status);
+  tring.Push();
+
+  // NotifyDeviceContextDoorbell(slot, 1);
+
+  PutStringAndHex("  Slot State", device_contexts[slot]->GetSlotState());
+  PutStringAndHex("  EP0  State", device_contexts[slot]->GetEPState(0));
 }
 
 void XHCI::PrintPortSC() {
@@ -530,6 +615,12 @@ void XHCI::PollEvents() {
       case kTRBTypeCommandCompletionEvent:
         PutString("CommandCompletionEvent\n");
         PutStringAndHex("  CompletionCode", e.GetCompletionCode());
+        if (e.GetCompletionCode() == 5) {
+          PutString("  = TRBError\n");
+        }
+        if (e.GetCompletionCode() == 1) {
+          PutString("  = Success\n");
+        }
         {
           BasicTRB& cmd_trb = cmd_ring_->GetEntryFromPhysAddr(e.data);
           PutStringAndHex("  CommandType", cmd_trb.GetTRBType());

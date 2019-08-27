@@ -24,6 +24,9 @@ constexpr uint64_t kPageAttrUser = 0b00100;
 constexpr uint64_t kPageAttrWriteThrough = 0b01000;
 constexpr uint64_t kPageAttrCacheDisable = 0b10000;
 
+constexpr uint64_t kPageAttrMemMappedIO =
+    kPageAttrCacheDisable | kPageAttrPresent | kPageAttrWritable;
+
 static inline uint64_t CeilToPageAlignment(uint64_t v) {
   return (v + kPageSize - 1) & ~kPageAddrMask;
 }
