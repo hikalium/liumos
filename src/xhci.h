@@ -83,6 +83,8 @@ class Controller {
   static constexpr int kNumOfCmdTRBRingEntries = 255;
   static constexpr int kNumOfERSForEventRing = 1;
   static constexpr int kNumOfTRBForEventRing = 64;
+  static constexpr int kMaxNumOfSlots = 256;
+  static constexpr int kSizeOfDescriptorBuffer = 4096;
 
   void ResetHostController();
   void InitPrimaryInterrupter();
@@ -95,6 +97,7 @@ class Controller {
   void HandlePortStatusChange(int port);
   void HandleEnableSlotCompleted(int slot, int port);
   void HandleAddressDeviceCompleted(int slot);
+  void HandleTransferEvent(BasicTRB& e);
 
   static Controller* xhci_;
   bool is_found_;
@@ -112,6 +115,7 @@ class Controller {
   uint8_t max_intrs_;
   uint8_t max_ports_;
   int num_of_slots_enabled_;
+  uint8_t* descriptor_buffers_[kMaxNumOfSlots];
 };
 
 }  // namespace XHCI

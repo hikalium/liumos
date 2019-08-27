@@ -24,6 +24,9 @@ constexpr uint32_t kTRBTypeSetupStage = 2;
 constexpr uint32_t kTRBTypeDataStage = 3;
 constexpr uint32_t kTRBTypeStatusStage = 4;
 
+constexpr uint8_t kTRBCompletionCodeSuccess = 0x01;
+constexpr uint8_t kTRBCompletionCodeShortPacket = 0x0D;
+
 constexpr uint32_t kTRBTypeEnableSlotCommand = 9;
 constexpr uint32_t kTRBTypeAddressDeviceCommand = 11;
 constexpr uint32_t kTRBTypeNoOpCommand = 23;
@@ -557,10 +560,11 @@ static void ConfigureSetupStageTRBForGetDescriptorRequest(
     struct SetupStageTRB& trb,
     uint32_t slot,
     uint8_t desc_type,
+    uint8_t desc_idx,
     uint16_t desc_length) {
   trb.request_type = SetupStageTRB::kReqTypeBitDirectionDeviceToHost;
   trb.request = SetupStageTRB::kReqGetDescriptor;
-  trb.value = desc_type;
+  trb.value = (static_cast<uint16_t>(desc_type) << 8) | desc_idx;
   trb.index = 0;
   trb.length = desc_length;
   trb.option = 8;
@@ -579,33 +583,54 @@ static void ConfigureDataStageTRBForInput(struct DataStageTRB& trb,
 static void ConfigureStatusStageTRBForInput(struct StatusStageTRB& trb) {
   trb.reserved = 0;
   trb.option = 0;
-  trb.control = (1 << 16) | (kTRBTypeStatusStage << 10) | (1 << 5);
+  trb.control = (1 << 16) | (kTRBTypeStatusStage << 10);
 }
 
 void Controller::HandleAddressDeviceCompleted(int slot) {
   PutStringAndHex("Address Device Completed. Slot ID", slot);
-  constexpr int buf_size = 64;
-  uint8_t* buf = liumos->kernel_heap_allocator->AllocPages<uint8_t*>(
-      ByteSizeToPageSize(buf_size),
-      kPageAttrCacheDisable | kPageAttrPresent | kPageAttrWritable);
+  uint8_t* buf = AllocMemoryForMappedIO<uint8_t*>(kSizeOfDescriptorBuffer);
   uint64_t buf_phys_addr = v2p<uint8_t*, uint64_t>(buf);
+  descriptor_buffers_[slot] = buf;
 
   assert(ctrl_ep_trings[slot]);
   auto& tring = *ctrl_ep_trings[slot];
   SetupStageTRB& setup = *tring.GetNextEnqueueEntry<SetupStageTRB*>();
-  constexpr uint8_t kDescriptorTypeConfiguration = 2;
+  constexpr uint8_t kDescriptorTypeDevice = 1;
   ConfigureSetupStageTRBForGetDescriptorRequest(
-      setup, slot, kDescriptorTypeConfiguration, buf_size);
-
+      setup, slot, kDescriptorTypeDevice, 0, kSizeOfDescriptorBuffer);
   tring.Push();
   DataStageTRB& data = *tring.GetNextEnqueueEntry<DataStageTRB*>();
-  ConfigureDataStageTRBForInput(data, buf_phys_addr, buf_size);
+  ConfigureDataStageTRBForInput(data, buf_phys_addr, kSizeOfDescriptorBuffer);
   tring.Push();
   StatusStageTRB& status = *tring.GetNextEnqueueEntry<StatusStageTRB*>();
   ConfigureStatusStageTRBForInput(status);
   tring.Push();
 
   NotifyDeviceContextDoorbell(slot, 1);
+}
+
+void Controller::HandleTransferEvent(BasicTRB& e) {
+  PutString("TransferEvent\n");
+  const int slot = e.GetSlotID();
+  PutStringAndHex("  Slot ID", slot);
+  if (e.GetCompletionCode() != kTRBCompletionCodeSuccess &&
+      e.GetCompletionCode() != kTRBCompletionCodeShortPacket) {
+    PutStringAndHex("  CompletionCode", e.GetCompletionCode());
+    if (e.GetCompletionCode() == 6) {
+      PutString("  = Stall Error\n");
+    }
+    return;
+  }
+  int size = kSizeOfDescriptorBuffer - e.GetTransferSize();
+  PutStringAndHex("  Transfered Size", size);
+  for (int i = 0; i < size; i++) {
+    PutHex8ZeroFilled(descriptor_buffers_[slot][i]);
+    if ((i & 0b1111) == 0b1111)
+      PutChar('\n');
+    else
+      PutChar(' ');
+  }
+  PutChar('\n');
 }
 
 void Controller::PrintPortSC() {
@@ -680,9 +705,7 @@ void Controller::PollEvents() {
         PutString("kTRBTypePortStatusChangeEvent end\n");
         break;
       case kTRBTypeTransferEvent:
-        PutString("TransferEvent\n");
-        PutStringAndHex("  Slot ID", e.GetSlotID());
-        PutStringAndHex("  CompletionCode", e.GetCompletionCode());
+        HandleTransferEvent(e);
         break;
       default:
         PutString("Event ");
