@@ -86,6 +86,26 @@ class Controller {
   static constexpr int kMaxNumOfSlots = 256;
   static constexpr int kSizeOfDescriptorBuffer = 4096;
 
+  static constexpr uint8_t kDescriptorTypeDevice = 1;
+
+  struct DeviceDescriptor {
+    uint8_t length;
+    uint8_t type;
+    uint16_t version;
+    uint8_t device_class;
+    uint8_t device_subclass;
+    uint8_t device_protocol;
+    uint8_t max_packet_size;
+    uint16_t vendor_id;
+    uint16_t product_id;
+    uint16_t device_version;
+    uint8_t manufacturer_idx;
+    uint8_t product_idx;
+    uint8_t serial_idx;
+    uint8_t num_of_config;
+  };
+  static_assert(sizeof(DeviceDescriptor) == 18);
+
   void ResetHostController();
   void InitPrimaryInterrupter();
   void InitSlotsAndContexts();
@@ -97,6 +117,7 @@ class Controller {
   void HandlePortStatusChange(int port);
   void HandleEnableSlotCompleted(int slot, int port);
   void HandleAddressDeviceCompleted(int slot);
+  void RequestDeviceDescriptor(int slot);
   void HandleTransferEvent(BasicTRB& e);
 
   static Controller* xhci_;
@@ -116,6 +137,11 @@ class Controller {
   uint8_t max_ports_;
   int num_of_slots_enabled_;
   uint8_t* descriptor_buffers_[kMaxNumOfSlots];
+  enum SlotState {
+    kUndefined,
+    kCheckingIfHIDClass,
+    kNotSupportedDevice,
+  } slot_state_[kMaxNumOfSlots];
 };
 
 }  // namespace XHCI

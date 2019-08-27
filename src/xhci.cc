@@ -536,6 +536,8 @@ struct SetupStageTRB {
 
   static constexpr uint8_t kReqTypeBitDirectionDeviceToHost = 1 << 7;
 
+  static constexpr uint8_t kReqTypeBitRecipientInterface = 1;
+
   static constexpr uint8_t kReqGetDescriptor = 6;
 
   static constexpr uint32_t kTransferTypeInDataStage = 3;
@@ -586,27 +588,31 @@ static void ConfigureStatusStageTRBForInput(struct StatusStageTRB& trb) {
   trb.control = (1 << 16) | (kTRBTypeStatusStage << 10);
 }
 
-void Controller::HandleAddressDeviceCompleted(int slot) {
-  PutStringAndHex("Address Device Completed. Slot ID", slot);
-  uint8_t* buf = AllocMemoryForMappedIO<uint8_t*>(kSizeOfDescriptorBuffer);
-  uint64_t buf_phys_addr = v2p<uint8_t*, uint64_t>(buf);
-  descriptor_buffers_[slot] = buf;
-
+void Controller::RequestDeviceDescriptor(int slot) {
   assert(ctrl_ep_trings[slot]);
   auto& tring = *ctrl_ep_trings[slot];
   SetupStageTRB& setup = *tring.GetNextEnqueueEntry<SetupStageTRB*>();
-  constexpr uint8_t kDescriptorTypeDevice = 1;
   ConfigureSetupStageTRBForGetDescriptorRequest(
       setup, slot, kDescriptorTypeDevice, 0, kSizeOfDescriptorBuffer);
   tring.Push();
   DataStageTRB& data = *tring.GetNextEnqueueEntry<DataStageTRB*>();
-  ConfigureDataStageTRBForInput(data, buf_phys_addr, kSizeOfDescriptorBuffer);
+  ConfigureDataStageTRBForInput(
+      data, v2p<uint8_t*, uint64_t>(descriptor_buffers_[slot]),
+      kSizeOfDescriptorBuffer);
   tring.Push();
   StatusStageTRB& status = *tring.GetNextEnqueueEntry<StatusStageTRB*>();
   ConfigureStatusStageTRBForInput(status);
   tring.Push();
 
+  slot_state_[slot] = kCheckingIfHIDClass;
   NotifyDeviceContextDoorbell(slot, 1);
+}
+
+void Controller::HandleAddressDeviceCompleted(int slot) {
+  PutStringAndHex("Address Device Completed. Slot ID", slot);
+  uint8_t* buf = AllocMemoryForMappedIO<uint8_t*>(kSizeOfDescriptorBuffer);
+  descriptor_buffers_[slot] = buf;
+  RequestDeviceDescriptor(slot);
 }
 
 void Controller::HandleTransferEvent(BasicTRB& e) {
@@ -621,16 +627,25 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
     }
     return;
   }
-  int size = kSizeOfDescriptorBuffer - e.GetTransferSize();
-  PutStringAndHex("  Transfered Size", size);
-  for (int i = 0; i < size; i++) {
-    PutHex8ZeroFilled(descriptor_buffers_[slot][i]);
-    if ((i & 0b1111) == 0b1111)
-      PutChar('\n');
-    else
-      PutChar(' ');
+  switch (slot_state_[slot]) {
+    case kCheckingIfHIDClass: {
+      DeviceDescriptor& device_desc =
+          *reinterpret_cast<DeviceDescriptor*>(descriptor_buffers_[slot]);
+      PutStringAndHex("  Transfered Size",
+                      kSizeOfDescriptorBuffer - e.GetTransferSize());
+      if (device_desc.device_class != 0) {
+        PutStringAndHex("  Not supported device class",
+                        device_desc.device_class);
+        slot_state_[slot] = kNotSupportedDevice;
+        return;
+      }
+      PutStringAndHex("  Num of Config", device_desc.num_of_config);
+    } break;
+    default:
+      PutStringAndHex("Unexpected Transfer Event In Slot State",
+                      slot_state_[slot]);
+      return;
   }
-  PutChar('\n');
 }
 
 void Controller::PrintPortSC() {
