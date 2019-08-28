@@ -2,6 +2,7 @@
 
 #include "liumos.h"
 #include "pci.h"
+#include "ring_buffer.h"
 #include "xhci_trb.h"
 #include "xhci_trbring.h"
 
@@ -15,10 +16,14 @@ class Controller {
   void PollEvents();
   void PrintPortSC();
   void PrintUSBSTS();
+  uint16_t ReadKeyboardInput();
 
   static Controller& GetInstance() {
-    if (!xhci_)
-      xhci_ = new Controller();
+    if (!xhci_) {
+      xhci_ = liumos->kernel_heap_allocator->Alloc<Controller>();
+      bzero(xhci_, sizeof(Controller));
+      new (xhci_) Controller();
+    }
     assert(xhci_);
     return *xhci_;
   }
@@ -82,12 +87,15 @@ class Controller {
 
   static constexpr int kNumOfCmdTRBRingEntries = 255;
   static constexpr int kNumOfERSForEventRing = 1;
-  static constexpr int kNumOfTRBForEventRing = 64;
+  static constexpr int kNumOfTRBForEventRing = 128;
   static constexpr int kMaxNumOfSlots = 256;
+  static constexpr int kMaxNumOfPorts = 256;
   static constexpr int kSizeOfDescriptorBuffer = 4096;
 
   static constexpr uint8_t kDescriptorTypeDevice = 1;
   static constexpr uint8_t kDescriptorTypeConfig = 2;
+
+  static constexpr int kKeyBufModifierIndex = 32;
 
   struct DeviceDescriptor {
     uint8_t length;
@@ -144,8 +152,11 @@ class Controller {
   void NotifyDeviceContextDoorbell(int slot, int dci);
   uint32_t ReadPORTSC(int slot);
   void WritePORTSC(int slot, uint32_t data);
+  void ResetPort(int port);
   void HandlePortStatusChange(int port);
   void HandleEnableSlotCompleted(int slot, int port);
+  void PressKey(int hid_idx, uint8_t mod);
+  void HandleKeyInput(int slot, uint8_t data[8]);
   void HandleAddressDeviceCompleted(int slot);
   void RequestDeviceDescriptor(int slot);
   void RequestConfigDescriptor(int slot);
@@ -153,6 +164,7 @@ class Controller {
   void SetHIDBootProtocol(int slot);
   void GetHIDReport(int slot);
   void HandleTransferEvent(BasicTRB& e);
+  void CheckPortAndInitiateProcess();
 
   static Controller* xhci_;
   bool is_found_;
@@ -171,6 +183,7 @@ class Controller {
   uint8_t max_ports_;
   int num_of_slots_enabled_;
   uint8_t* descriptor_buffers_[kMaxNumOfSlots];
+  uint8_t key_buffers_[kMaxNumOfSlots][33];
   enum SlotState {
     kUndefined,
     kCheckingIfHIDClass,
@@ -180,6 +193,15 @@ class Controller {
     kGettingReport,
     kNotSupportedDevice,
   } slot_state_[kMaxNumOfSlots];
+  RingBuffer<uint16_t, 16> keyid_buffer_;
+  enum PortState {
+    kDisconnected,
+    kNeedsInitializing,
+    kInitializing,
+    kInitialized,
+    kGiveUp,
+  } port_state_[kMaxNumOfPorts];
+  int slot_to_port_map_[kMaxNumOfSlots];
 };
 
 }  // namespace XHCI

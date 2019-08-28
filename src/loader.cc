@@ -200,6 +200,8 @@ void MainForBootProcessor(EFI::Handle image_handle,
   liumos_.loader_info.files.pi_bin = &pi_bin_file;
   EFIFileManager::Load(liumos_elf_file, L"LIUMOS.ELF");
   liumos_.loader_info.files.liumos_elf = &liumos_elf_file;
+  EFIFileManager::Load(hello_bin_file, L"hello.bin");
+  liumos_.loader_info.files.hello_bin = &hello_bin_file;
 
   efi_.GetMemoryMapAndExitBootServices(image_handle, efi_memory_map);
   liumos->efi_memory_map = &efi_memory_map;

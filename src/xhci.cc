@@ -1,8 +1,10 @@
 #include "xhci.h"
 
 #include "kernel.h"
+#include "keyid.h"
 #include "liumos.h"
 
+#include <cstdio>
 #include <unordered_map>
 
 namespace XHCI {
@@ -23,9 +25,6 @@ constexpr uint32_t kUSBCMDMaskHCReset = 0b10;
 constexpr uint32_t kTRBTypeSetupStage = 2;
 constexpr uint32_t kTRBTypeDataStage = 3;
 constexpr uint32_t kTRBTypeStatusStage = 4;
-
-constexpr uint8_t kTRBCompletionCodeSuccess = 0x01;
-constexpr uint8_t kTRBCompletionCodeShortPacket = 0x0D;
 
 constexpr uint32_t kTRBTypeEnableSlotCommand = 9;
 constexpr uint32_t kTRBTypeAddressDeviceCommand = 11;
@@ -271,18 +270,20 @@ void Controller::Init() {
 
   // 4.3.1 Resetting a Root Hub Port
   for (int slot = 1; slot <= num_of_slots_enabled_; slot++) {
-    PutStringAndHex("Port Reset", slot);
-    WritePORTSC(slot, kPortSCBitPortReset);
-    while ((ReadPORTSC(slot) & kPortSCBitPortReset)) {
-      PutString(".");
-    }
-    PutStringAndHex("done. PORTSC", ReadPORTSC(slot));
+    ResetPort(slot);
   }
   // Make Port Power is not off (PP = 1)
   // See 4.19.1.1 USB2 Root Hub Port
   // Figure 4-25: USB2 Root Hub Port State Machine
   for (int slot = 1; slot <= num_of_slots_enabled_; slot++) {
     WritePORTSC(slot, ReadPORTSC(slot) | kPortSCBitPortPower);
+  }
+}
+
+void Controller::ResetPort(int port) {
+  WritePORTSC(port, kPortSCBitPortReset);
+  while ((ReadPORTSC(port) & kPortSCBitPortReset)) {
+    // wait
   }
 }
 
@@ -309,21 +310,15 @@ void Controller::HandlePortStatusChange(int port) {
   }
 
   WritePORTSC(port, (portsc & kPortSCPreserveMask) | (0b1111111 << 17));
-  if ((portsc & 1) == 0)
+  if ((portsc & 1) == 0) {
+    port_state_[port] = kDisconnected;
     return;
-
-  // 4.3.2 Device Slot Assignment
-  // 4.6.3 Enable Slot
-  PutString("  Send Enable Slot\n");
-  BasicTRB& enable_slot_trb = *cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
-  slot_request_for_port.insert(
-      {liumos->kernel_pml4->v2p(reinterpret_cast<uint64_t>(&enable_slot_trb)),
-       port});
-  enable_slot_trb.data = 0;
-  enable_slot_trb.option = 0;
-  enable_slot_trb.control = (kTRBTypeEnableSlotCommand << 10);
-  cmd_ring_->Push();
-  NotifyHostControllerDoorbell();
+  }
+  if (port_state_[port] != kDisconnected) {
+    PutStringAndHex("  Status Changed but already gave up. port", port);
+    return;
+  }
+  port_state_[port] = kNeedsInitializing;
 }
 
 class Controller::DeviceContext {
@@ -470,7 +465,8 @@ static const char* GetSpeedNameFromPORTSCPortSpeed(uint32_t port_speed) {
     return "High-speed";
   if (port_speed == kPortSpeedSS)
     return "SuperSpeed Gen1 x1";
-  Panic("GetSpeedNameFromPORTSCPortSpeed: Not supported speed");
+  PutString("GetSpeedNameFromPORTSCPortSpeed: Not supported speed");
+  return nullptr;
 }
 
 constexpr int kNumOfCtrlEPRingEntries = 32;
@@ -478,8 +474,10 @@ TransferRequestBlockRing<kNumOfCtrlEPRingEntries>* ctrl_ep_trings[256];
 Controller::DeviceContext* device_contexts[256];
 
 void Controller::HandleEnableSlotCompleted(int slot, int port) {
-  PutStringAndHex("Slot enabled. Slot ID", slot);
-  PutStringAndHex("  Use RootPort", port);
+  PutStringAndHex("EnableSlotCommand completed.. Slot ID", slot);
+  PutStringAndHex("  With RootPort ID", port);
+  slot_to_port_map_[slot] = port;
+  PrintUSBSTS();
   // 4.3.3 Device Slot Initialization
   InputContext& ctx = InputContext::Alloc(1);
   DeviceContext& dctx = ctx.GetDeviceContext();
@@ -500,10 +498,15 @@ void Controller::HandleEnableSlotCompleted(int slot, int port) {
   uint32_t portsc = ReadPORTSC(port);
   uint32_t port_speed = GetBits<13, 10, uint32_t, uint32_t>(portsc);
   PutString("  Port Speed: ");
-  PutString(GetSpeedNameFromPORTSCPortSpeed(port_speed));
+  const char* speed_str = GetSpeedNameFromPORTSCPortSpeed(port_speed);
+  if (!speed_str) {
+    port_state_[port] = kGiveUp;
+    ResetPort(port);
+    return;
+  }
+  PutString(speed_str);
   PutString("\n");
   dctx.SetEPType(DeviceContext::kDCIEPContext0, DeviceContext::kEPTypeControl);
-  PutStringAndHex("  IN   TRDeq", dctx.GetTRDequeuePointer(1));
   dctx.SetTRDequeuePointer(DeviceContext::kDCIEPContext0,
                            ctrl_ep_tring_phys_addr);
   dctx.SetDequeueCycleState(DeviceContext::kDCIEPContext0, 1);
@@ -514,15 +517,17 @@ void Controller::HandleEnableSlotCompleted(int slot, int port) {
   device_context_base_array_[slot] =
       v2p<DeviceContext*, DeviceContext*>(&out_device_ctx);
   device_contexts[slot] = &out_device_ctx;
-  PutStringAndHex("  Slot State", device_contexts[slot]->GetSlotState());
   ctrl_ep_trings[slot] = ctrl_ep_tring;
   // 8. Issue an Address Device Command for the Device Slot
   volatile BasicTRB& trb = *cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
   trb.data = v2p<InputContext*, uint64_t>(&ctx);
   trb.option = 0;
   trb.control = (kTRBTypeAddressDeviceCommand << 10) | (slot << 24);
+  PutStringAndHex("AddressDeviceCommand Enqueued to",
+                  cmd_ring_->GetNextEnqueueIndex());
   cmd_ring_->Push();
   NotifyHostControllerDoorbell();
+  PrintUSBSTS();
 }
 
 struct SetupStageTRB {
@@ -708,18 +713,105 @@ void Controller::GetHIDReport(int slot) {
 }
 
 void Controller::HandleAddressDeviceCompleted(int slot) {
+  port_state_[slot_to_port_map_[slot]] = kInitialized;
   PutStringAndHex("Address Device Completed. Slot ID", slot);
   uint8_t* buf = AllocMemoryForMappedIO<uint8_t*>(kSizeOfDescriptorBuffer);
   descriptor_buffers_[slot] = buf;
   RequestDeviceDescriptor(slot);
 }
 
+void Controller::PressKey(int hid_idx, uint8_t) {
+  static uint16_t mapping[256] = {0,
+                                  0,
+                                  0,
+                                  0,
+                                  'a',
+                                  'b',
+                                  'c',
+                                  'd',
+                                  'e',
+                                  'f',
+                                  'g',
+                                  'h',
+                                  'i',
+                                  'j',
+                                  'k',
+                                  'l',
+                                  'm',
+                                  'n',
+                                  'o',
+                                  'p',
+                                  'q',
+                                  'r',
+                                  's',
+                                  't',
+                                  'u',
+                                  'v',
+                                  'w',
+                                  'x',
+                                  'y',
+                                  'z',
+                                  '1',
+                                  '2',
+                                  '3',
+                                  '4',
+                                  '5',
+                                  '6',
+                                  '7',
+                                  '8',
+                                  '9',
+                                  '0',
+                                  '\n',
+                                  0,
+                                  KeyID::kBackspace,
+                                  0,
+                                  ' ',
+                                  '-',
+                                  '=',
+                                  '[',
+                                  ']',
+                                  '\\',
+                                  0,
+                                  ';',
+                                  '\'',
+                                  '~',
+                                  ',',
+                                  '.'};
+  if (0 < hid_idx && hid_idx < 256)
+    keyid_buffer_.Push(mapping[hid_idx]);
+}
+
+void Controller::HandleKeyInput(int slot, uint8_t data[8]) {
+  uint8_t new_key_bits[33] = {};
+  for (int i = 2; i < 8; i++) {
+    if (!data[i])
+      continue;
+    new_key_bits[data[i] >> 3] |= (1 << (data[i] & 7));
+  }
+  new_key_bits[32] = data[0];
+
+  for (int i = 0; i < 33; i++) {
+    uint8_t diff_make = new_key_bits[i] & ~key_buffers_[slot][i];
+    for (int k = 0; k < 8; k++) {
+      if ((diff_make >> k) & 1) {
+        PressKey(i * 8 + k, data[0]);
+      }
+    }
+    key_buffers_[slot][i] = new_key_bits[i];
+  }
+}
+
+uint16_t Controller::ReadKeyboardInput() {
+  if (keyid_buffer_.IsEmpty())
+    return 0;
+  return keyid_buffer_.Pop();
+}
+
 void Controller::HandleTransferEvent(BasicTRB& e) {
-  PutString("TransferEvent\n");
   const int slot = e.GetSlotID();
-  PutStringAndHex("  Slot ID", slot);
-  if (e.GetCompletionCode() != kTRBCompletionCodeSuccess &&
-      e.GetCompletionCode() != kTRBCompletionCodeShortPacket) {
+  if (e.IsCompletedWithSuccess() && e.IsCompletedWithShortPacket()) {
+    PutString("TransferEvent\n");
+    PutStringAndHex("  Slot ID", slot);
     PutStringAndHex("  CompletionCode", e.GetCompletionCode());
     if (e.GetCompletionCode() == 6) {
       PutString("  = Stall Error\n");
@@ -728,6 +820,8 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
   }
   switch (slot_state_[slot]) {
     case kCheckingIfHIDClass: {
+      PutString("TransferEvent\n");
+      PutStringAndHex("  Slot ID", slot);
       DeviceDescriptor& device_desc =
           *reinterpret_cast<DeviceDescriptor*>(descriptor_buffers_[slot]);
       PutStringAndHex("  Transfered Size",
@@ -742,6 +836,8 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
       RequestConfigDescriptor(slot);
     } break;
     case kCheckingConfigDescriptor: {
+      PutString("TransferEvent\n");
+      PutStringAndHex("  Slot ID", slot);
       ConfigDescriptor& config_desc =
           *reinterpret_cast<ConfigDescriptor*>(descriptor_buffers_[slot]);
       PutStringAndHex("  Num of Interfaces", config_desc.num_of_interfaces);
@@ -749,11 +845,14 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
           *reinterpret_cast<InterfaceDescriptor*>(descriptor_buffers_[slot] +
                                                   config_desc.length);
       PutStringAndHex("  Interface #       ", interface_desc.interface_number);
-      PutStringAndHex("  Interface Class   ", interface_desc.interface_class);
-      PutStringAndHex("  Interface SubClass",
-                      interface_desc.interface_subclass);
-      PutStringAndHex("  Interface Protocol",
-                      interface_desc.interface_protocol);
+      {
+        char s[128];
+        snprintf(
+            s, sizeof(s), "  Class=0x%02X SubClass=0x%02X Protocol=0x%02X\n",
+            interface_desc.interface_class, interface_desc.interface_subclass,
+            interface_desc.interface_protocol);
+        PutString(s);
+      }
       if (interface_desc.interface_class != InterfaceDescriptor::kClassHID ||
           interface_desc.interface_subclass !=
               InterfaceDescriptor::kSubClassSupportBootProtocol ||
@@ -767,27 +866,28 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
       SetConfig(slot, config_desc.config_value);
     } break;
     case kSettingConfiguration:
+      PutString("TransferEvent\n");
+      PutStringAndHex("  Slot ID", slot);
       PutString("Configuration done\n");
       SetHIDBootProtocol(slot);
       break;
     case kSettingBootProtocol:
+      PutString("TransferEvent\n");
+      PutStringAndHex("  Slot ID", slot);
       PutString("Setting Boot Protocol done\n");
+      PutString("Start running USB Keyboard\n");
+      bzero(key_buffers_[slot], sizeof(key_buffers_[0]));
       GetHIDReport(slot);
       break;
     case kGettingReport: {
       int size = kSizeOfDescriptorBuffer - e.GetTransferSize();
-      PutStringAndHex("  Transfered Size", size);
-      for (int i = 0; i < size; i++) {
-        PutHex8ZeroFilled(descriptor_buffers_[slot][i]);
-        if ((i & 0b1111) == 0b1111)
-          PutChar('\n');
-        else
-          PutChar(' ');
-      }
-      PutChar('\n');
+      assert(size == 8);
+      HandleKeyInput(slot, descriptor_buffers_[slot]);
       GetHIDReport(slot);
     } break;
     default: {
+      PutString("TransferEvent\n");
+      PutStringAndHex("  Slot ID", slot);
       int size = kSizeOfDescriptorBuffer - e.GetTransferSize();
       PutStringAndHex("  Transfered Size", size);
       for (int i = 0; i < size; i++) {
@@ -834,7 +934,34 @@ void Controller::PrintUSBSTS() {
   }
 }
 
+void Controller::CheckPortAndInitiateProcess() {
+  for (int i = 0; i < kMaxNumOfPorts; i++) {
+    if (port_state_[i] == kInitializing)
+      return;
+  }
+  for (int i = 0; i < kMaxNumOfPorts; i++) {
+    if (port_state_[i] == kNeedsInitializing) {
+      port_state_[i] = kInitializing;
+      // 4.3.2 Device Slot Assignment
+      // 4.6.3 Enable Slot
+      PutString("  Send Enable Slot\n");
+      BasicTRB& enable_slot_trb = *cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
+      slot_request_for_port.insert(
+          {liumos->kernel_pml4->v2p(
+               reinterpret_cast<uint64_t>(&enable_slot_trb)),
+           i});
+      enable_slot_trb.data = 0;
+      enable_slot_trb.option = 0;
+      enable_slot_trb.control = (kTRBTypeEnableSlotCommand << 10);
+      cmd_ring_->Push();
+      NotifyHostControllerDoorbell();
+      return;
+    }
+  }
+}
+
 void Controller::PollEvents() {
+  CheckPortAndInitiateProcess();
   if (!primary_event_ring_)
     return;
   if (primary_event_ring_->HasNextEvent()) {
@@ -843,17 +970,8 @@ void Controller::PollEvents() {
 
     switch (type) {
       case kTRBTypeCommandCompletionEvent:
-        PutString("CommandCompletionEvent\n");
-        PutStringAndHex("  CompletionCode", e.GetCompletionCode());
-        if (e.GetCompletionCode() == 5) {
-          PutString("  = TRBError\n");
-        }
-        if (e.GetCompletionCode() == 1) {
-          PutString("  = Success\n");
-        }
-        {
+        if (e.IsCompletedWithSuccess()) {
           BasicTRB& cmd_trb = cmd_ring_->GetEntryFromPhysAddr(e.data);
-          PutStringAndHex("  CommandType", cmd_trb.GetTRBType());
           if (cmd_trb.GetTRBType() == kTRBTypeEnableSlotCommand) {
             uint64_t cmd_trb_phys_addr = e.data;
             auto it = slot_request_for_port.find(cmd_trb_phys_addr);
@@ -866,7 +984,12 @@ void Controller::PollEvents() {
             HandleAddressDeviceCompleted(e.GetSlotID());
             break;
           }
+          PutStringAndHex("  Not Handled Completion Event(Success)",
+                          cmd_trb.GetTRBType());
+          break;
         }
+        PutString("CommandCompletionEvent\n");
+        e.PrintCompletionCode();
         break;
       case kTRBTypePortStatusChangeEvent:
         PutString("PortStatusChangeEvent\n");

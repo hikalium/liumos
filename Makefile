@@ -7,9 +7,9 @@ QEMU_ARGS=\
 					 -m 8G,slots=2,maxmem=10G \
 					 -drive format=raw,file=fat:rw:mnt -net none \
 					 -serial tcp::1234,server,nowait \
-					 -serial tcp::1235,server,nowait
+					 -serial tcp::1235,server,nowait \
+                     -device qemu-xhci -device usb-mouse -device usb-kbd
 
-QEMU_ARGS_XHCI=      -device qemu-xhci -device usb-kbd
 
 QEMU_ARGS_PMEM=\
 					 $(QEMU_ARGS) \
@@ -51,9 +51,6 @@ files : src/BOOTX64.EFI $(APPS) src/LIUMOS.ELF .FORCE
 run_nopmem : files .FORCE
 	$(QEMU) $(QEMU_ARGS)
 
-run_xhci : files .FORCE
-	$(QEMU) $(QEMU_ARGS_XHCI) $(QEMU_ARGS) || reset
-
 LLDB_ARGS = -o 'settings set interpreter.prompt-on-quit false' \
 			-o 'process launch' \
 			-o 'process handle -s false SIGUSR1 SIGUSR2'
@@ -63,6 +60,13 @@ run_xhci_gdb : files .FORCE
 	
 run : files pmem.img .FORCE
 	$(QEMU) $(QEMU_ARGS_PMEM) || reset
+
+run_gdb : files pmem.img .FORCE
+	$(QEMU) $(QEMU_ARGS_PMEM) -gdb tcp::1192 -S || reset
+
+gdb : .FORCE
+	gdb -ex 'target remote localhost:1192' src/LIUMOS.ELF
+
 
 install : files .FORCE
 	@read -p "Write LIUMOS to /Volumes/LIUMOS. Are you sure? [Enter to proceed, or Ctrl-C to abort] " && \

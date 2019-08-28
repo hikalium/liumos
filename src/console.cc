@@ -1,6 +1,10 @@
 #include "corefunc.h"
 #include "liumos.h"
 
+#ifndef LIUMOS_LOADER
+#include "xhci.h"
+#endif
+
 void Console::PutChar(char c) {
   if (serial_port_) {
     if (c == '\n')
@@ -48,7 +52,8 @@ void Console::PutChar(char c) {
 uint16_t Console::GetCharWithoutBlocking() {
   while (1) {
     uint16_t keyid;
-    if ((keyid = liumos->keyboard_ctrl->ReadKeyID())) {
+    if ((keyid = liumos->keyboard_ctrl->ReadKeyID()) ||
+        (keyid = XHCI::Controller::GetInstance().ReadKeyboardInput())) {
       if (!keyid && keyid & KeyID::kMaskBreak)
         continue;
       if (keyid == KeyID::kEnter) {
