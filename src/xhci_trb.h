@@ -1,6 +1,5 @@
 #pragma once
 
-#include "liumos.h"
 #include "util.h"
 
 struct BasicTRB {
@@ -23,6 +22,7 @@ struct BasicTRB {
   bool IsCompletedWithShortPacket() {
     return GetCompletionCode() == kCompletionCodeShortPacket;
   }
+#ifndef LIUMOS_TEST
   void PrintCompletionCode() {
     uint8_t code = GetCompletionCode();
     PutStringAndHex("  CompletionCode", code);
@@ -39,5 +39,6 @@ struct BasicTRB {
       PutString("  = Short Packet\n");
     }
   }
+#endif
 };
 static_assert(sizeof(BasicTRB) == 16);
