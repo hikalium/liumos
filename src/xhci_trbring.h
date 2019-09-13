@@ -6,6 +6,8 @@
 #include "util.h"
 #include "xhci_trb.h"
 
+namespace XHCI {
+
 template <int N>
 class TransferRequestBlockRing {
  public:
@@ -64,3 +66,5 @@ class TransferRequestBlockRing {
   int current_cycle_state_;
   uint64_t paddr_;
 };
+
+}  // namespace XHCI

@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <cassert>
 
+namespace XHCI {
+
 template <int N>
 void TestTransferRequestBlockRing() {
   printf("Testing TransferRequestBlockRing<%d>...\n", N);
@@ -28,10 +30,12 @@ void TestTransferRequestBlockRing() {
   assert(ring.GetCurrentCycleState() == 1);
 }
 
+}  // namespace XHCI
+
 int main() {
-  TestTransferRequestBlockRing<256>();
-  TestTransferRequestBlockRing<17>();
-  TestTransferRequestBlockRing<1>();
+  XHCI::TestTransferRequestBlockRing<256>();
+  XHCI::TestTransferRequestBlockRing<17>();
+  XHCI::TestTransferRequestBlockRing<1>();
 
   puts("PASS");
   return 0;

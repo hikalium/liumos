@@ -2,6 +2,8 @@
 
 #include "util.h"
 
+namespace XHCI {
+
 struct BasicTRB {
   volatile uint64_t data;
   volatile uint32_t option;
@@ -42,3 +44,5 @@ struct BasicTRB {
 #endif
 };
 static_assert(sizeof(BasicTRB) == 16);
+
+}  // namespace XHCI
