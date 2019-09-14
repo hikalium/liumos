@@ -739,6 +739,8 @@ void Run(TextBox& tbox) {
     XHCI::Controller::GetInstance().PrintPortSC();
   } else if (IsEqualString(line, "xhci show status")) {
     XHCI::Controller::GetInstance().PrintUSBSTS();
+  } else if (IsEqualString(line, "lsusb")) {
+    XHCI::Controller::GetInstance().PrintUSBDevices();
   } else if (IsEqualString(line, "teststl")) {
     char s[128];
     snprintf(s, sizeof(s), "123 = 0x%X\n", 123);

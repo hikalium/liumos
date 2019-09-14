@@ -5,13 +5,10 @@
 #include "liumos.h"
 
 #include <cstdio>
-#include <unordered_map>
 
 namespace XHCI {
 
 Controller* Controller::xhci_;
-
-static std::unordered_map<uint64_t, int> slot_request_for_port;
 
 constexpr uint32_t kPCIRegOffsetBAR = 0x10;
 constexpr uint32_t kPCIRegOffsetCommandAndStatus = 0x04;
@@ -946,7 +943,7 @@ void Controller::CheckPortAndInitiateProcess() {
       // 4.6.3 Enable Slot
       PutString("  Send Enable Slot\n");
       BasicTRB& enable_slot_trb = *cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
-      slot_request_for_port.insert(
+      slot_request_for_port_.insert(
           {liumos->kernel_pml4->v2p(
                reinterpret_cast<uint64_t>(&enable_slot_trb)),
            i});
@@ -974,10 +971,10 @@ void Controller::PollEvents() {
           BasicTRB& cmd_trb = cmd_ring_->GetEntryFromPhysAddr(e.data);
           if (cmd_trb.GetTRBType() == kTRBTypeEnableSlotCommand) {
             uint64_t cmd_trb_phys_addr = e.data;
-            auto it = slot_request_for_port.find(cmd_trb_phys_addr);
-            assert(it != slot_request_for_port.end());
+            auto it = slot_request_for_port_.find(cmd_trb_phys_addr);
+            assert(it != slot_request_for_port_.end());
             HandleEnableSlotCompleted(e.GetSlotID(), it->second);
-            slot_request_for_port.erase(it);
+            slot_request_for_port_.erase(it);
             break;
           }
           if (cmd_trb.GetTRBType() == kTRBTypeAddressDeviceCommand) {
@@ -1011,6 +1008,15 @@ void Controller::PollEvents() {
         break;
     }
     primary_event_ring_->PopEvent();
+  }
+}
+
+void Controller::PrintUSBDevices() {
+  for (int slot = 1; slot <= num_of_slots_enabled_; slot++) {
+    if (slot_state_[slot] == SlotState::kUndefined)
+      continue;
+    PutStringAndHex("slot", slot);
+    PutStringAndHex("  slot_state_", slot_state_[slot]);
   }
 }
 

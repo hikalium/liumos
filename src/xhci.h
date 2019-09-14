@@ -1,5 +1,7 @@
 #pragma once
 
+#include <unordered_map>
+
 #include "liumos.h"
 #include "pci.h"
 #include "ring_buffer.h"
@@ -16,6 +18,7 @@ class Controller {
   void PollEvents();
   void PrintPortSC();
   void PrintUSBSTS();
+  void PrintUSBDevices();
   uint16_t ReadKeyboardInput();
 
   static Controller& GetInstance() {
@@ -184,6 +187,7 @@ class Controller {
   int num_of_slots_enabled_;
   uint8_t* descriptor_buffers_[kMaxNumOfSlots];
   uint8_t key_buffers_[kMaxNumOfSlots][33];
+  std::unordered_map<uint64_t, int> slot_request_for_port_;
   enum SlotState {
     kUndefined,
     kCheckingIfHIDClass,
