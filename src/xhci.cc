@@ -5,46 +5,18 @@
 #include "liumos.h"
 
 #include <cstdio>
+#include <utility>
 
 namespace XHCI {
 
 Controller* Controller::xhci_;
 
-constexpr uint32_t kPCIRegOffsetBAR = 0x10;
-constexpr uint32_t kPCIRegOffsetCommandAndStatus = 0x04;
-constexpr uint64_t kPCIBARMaskType = 0b111;
-constexpr uint64_t kPCIBARMaskAddr = ~0b1111ULL;
-constexpr uint64_t kPCIBARBitsType64bitMemorySpace = 0b100;
-constexpr uint64_t kPCIRegCommandAndStatusMaskBusMasterEnable = 1 << 2;
-constexpr uint32_t kUSBCMDMaskRunStop = 0b01;
-constexpr uint32_t kUSBCMDMaskHCReset = 0b10;
-
-constexpr uint32_t kTRBTypeSetupStage = 2;
-constexpr uint32_t kTRBTypeDataStage = 3;
-constexpr uint32_t kTRBTypeStatusStage = 4;
-
-constexpr uint32_t kTRBTypeEnableSlotCommand = 9;
-constexpr uint32_t kTRBTypeAddressDeviceCommand = 11;
-constexpr uint32_t kTRBTypeNoOpCommand = 23;
-constexpr uint32_t kTRBTypeTransferEvent = 32;
-constexpr uint32_t kTRBTypeCommandCompletionEvent = 33;
-constexpr uint32_t kTRBTypePortStatusChangeEvent = 34;
-
-constexpr uint32_t kPortSCBitConnectStatusChange = 1 << 17;
-constexpr uint32_t kPortSCBitEnableStatusChange = 1 << 18;
-constexpr uint32_t kPortSCBitPortResetChange = 1 << 21;
-constexpr uint32_t kPortSCBitPortLinkStateChange = 1 << 22;
-constexpr uint32_t kPortSCBitPortReset = 1 << 4;
-constexpr uint32_t kPortSCBitPortPower = 1 << 9;
-constexpr uint32_t kPortSCPreserveMask = 0b00001110000000011100001111100000;
-
-constexpr uint32_t kUSBSTSBitHCHalted = 0b1;
-constexpr uint32_t kUSBSTSBitHCError = 1 << 12;
-
 void EnsureBusMasterEnabled(PCI::DeviceLocation& dev) {
+  constexpr uint32_t kPCIRegOffsetCommandAndStatus = 0x04;
+  constexpr uint64_t kPCIRegCommandAndStatusMaskBusMasterEnable = 1 << 2;
   uint32_t cmd_and_status =
       PCI::ReadConfigRegister32(dev, kPCIRegOffsetCommandAndStatus);
-  cmd_and_status |= (1 << (10));
+  cmd_and_status |= (1 << 10);  // Interrupt Disable
   PCI::WriteConfigRegister32(dev, kPCIRegOffsetCommandAndStatus,
                              cmd_and_status);
   assert(cmd_and_status & kPCIRegCommandAndStatusMaskBusMasterEnable);
@@ -189,26 +161,33 @@ void Controller::WritePORTSC(int slot, uint32_t data) {
                                0x10 * (slot - 1)) = data;
 }
 
-void Controller::Init() {
-  PutString("XHCI::Init()\n");
-
-  is_found_ = false;
+static std::optional<PCI::DeviceLocation> FindXHCIController() {
   for (auto& it : PCI::GetInstance().GetDeviceList()) {
     if (it.first != 0x000D'1B36 && it.first != 0x31A8'8086)
       continue;
-    is_found_ = true;
-    dev_ = it.second;
     PutString("XHCI Controller Found: ");
     PutString(PCI::GetDeviceName(it.first));
     PutString("\n");
-    break;
+    return it.second;
   }
-  if (!is_found_) {
-    PutString("XHCI Controller Not Found\n");
+  PutString("XHCI Controller Not Found\n");
+  return {};
+}
+
+void Controller::Init() {
+  PutString("XHCI::Init()\n");
+
+  if (auto dev = FindXHCIController()) {
+    dev_ = *dev;
+  } else {
     return;
   }
-
   EnsureBusMasterEnabled(dev_);
+
+  constexpr uint32_t kPCIRegOffsetBAR = 0x10;
+  constexpr uint64_t kPCIBARMaskType = 0b111;
+  constexpr uint64_t kPCIBARMaskAddr = ~0b1111ULL;
+  constexpr uint64_t kPCIBARBitsType64bitMemorySpace = 0b100;
 
   const uint64_t bar_raw_val =
       PCI::ReadConfigRegister64(dev_, kPCIRegOffsetBAR);
@@ -243,7 +222,7 @@ void Controller::Init() {
   InitSlotsAndContexts();
   InitCommandRing();
 
-  op_regs_->command = op_regs_->command | kUSBCMDMaskRunStop | (1 << 3);
+  op_regs_->command = op_regs_->command | kUSBCMDMaskRunStop;
   while (op_regs_->status & kUSBSTSBitHCHalted) {
     PutString("Waiting for HCHalt == 0...\n");
   }
@@ -269,12 +248,6 @@ void Controller::Init() {
   for (int slot = 1; slot <= num_of_slots_enabled_; slot++) {
     ResetPort(slot);
   }
-  // Make Port Power is not off (PP = 1)
-  // See 4.19.1.1 USB2 Root Hub Port
-  // Figure 4-25: USB2 Root Hub Port State Machine
-  for (int slot = 1; slot <= num_of_slots_enabled_; slot++) {
-    WritePORTSC(slot, ReadPORTSC(slot) | kPortSCBitPortPower);
-  }
 }
 
 void Controller::ResetPort(int port) {
@@ -282,11 +255,17 @@ void Controller::ResetPort(int port) {
   while ((ReadPORTSC(port) & kPortSCBitPortReset)) {
     // wait
   }
+  PutStringAndHex("ResetPort: done. port", port);
+  // Make Port Power is not off (PP = 1)
+  // See 4.19.1.1 USB2 Root Hub Port
+  // Figure 4-25: USB2 Root Hub Port State Machine
+  WritePORTSC(port, ReadPORTSC(port) | kPortSCBitPortPower);
 }
 
 void Controller::HandlePortStatusChange(int port) {
   uint32_t portsc = ReadPORTSC(port);
   PutStringAndHex("XHCI Port Status Changed", port);
+  PutStringAndHex("  Port ID", port);
   PutStringAndHex("  PORTSC", portsc);
   if (portsc & kPortSCBitConnectStatusChange) {
     PutString("  Connect Status: ");
@@ -315,6 +294,7 @@ void Controller::HandlePortStatusChange(int port) {
     PutStringAndHex("  Status Changed but already gave up. port", port);
     return;
   }
+  PutStringAndHex("  Initialize requested on port", port);
   port_state_[port] = kNeedsInitializing;
 }
 
@@ -462,7 +442,7 @@ static const char* GetSpeedNameFromPORTSCPortSpeed(uint32_t port_speed) {
     return "High-speed";
   if (port_speed == kPortSpeedSS)
     return "SuperSpeed Gen1 x1";
-  PutString("GetSpeedNameFromPORTSCPortSpeed: Not supported speed");
+  PutString("GetSpeedNameFromPORTSCPortSpeed: Not supported speed\n");
   return nullptr;
 }
 
@@ -574,7 +554,7 @@ static void ConfigureSetupStageTRBForGetDescriptorRequest(
   trb.index = 0;
   trb.length = desc_length;
   trb.option = 8;
-  trb.control = (1 << 6) | (kTRBTypeSetupStage << 10) | (slot << 24) |
+  trb.control = (1 << 6) | (BasicTRB::kTRBTypeSetupStage << 10) | (slot << 24) |
                 (SetupStageTRB::kTransferTypeInDataStage << 16);
 }
 
@@ -587,7 +567,7 @@ static void ConfigureSetupStageTRBForSetConfiguration(struct SetupStageTRB& trb,
   trb.index = 0;
   trb.length = 0;
   trb.option = 8;
-  trb.control = (1 << 6) | (kTRBTypeSetupStage << 10) | (slot << 24) |
+  trb.control = (1 << 6) | (BasicTRB::kTRBTypeSetupStage << 10) | (slot << 24) |
                 (SetupStageTRB::kTransferTypeNoDataStage << 16);
 }
 
@@ -597,7 +577,7 @@ static void ConfigureDataStageTRBForInput(struct DataStageTRB& trb,
                                           bool interrupt_on_completion) {
   trb.buf = ptr;
   trb.option = length;
-  trb.control = (1 << 16) | (kTRBTypeDataStage << 10) |
+  trb.control = (1 << 16) | (BasicTRB::kTRBTypeDataStage << 10) |
                 (interrupt_on_completion ? 1 << 5 : 0);
 }
 
@@ -605,7 +585,7 @@ static void ConfigureStatusStageTRBForInput(struct StatusStageTRB& trb,
                                             bool interrupt_on_completion) {
   trb.reserved = 0;
   trb.option = 0;
-  trb.control = (1 << 16) | (kTRBTypeStatusStage << 10) |
+  trb.control = (1 << 16) | (BasicTRB::kTRBTypeStatusStage << 10) |
                 (interrupt_on_completion ? 1 << 5 : 0);
 }
 
@@ -673,7 +653,8 @@ void Controller::SetHIDBootProtocol(int slot) {
   setup.index = 0;
   setup.length = 0;
   setup.option = 8;
-  setup.control = (1 << 6) | (kTRBTypeSetupStage << 10) | (slot << 24) |
+  setup.control = (1 << 6) | (BasicTRB::kTRBTypeSetupStage << 10) |
+                  (slot << 24) |
                   (SetupStageTRB::kTransferTypeNoDataStage << 16);
   tring.Push();
   StatusStageTRB& status = *tring.GetNextEnqueueEntry<StatusStageTRB*>();
@@ -693,7 +674,8 @@ void Controller::GetHIDReport(int slot) {
   setup.index = 0;
   setup.length = kSizeOfDescriptorBuffer;
   setup.option = 8;
-  setup.control = (1 << 6) | (kTRBTypeSetupStage << 10) | (slot << 24) |
+  setup.control = (1 << 6) | (BasicTRB::kTRBTypeSetupStage << 10) |
+                  (slot << 24) |
                   (SetupStageTRB::kTransferTypeInDataStage << 16);
   tring.Push();
   DataStageTRB& data = *tring.GetNextEnqueueEntry<DataStageTRB*>();
@@ -835,6 +817,8 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
     case kCheckingConfigDescriptor: {
       PutString("TransferEvent\n");
       PutStringAndHex("  Slot ID", slot);
+      PutStringAndHex("  Transfered Size",
+                      kSizeOfDescriptorBuffer - e.GetTransferSize());
       ConfigDescriptor& config_desc =
           *reinterpret_cast<ConfigDescriptor*>(descriptor_buffers_[slot]);
       PutStringAndHex("  Num of Interfaces", config_desc.num_of_interfaces);
@@ -925,9 +909,12 @@ void Controller::PrintPortSC() {
 void Controller::PrintUSBSTS() {
   const uint32_t status = op_regs_->status;
   PutStringAndHex("USBSTS", status);
-  PutString((status & kUSBSTSBitHCHalted) ? " Halted\n" : " Runnning\n");
+  PutString((status & kUSBSTSBitHCHalted) ? "  Halted\n" : "  Runnning\n");
   if (status & kUSBSTSBitHCError) {
-    PutString(" HC Error Detected!\n");
+    PutString("  Host Controller Error Detected!\n");
+  }
+  if (status & kUSBSTSBitHSError) {
+    PutString("  Host System Error Detected!\n");
   }
 }
 
@@ -941,7 +928,10 @@ void Controller::CheckPortAndInitiateProcess() {
       port_state_[i] = kInitializing;
       // 4.3.2 Device Slot Assignment
       // 4.6.3 Enable Slot
-      PutString("  Send Enable Slot\n");
+      PrintUSBSTS();
+      PutStringAndHex("Send EnableSlotCommand for port", i);
+      uint32_t portsc = ReadPORTSC(i);
+      PutStringAndHex("  PORTSC", portsc);
       BasicTRB& enable_slot_trb = *cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
       slot_request_for_port_.insert(
           {liumos->kernel_pml4->v2p(
@@ -958,9 +948,21 @@ void Controller::CheckPortAndInitiateProcess() {
 }
 
 void Controller::PollEvents() {
+  static int counter = 0;
+  if (controller_reset_requested_) {
+    Init();
+    return;
+  }
   CheckPortAndInitiateProcess();
   if (!primary_event_ring_)
     return;
+  counter++;
+  if (counter > 1000) {
+    counter = 0;
+    if (op_regs_->status & kUSBSTSBitHCHalted) {
+      PrintUSBSTS();
+    }
+  }
   if (primary_event_ring_->HasNextEvent()) {
     BasicTRB& e = primary_event_ring_->PeekEvent();
     uint8_t type = e.GetTRBType();
@@ -987,14 +989,29 @@ void Controller::PollEvents() {
         }
         PutString("CommandCompletionEvent\n");
         e.PrintCompletionCode();
+        {
+          int port = slot_to_port_map_[e.GetSlotID()];
+          if (port && port_state_[port] == kInitializing && port) {
+            port_state_[port] = kGiveUp;
+            ResetPort(port);
+          }
+        }
+        {
+          const uint32_t status = op_regs_->status;
+          if (status & kUSBSTSBitHCError) {
+            PutString(" HC Error Detected! Request resetting controller...\n");
+            controller_reset_requested_ = true;
+          }
+        }
         break;
       case kTRBTypePortStatusChangeEvent:
+        if (e.IsCompletedWithSuccess()) {
+          HandlePortStatusChange(
+              static_cast<int>(GetBits<31, 24, uint64_t>(e.data)));
+          break;
+        }
         PutString("PortStatusChangeEvent\n");
-        PutStringAndHex("  Port ID", GetBits<31, 24, uint64_t>(e.data));
-        PutStringAndHex("  CompletionCode", e.GetCompletionCode());
-        HandlePortStatusChange(
-            static_cast<int>(GetBits<31, 24, uint64_t>(e.data)));
-        PutString("kTRBTypePortStatusChangeEvent end\n");
+        e.PrintCompletionCode();
         break;
       case kTRBTypeTransferEvent:
         HandleTransferEvent(e);

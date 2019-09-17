@@ -9,6 +9,10 @@ struct BasicTRB {
   volatile uint32_t option;
   volatile uint32_t control;
 
+  static constexpr uint32_t kTRBTypeSetupStage = 2;
+  static constexpr uint32_t kTRBTypeDataStage = 3;
+  static constexpr uint32_t kTRBTypeStatusStage = 4;
+
   static constexpr uint8_t kCompletionCodeSuccess = 0x01;
   static constexpr uint8_t kCompletionCodeUSBTransactionError = 0x04;
   static constexpr uint8_t kCompletionCodeTRBError = 0x05;

@@ -88,17 +88,40 @@ class Controller {
  private:
   class EventRing;
 
-  static constexpr int kNumOfCmdTRBRingEntries = 255;
+  static constexpr int kNumOfCmdTRBRingEntries = 128;
   static constexpr int kNumOfERSForEventRing = 1;
   static constexpr int kNumOfTRBForEventRing = 128;
   static constexpr int kMaxNumOfSlots = 256;
   static constexpr int kMaxNumOfPorts = 256;
-  static constexpr int kSizeOfDescriptorBuffer = 4096;
+  static constexpr int kSizeOfDescriptorBuffer = 1024;
 
   static constexpr uint8_t kDescriptorTypeDevice = 1;
   static constexpr uint8_t kDescriptorTypeConfig = 2;
 
   static constexpr int kKeyBufModifierIndex = 32;
+
+  static constexpr uint32_t kUSBCMDMaskRunStop = 0b01;
+  static constexpr uint32_t kUSBCMDMaskHCReset = 0b10;
+
+  static constexpr uint32_t kTRBTypeEnableSlotCommand = 9;
+  static constexpr uint32_t kTRBTypeAddressDeviceCommand = 11;
+  static constexpr uint32_t kTRBTypeNoOpCommand = 23;
+  static constexpr uint32_t kTRBTypeTransferEvent = 32;
+  static constexpr uint32_t kTRBTypeCommandCompletionEvent = 33;
+  static constexpr uint32_t kTRBTypePortStatusChangeEvent = 34;
+
+  static constexpr uint32_t kPortSCBitConnectStatusChange = 1 << 17;
+  static constexpr uint32_t kPortSCBitEnableStatusChange = 1 << 18;
+  static constexpr uint32_t kPortSCBitPortResetChange = 1 << 21;
+  static constexpr uint32_t kPortSCBitPortLinkStateChange = 1 << 22;
+  static constexpr uint32_t kPortSCBitPortReset = 1 << 4;
+  static constexpr uint32_t kPortSCBitPortPower = 1 << 9;
+  static constexpr uint32_t kPortSCPreserveMask =
+      0b00001110000000011100001111100000;
+
+  static constexpr uint32_t kUSBSTSBitHCHalted = 0b1;
+  static constexpr uint32_t kUSBSTSBitHCError = 1 << 12;
+  static constexpr uint32_t kUSBSTSBitHSError = 1 << 2;
 
   struct DeviceDescriptor {
     uint8_t length;
@@ -170,7 +193,6 @@ class Controller {
   void CheckPortAndInitiateProcess();
 
   static Controller* xhci_;
-  bool is_found_;
   PCI::DeviceLocation dev_;
   TransferRequestBlockRing<kNumOfCmdTRBRingEntries>* cmd_ring_;
   uint64_t cmd_ring_phys_addr_;
@@ -206,6 +228,7 @@ class Controller {
     kGiveUp,
   } port_state_[kMaxNumOfPorts];
   int slot_to_port_map_[kMaxNumOfSlots];
+  bool controller_reset_requested_ = false;
 };
 
 }  // namespace XHCI
