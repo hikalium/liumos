@@ -28,6 +28,8 @@ void ACPI::DetectTables() {
       liumos->acpi.srat = static_cast<SRAT*>(xsdt->entry[i]);
     if (strncmp(signature, "SLIT", 4) == 0)
       liumos->acpi.slit = static_cast<SLIT*>(xsdt->entry[i]);
+    if (strncmp(signature, "FACP", 4) == 0)
+      liumos->acpi.fadt = static_cast<FADT*>(xsdt->entry[i]);
   }
   if (!liumos->acpi.madt)
     Panic("MADT not found");

@@ -338,5 +338,27 @@ packed_struct MADT {
   uint8_t entries[1];
 };
 
+packed_struct FADT {
+  char signature[4];
+  uint32_t length;
+  uint8_t revision;
+  uint8_t checksum;
+  uint8_t oem_id[6];
+  uint64_t oem_table_id;
+  uint32_t oem_revision;
+  uint32_t creator_id;
+  uint32_t creator_revision;
+
+  uint32_t firmware_ctrl;
+  uint32_t dsdt;
+  uint8_t reserved;
+  uint8_t preferred_pm_profile;
+  uint16_t sci_int;
+  uint32_t smi_cmd;
+  uint8_t acpi_enable;
+  uint8_t acpi_disable;
+};
+static_assert(sizeof(FADT) == 54);
+
 void DetectTables();
 }  // namespace ACPI

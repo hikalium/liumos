@@ -309,6 +309,19 @@ void ShowSLIT() {
   }
 }
 
+void ShowFADT() {
+  using namespace ACPI;
+  if (!liumos->acpi.fadt) {
+    PutString("FADT not found.\n");
+    return;
+  }
+  FADT& fadt = *liumos->acpi.fadt;
+  PutString("FADT found.\n");
+  PutStringAndHex("smi_cmd", fadt.smi_cmd);
+  PutStringAndHex("acpi_enable", fadt.acpi_enable);
+  PutStringAndHex("acpi_disable", fadt.acpi_disable);
+}
+
 void ShowEFIMemoryMap() {
   EFI::MemoryMap& map = *liumos->efi_memory_map;
   PutStringAndHex("Map entries", map.GetNumberOfEntries());
@@ -574,6 +587,8 @@ void Run(TextBox& tbox) {
     ShowSRAT();
   } else if (IsEqualString(line, "show slit")) {
     ShowSLIT();
+  } else if (IsEqualString(line, "show fadt")) {
+    ShowFADT();
   } else if (IsEqualString(line, "show mmap")) {
     ShowEFIMemoryMap();
   } else if (IsEqualString(line, "show hpet")) {

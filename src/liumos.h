@@ -90,6 +90,7 @@ packed_struct LiumOS {
     ACPI::HPET* hpet;
     ACPI::SRAT* srat;
     ACPI::SLIT* slit;
+    ACPI::FADT* fadt;
   } acpi;
   LoaderInfo loader_info;
   static constexpr int kNumOfPMEMManagers = 4;
