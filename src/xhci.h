@@ -222,6 +222,7 @@ class Controller {
   RingBuffer<uint16_t, 16> keyid_buffer_;
   enum PortState {
     kDisconnected,
+    kNeedsPortReset,
     kNeedsInitializing,
     kInitializing,
     kInitialized,

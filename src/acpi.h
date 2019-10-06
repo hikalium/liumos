@@ -293,6 +293,7 @@ packed_struct GAS {
   uint8_t reserved;
   void* address;
 };
+static_assert(sizeof(GAS) == 12);
 
 packed_struct HPET {
   char signature[4];
@@ -357,6 +358,13 @@ packed_struct FADT {
   uint32_t smi_cmd;
   uint8_t acpi_enable;
   uint8_t acpi_disable;
+
+  uint16_t GetResetReg() {
+    return reinterpret_cast<uint64_t>(reinterpret_cast<GAS *>(reinterpret_cast<uint64_t>(this) + 116)->address);
+  }
+  uint8_t GetResetValue() {
+    return reinterpret_cast<uint8_t *>(this)[128];
+  }
 };
 static_assert(sizeof(FADT) == 54);
 

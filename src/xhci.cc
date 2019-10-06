@@ -245,8 +245,19 @@ void Controller::Init() {
   NotifyHostControllerDoorbell();
 
   // 4.3.1 Resetting a Root Hub Port
+  /*
   for (int slot = 1; slot <= num_of_slots_enabled_; slot++) {
     ResetPort(slot);
+  }
+  */
+  for (int port = 1; port <= max_ports_; port++) {
+    uint32_t portsc = ReadPORTSC(port);
+    if(!portsc) continue;
+    PutStringAndHex("port", port);
+    PutStringAndHex("  PORTSC", portsc);
+    if(portsc & 1 && port_state_[port] == kDisconnected) {
+      port_state_[port] = kNeedsPortReset;
+    }
   }
 }
 
@@ -317,6 +328,10 @@ class Controller::DeviceContext {
   void SetContextEntries(uint32_t num_of_ent) {
     endpoint_ctx[kDCISlotContext][0] =
         CombineFieldBits<31, 27>(endpoint_ctx[kDCISlotContext][0], num_of_ent);
+  }
+  void SetPortSpeed(uint32_t port_speed) {
+    endpoint_ctx[kDCISlotContext][0] = CombineFieldBits<23, 20>(
+        endpoint_ctx[kDCISlotContext][0], port_speed);
   }
   void SetRootHubPortNumber(uint32_t root_port_num) {
     endpoint_ctx[kDCISlotContext][1] = CombineFieldBits<23, 16>(
@@ -415,6 +430,7 @@ class Controller::InputContext {
 };
 static_assert(sizeof(Controller::InputContext) == 0x420);
 
+constexpr uint32_t kPortSpeedFS = 1;
 constexpr uint32_t kPortSpeedLS = 2;
 constexpr uint32_t kPortSpeedHS = 3;
 constexpr uint32_t kPortSpeedSS = 4;
@@ -426,7 +442,7 @@ static uint16_t GetMaxPacketSizeFromPORTSCPortSpeed(uint32_t port_speed) {
   //    • Max Packet Size = The default maximum packet size for the Default
   //    Control Endpoint, as function of the PORTSC Port Speed field.
   // 7.2.2.1.1 Default USB Speed ID Mapping
-  if (port_speed == kPortSpeedLS)
+  if (port_speed == kPortSpeedLS || port_speed || kPortSpeedFS)
     return 8;
   if (port_speed == kPortSpeedHS)
     return 64;
@@ -436,6 +452,8 @@ static uint16_t GetMaxPacketSizeFromPORTSCPortSpeed(uint32_t port_speed) {
 }
 
 static const char* GetSpeedNameFromPORTSCPortSpeed(uint32_t port_speed) {
+  if (port_speed == kPortSpeedFS)
+    return "Full-speed";
   if (port_speed == kPortSpeedLS)
     return "Low-speed";
   if (port_speed == kPortSpeedHS)
@@ -443,6 +461,7 @@ static const char* GetSpeedNameFromPORTSCPortSpeed(uint32_t port_speed) {
   if (port_speed == kPortSpeedSS)
     return "SuperSpeed Gen1 x1";
   PutString("GetSpeedNameFromPORTSCPortSpeed: Not supported speed\n");
+  PutStringAndHex("  port_speed", port_speed);
   return nullptr;
 }
 
@@ -474,6 +493,7 @@ void Controller::HandleEnableSlotCompleted(int slot, int port) {
   // 5. Initialize the Input default control Endpoint 0 Context (6.2.3)
   uint32_t portsc = ReadPORTSC(port);
   uint32_t port_speed = GetBits<13, 10, uint32_t, uint32_t>(portsc);
+  dctx.SetPortSpeed(port_speed);
   PutString("  Port Speed: ");
   const char* speed_str = GetSpeedNameFromPORTSCPortSpeed(port_speed);
   if (!speed_str) {
@@ -945,6 +965,13 @@ void Controller::CheckPortAndInitiateProcess() {
       return;
     }
   }
+  for (int i = 0; i < kMaxNumOfPorts; i++) {
+    if (port_state_[i] == kNeedsPortReset) {
+      ResetPort(i);
+      port_state_[i] = kNeedsInitializing;
+      return;
+    }
+  }
 }
 
 void Controller::PollEvents() {
@@ -1005,11 +1032,13 @@ void Controller::PollEvents() {
         }
         break;
       case kTRBTypePortStatusChangeEvent:
+        /*
         if (e.IsCompletedWithSuccess()) {
           HandlePortStatusChange(
               static_cast<int>(GetBits<31, 24, uint64_t>(e.data)));
           break;
         }
+        */
         PutString("PortStatusChangeEvent\n");
         e.PrintCompletionCode();
         break;

@@ -320,6 +320,20 @@ void ShowFADT() {
   PutStringAndHex("smi_cmd", fadt.smi_cmd);
   PutStringAndHex("acpi_enable", fadt.acpi_enable);
   PutStringAndHex("acpi_disable", fadt.acpi_disable);
+  PutStringAndHex("reset_register", fadt.GetResetReg());
+  PutStringAndHex("reset_value", fadt.GetResetValue());
+}
+
+void Reset() {
+  using namespace ACPI;
+  if (!liumos->acpi.fadt) {
+    PutString("FADT not found.\n");
+    return;
+  }
+  FADT& fadt = *liumos->acpi.fadt;
+  WriteIOPort8(fadt.GetResetReg(), fadt.GetResetValue());
+  for (;;) {
+  }
 }
 
 void ShowEFIMemoryMap() {
@@ -577,6 +591,8 @@ void Run(TextBox& tbox) {
   const char* line = tbox.GetRecordedString();
   if (IsEqualString(line, "hello")) {
     PutString("Hello, world!\n");
+  } else if (IsEqualString(line, "reset")) {
+    Reset();
   } else if (IsEqualString(line, "show xsdt")) {
     ShowXSDT();
   } else if (IsEqualString(line, "show nfit")) {
