@@ -52,6 +52,7 @@ extern uint8_t font[0x100][16];
 // @graphics.cc
 void InitGraphics(void);
 void InitDoubleBuffer(void);
+void DrawPPMFile(EFIFile &file, int px, int py);
 
 // @keyboard.cc
 constexpr uint16_t kIOPortKeyboardData = 0x0060;
@@ -72,9 +73,11 @@ inline T min(T a, T b) {
 // @liumos.c
 packed_struct LoaderInfo {
   struct {
+    EFIFile* logo_ppm;
     EFIFile* hello_bin;
     EFIFile* pi_bin;
     EFIFile* liumos_elf;
+    EFIFile* liumos_ppm;
   } files;
   EFI* efi;
 };

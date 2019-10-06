@@ -2,7 +2,7 @@ COMMON_SRCS= \
 			 acpi.cc apic.cc asm.S \
 			 console.cc \
 			 efi.cc elf.cc execution_context.cc \
-			 gdt.cc generic.cc githash.cc guid.cc \
+			 gdt.cc generic.cc githash.cc graphics.cc guid.cc \
 			 interrupt.cc \
 			 paging.cc phys_page_allocator.cc pmem.cc process.cc \
 			 serial.cc sheet.cc \
@@ -13,7 +13,6 @@ COMMON_SRCS= \
 LOADER_SRCS= $(COMMON_SRCS) \
 			 efimain.cc \
 			 efi_file_manager.cc \
-			 graphics.cc \
 			 libfunc.cc loader.cc
 
 KERNEL_SRCS= $(COMMON_SRCS) \

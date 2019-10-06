@@ -44,7 +44,7 @@ files : src/BOOTX64.EFI $(APPS) src/LIUMOS.ELF .FORCE
 	-rm -r mnt/*
 	mkdir -p mnt/EFI/BOOT
 	cp src/BOOTX64.EFI mnt/EFI/BOOT/
-	cp dist/logo.ppm mnt/
+	cp dist/* mnt/
 	cp $(APPS) mnt/
 	cp src/LIUMOS.ELF mnt/LIUMOS.ELF
 
