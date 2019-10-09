@@ -15,3 +15,8 @@ constexpr TExpr CombineFieldBits(TExpr src, TExpr value) {
   src &= ~kMask;
   return src | ((value << kShift) & kMask);
 }
+
+template <typename TResult, typename TBase>
+TResult RefWithOffset(TBase base, uint64_t ofs) {
+  return reinterpret_cast<TResult>(reinterpret_cast<uint64_t>(base) + ofs);
+}

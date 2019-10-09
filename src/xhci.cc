@@ -1084,14 +1084,12 @@ void Controller::Init() {
       (GetBits<25, 21, uint8_t>(kHCSPARAMS2) << 5) |
       GetBits<31, 27, uint8_t>(kHCSPARAMS2);
 
-  op_regs_ = reinterpret_cast<volatile OperationalRegisters*>(
-      reinterpret_cast<uint64_t>(cap_regs_) + cap_regs_->length);
+  op_regs_ = RefWithOffset<volatile OperationalRegisters*>(cap_regs_,
+                                                           cap_regs_->length);
 
-  rt_regs_ = reinterpret_cast<RuntimeRegisters*>(
-      reinterpret_cast<uint64_t>(cap_regs_) + cap_regs_->rtsoff);
+  rt_regs_ = RefWithOffset<RuntimeRegisters*>(cap_regs_, cap_regs_->rtsoff);
 
-  db_regs_ = reinterpret_cast<volatile uint32_t*>(
-      reinterpret_cast<uint64_t>(cap_regs_) + cap_regs_->dboff);
+  db_regs_ = RefWithOffset<volatile uint32_t*>(cap_regs_, cap_regs_->dboff);
 
   ResetHostController();
   InitPrimaryInterrupter();
