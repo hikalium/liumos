@@ -50,12 +50,8 @@ class Controller::EventRing {
     irs_.erst_base = GetERSTPhysAddr();
     irs_.management = 0;
   }
-  uint64_t GetERSTPhysAddr() {
-    return liumos->kernel_pml4->v2p(reinterpret_cast<uint64_t>(erst_));
-  }
-  uint64_t GetTRBSPhysAddr() {
-    return liumos->kernel_pml4->v2p(reinterpret_cast<uint64_t>(trbs_));
-  }
+  uint64_t GetERSTPhysAddr() { return v2p(reinterpret_cast<uint64_t>(erst_)); }
+  uint64_t GetTRBSPhysAddr() { return v2p(reinterpret_cast<uint64_t>(trbs_)); }
   bool HasNextEvent() { return (trbs_[index_].control & 1) == cycle_state_; }
   BasicTRB& PeekEvent() {
     assert(HasNextEvent());
@@ -106,8 +102,7 @@ void Controller::InitSlotsAndContexts() {
   for (int i = 0; i <= num_of_slots_enabled_; i++) {
     device_context_base_array_[i] = 0;
   }
-  op_regs_->device_ctx_base_addr_array_ptr =
-      v2p<volatile uint64_t*, uint64_t>(device_context_base_array_);
+  op_regs_->device_ctx_base_addr_array_ptr = v2p(device_context_base_array_);
 }
 
 void Controller::InitCommandRing() {
@@ -117,8 +112,7 @@ void Controller::InitCommandRing() {
               ByteSizeToPageSize(
                   sizeof(TransferRequestBlockRing<kNumOfCmdTRBRingEntries>)),
               kPageAttrCacheDisable | kPageAttrPresent | kPageAttrWritable);
-  cmd_ring_phys_addr_ =
-      liumos->kernel_pml4->v2p(reinterpret_cast<uint64_t>(cmd_ring_));
+  cmd_ring_phys_addr_ = v2p(cmd_ring_);
   cmd_ring_->Init(cmd_ring_phys_addr_);
 
   constexpr uint64_t kOPREGCRCRMaskRsvdP = 0b11'0000;
@@ -416,9 +410,7 @@ void Controller::SendAddressDeviceCommand(int slot,
   TransferRequestBlockRing<kNumOfCtrlEPRingEntries>* ctrl_ep_tring =
       slot_info.ctrl_ep_tring;
   assert(ctrl_ep_tring);
-  uint64_t ctrl_ep_tring_phys_addr =
-      v2p<TransferRequestBlockRing<kNumOfCtrlEPRingEntries>*, uint64_t>(
-          ctrl_ep_tring);
+  uint64_t ctrl_ep_tring_phys_addr = v2p(ctrl_ep_tring);
   ctrl_ep_tring->Init(ctrl_ep_tring_phys_addr);
   // 5. Initialize the Input default control Endpoint 0 Context (6.2.3)
   uint32_t portsc = ReadPORTSC(port);
@@ -446,8 +438,7 @@ void Controller::SendAddressDeviceCommand(int slot,
   }
   assert(slot_info.output_ctx);
   DeviceContext& out_device_ctx = *slot_info.output_ctx;
-  device_context_base_array_[slot] =
-      v2p<DeviceContext*, uint64_t>(&out_device_ctx);
+  device_context_base_array_[slot] = v2p(&out_device_ctx);
   // 8. Issue an Address Device Command for the Device Slot
   // 6.2.2.1 Address Device Command Usage
   // The Input Slot Context is considered “valid” by the Address Device Command
@@ -466,13 +457,13 @@ void Controller::SendAddressDeviceCommand(int slot,
   dctx.DumpEPContext(1);
   out_device_ctx.DumpSlotContext();
   volatile BasicTRB& trb = *cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
-  trb.data = v2p<InputContext*, uint64_t>(&ctx);
+  trb.data = v2p(&ctx);
   trb.option = 0;
   trb.control = (kTRBTypeAddressDeviceCommand << 10) | (slot << 24) |
                 ((block_set_addr_req ? 1 : 0) << 9);
   PutStringAndHex("AddressDeviceCommand Enqueued to",
                   cmd_ring_->GetNextEnqueueIndex());
-  PutStringAndHex("  phys addr", v2p<volatile BasicTRB*, uint64_t>(&trb));
+  PutStringAndHex("  phys addr", v2p(&trb));
   cmd_ring_->Push();
   NotifyHostControllerDoorbell();
   PrintUSBSTS();
@@ -595,9 +586,8 @@ void Controller::RequestDeviceDescriptor(int slot,
       setup, slot, kDescriptorTypeDevice, 0, transfer_size);
   tring.Push();
   DataStageTRB& data = *tring.GetNextEnqueueEntry<DataStageTRB*>();
-  ConfigureDataStageTRBForInput(
-      data, v2p<uint8_t*, uint64_t>(descriptor_buffers_[slot]), transfer_size,
-      true);
+  ConfigureDataStageTRBForInput(data, v2p(descriptor_buffers_[slot]),
+                                transfer_size, true);
   tring.Push();
   StatusStageTRB& status = *tring.GetNextEnqueueEntry<StatusStageTRB*>();
   ConfigureStatusStageTRBForInput(status, false);
@@ -618,9 +608,8 @@ void Controller::RequestConfigDescriptor(int slot) {
       setup, slot, kDescriptorTypeConfig, 0, kSizeOfDescriptorBuffer);
   tring.Push();
   DataStageTRB& data = *tring.GetNextEnqueueEntry<DataStageTRB*>();
-  ConfigureDataStageTRBForInput(
-      data, v2p<uint8_t*, uint64_t>(descriptor_buffers_[slot]),
-      kSizeOfDescriptorBuffer, true);
+  ConfigureDataStageTRBForInput(data, v2p(descriptor_buffers_[slot]),
+                                kSizeOfDescriptorBuffer, true);
   tring.Push();
   StatusStageTRB& status = *tring.GetNextEnqueueEntry<StatusStageTRB*>();
   ConfigureStatusStageTRBForInput(status, false);
@@ -683,9 +672,8 @@ void Controller::GetHIDReport(int slot) {
                   (SetupStageTRB::kTransferTypeInDataStage << 16);
   tring.Push();
   DataStageTRB& data = *tring.GetNextEnqueueEntry<DataStageTRB*>();
-  ConfigureDataStageTRBForInput(
-      data, v2p<uint8_t*, uint64_t>(descriptor_buffers_[slot]),
-      kSizeOfDescriptorBuffer, true);
+  ConfigureDataStageTRBForInput(data, v2p(descriptor_buffers_[slot]),
+                                kSizeOfDescriptorBuffer, true);
   tring.Push();
   StatusStageTRB& status = *tring.GetNextEnqueueEntry<StatusStageTRB*>();
   ConfigureStatusStageTRBForInput(status, false);
@@ -950,10 +938,7 @@ void Controller::CheckPortAndInitiateProcess() {
       uint32_t portsc = ReadPORTSC(i);
       PutStringAndHex("  PORTSC", portsc);
       BasicTRB& enable_slot_trb = *cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
-      slot_request_for_port_.insert(
-          {liumos->kernel_pml4->v2p(
-               reinterpret_cast<uint64_t>(&enable_slot_trb)),
-           i});
+      slot_request_for_port_.insert({v2p(&enable_slot_trb), i});
       enable_slot_trb.data = 0;
       enable_slot_trb.option = 0;
       enable_slot_trb.control = (kTRBTypeEnableSlotCommand << 10);
@@ -1087,9 +1072,7 @@ void Controller::Init() {
 
   PCI::BAR64 bar0 = PCI::GetBAR64(dev_);
 
-  cap_regs_ = liumos->kernel_heap_allocator->MapPages<CapabilityRegisters*>(
-      bar0.phys_addr, ByteSizeToPageSize(bar0.size),
-      kPageAttrPresent | kPageAttrWritable | kPageAttrCacheDisable);
+  cap_regs_ = MapMemoryForIO<CapabilityRegisters*>(bar0.phys_addr, bar0.size);
 
   const uint32_t kHCSPARAMS1 = cap_regs_->params[0];
   max_slots_ = GetBits<31, 24, uint8_t>(kHCSPARAMS1);
@@ -1121,11 +1104,10 @@ void Controller::Init() {
     // 4.20 Scratchpad Buffers
     scratchpad_buffer_array_ = AllocMemoryForMappedIO<uint64_t*>(
         sizeof(uint64_t) * max_num_of_scratch_pad_buf_entries_);
-    device_context_base_array_[0] =
-        v2p<volatile uint64_t*, uint64_t>(scratchpad_buffer_array_);
+    device_context_base_array_[0] = v2p(scratchpad_buffer_array_);
     for (int i = 0; i < max_num_of_scratch_pad_buf_entries_; i++) {
       scratchpad_buffer_array_[i] =
-          v2p<void*, uint64_t>(AllocMemoryForMappedIO<void*>(kPageSize));
+          v2p(AllocMemoryForMappedIO<void*>(kPageSize));
     }
   }
 
