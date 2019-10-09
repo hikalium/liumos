@@ -43,15 +43,15 @@ class Controller {
   };
   static_assert(sizeof(CapabilityRegisters) == 0x20);
   packed_struct OperationalRegisters {
-    uint32_t command;
-    uint32_t status;
-    uint32_t page_size;
-    uint32_t rsvdz1[2];
-    uint32_t notification_ctrl;
-    uint64_t cmd_ring_ctrl;
-    uint64_t rsvdz2[2];
+    volatile uint32_t command;
+    volatile uint32_t status;
+    volatile uint32_t page_size;
+    volatile uint32_t rsvdz1[2];
+    volatile uint32_t notification_ctrl;
+    volatile uint64_t cmd_ring_ctrl;
+    volatile uint64_t rsvdz2[2];
     volatile uint64_t device_ctx_base_addr_array_ptr;
-    uint64_t config;
+    volatile uint64_t config;
   };
   static_assert(offsetof(OperationalRegisters, config) == 0x38);
   packed_struct InterrupterRegisterSet {
@@ -223,7 +223,7 @@ class Controller {
   uint64_t cmd_ring_phys_addr_;
   volatile uint64_t* device_context_base_array_;
   volatile CapabilityRegisters* cap_regs_;
-  volatile OperationalRegisters* op_regs_;
+  OperationalRegisters* op_regs_;
   RuntimeRegisters* rt_regs_;
   volatile uint32_t* db_regs_;
   EventRing* primary_event_ring_;

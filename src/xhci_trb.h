@@ -18,10 +18,10 @@ struct BasicTRB {
   static constexpr uint8_t kCompletionCodeTRBError = 0x05;
   static constexpr uint8_t kCompletionCodeShortPacket = 0x0D;
 
-  uint8_t GetTRBType() const { return GetBits<15, 10, uint8_t>(control); }
-  uint8_t GetSlotID() const { return GetBits<31, 24, uint8_t>(control); }
-  uint8_t GetCompletionCode() const { return GetBits<31, 24, uint8_t>(option); }
-  int GetTransferSize() const { return GetBits<23, 0, int>(option); }
+  uint8_t GetTRBType() const { return GetBits<15, 10>(control); }
+  uint8_t GetSlotID() const { return GetBits<31, 24>(control); }
+  uint8_t GetCompletionCode() const { return GetBits<31, 24>(option); }
+  int GetTransferSize() const { return GetBits<23, 0>(option); }
   bool IsCompletedWithSuccess() {
     return GetCompletionCode() == kCompletionCodeSuccess;
   }

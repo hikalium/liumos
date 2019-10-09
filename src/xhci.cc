@@ -200,7 +200,7 @@ void Controller::HandlePortStatusChange(int port) {
   }
   if (portsc & kPortSCBitPortLinkStateChange) {
     PutString("  LinkState: 0x");
-    PutHex64(GetBits<8, 5, uint32_t>(portsc));
+    PutHex64(GetBits<8, 5>(portsc));
     PutString("\n");
   }
   /*
@@ -269,20 +269,17 @@ class Controller::DeviceContext {
         CombineFieldBits<31, 16>(endpoint_ctx[dci][1], max_packet_size);
   }
   uint8_t GetSlotState() {
-    return GetBits<31, 27, uint8_t>(endpoint_ctx[kDCISlotContext][3]);
+    return GetBits<31, 27>(endpoint_ctx[kDCISlotContext][3]);
   }
-  uint8_t GetEPState(int dci) {
-    return GetBits<2, 0, uint8_t>(endpoint_ctx[dci][0]);
-  }
+  uint8_t GetEPState(int dci) { return GetBits<2, 0>(endpoint_ctx[dci][0]); }
   void DumpSlotContext() {
     PutString("Slot Context:\n");
-    PutStringAndHex(
-        "  Root Hub Port Number",
-        GetBits<23, 16, uint32_t>(endpoint_ctx[kDCISlotContext][1]));
+    PutStringAndHex("  Root Hub Port Number",
+                    GetBits<23, 16>(endpoint_ctx[kDCISlotContext][1]));
     PutStringAndHex("  Route String",
-                    GetBits<19, 0, uint32_t>(endpoint_ctx[kDCISlotContext][0]));
-    PutStringAndHex("  Context Entries", GetBits<31, 27, uint32_t>(
-                                             endpoint_ctx[kDCISlotContext][0]));
+                    GetBits<19, 0>(endpoint_ctx[kDCISlotContext][0]));
+    PutStringAndHex("  Context Entries",
+                    GetBits<31, 27>(endpoint_ctx[kDCISlotContext][0]));
     for (int i = 0; i < 8; i++) {
       for (int x = 3; x >= 0; x--) {
         PutHex8ZeroFilled(endpoint_ctx[kDCISlotContext][i] >> (x * 8));
@@ -293,16 +290,14 @@ class Controller::DeviceContext {
   void DumpEPContext(int dci) {
     assert(dci >= 1);
     PutStringAndHex("EP Context", dci - 1);
-    PutStringAndHex("  EP Type", GetBits<5, 3, uint32_t>(endpoint_ctx[dci][1]));
-    PutStringAndHex("  Max Packet Size",
-                    GetBits<31, 16, uint32_t>(endpoint_ctx[dci][1]));
+    PutStringAndHex("  EP Type", GetBits<5, 3>(endpoint_ctx[dci][1]));
+    PutStringAndHex("  Max Packet Size", GetBits<31, 16>(endpoint_ctx[dci][1]));
     PutStringAndHex("  TR Dequeue Pointer",
-                    (GetBits<31, 4, uint32_t>(endpoint_ctx[dci][2]) << 4) |
+                    (GetBits<31, 4>(endpoint_ctx[dci][2]) << 4) |
                         (static_cast<uint64_t>(endpoint_ctx[dci][3]) << 32));
     PutStringAndHex("  Dequeue Cycle State",
-                    GetBits<0, 0, uint32_t>(endpoint_ctx[dci][2]));
-    PutStringAndHex("  Error Count",
-                    GetBits<2, 1, uint32_t>(endpoint_ctx[dci][1]));
+                    GetBits<0, 0>(endpoint_ctx[dci][2]));
+    PutStringAndHex("  Error Count", GetBits<2, 1>(endpoint_ctx[dci][1]));
     for (int i = 0; i < 8; i++) {
       for (int x = 3; x >= 0; x--) {
         PutHex8ZeroFilled(endpoint_ctx[dci][i] >> (x * 8));
@@ -414,7 +409,7 @@ void Controller::SendAddressDeviceCommand(int slot,
   ctrl_ep_tring->Init(ctrl_ep_tring_phys_addr);
   // 5. Initialize the Input default control Endpoint 0 Context (6.2.3)
   uint32_t portsc = ReadPORTSC(port);
-  uint32_t port_speed = GetBits<13, 10, uint32_t, uint32_t>(portsc);
+  uint32_t port_speed = GetBits<13, 10>(portsc);
   dctx.SetPortSpeed(port_speed);
   PutString("  Port Speed: ");
   const char* speed_str = GetSpeedNameFromPORTSCPortSpeed(port_speed);
@@ -910,7 +905,7 @@ void Controller::PrintPortSC() {
     PutString(") ");
     // 7.2.2.1.1 Default USB Speed ID Mapping
     PutString("Speed=0x");
-    PutHex64(GetBits<13, 10, uint32_t>(portsc));
+    PutHex64(GetBits<13, 10>(portsc));
 
     PutString("\n");
   }
@@ -1013,13 +1008,12 @@ void Controller::PollEvents() {
         break;
       case kTRBTypePortStatusChangeEvent:
         if (e.IsCompletedWithSuccess()) {
-          HandlePortStatusChange(
-              static_cast<int>(GetBits<31, 24, uint64_t>(e.data)));
+          HandlePortStatusChange(static_cast<int>(GetBits<31, 24>(e.data)));
           break;
         }
         PutString("PortStatusChangeEvent\n");
         e.PrintCompletionCode();
-        PutStringAndHex("  Slot ID", GetBits<31, 24, uint64_t>(e.data));
+        PutStringAndHex("  Slot ID", GetBits<31, 24>(e.data));
         break;
       case kTRBTypeTransferEvent:
         HandleTransferEvent(e);
@@ -1069,26 +1063,21 @@ void Controller::Init() {
     return;
   }
   PCI::EnsureBusMasterEnabled(dev_);
-
   PCI::BAR64 bar0 = PCI::GetBAR64(dev_);
 
   cap_regs_ = MapMemoryForIO<CapabilityRegisters*>(bar0.phys_addr, bar0.size);
 
   const uint32_t kHCSPARAMS1 = cap_regs_->params[0];
-  max_slots_ = GetBits<31, 24, uint8_t>(kHCSPARAMS1);
-  max_intrs_ = GetBits<18, 8, uint8_t>(kHCSPARAMS1);
-  max_ports_ = GetBits<7, 0, uint8_t>(kHCSPARAMS1);
+  max_slots_ = GetBits<31, 24>(kHCSPARAMS1);
+  max_intrs_ = GetBits<18, 8>(kHCSPARAMS1);
+  max_ports_ = GetBits<7, 0>(kHCSPARAMS1);
 
   const uint32_t kHCSPARAMS2 = cap_regs_->params[1];
   max_num_of_scratch_pad_buf_entries_ =
-      (GetBits<25, 21, uint8_t>(kHCSPARAMS2) << 5) |
-      GetBits<31, 27, uint8_t>(kHCSPARAMS2);
+      (GetBits<25, 21>(kHCSPARAMS2) << 5) | GetBits<31, 27>(kHCSPARAMS2);
 
-  op_regs_ = RefWithOffset<volatile OperationalRegisters*>(cap_regs_,
-                                                           cap_regs_->length);
-
+  op_regs_ = RefWithOffset<OperationalRegisters*>(cap_regs_, cap_regs_->length);
   rt_regs_ = RefWithOffset<RuntimeRegisters*>(cap_regs_, cap_regs_->rtsoff);
-
   db_regs_ = RefWithOffset<volatile uint32_t*>(cap_regs_, cap_regs_->dboff);
 
   ResetHostController();
