@@ -11,17 +11,6 @@ namespace XHCI {
 
 Controller* Controller::xhci_;
 
-void EnsureBusMasterEnabled(PCI::DeviceLocation& dev) {
-  constexpr uint32_t kPCIRegOffsetCommandAndStatus = 0x04;
-  constexpr uint64_t kPCIRegCommandAndStatusMaskBusMasterEnable = 1 << 2;
-  uint32_t cmd_and_status =
-      PCI::ReadConfigRegister32(dev, kPCIRegOffsetCommandAndStatus);
-  cmd_and_status |= (1 << 10);  // Interrupt Disable
-  PCI::WriteConfigRegister32(dev, kPCIRegOffsetCommandAndStatus,
-                             cmd_and_status);
-  assert(cmd_and_status & kPCIRegCommandAndStatusMaskBusMasterEnable);
-}
-
 void Controller::ResetHostController() {
   op_regs_->command = op_regs_->command & ~kUSBCMDMaskRunStop;
   while (!(op_regs_->status & kUSBSTSBitHCHalted)) {
@@ -113,15 +102,12 @@ void Controller::InitSlotsAndContexts() {
                      (num_of_slots_enabled_ & kOPREGConfigMaskMaxSlotsEn);
 
   device_context_base_array_ =
-      liumos->kernel_heap_allocator->AllocPages<DeviceContext volatile**>(
-          1, kPageAttrCacheDisable | kPageAttrPresent | kPageAttrWritable);
+      AllocMemoryForMappedIO<volatile uint64_t*>(kPageSize);
   for (int i = 0; i <= num_of_slots_enabled_; i++) {
     device_context_base_array_[i] = 0;
   }
-  device_context_base_array_phys_addr_ = liumos->kernel_pml4->v2p(
-      reinterpret_cast<uint64_t>(device_context_base_array_));
   op_regs_->device_ctx_base_addr_array_ptr =
-      device_context_base_array_phys_addr_;
+      v2p<volatile uint64_t*, uint64_t>(device_context_base_array_);
 }
 
 void Controller::InitCommandRing() {
@@ -174,103 +160,31 @@ static std::optional<PCI::DeviceLocation> FindXHCIController() {
   return {};
 }
 
-void Controller::Init() {
-  PutString("XHCI::Init()\n");
-
-  if (auto dev = FindXHCIController()) {
-    dev_ = *dev;
-  } else {
-    return;
-  }
-  EnsureBusMasterEnabled(dev_);
-
-  constexpr uint32_t kPCIRegOffsetBAR = 0x10;
-  constexpr uint64_t kPCIBARMaskType = 0b111;
-  constexpr uint64_t kPCIBARMaskAddr = ~0b1111ULL;
-  constexpr uint64_t kPCIBARBitsType64bitMemorySpace = 0b100;
-
-  const uint64_t bar_raw_val =
-      PCI::ReadConfigRegister64(dev_, kPCIRegOffsetBAR);
-  PCI::WriteConfigRegister64(dev_, kPCIRegOffsetBAR, ~static_cast<uint64_t>(0));
-  uint64_t base_addr_size_mask =
-      PCI::ReadConfigRegister64(dev_, kPCIRegOffsetBAR) & kPCIBARMaskAddr;
-  uint64_t base_addr_size = ~base_addr_size_mask + 1;
-  PCI::WriteConfigRegister64(dev_, kPCIRegOffsetBAR, bar_raw_val);
-  assert((bar_raw_val & kPCIBARMaskType) == kPCIBARBitsType64bitMemorySpace);
-  const uint64_t base_addr = bar_raw_val & kPCIBARMaskAddr;
-
-  cap_regs_ = liumos->kernel_heap_allocator->MapPages<CapabilityRegisters*>(
-      base_addr, ByteSizeToPageSize(base_addr_size),
-      kPageAttrPresent | kPageAttrWritable | kPageAttrCacheDisable);
-
-  const uint32_t kHCSPARAMS1 = cap_regs_->params[0];
-  max_slots_ = GetBits<31, 24, uint8_t>(kHCSPARAMS1);
-  max_intrs_ = GetBits<18, 8, uint8_t>(kHCSPARAMS1);
-  max_ports_ = GetBits<7, 0, uint8_t>(kHCSPARAMS1);
-
-  op_regs_ = reinterpret_cast<volatile OperationalRegisters*>(
-      reinterpret_cast<uint64_t>(cap_regs_) + cap_regs_->length);
-
-  rt_regs_ = reinterpret_cast<RuntimeRegisters*>(
-      reinterpret_cast<uint64_t>(cap_regs_) + cap_regs_->rtsoff);
-
-  db_regs_ = reinterpret_cast<volatile uint32_t*>(
-      reinterpret_cast<uint64_t>(cap_regs_) + cap_regs_->dboff);
-
-  ResetHostController();
-  InitPrimaryInterrupter();
-  InitSlotsAndContexts();
-  InitCommandRing();
-
-  op_regs_->command = op_regs_->command | kUSBCMDMaskRunStop;
-  while (op_regs_->status & kUSBSTSBitHCHalted) {
-    PutString("Waiting for HCHalt == 0...\n");
-  }
-
-  {
-    volatile BasicTRB* no_op_trb = cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
-    no_op_trb[0].data = 0;
-    no_op_trb[0].option = 0;
-    no_op_trb[0].control = (kTRBTypeNoOpCommand << 10);
-    cmd_ring_->Push();
-  }
-  {
-    volatile BasicTRB* no_op_trb = cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
-    no_op_trb[0].data = 0;
-    no_op_trb[0].option = 0;
-    no_op_trb[0].control = (kTRBTypeNoOpCommand << 10);
-    cmd_ring_->Push();
-  }
-
-  NotifyHostControllerDoorbell();
-
-  // 4.3.1 Resetting a Root Hub Port
-  /*
-  for (int slot = 1; slot <= num_of_slots_enabled_; slot++) {
-    ResetPort(slot);
-  }
-  */
-  for (int port = 1; port <= max_ports_; port++) {
-    uint32_t portsc = ReadPORTSC(port);
-    if(!portsc) continue;
-    PutStringAndHex("port", port);
-    PutStringAndHex("  PORTSC", portsc);
-    if(portsc & 1 && port_state_[port] == kDisconnected) {
-      port_state_[port] = kNeedsPortReset;
-    }
-  }
-}
-
 void Controller::ResetPort(int port) {
-  WritePORTSC(port, kPortSCBitPortReset);
+  // Make Port Power is not off (PP = 1)
+  // See 4.19.1.1 USB2 Root Hub Port
+  // Figure 4-25: USB2 Root Hub Port State Machine
+  WritePORTSC(port,
+              (ReadPORTSC(port) & kPortSCPreserveMask) | kPortSCBitPortPower);
+  while (!(ReadPORTSC(port) & kPortSCBitPortPower)) {
+    // wait
+  }
+  WritePORTSC(port,
+              (ReadPORTSC(port) & kPortSCPreserveMask) | kPortSCBitPortReset);
   while ((ReadPORTSC(port) & kPortSCBitPortReset)) {
     // wait
   }
   PutStringAndHex("ResetPort: done. port", port);
-  // Make Port Power is not off (PP = 1)
-  // See 4.19.1.1 USB2 Root Hub Port
-  // Figure 4-25: USB2 Root Hub Port State Machine
-  WritePORTSC(port, ReadPORTSC(port) | kPortSCBitPortPower);
+  PutStringAndHex("  PORTSC", ReadPORTSC(port));
+  port_state_[port] = kNeedsSlotAssignment;
+  port_is_initializing_[port] = true;
+}
+
+void Controller::DisablePort(int port) {
+  PutStringAndHex("Disable port", port);
+  WritePORTSC(port, 2);
+  port_state_[port] = kDisabled;
+  port_is_initializing_[port] = false;
 }
 
 void Controller::HandlePortStatusChange(int port) {
@@ -295,18 +209,19 @@ void Controller::HandlePortStatusChange(int port) {
     PutHex64(GetBits<8, 5, uint32_t>(portsc));
     PutString("\n");
   }
-
-  WritePORTSC(port, (portsc & kPortSCPreserveMask) | (0b1111111 << 17));
-  if ((portsc & 1) == 0) {
-    port_state_[port] = kDisconnected;
-    return;
-  }
-  if (port_state_[port] != kDisconnected) {
-    PutStringAndHex("  Status Changed but already gave up. port", port);
-    return;
-  }
-  PutStringAndHex("  Initialize requested on port", port);
-  port_state_[port] = kNeedsInitializing;
+  /*
+    WritePORTSC(port, (portsc & kPortSCPreserveMask) | (0b1111111 << 17));
+    if ((portsc & 1) == 0) {
+      port_state_[port] = kDisconnected;
+      return;
+    }
+    if (port_state_[port] != kDisconnected) {
+      PutStringAndHex("  Status Changed but already gave up. port", port);
+      return;
+    }
+    PutStringAndHex("  Reset requested on port", port);
+    port_state_[port] = kNeedsPortReset;
+    */
 }
 
 class Controller::DeviceContext {
@@ -330,8 +245,8 @@ class Controller::DeviceContext {
         CombineFieldBits<31, 27>(endpoint_ctx[kDCISlotContext][0], num_of_ent);
   }
   void SetPortSpeed(uint32_t port_speed) {
-    endpoint_ctx[kDCISlotContext][0] = CombineFieldBits<23, 20>(
-        endpoint_ctx[kDCISlotContext][0], port_speed);
+    endpoint_ctx[kDCISlotContext][0] =
+        CombineFieldBits<23, 20>(endpoint_ctx[kDCISlotContext][0], port_speed);
   }
   void SetRootHubPortNumber(uint32_t root_port_num) {
     endpoint_ctx[kDCISlotContext][1] = CombineFieldBits<23, 16>(
@@ -367,6 +282,13 @@ class Controller::DeviceContext {
   }
   void DumpSlotContext() {
     PutString("Slot Context:\n");
+    PutStringAndHex(
+        "  Root Hub Port Number",
+        GetBits<23, 16, uint32_t>(endpoint_ctx[kDCISlotContext][1]));
+    PutStringAndHex("  Route String",
+                    GetBits<19, 0, uint32_t>(endpoint_ctx[kDCISlotContext][0]));
+    PutStringAndHex("  Context Entries", GetBits<31, 27, uint32_t>(
+                                             endpoint_ctx[kDCISlotContext][0]));
     for (int i = 0; i < 8; i++) {
       for (int x = 3; x >= 0; x--) {
         PutHex8ZeroFilled(endpoint_ctx[kDCISlotContext][i] >> (x * 8));
@@ -375,7 +297,18 @@ class Controller::DeviceContext {
     }
   }
   void DumpEPContext(int dci) {
-    PutStringAndHex("EP Context", dci);
+    assert(dci >= 1);
+    PutStringAndHex("EP Context", dci - 1);
+    PutStringAndHex("  EP Type", GetBits<5, 3, uint32_t>(endpoint_ctx[dci][1]));
+    PutStringAndHex("  Max Packet Size",
+                    GetBits<31, 16, uint32_t>(endpoint_ctx[dci][1]));
+    PutStringAndHex("  TR Dequeue Pointer",
+                    (GetBits<31, 4, uint32_t>(endpoint_ctx[dci][2]) << 4) |
+                        (static_cast<uint64_t>(endpoint_ctx[dci][3]) << 32));
+    PutStringAndHex("  Dequeue Cycle State",
+                    GetBits<0, 0, uint32_t>(endpoint_ctx[dci][2]));
+    PutStringAndHex("  Error Count",
+                    GetBits<2, 1, uint32_t>(endpoint_ctx[dci][1]));
     for (int i = 0; i < 8; i++) {
       for (int x = 3; x >= 0; x--) {
         PutHex8ZeroFilled(endpoint_ctx[dci][i] >> (x * 8));
@@ -384,11 +317,12 @@ class Controller::DeviceContext {
     }
   }
 
- private:
   DeviceContext(int max_dci) {
     assert(0 <= max_dci && max_dci <= 31);
-    bzero(this, 0x20 * (max_dci + 1));
+    bzero(this, sizeof(endpoint_ctx[0]) * (max_dci + 1));
   }
+
+ private:
   volatile uint32_t endpoint_ctx[32][8];
 };
 
@@ -442,7 +376,7 @@ static uint16_t GetMaxPacketSizeFromPORTSCPortSpeed(uint32_t port_speed) {
   //    • Max Packet Size = The default maximum packet size for the Default
   //    Control Endpoint, as function of the PORTSC Port Speed field.
   // 7.2.2.1.1 Default USB Speed ID Mapping
-  if (port_speed == kPortSpeedLS || port_speed || kPortSpeedFS)
+  if (port_speed == kPortSpeedLS || port_speed == kPortSpeedFS)
     return 8;
   if (port_speed == kPortSpeedHS)
     return 64;
@@ -465,17 +399,14 @@ static const char* GetSpeedNameFromPORTSCPortSpeed(uint32_t port_speed) {
   return nullptr;
 }
 
-constexpr int kNumOfCtrlEPRingEntries = 32;
-TransferRequestBlockRing<kNumOfCtrlEPRingEntries>* ctrl_ep_trings[256];
-Controller::DeviceContext* device_contexts[256];
-
-void Controller::HandleEnableSlotCompleted(int slot, int port) {
-  PutStringAndHex("EnableSlotCommand completed.. Slot ID", slot);
-  PutStringAndHex("  With RootPort ID", port);
-  slot_to_port_map_[slot] = port;
-  PrintUSBSTS();
+void Controller::SendAddressDeviceCommand(int slot,
+                                          bool block_set_addr_req,
+                                          uint16_t max_packet_size) {
+  auto& slot_info = slot_info_[slot];
+  int port = slot_info.port;
   // 4.3.3 Device Slot Initialization
-  InputContext& ctx = InputContext::Alloc(1);
+  assert(slot_info.input_ctx);
+  InputContext& ctx = *slot_info.input_ctx;
   DeviceContext& dctx = ctx.GetDeviceContext();
   // 3. Initialize the Input Slot Context data structure (6.2.2)
   dctx.SetRootHubPortNumber(port);
@@ -483,9 +414,8 @@ void Controller::HandleEnableSlotCompleted(int slot, int port) {
   // 4. Allocate and initialize the Transfer Ring for the Default Control
   // Endpoint
   TransferRequestBlockRing<kNumOfCtrlEPRingEntries>* ctrl_ep_tring =
-      AllocMemoryForMappedIO<
-          TransferRequestBlockRing<kNumOfCtrlEPRingEntries>*>(
-          sizeof(TransferRequestBlockRing<kNumOfCtrlEPRingEntries>));
+      slot_info.ctrl_ep_tring;
+  assert(ctrl_ep_tring);
   uint64_t ctrl_ep_tring_phys_addr =
       v2p<TransferRequestBlockRing<kNumOfCtrlEPRingEntries>*, uint64_t>(
           ctrl_ep_tring);
@@ -497,8 +427,7 @@ void Controller::HandleEnableSlotCompleted(int slot, int port) {
   PutString("  Port Speed: ");
   const char* speed_str = GetSpeedNameFromPORTSCPortSpeed(port_speed);
   if (!speed_str) {
-    port_state_[port] = kGiveUp;
-    ResetPort(port);
+    DisablePort(port);
     return;
   }
   PutString(speed_str);
@@ -508,23 +437,67 @@ void Controller::HandleEnableSlotCompleted(int slot, int port) {
                            ctrl_ep_tring_phys_addr);
   dctx.SetDequeueCycleState(DeviceContext::kDCIEPContext0, 1);
   dctx.SetErrorCount(DeviceContext::kDCIEPContext0, 3);
-  dctx.SetMaxPacketSize(DeviceContext::kDCIEPContext0,
-                        GetMaxPacketSizeFromPORTSCPortSpeed(port_speed));
-  DeviceContext& out_device_ctx = DeviceContext::Alloc(31);
+  if (max_packet_size) {
+    dctx.SetMaxPacketSize(DeviceContext::kDCIEPContext0, max_packet_size);
+
+  } else {
+    dctx.SetMaxPacketSize(DeviceContext::kDCIEPContext0,
+                          GetMaxPacketSizeFromPORTSCPortSpeed(port_speed));
+  }
+  assert(slot_info.output_ctx);
+  DeviceContext& out_device_ctx = *slot_info.output_ctx;
   device_context_base_array_[slot] =
-      v2p<DeviceContext*, DeviceContext*>(&out_device_ctx);
-  device_contexts[slot] = &out_device_ctx;
-  ctrl_ep_trings[slot] = ctrl_ep_tring;
+      v2p<DeviceContext*, uint64_t>(&out_device_ctx);
   // 8. Issue an Address Device Command for the Device Slot
+  // 6.2.2.1 Address Device Command Usage
+  // The Input Slot Context is considered “valid” by the Address Device Command
+  // if: 1) the Route String field defines a valid route string > ok 2) the
+  // Speed field identifies the speed of the device > ok 3) the Context Entries
+  // field is set to ‘1’ (i.e. Only the Control Endpoint Context is valid), 4)
+  // the value of the Root Hub Port Number field is between 1 and MaxPorts, 5)
+  // if the device is LS/FS and connected through a HS hub, then the Parent Hub
+  // Slot ID field references a Device Slot that is assigned to the HS hub, the
+  // MTT field indicates whether the HS hub supports Multi-TTs, and the Parent
+  // Port Number field indicates the correct Parent Port Number on the HS hub,
+  // else these fields are cleared to ‘0’, 6) the Interrupter Target field set
+  // to a valid value, and 7) all other fields are cleared to ‘0’.
+  ctx.DumpInputControlContext();
+  dctx.DumpSlotContext();
+  dctx.DumpEPContext(1);
+  out_device_ctx.DumpSlotContext();
   volatile BasicTRB& trb = *cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
   trb.data = v2p<InputContext*, uint64_t>(&ctx);
   trb.option = 0;
-  trb.control = (kTRBTypeAddressDeviceCommand << 10) | (slot << 24);
+  trb.control = (kTRBTypeAddressDeviceCommand << 10) | (slot << 24) |
+                ((block_set_addr_req ? 1 : 0) << 9);
   PutStringAndHex("AddressDeviceCommand Enqueued to",
                   cmd_ring_->GetNextEnqueueIndex());
+  PutStringAndHex("  phys addr", v2p<volatile BasicTRB*, uint64_t>(&trb));
   cmd_ring_->Push();
   NotifyHostControllerDoorbell();
   PrintUSBSTS();
+  slot_info.state =
+      block_set_addr_req
+          ? SlotInfo::kWaitingForFirstAddressDeviceCommandCompletion
+          : SlotInfo::kWaitingForSecondAddressDeviceCommandCompletion;
+}
+
+void Controller::HandleEnableSlotCompleted(int slot, int port) {
+  port_state_[port] = kSlotAssigned;
+
+  auto& slot_info = slot_info_[slot];
+  slot_info.port = port;
+  PutStringAndHex("EnableSlotCommand completed.. Slot ID", slot);
+  PutStringAndHex("  With RootPort ID", port);
+  PrintUSBSTS();
+
+  slot_info.input_ctx = &InputContext::Alloc(1);
+  new (slot_info.output_ctx) DeviceContext(1);
+  slot_info.ctrl_ep_tring = AllocMemoryForMappedIO<
+      TransferRequestBlockRing<kNumOfCtrlEPRingEntries>*>(
+      sizeof(TransferRequestBlockRing<kNumOfCtrlEPRingEntries>));
+
+  SendAddressDeviceCommand(slot, false, 0);
 }
 
 struct SetupStageTRB {
@@ -609,29 +582,37 @@ static void ConfigureStatusStageTRBForInput(struct StatusStageTRB& trb,
                 (interrupt_on_completion ? 1 << 5 : 0);
 }
 
-void Controller::RequestDeviceDescriptor(int slot) {
-  assert(ctrl_ep_trings[slot]);
-  auto& tring = *ctrl_ep_trings[slot];
+void Controller::RequestDeviceDescriptor(int slot,
+                                         SlotInfo::SlotState next_state) {
+  int transfer_size = (next_state == SlotInfo::kCheckingMaxPacketSize
+                           ? 8
+                           : kSizeOfDescriptorBuffer);
+  auto& slot_info = slot_info_[slot];
+  assert(slot_info.ctrl_ep_tring);
+  auto& tring = *slot_info.ctrl_ep_tring;
   SetupStageTRB& setup = *tring.GetNextEnqueueEntry<SetupStageTRB*>();
   ConfigureSetupStageTRBForGetDescriptorRequest(
-      setup, slot, kDescriptorTypeDevice, 0, kSizeOfDescriptorBuffer);
+      setup, slot, kDescriptorTypeDevice, 0, transfer_size);
   tring.Push();
   DataStageTRB& data = *tring.GetNextEnqueueEntry<DataStageTRB*>();
   ConfigureDataStageTRBForInput(
-      data, v2p<uint8_t*, uint64_t>(descriptor_buffers_[slot]),
-      kSizeOfDescriptorBuffer, true);
+      data, v2p<uint8_t*, uint64_t>(descriptor_buffers_[slot]), transfer_size,
+      true);
   tring.Push();
   StatusStageTRB& status = *tring.GetNextEnqueueEntry<StatusStageTRB*>();
   ConfigureStatusStageTRBForInput(status, false);
   tring.Push();
 
-  slot_state_[slot] = kCheckingIfHIDClass;
+  slot_info_[slot].state = next_state;
   NotifyDeviceContextDoorbell(slot, 1);
+  PutStringAndHex("DeviceDescriptor requested for slot", slot);
+  PutStringAndHex("  Transfer Size requested", transfer_size);
 }
 
 void Controller::RequestConfigDescriptor(int slot) {
-  assert(ctrl_ep_trings[slot]);
-  auto& tring = *ctrl_ep_trings[slot];
+  auto& slot_info = slot_info_[slot];
+  assert(slot_info.ctrl_ep_tring);
+  auto& tring = *slot_info.ctrl_ep_tring;
   SetupStageTRB& setup = *tring.GetNextEnqueueEntry<SetupStageTRB*>();
   ConfigureSetupStageTRBForGetDescriptorRequest(
       setup, slot, kDescriptorTypeConfig, 0, kSizeOfDescriptorBuffer);
@@ -645,13 +626,14 @@ void Controller::RequestConfigDescriptor(int slot) {
   ConfigureStatusStageTRBForInput(status, false);
   tring.Push();
 
-  slot_state_[slot] = kCheckingConfigDescriptor;
+  slot_info_[slot].state = SlotInfo::kCheckingConfigDescriptor;
   NotifyDeviceContextDoorbell(slot, 1);
 }
 
 void Controller::SetConfig(int slot, uint8_t config_value) {
-  assert(ctrl_ep_trings[slot]);
-  auto& tring = *ctrl_ep_trings[slot];
+  auto& slot_info = slot_info_[slot];
+  assert(slot_info.ctrl_ep_tring);
+  auto& tring = *slot_info.ctrl_ep_tring;
   SetupStageTRB& setup = *tring.GetNextEnqueueEntry<SetupStageTRB*>();
   ConfigureSetupStageTRBForSetConfiguration(setup, slot, config_value);
   tring.Push();
@@ -659,13 +641,14 @@ void Controller::SetConfig(int slot, uint8_t config_value) {
   ConfigureStatusStageTRBForInput(status, true);
   tring.Push();
 
-  slot_state_[slot] = kSettingConfiguration;
+  slot_info_[slot].state = SlotInfo::kSettingConfiguration;
   NotifyDeviceContextDoorbell(slot, 1);
 }
 
 void Controller::SetHIDBootProtocol(int slot) {
-  assert(ctrl_ep_trings[slot]);
-  auto& tring = *ctrl_ep_trings[slot];
+  auto& slot_info = slot_info_[slot];
+  assert(slot_info.ctrl_ep_tring);
+  auto& tring = *slot_info.ctrl_ep_tring;
   SetupStageTRB& setup = *tring.GetNextEnqueueEntry<SetupStageTRB*>();
   setup.request_type = 0b00100001;
   setup.request = 0x0B;
@@ -681,12 +664,13 @@ void Controller::SetHIDBootProtocol(int slot) {
   ConfigureStatusStageTRBForInput(status, true);
   tring.Push();
 
-  slot_state_[slot] = kSettingBootProtocol;
+  slot_info_[slot].state = SlotInfo::kSettingBootProtocol;
   NotifyDeviceContextDoorbell(slot, 1);
 }
 void Controller::GetHIDReport(int slot) {
-  assert(ctrl_ep_trings[slot]);
-  auto& tring = *ctrl_ep_trings[slot];
+  auto& slot_info = slot_info_[slot];
+  assert(slot_info.ctrl_ep_tring);
+  auto& tring = *slot_info.ctrl_ep_tring;
   SetupStageTRB& setup = *tring.GetNextEnqueueEntry<SetupStageTRB*>();
   setup.request_type = 0b10100001;
   setup.request = 0x01;
@@ -707,16 +691,22 @@ void Controller::GetHIDReport(int slot) {
   ConfigureStatusStageTRBForInput(status, false);
   tring.Push();
 
-  slot_state_[slot] = kGettingReport;
+  slot_info_[slot].state = SlotInfo::kGettingReport;
   NotifyDeviceContextDoorbell(slot, 1);
 }
 
 void Controller::HandleAddressDeviceCompleted(int slot) {
-  port_state_[slot_to_port_map_[slot]] = kInitialized;
   PutStringAndHex("Address Device Completed. Slot ID", slot);
   uint8_t* buf = AllocMemoryForMappedIO<uint8_t*>(kSizeOfDescriptorBuffer);
   descriptor_buffers_[slot] = buf;
-  RequestDeviceDescriptor(slot);
+  if (slot_info_[slot].state ==
+      SlotInfo::kWaitingForFirstAddressDeviceCommandCompletion) {
+    RequestDeviceDescriptor(slot, SlotInfo::kCheckingMaxPacketSize);
+    slot_info_[slot].state = SlotInfo::kCheckingMaxPacketSize;
+    return;
+  }
+  port_is_initializing_[slot_info_[slot].port] = false;
+  RequestDeviceDescriptor(slot, SlotInfo::kCheckingIfHIDClass);
 }
 
 void Controller::PressKey(int hid_idx, uint8_t) {
@@ -817,24 +807,35 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
     }
     return;
   }
-  switch (slot_state_[slot]) {
-    case kCheckingIfHIDClass: {
+  switch (slot_info_[slot].state) {
+    case SlotInfo::kCheckingMaxPacketSize: {
       PutString("TransferEvent\n");
       PutStringAndHex("  Slot ID", slot);
       DeviceDescriptor& device_desc =
           *reinterpret_cast<DeviceDescriptor*>(descriptor_buffers_[slot]);
       PutStringAndHex("  Transfered Size",
                       kSizeOfDescriptorBuffer - e.GetTransferSize());
+      PutStringAndHex("  max_packet_size", device_desc.max_packet_size);
+      SendAddressDeviceCommand(slot, false, device_desc.max_packet_size);
+    } break;
+    case SlotInfo::kCheckingIfHIDClass: {
+      PutString("TransferEvent\n");
+      PutStringAndHex("  Slot ID", slot);
+      DeviceDescriptor& device_desc =
+          *reinterpret_cast<DeviceDescriptor*>(descriptor_buffers_[slot]);
+      PutStringAndHex("  Transfered Size",
+                      kSizeOfDescriptorBuffer - e.GetTransferSize());
+      PutStringAndHex("  max_packet_size", device_desc.max_packet_size);
       if (device_desc.device_class != 0) {
         PutStringAndHex("  Not supported device class",
                         device_desc.device_class);
-        slot_state_[slot] = kNotSupportedDevice;
+        slot_info_[slot].state = SlotInfo::kNotSupportedDevice;
         return;
       }
       PutStringAndHex("  Num of Config", device_desc.num_of_config);
       RequestConfigDescriptor(slot);
     } break;
-    case kCheckingConfigDescriptor: {
+    case SlotInfo::kCheckingConfigDescriptor: {
       PutString("TransferEvent\n");
       PutStringAndHex("  Slot ID", slot);
       PutStringAndHex("  Transfered Size",
@@ -860,19 +861,19 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
           interface_desc.interface_protocol !=
               InterfaceDescriptor::kProtocolKeyboard) {
         PutString("Not supported interface\n");
-        slot_state_[slot] = kNotSupportedDevice;
+        slot_info_[slot].state = SlotInfo::kNotSupportedDevice;
         return;
       }
       PutString("Found USB HID Keyboard (with boot protocol)\n");
       SetConfig(slot, config_desc.config_value);
     } break;
-    case kSettingConfiguration:
+    case SlotInfo::kSettingConfiguration:
       PutString("TransferEvent\n");
       PutStringAndHex("  Slot ID", slot);
       PutString("Configuration done\n");
       SetHIDBootProtocol(slot);
       break;
-    case kSettingBootProtocol:
+    case SlotInfo::kSettingBootProtocol:
       PutString("TransferEvent\n");
       PutStringAndHex("  Slot ID", slot);
       PutString("Setting Boot Protocol done\n");
@@ -880,7 +881,7 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
       bzero(key_buffers_[slot], sizeof(key_buffers_[0]));
       GetHIDReport(slot);
       break;
-    case kGettingReport: {
+    case SlotInfo::kGettingReport: {
       int size = kSizeOfDescriptorBuffer - e.GetTransferSize();
       assert(size == 8);
       HandleKeyInput(slot, descriptor_buffers_[slot]);
@@ -900,7 +901,7 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
       }
       PutChar('\n');
       PutStringAndHex("Unexpected Transfer Event In Slot State",
-                      slot_state_[slot]);
+                      slot_info_[slot].state);
     }
       return;
   }
@@ -940,12 +941,8 @@ void Controller::PrintUSBSTS() {
 
 void Controller::CheckPortAndInitiateProcess() {
   for (int i = 0; i < kMaxNumOfPorts; i++) {
-    if (port_state_[i] == kInitializing)
-      return;
-  }
-  for (int i = 0; i < kMaxNumOfPorts; i++) {
-    if (port_state_[i] == kNeedsInitializing) {
-      port_state_[i] = kInitializing;
+    if (port_state_[i] == kNeedsSlotAssignment) {
+      port_state_[i] = kWaitingForSlotAssignment;
       // 4.3.2 Device Slot Assignment
       // 4.6.3 Enable Slot
       PrintUSBSTS();
@@ -966,9 +963,12 @@ void Controller::CheckPortAndInitiateProcess() {
     }
   }
   for (int i = 0; i < kMaxNumOfPorts; i++) {
+    if (port_is_initializing_[i])
+      return;
+  }
+  for (int i = 0; i < kMaxNumOfPorts; i++) {
     if (port_state_[i] == kNeedsPortReset) {
       ResetPort(i);
-      port_state_[i] = kNeedsInitializing;
       return;
     }
   }
@@ -1016,13 +1016,8 @@ void Controller::PollEvents() {
         }
         PutString("CommandCompletionEvent\n");
         e.PrintCompletionCode();
-        {
-          int port = slot_to_port_map_[e.GetSlotID()];
-          if (port && port_state_[port] == kInitializing && port) {
-            port_state_[port] = kGiveUp;
-            ResetPort(port);
-          }
-        }
+        PutStringAndHex("  data", e.data);
+        DisablePort(slot_info_[e.GetSlotID()].port);
         {
           const uint32_t status = op_regs_->status;
           if (status & kUSBSTSBitHCError) {
@@ -1032,15 +1027,14 @@ void Controller::PollEvents() {
         }
         break;
       case kTRBTypePortStatusChangeEvent:
-        /*
         if (e.IsCompletedWithSuccess()) {
           HandlePortStatusChange(
               static_cast<int>(GetBits<31, 24, uint64_t>(e.data)));
           break;
         }
-        */
         PutString("PortStatusChangeEvent\n");
         e.PrintCompletionCode();
+        PutStringAndHex("  Slot ID", GetBits<31, 24, uint64_t>(e.data));
         break;
       case kTRBTypeTransferEvent:
         HandleTransferEvent(e);
@@ -1058,11 +1052,123 @@ void Controller::PollEvents() {
 }
 
 void Controller::PrintUSBDevices() {
+  for (int port = 0; port < kMaxNumOfPorts; port++) {
+    if (!port_state_[port] && !port_is_initializing_[port])
+      continue;
+    PutStringAndHex("port", port);
+    PutStringAndHex("  state", port_state_[port]);
+    if (port_is_initializing_[port])
+      PutString("  Initializing...");
+  }
   for (int slot = 1; slot <= num_of_slots_enabled_; slot++) {
-    if (slot_state_[slot] == SlotState::kUndefined)
+    auto& info = slot_info_[slot];
+    if (info.state == SlotInfo::kUndefined)
       continue;
     PutStringAndHex("slot", slot);
-    PutStringAndHex("  slot_state_", slot_state_[slot]);
+    PutStringAndHex("  state", info.state);
+  }
+  for (int slot = 1; slot <= num_of_slots_enabled_; slot++) {
+    if (!device_context_base_array_[slot])
+      continue;
+    PutStringAndHex("device_context_base_array_ index", slot);
+    PutStringAndHex("  paddr", device_context_base_array_[slot]);
+  }
+}
+
+void Controller::Init() {
+  PutString("XHCI::Init()\n");
+
+  if (auto dev = FindXHCIController()) {
+    dev_ = *dev;
+  } else {
+    return;
+  }
+  PCI::EnsureBusMasterEnabled(dev_);
+
+  PCI::BAR64 bar0 = PCI::GetBAR64(dev_);
+
+  cap_regs_ = liumos->kernel_heap_allocator->MapPages<CapabilityRegisters*>(
+      bar0.phys_addr, ByteSizeToPageSize(bar0.size),
+      kPageAttrPresent | kPageAttrWritable | kPageAttrCacheDisable);
+
+  const uint32_t kHCSPARAMS1 = cap_regs_->params[0];
+  max_slots_ = GetBits<31, 24, uint8_t>(kHCSPARAMS1);
+  max_intrs_ = GetBits<18, 8, uint8_t>(kHCSPARAMS1);
+  max_ports_ = GetBits<7, 0, uint8_t>(kHCSPARAMS1);
+
+  const uint32_t kHCSPARAMS2 = cap_regs_->params[1];
+  max_num_of_scratch_pad_buf_entries_ =
+      (GetBits<25, 21, uint8_t>(kHCSPARAMS2) << 5) |
+      GetBits<31, 27, uint8_t>(kHCSPARAMS2);
+
+  op_regs_ = reinterpret_cast<volatile OperationalRegisters*>(
+      reinterpret_cast<uint64_t>(cap_regs_) + cap_regs_->length);
+
+  rt_regs_ = reinterpret_cast<RuntimeRegisters*>(
+      reinterpret_cast<uint64_t>(cap_regs_) + cap_regs_->rtsoff);
+
+  db_regs_ = reinterpret_cast<volatile uint32_t*>(
+      reinterpret_cast<uint64_t>(cap_regs_) + cap_regs_->dboff);
+
+  ResetHostController();
+  InitPrimaryInterrupter();
+  InitSlotsAndContexts();
+  InitCommandRing();
+
+  PutStringAndHex("max_num_of_scratch_pad_buf_entries_",
+                  max_num_of_scratch_pad_buf_entries_);
+  if (max_num_of_scratch_pad_buf_entries_) {
+    // 4.20 Scratchpad Buffers
+    scratchpad_buffer_array_ = AllocMemoryForMappedIO<uint64_t*>(
+        sizeof(uint64_t) * max_num_of_scratch_pad_buf_entries_);
+    device_context_base_array_[0] =
+        v2p<volatile uint64_t*, uint64_t>(scratchpad_buffer_array_);
+    for (int i = 0; i < max_num_of_scratch_pad_buf_entries_; i++) {
+      scratchpad_buffer_array_[i] =
+          v2p<void*, uint64_t>(AllocMemoryForMappedIO<void*>(kPageSize));
+    }
+  }
+
+  for (int i = 0; i < max_ports_; i++) {
+    port_state_[i] = kDisconnected;
+    port_is_initializing_[i] = false;
+  }
+  for (int i = 1; i < max_slots_; i++) {
+    bzero(&slot_info_[i], sizeof(slot_info_[0]));
+    slot_info_[i].output_ctx = &DeviceContext::Alloc(1);
+  }
+
+  op_regs_->command = op_regs_->command | kUSBCMDMaskRunStop;
+  while (op_regs_->status & kUSBSTSBitHCHalted) {
+    PutString("Waiting for HCHalt == 0...\n");
+  }
+
+  {
+    volatile BasicTRB* no_op_trb = cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
+    no_op_trb[0].data = 0;
+    no_op_trb[0].option = 0;
+    no_op_trb[0].control = (kTRBTypeNoOpCommand << 10);
+    cmd_ring_->Push();
+  }
+  {
+    volatile BasicTRB* no_op_trb = cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
+    no_op_trb[0].data = 0;
+    no_op_trb[0].option = 0;
+    no_op_trb[0].control = (kTRBTypeNoOpCommand << 10);
+    cmd_ring_->Push();
+  }
+
+  NotifyHostControllerDoorbell();
+
+  for (int port = 1; port <= max_ports_; port++) {
+    uint32_t portsc = ReadPORTSC(port);
+    if (!portsc)
+      continue;
+    PutStringAndHex("port", port);
+    PutStringAndHex("  PORTSC", portsc);
+    if (portsc & 1 && port_state_[port] == kDisconnected) {
+      port_state_[port] = kNeedsPortReset;
+    }
   }
 }
 

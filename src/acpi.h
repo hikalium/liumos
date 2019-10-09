@@ -360,11 +360,11 @@ packed_struct FADT {
   uint8_t acpi_disable;
 
   uint16_t GetResetReg() {
-    return reinterpret_cast<uint64_t>(reinterpret_cast<GAS *>(reinterpret_cast<uint64_t>(this) + 116)->address);
+    return reinterpret_cast<uint64_t>(
+        reinterpret_cast<GAS*>(reinterpret_cast<uint64_t>(this) + 116)
+            ->address);
   }
-  uint8_t GetResetValue() {
-    return reinterpret_cast<uint8_t *>(this)[128];
-  }
+  uint8_t GetResetValue() { return reinterpret_cast<uint8_t*>(this)[128]; }
 };
 static_assert(sizeof(FADT) == 54);
 

@@ -50,7 +50,7 @@ class Controller {
     uint32_t notification_ctrl;
     uint64_t cmd_ring_ctrl;
     uint64_t rsvdz2[2];
-    uint64_t device_ctx_base_addr_array_ptr;
+    volatile uint64_t device_ctx_base_addr_array_ptr;
     uint64_t config;
   };
   static_assert(offsetof(OperationalRegisters, config) == 0x38);
@@ -123,6 +123,8 @@ class Controller {
   static constexpr uint32_t kUSBSTSBitHCError = 1 << 12;
   static constexpr uint32_t kUSBSTSBitHSError = 1 << 2;
 
+  static constexpr int kNumOfCtrlEPRingEntries = 32;
+
   struct DeviceDescriptor {
     uint8_t length;
     uint8_t type;
@@ -170,6 +172,25 @@ class Controller {
   };
   static_assert(sizeof(InterfaceDescriptor) == 9);
 
+  struct SlotInfo {
+    enum SlotState {
+      kUndefined,
+      kWaitingForFirstAddressDeviceCommandCompletion,
+      kCheckingMaxPacketSize,
+      kWaitingForSecondAddressDeviceCommandCompletion,
+      kCheckingIfHIDClass,
+      kCheckingConfigDescriptor,
+      kSettingConfiguration,
+      kSettingBootProtocol,
+      kGettingReport,
+      kNotSupportedDevice,
+    } state;
+    int port;
+    InputContext* input_ctx;
+    DeviceContext* output_ctx;
+    TransferRequestBlockRing<kNumOfCtrlEPRingEntries>* ctrl_ep_tring;
+  };
+
   void ResetHostController();
   void InitPrimaryInterrupter();
   void InitSlotsAndContexts();
@@ -179,12 +200,16 @@ class Controller {
   uint32_t ReadPORTSC(int slot);
   void WritePORTSC(int slot, uint32_t data);
   void ResetPort(int port);
+  void DisablePort(int port);
   void HandlePortStatusChange(int port);
+  void SendAddressDeviceCommand(int slot,
+                                bool block_set_addr_req,
+                                uint16_t max_packet_size);
   void HandleEnableSlotCompleted(int slot, int port);
   void PressKey(int hid_idx, uint8_t mod);
   void HandleKeyInput(int slot, uint8_t data[8]);
   void HandleAddressDeviceCompleted(int slot);
-  void RequestDeviceDescriptor(int slot);
+  void RequestDeviceDescriptor(int slot, SlotInfo::SlotState);
   void RequestConfigDescriptor(int slot);
   void SetConfig(int slot, uint8_t config_value);
   void SetHIDBootProtocol(int slot);
@@ -196,8 +221,7 @@ class Controller {
   PCI::DeviceLocation dev_;
   TransferRequestBlockRing<kNumOfCmdTRBRingEntries>* cmd_ring_;
   uint64_t cmd_ring_phys_addr_;
-  DeviceContext volatile** device_context_base_array_;
-  uint64_t device_context_base_array_phys_addr_;
+  volatile uint64_t* device_context_base_array_;
   volatile CapabilityRegisters* cap_regs_;
   volatile OperationalRegisters* op_regs_;
   RuntimeRegisters* rt_regs_;
@@ -210,26 +234,20 @@ class Controller {
   uint8_t* descriptor_buffers_[kMaxNumOfSlots];
   uint8_t key_buffers_[kMaxNumOfSlots][33];
   std::unordered_map<uint64_t, int> slot_request_for_port_;
-  enum SlotState {
-    kUndefined,
-    kCheckingIfHIDClass,
-    kCheckingConfigDescriptor,
-    kSettingConfiguration,
-    kSettingBootProtocol,
-    kGettingReport,
-    kNotSupportedDevice,
-  } slot_state_[kMaxNumOfSlots];
+  struct SlotInfo slot_info_[kMaxNumOfSlots];
   RingBuffer<uint16_t, 16> keyid_buffer_;
   enum PortState {
     kDisconnected,
     kNeedsPortReset,
-    kNeedsInitializing,
-    kInitializing,
-    kInitialized,
-    kGiveUp,
+    kNeedsSlotAssignment,
+    kWaitingForSlotAssignment,
+    kSlotAssigned,
+    kDisabled,
   } port_state_[kMaxNumOfPorts];
-  int slot_to_port_map_[kMaxNumOfSlots];
+  bool port_is_initializing_[kMaxNumOfPorts];
   bool controller_reset_requested_ = false;
+  int max_num_of_scratch_pad_buf_entries_;
+  volatile uint64_t* scratchpad_buffer_array_;
 };
 
 }  // namespace XHCI

@@ -336,6 +336,17 @@ void Reset() {
   }
 }
 
+void EnableACPI() {
+  using namespace ACPI;
+  if (!liumos->acpi.fadt) {
+    PutString("FADT not found.\n");
+    return;
+  }
+  FADT& fadt = *liumos->acpi.fadt;
+  WriteIOPort8(fadt.smi_cmd, fadt.acpi_enable);
+  PutString("ACPI enable requested\n");
+}
+
 void ShowEFIMemoryMap() {
   EFI::MemoryMap& map = *liumos->efi_memory_map;
   PutStringAndHex("Map entries", map.GetNumberOfEntries());
@@ -593,6 +604,8 @@ void Run(TextBox& tbox) {
     PutString("Hello, world!\n");
   } else if (IsEqualString(line, "reset")) {
     Reset();
+  } else if (IsEqualString(line, "enable acpi")) {
+    EnableACPI();
   } else if (IsEqualString(line, "show xsdt")) {
     ShowXSDT();
   } else if (IsEqualString(line, "show nfit")) {

@@ -17,10 +17,12 @@ class PCI {
                                        uint32_t device,
                                        uint32_t func,
                                        uint32_t reg);
-  static uint32_t ReadConfigRegister32(DeviceLocation& dev, uint32_t reg) {
+  static uint32_t ReadConfigRegister32(const DeviceLocation& dev,
+                                       uint32_t reg) {
     return ReadConfigRegister32(dev.bus, dev.device, dev.func, reg);
   }
-  static uint64_t ReadConfigRegister64(DeviceLocation& dev, uint32_t reg) {
+  static uint64_t ReadConfigRegister64(const DeviceLocation& dev,
+                                       uint32_t reg) {
     return ReadConfigRegister32(dev, reg) |
            (static_cast<uint64_t>(ReadConfigRegister32(dev, reg + 4)) << 32);
   }
@@ -29,18 +31,49 @@ class PCI {
                                     uint32_t func,
                                     uint32_t reg,
                                     uint32_t value);
-  static void WriteConfigRegister32(DeviceLocation& dev,
+  static void WriteConfigRegister32(const DeviceLocation& dev,
                                     uint32_t reg,
                                     uint32_t value) {
     WriteConfigRegister32(dev.bus, dev.device, dev.func, reg, value);
   }
-  static void WriteConfigRegister64(DeviceLocation& dev,
+  static void WriteConfigRegister64(const DeviceLocation& dev,
                                     uint32_t reg,
                                     uint64_t value) {
     WriteConfigRegister32(dev, reg, static_cast<uint32_t>(value));
     WriteConfigRegister32(dev, reg + 4, static_cast<uint32_t>(value >> 32));
   }
   static const char* GetDeviceName(uint32_t key);
+  static void EnsureBusMasterEnabled(DeviceLocation& dev) {
+    constexpr uint32_t kPCIRegOffsetCommandAndStatus = 0x04;
+    constexpr uint64_t kPCIRegCommandAndStatusMaskBusMasterEnable = 1 << 2;
+    uint32_t cmd_and_status =
+        ReadConfigRegister32(dev, kPCIRegOffsetCommandAndStatus);
+    cmd_and_status |= (1 << 10);  // Interrupt Disable
+    WriteConfigRegister32(dev, kPCIRegOffsetCommandAndStatus, cmd_and_status);
+    assert(cmd_and_status & kPCIRegCommandAndStatusMaskBusMasterEnable);
+  }
+  struct BAR64 {
+    uint64_t phys_addr;
+    uint64_t size;
+  };
+  static BAR64 GetBAR64(const DeviceLocation& dev) {
+    constexpr uint32_t kPCIRegOffsetBAR = 0x10;
+    constexpr uint64_t kPCIBARMaskType = 0b111;
+    constexpr uint64_t kPCIBARMaskAddr = ~0b1111ULL;
+    constexpr uint64_t kPCIBARBitsType64bitMemorySpace = 0b100;
+
+    const uint64_t bar_raw_val =
+        PCI::ReadConfigRegister64(dev, kPCIRegOffsetBAR);
+    PCI::WriteConfigRegister64(dev, kPCIRegOffsetBAR,
+                               ~static_cast<uint64_t>(0));
+    uint64_t base_addr_size_mask =
+        PCI::ReadConfigRegister64(dev, kPCIRegOffsetBAR) & kPCIBARMaskAddr;
+    uint64_t base_addr_size = ~base_addr_size_mask + 1;
+    PCI::WriteConfigRegister64(dev, kPCIRegOffsetBAR, bar_raw_val);
+    assert((bar_raw_val & kPCIBARMaskType) == kPCIBARBitsType64bitMemorySpace);
+    const uint64_t base_addr = bar_raw_val & kPCIBARMaskAddr;
+    return {base_addr, base_addr_size};
+  }
 
   static PCI& GetInstance() {
     if (!pci_)

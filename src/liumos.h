@@ -52,7 +52,7 @@ extern uint8_t font[0x100][16];
 // @graphics.cc
 void InitGraphics(void);
 void InitDoubleBuffer(void);
-void DrawPPMFile(EFIFile &file, int px, int py);
+void DrawPPMFile(EFIFile& file, int px, int py);
 
 // @keyboard.cc
 constexpr uint16_t kIOPortKeyboardData = 0x0060;

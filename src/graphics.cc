@@ -34,7 +34,7 @@ void InitDoubleBuffer() {
   screen_sheet->Flush(0, 0, screen_sheet->GetXSize(), screen_sheet->GetYSize());
 }
 
-void DrawPPMFile(EFIFile &file, int px, int py) {
+void DrawPPMFile(EFIFile& file, int px, int py) {
   const uint8_t* buf = file.GetBuf();
   uint64_t buf_size = file.GetFileSize();
   if (buf[0] != 'P' || buf[1] != '3') {
@@ -84,8 +84,7 @@ void DrawPPMFile(EFIFile &file, int px, int py) {
       channel_count++;
       if (channel_count == 3) {
         channel_count = 0;
-        liumos->screen_sheet->DrawRect(
-            px + x++, py + y, 1, 1, rgb);
+        liumos->screen_sheet->DrawRect(px + x++, py + y, 1, 1, rgb);
         if (x >= width) {
           x = 0;
           y++;
