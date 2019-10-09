@@ -28,13 +28,11 @@ class Controller::EventRing {
   EventRing(int num_of_trb, InterrupterRegisterSet& irs)
       : cycle_state_(1), index_(0), num_of_trb_(num_of_trb), irs_(irs) {
     const int erst_size = sizeof(Controller::EventRingSegmentTableEntry[1]);
-    erst_ = liumos->kernel_heap_allocator
-                ->AllocPages<volatile Controller::EventRingSegmentTableEntry*>(
-                    ByteSizeToPageSize(erst_size), kPageAttrMemMappedIO);
+    erst_ = AllocMemoryForMappedIO<
+        volatile Controller::EventRingSegmentTableEntry*>(erst_size);
     const size_t trbs_size =
         sizeof(Controller::CommandCompletionEventTRB) * num_of_trb_;
-    trbs_ = liumos->kernel_heap_allocator->AllocPages<BasicTRB*>(
-        ByteSizeToPageSize(trbs_size), kPageAttrMemMappedIO);
+    trbs_ = AllocMemoryForMappedIO<BasicTRB*>(trbs_size);
     bzero(const_cast<void*>(reinterpret_cast<volatile void*>(trbs_)),
           trbs_size);
     erst_[0].ring_segment_base_address = GetTRBSPhysAddr();
@@ -106,12 +104,9 @@ void Controller::InitSlotsAndContexts() {
 }
 
 void Controller::InitCommandRing() {
-  cmd_ring_ =
-      liumos->kernel_heap_allocator
-          ->AllocPages<TransferRequestBlockRing<kNumOfCmdTRBRingEntries>*>(
-              ByteSizeToPageSize(
-                  sizeof(TransferRequestBlockRing<kNumOfCmdTRBRingEntries>)),
-              kPageAttrCacheDisable | kPageAttrPresent | kPageAttrWritable);
+  cmd_ring_ = AllocMemoryForMappedIO<
+      TransferRequestBlockRing<kNumOfCmdTRBRingEntries>*>(
+      sizeof(TransferRequestBlockRing<kNumOfCmdTRBRingEntries>));
   cmd_ring_phys_addr_ = v2p(cmd_ring_);
   cmd_ring_->Init(cmd_ring_phys_addr_);
 
@@ -228,9 +223,7 @@ class Controller::DeviceContext {
   static DeviceContext& Alloc(int max_dci) {
     const int num_of_ctx = max_dci + 1;
     size_t size = 0x20 * num_of_ctx;
-    DeviceContext* ctx =
-        liumos->kernel_heap_allocator->AllocPages<DeviceContext*>(
-            ByteSizeToPageSize(size), kPageAttrMemMappedIO);
+    DeviceContext* ctx = AllocMemoryForMappedIO<DeviceContext*>(size);
     new (ctx) DeviceContext(max_dci);
     return *ctx;
   }
@@ -322,9 +315,7 @@ class Controller::InputContext {
     assert(0 <= max_dci && max_dci <= 31);
     const int num_of_ctx = max_dci + 2;
     size_t size = 0x20 * num_of_ctx;
-    InputContext& ctx =
-        *liumos->kernel_heap_allocator->AllocPages<InputContext*>(
-            ByteSizeToPageSize(size), kPageAttrMemMappedIO);
+    InputContext& ctx = *AllocMemoryForMappedIO<InputContext*>(size);
     bzero(&ctx, size);
     if (num_of_ctx > 1) {
       volatile uint32_t& add_ctx_flags = ctx.input_ctrl_ctx_[1];
