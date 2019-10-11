@@ -362,6 +362,7 @@ static uint16_t GetMaxPacketSizeFromPORTSCPortSpeed(uint32_t port_speed) {
     return 64;
   if (port_speed == kPortSpeedSS)
     return 512;
+  PutStringAndHex("  requested port_speed", port_speed);
   Panic("GetMaxPacketSizeFromPORTSCPortSpeed: Not supported speed");
 }
 
@@ -379,9 +380,7 @@ static const char* GetSpeedNameFromPORTSCPortSpeed(uint32_t port_speed) {
   return nullptr;
 }
 
-void Controller::SendAddressDeviceCommand(int slot,
-                                          bool block_set_addr_req,
-                                          uint16_t max_packet_size) {
+void Controller::SendAddressDeviceCommand(int slot, uint16_t max_packet_size) {
   auto& slot_info = slot_info_[slot];
   int port = slot_info.port;
   // 4.3.3 Device Slot Initialization
@@ -418,7 +417,7 @@ void Controller::SendAddressDeviceCommand(int slot,
   if (max_packet_size) {
     slot_info.max_packet_size = max_packet_size;
   } else {
-    slot_info.max_packet_size = GetMaxPacketSizeFromPORTSCPortSpeed(slot);
+    slot_info.max_packet_size = GetMaxPacketSizeFromPORTSCPortSpeed(port_speed);
   }
   dctx.SetMaxPacketSize(DeviceContext::kDCIEPContext0,
                         slot_info.max_packet_size);
@@ -441,18 +440,14 @@ void Controller::SendAddressDeviceCommand(int slot,
   volatile BasicTRB& trb = *cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
   trb.data = v2p(&ctx);
   trb.option = 0;
-  trb.control = (kTRBTypeAddressDeviceCommand << 10) | (slot << 24) |
-                ((block_set_addr_req ? 1 : 0) << 9);
+  trb.control = (kTRBTypeAddressDeviceCommand << 10) | (slot << 24);
   PutStringAndHex("AddressDeviceCommand Enqueued to",
                   cmd_ring_->GetNextEnqueueIndex());
   PutStringAndHex("  phys addr", v2p(&trb));
   cmd_ring_->Push();
   NotifyHostControllerDoorbell();
   PrintUSBSTS();
-  slot_info.state =
-      block_set_addr_req
-          ? SlotInfo::kWaitingForFirstAddressDeviceCommandCompletion
-          : SlotInfo::kWaitingForSecondAddressDeviceCommandCompletion;
+  slot_info.state = SlotInfo::kWaitingForSecondAddressDeviceCommandCompletion;
 }
 
 void Controller::HandleEnableSlotCompleted(int slot, int port) {
@@ -469,7 +464,7 @@ void Controller::HandleEnableSlotCompleted(int slot, int port) {
       TransferRequestBlockRing<kNumOfCtrlEPRingEntries>*>(
       sizeof(TransferRequestBlockRing<kNumOfCtrlEPRingEntries>));
 
-  SendAddressDeviceCommand(slot, false, 0);
+  SendAddressDeviceCommand(slot, 0);
 }
 
 static void ConfigureSetupStageTRBForGetDescriptorRequest(
@@ -651,12 +646,6 @@ void Controller::HandleAddressDeviceCompleted(int slot) {
   PutStringAndHex("Address Device Completed. Slot ID", slot);
   uint8_t* buf = AllocMemoryForMappedIO<uint8_t*>(kSizeOfDescriptorBuffer);
   descriptor_buffers_[slot] = buf;
-  if (slot_info_[slot].state ==
-      SlotInfo::kWaitingForFirstAddressDeviceCommandCompletion) {
-    RequestDeviceDescriptor(slot, SlotInfo::kCheckingMaxPacketSize);
-    slot_info_[slot].state = SlotInfo::kCheckingMaxPacketSize;
-    return;
-  }
   port_is_initializing_[slot_info_[slot].port] = false;
   RequestDeviceDescriptor(slot, SlotInfo::kCheckingIfHIDClass);
 }
@@ -760,37 +749,35 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
     return;
   }
   switch (slot_info_[slot].state) {
-    case SlotInfo::kCheckingMaxPacketSize: {
-      PutString("TransferEvent\n");
-      PutStringAndHex("  Slot ID", slot);
-      DeviceDescriptor& device_desc =
-          *reinterpret_cast<DeviceDescriptor*>(descriptor_buffers_[slot]);
-      PutStringAndHex("  Transfered Size Residue", e.GetTransferSizeResidue());
-      PutStringAndHex("  max_packet_size", device_desc.max_packet_size);
-      SendAddressDeviceCommand(slot, false, device_desc.max_packet_size);
-    } break;
     case SlotInfo::kCheckingIfHIDClass: {
       PutString("TransferEvent\n");
       PutStringAndHex("  Slot ID", slot);
       DeviceDescriptor& device_desc =
           *reinterpret_cast<DeviceDescriptor*>(descriptor_buffers_[slot]);
-      PutStringAndHex("  Transfered Size Residue", e.GetTransferSizeResidue());
+      PutString("DeviceDescriptor\n");
+      PutStringAndHex("  length", device_desc.length);
+      PutStringAndHex("  type", device_desc.type);
+      PutStringAndHex("  device_class", device_desc.device_class);
+      PutStringAndHex("  device_subclass", device_desc.device_subclass);
+      PutStringAndHex("  device_protocol", device_desc.device_protocol);
       PutStringAndHex("  max_packet_size", device_desc.max_packet_size);
+      PutStringAndHex("  num_of_config", device_desc.num_of_config);
       if (device_desc.device_class != 0) {
         PutStringAndHex("  Not supported device class",
                         device_desc.device_class);
         slot_info_[slot].state = SlotInfo::kNotSupportedDevice;
         return;
       }
-      PutStringAndHex("  Num of Config", device_desc.num_of_config);
+      PutString("  This is an HID Class Device\n");
       RequestConfigDescriptor(slot);
     } break;
     case SlotInfo::kCheckingConfigDescriptor: {
       PutString("TransferEvent\n");
       PutStringAndHex("  Slot ID", slot);
-      PutStringAndHex("  Transfered Size Residue", e.GetTransferSizeResidue());
       ConfigDescriptor& config_desc =
           *reinterpret_cast<ConfigDescriptor*>(descriptor_buffers_[slot]);
+      PutString("ConfigurationDescriptor\n");
+      PutStringAndHex("  total length", config_desc.total_length);
       PutStringAndHex("  Num of Interfaces", config_desc.num_of_interfaces);
       InterfaceDescriptor& interface_desc =
           *reinterpret_cast<InterfaceDescriptor*>(descriptor_buffers_[slot] +

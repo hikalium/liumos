@@ -176,8 +176,6 @@ class Controller {
   struct SlotInfo {
     enum SlotState {
       kUndefined,
-      kWaitingForFirstAddressDeviceCommandCompletion,
-      kCheckingMaxPacketSize,
       kWaitingForSecondAddressDeviceCommandCompletion,
       kCheckingIfHIDClass,
       kCheckingConfigDescriptor,
@@ -204,9 +202,7 @@ class Controller {
   void ResetPort(int port);
   void DisablePort(int port);
   void HandlePortStatusChange(int port);
-  void SendAddressDeviceCommand(int slot,
-                                bool block_set_addr_req,
-                                uint16_t max_packet_size);
+  void SendAddressDeviceCommand(int slot, uint16_t max_packet_size);
   void HandleEnableSlotCompleted(int slot, int port);
   void PressKey(int hid_idx, uint8_t mod);
   void HandleKeyInput(int slot, uint8_t data[8]);
