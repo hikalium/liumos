@@ -416,12 +416,12 @@ void Controller::SendAddressDeviceCommand(int slot,
   dctx.SetDequeueCycleState(DeviceContext::kDCIEPContext0, 1);
   dctx.SetErrorCount(DeviceContext::kDCIEPContext0, 3);
   if (max_packet_size) {
-    dctx.SetMaxPacketSize(DeviceContext::kDCIEPContext0, max_packet_size);
-
+    slot_info.max_packet_size = max_packet_size;
   } else {
-    dctx.SetMaxPacketSize(DeviceContext::kDCIEPContext0,
-                          GetMaxPacketSizeFromPORTSCPortSpeed(port_speed));
+    slot_info.max_packet_size = GetMaxPacketSizeFromPORTSCPortSpeed(slot);
   }
+  dctx.SetMaxPacketSize(DeviceContext::kDCIEPContext0,
+                        slot_info.max_packet_size);
   assert(slot_info.output_ctx);
   DeviceContext& out_device_ctx = *slot_info.output_ctx;
   device_context_base_array_[slot] = v2p(&out_device_ctx);
@@ -438,10 +438,6 @@ void Controller::SendAddressDeviceCommand(int slot,
   // Port Number field indicates the correct Parent Port Number on the HS hub,
   // else these fields are cleared to ‘0’, 6) the Interrupter Target field set
   // to a valid value, and 7) all other fields are cleared to ‘0’.
-  ctx.DumpInputControlContext();
-  dctx.DumpSlotContext();
-  dctx.DumpEPContext(1);
-  out_device_ctx.DumpSlotContext();
   volatile BasicTRB& trb = *cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
   trb.data = v2p(&ctx);
   trb.option = 0;
@@ -466,7 +462,6 @@ void Controller::HandleEnableSlotCompleted(int slot, int port) {
   slot_info.port = port;
   PutStringAndHex("EnableSlotCommand completed.. Slot ID", slot);
   PutStringAndHex("  With RootPort ID", port);
-  PrintUSBSTS();
 
   slot_info.input_ctx = &InputContext::Alloc(1);
   new (slot_info.output_ctx) DeviceContext(1);
@@ -476,41 +471,6 @@ void Controller::HandleEnableSlotCompleted(int slot, int port) {
 
   SendAddressDeviceCommand(slot, false, 0);
 }
-
-struct SetupStageTRB {
-  volatile uint8_t request_type;
-  volatile uint8_t request;
-  volatile uint16_t value;
-  volatile uint16_t index;
-  volatile uint16_t length;
-  volatile uint32_t option;
-  volatile uint32_t control;
-
-  static constexpr uint8_t kReqTypeBitDirectionDeviceToHost = 1 << 7;
-
-  static constexpr uint8_t kReqTypeBitRecipientInterface = 1;
-
-  static constexpr uint8_t kReqGetDescriptor = 6;
-  static constexpr uint8_t kReqSetConfiguration = 9;
-
-  static constexpr uint32_t kTransferTypeNoDataStage = 0;
-  static constexpr uint32_t kTransferTypeInDataStage = 3;
-};
-static_assert(sizeof(SetupStageTRB) == 16);
-
-struct DataStageTRB {
-  volatile uint64_t buf;
-  volatile uint32_t option;
-  volatile uint32_t control;
-};
-static_assert(sizeof(DataStageTRB) == 16);
-
-struct StatusStageTRB {
-  volatile uint64_t reserved;
-  volatile uint32_t option;
-  volatile uint32_t control;
-};
-static_assert(sizeof(StatusStageTRB) == 16);
 
 static void ConfigureSetupStageTRBForGetDescriptorRequest(
     struct SetupStageTRB& trb,
@@ -543,12 +503,15 @@ static void ConfigureSetupStageTRBForSetConfiguration(struct SetupStageTRB& trb,
 
 static void ConfigureDataStageTRBForInput(struct DataStageTRB& trb,
                                           uint64_t ptr,
+                                          uint32_t num_of_trb_remains,
                                           uint32_t length,
                                           bool interrupt_on_completion) {
   trb.buf = ptr;
-  trb.option = length;
-  trb.control = (1 << 16) | (BasicTRB::kTRBTypeDataStage << 10) |
-                (interrupt_on_completion ? 1 << 5 : 0);
+  trb.option = (num_of_trb_remains << 17) | length;
+  trb.control = DataStageTRB::kDirectionIn |
+                (BasicTRB::kTRBTypeDataStage << 10) |
+                (interrupt_on_completion ? 1 << 5 : 0) |
+                (num_of_trb_remains ? 1 << 4 : 0);
 }
 
 static void ConfigureStatusStageTRBForInput(struct StatusStageTRB& trb,
@@ -559,22 +522,40 @@ static void ConfigureStatusStageTRBForInput(struct StatusStageTRB& trb,
                 (interrupt_on_completion ? 1 << 5 : 0);
 }
 
+static void PutDataStageTD(XHCI::Controller::CtrlEPTRing& tring,
+                           uint64_t buf_phys_addr,
+                           int size,
+                           int max_packet_size) {
+  const int num_of_transfers = (size + max_packet_size - 1) / max_packet_size;
+  for (int i = 0; i < num_of_transfers - 1; i++) {
+    const int ofs = i * max_packet_size;
+    DataStageTRB& data = *tring.GetNextEnqueueEntry<DataStageTRB*>();
+    ConfigureDataStageTRBForInput(data, buf_phys_addr + ofs,
+                                  num_of_transfers - i - 1, max_packet_size,
+                                  false);
+    tring.Push();
+  }
+  const int ofs = (num_of_transfers - 1) * max_packet_size;
+  DataStageTRB& data = *tring.GetNextEnqueueEntry<DataStageTRB*>();
+  // 4.10.4 IOC Flag
+  ConfigureDataStageTRBForInput(data, buf_phys_addr + ofs, 0, size - ofs, true);
+  tring.Push();
+}
+
 void Controller::RequestDeviceDescriptor(int slot,
                                          SlotInfo::SlotState next_state) {
-  int transfer_size = (next_state == SlotInfo::kCheckingMaxPacketSize
-                           ? 8
-                           : kSizeOfDescriptorBuffer);
   auto& slot_info = slot_info_[slot];
   assert(slot_info.ctrl_ep_tring);
   auto& tring = *slot_info.ctrl_ep_tring;
+  int desc_size = sizeof(DeviceDescriptor);
   SetupStageTRB& setup = *tring.GetNextEnqueueEntry<SetupStageTRB*>();
   ConfigureSetupStageTRBForGetDescriptorRequest(
-      setup, slot, kDescriptorTypeDevice, 0, transfer_size);
+      setup, slot, kDescriptorTypeDevice, 0, desc_size);
   tring.Push();
-  DataStageTRB& data = *tring.GetNextEnqueueEntry<DataStageTRB*>();
-  ConfigureDataStageTRBForInput(data, v2p(descriptor_buffers_[slot]),
-                                transfer_size, true);
-  tring.Push();
+
+  PutDataStageTD(tring, v2p(descriptor_buffers_[slot]), desc_size,
+                 slot_info.max_packet_size);
+
   StatusStageTRB& status = *tring.GetNextEnqueueEntry<StatusStageTRB*>();
   ConfigureStatusStageTRBForInput(status, false);
   tring.Push();
@@ -582,21 +563,19 @@ void Controller::RequestDeviceDescriptor(int slot,
   slot_info_[slot].state = next_state;
   NotifyDeviceContextDoorbell(slot, 1);
   PutStringAndHex("DeviceDescriptor requested for slot", slot);
-  PutStringAndHex("  Transfer Size requested", transfer_size);
 }
 
 void Controller::RequestConfigDescriptor(int slot) {
   auto& slot_info = slot_info_[slot];
   assert(slot_info.ctrl_ep_tring);
   auto& tring = *slot_info.ctrl_ep_tring;
+  int desc_size = sizeof(ConfigDescriptor) + sizeof(InterfaceDescriptor);
   SetupStageTRB& setup = *tring.GetNextEnqueueEntry<SetupStageTRB*>();
   ConfigureSetupStageTRBForGetDescriptorRequest(
-      setup, slot, kDescriptorTypeConfig, 0, kSizeOfDescriptorBuffer);
+      setup, slot, kDescriptorTypeConfig, 0, desc_size);
   tring.Push();
-  DataStageTRB& data = *tring.GetNextEnqueueEntry<DataStageTRB*>();
-  ConfigureDataStageTRBForInput(data, v2p(descriptor_buffers_[slot]),
-                                kSizeOfDescriptorBuffer, true);
-  tring.Push();
+  PutDataStageTD(tring, v2p(descriptor_buffers_[slot]), desc_size,
+                 slot_info.max_packet_size);
   StatusStageTRB& status = *tring.GetNextEnqueueEntry<StatusStageTRB*>();
   ConfigureStatusStageTRBForInput(status, false);
   tring.Push();
@@ -646,21 +625,20 @@ void Controller::GetHIDReport(int slot) {
   auto& slot_info = slot_info_[slot];
   assert(slot_info.ctrl_ep_tring);
   auto& tring = *slot_info.ctrl_ep_tring;
+  int desc_size = 8;
   SetupStageTRB& setup = *tring.GetNextEnqueueEntry<SetupStageTRB*>();
   setup.request_type = 0b10100001;
   setup.request = 0x01;
   setup.value = 0x2201;
   setup.index = 0;
-  setup.length = kSizeOfDescriptorBuffer;
+  setup.length = desc_size;
   setup.option = 8;
   setup.control = (1 << 6) | (BasicTRB::kTRBTypeSetupStage << 10) |
                   (slot << 24) |
                   (SetupStageTRB::kTransferTypeInDataStage << 16);
   tring.Push();
-  DataStageTRB& data = *tring.GetNextEnqueueEntry<DataStageTRB*>();
-  ConfigureDataStageTRBForInput(data, v2p(descriptor_buffers_[slot]),
-                                kSizeOfDescriptorBuffer, true);
-  tring.Push();
+  PutDataStageTD(tring, v2p(descriptor_buffers_[slot]), desc_size,
+                 slot_info.max_packet_size);
   StatusStageTRB& status = *tring.GetNextEnqueueEntry<StatusStageTRB*>();
   ConfigureStatusStageTRBForInput(status, false);
   tring.Push();
@@ -787,8 +765,7 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
       PutStringAndHex("  Slot ID", slot);
       DeviceDescriptor& device_desc =
           *reinterpret_cast<DeviceDescriptor*>(descriptor_buffers_[slot]);
-      PutStringAndHex("  Transfered Size",
-                      kSizeOfDescriptorBuffer - e.GetTransferSize());
+      PutStringAndHex("  Transfered Size Residue", e.GetTransferSizeResidue());
       PutStringAndHex("  max_packet_size", device_desc.max_packet_size);
       SendAddressDeviceCommand(slot, false, device_desc.max_packet_size);
     } break;
@@ -797,8 +774,7 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
       PutStringAndHex("  Slot ID", slot);
       DeviceDescriptor& device_desc =
           *reinterpret_cast<DeviceDescriptor*>(descriptor_buffers_[slot]);
-      PutStringAndHex("  Transfered Size",
-                      kSizeOfDescriptorBuffer - e.GetTransferSize());
+      PutStringAndHex("  Transfered Size Residue", e.GetTransferSizeResidue());
       PutStringAndHex("  max_packet_size", device_desc.max_packet_size);
       if (device_desc.device_class != 0) {
         PutStringAndHex("  Not supported device class",
@@ -812,8 +788,7 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
     case SlotInfo::kCheckingConfigDescriptor: {
       PutString("TransferEvent\n");
       PutStringAndHex("  Slot ID", slot);
-      PutStringAndHex("  Transfered Size",
-                      kSizeOfDescriptorBuffer - e.GetTransferSize());
+      PutStringAndHex("  Transfered Size Residue", e.GetTransferSizeResidue());
       ConfigDescriptor& config_desc =
           *reinterpret_cast<ConfigDescriptor*>(descriptor_buffers_[slot]);
       PutStringAndHex("  Num of Interfaces", config_desc.num_of_interfaces);
@@ -856,16 +831,15 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
       GetHIDReport(slot);
       break;
     case SlotInfo::kGettingReport: {
-      int size = kSizeOfDescriptorBuffer - e.GetTransferSize();
-      assert(size == 8);
+      assert(e.GetTransferSizeResidue() == 0);
       HandleKeyInput(slot, descriptor_buffers_[slot]);
       GetHIDReport(slot);
     } break;
     default: {
       PutString("TransferEvent\n");
       PutStringAndHex("  Slot ID", slot);
-      int size = kSizeOfDescriptorBuffer - e.GetTransferSize();
-      PutStringAndHex("  Transfered Size", size);
+      PutStringAndHex("  Transfered Size", e.GetTransferSizeResidue());
+      /*
       for (int i = 0; i < size; i++) {
         PutHex8ZeroFilled(descriptor_buffers_[slot][i]);
         if ((i & 0b1111) == 0b1111)
@@ -874,6 +848,7 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
           PutChar(' ');
       }
       PutChar('\n');
+      */
       PutStringAndHex("Unexpected Transfer Event In Slot State",
                       slot_info_[slot].state);
     }

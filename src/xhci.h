@@ -85,6 +85,9 @@ class Controller {
   };
   static_assert(sizeof(CommandCompletionEventTRB) == 16);
 
+  static constexpr int kNumOfCtrlEPRingEntries = 32;
+  using CtrlEPTRing = TransferRequestBlockRing<kNumOfCtrlEPRingEntries>;
+
  private:
   class EventRing;
 
@@ -122,8 +125,6 @@ class Controller {
   static constexpr uint32_t kUSBSTSBitHCHalted = 0b1;
   static constexpr uint32_t kUSBSTSBitHCError = 1 << 12;
   static constexpr uint32_t kUSBSTSBitHSError = 1 << 2;
-
-  static constexpr int kNumOfCtrlEPRingEntries = 32;
 
   struct DeviceDescriptor {
     uint8_t length;
@@ -188,7 +189,8 @@ class Controller {
     int port;
     InputContext* input_ctx;
     DeviceContext* output_ctx;
-    TransferRequestBlockRing<kNumOfCtrlEPRingEntries>* ctrl_ep_tring;
+    CtrlEPTRing* ctrl_ep_tring;
+    int max_packet_size;
   };
 
   void ResetHostController();
