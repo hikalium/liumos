@@ -4,6 +4,7 @@ QEMU_ARGS=\
 					 -bios $(OVMF) \
 					 -machine q35,nvdimm -cpu qemu64 -smp 4 \
 					 -monitor stdio \
+					 -monitor telnet:127.0.0.1:$(PORT_MONITOR),server,nowait \
 					 -m 8G,slots=2,maxmem=10G \
 					 -drive format=raw,file=fat:rw:mnt -net none \
 					 -serial tcp::1234,server,nowait \
@@ -15,6 +16,8 @@ QEMU_ARGS_PMEM=\
 					 $(QEMU_ARGS) \
 					 -object memory-backend-file,id=mem1,share=on,mem-path=pmem.img,size=2G \
 					 -device nvdimm,id=nvdimm1,memdev=mem1
+VNC_PASSWORD=a
+PORT_MONITOR=1240
 
 APPS=app/hello/hello.bin app/pi/pi.bin
 
@@ -64,6 +67,10 @@ run : files pmem.img .FORCE
 run_gdb : files pmem.img .FORCE
 	$(QEMU) $(QEMU_ARGS_PMEM) -gdb tcp::1192 -S || reset
 
+run_vnc : files pmem.img .FORCE
+	( echo 'change vnc password $(VNC_PASSWORD)' | while ! nc localhost 1240 ; do sleep 1 ; done ) &
+	$(QEMU) $(QEMU_ARGS_PMEM) -vnc :0,password || reset
+
 gdb : .FORCE
 	gdb -ex 'target remote localhost:1192' src/LIUMOS.ELF
 
@@ -93,6 +100,9 @@ liumos.vdi : .FORCE img
 
 serial :
 	screen /dev/tty.usbserial-* 115200
+
+vnc :
+	open vnc://localhost:5900
 
 unittest :
 	make -C src unittest

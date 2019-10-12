@@ -38,6 +38,7 @@ CLANG_WARNINGS = \
 				 -Wall -Wpedantic -Wextra -Wconditional-uninitialized -Wshorten-64-to-32 \
 				 -Werror \
 				 -Wno-keyword-macro
+CLANG_SYSTEM_INC_PATH=/usr/local/opt/llvm/lib/clang/9.0.0/include
 C_STD = -std=c11
 CXX_STD = -std=c++17
 
@@ -78,7 +79,7 @@ CXXFLAGS_KERNEL= \
 				 -D__ELF__ -D_LDBL_EQ_DBL \
 				 -I$(LIBCXX_FOR_KERNEL_INC_PATH) \
 				 -Ithird_party/newlib-cygwin_dest/include/ \
-				 -I/usr/local/opt/llvm/lib/clang/7.0.1/include/ \
+				 -I$(CLANG_SYSTEM_INC_PATH) \
 				 $(CLANG_WARNINGS) \
 				 -Wno-gnu-include-next \
 				 $(CXX_STD)
