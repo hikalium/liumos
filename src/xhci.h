@@ -100,6 +100,7 @@ class Controller {
 
   static constexpr uint8_t kDescriptorTypeDevice = 1;
   static constexpr uint8_t kDescriptorTypeConfig = 2;
+  static constexpr uint8_t kDescriptorTypeInterface = 4;
 
   static constexpr int kKeyBufModifierIndex = 32;
 

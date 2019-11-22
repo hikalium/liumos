@@ -537,6 +537,15 @@ static void PutDataStageTD(XHCI::Controller::CtrlEPTRing& tring,
   tring.Push();
 }
 
+static void PutDataStageTD(XHCI::Controller::CtrlEPTRing& tring,
+                           uint64_t buf_phys_addr,
+                           int size) {
+  DataStageTRB& data = *tring.GetNextEnqueueEntry<DataStageTRB*>();
+  ConfigureDataStageTRBForInput(data, buf_phys_addr, 0, size, true);
+  tring.Push();
+}
+
+
 void Controller::RequestDeviceDescriptor(int slot,
                                          SlotInfo::SlotState next_state) {
   auto& slot_info = slot_info_[slot];
@@ -564,13 +573,12 @@ void Controller::RequestConfigDescriptor(int slot) {
   auto& slot_info = slot_info_[slot];
   assert(slot_info.ctrl_ep_tring);
   auto& tring = *slot_info.ctrl_ep_tring;
-  int desc_size = sizeof(ConfigDescriptor) + sizeof(InterfaceDescriptor);
+  int desc_size = kSizeOfDescriptorBuffer;
   SetupStageTRB& setup = *tring.GetNextEnqueueEntry<SetupStageTRB*>();
   ConfigureSetupStageTRBForGetDescriptorRequest(
       setup, slot, kDescriptorTypeConfig, 0, desc_size);
   tring.Push();
-  PutDataStageTD(tring, v2p(descriptor_buffers_[slot]), desc_size,
-                 slot_info.max_packet_size);
+  PutDataStageTD(tring, v2p(descriptor_buffers_[slot]), desc_size);
   StatusStageTRB& status = *tring.GetNextEnqueueEntry<StatusStageTRB*>();
   ConfigureStatusStageTRBForInput(status, false);
   tring.Push();
@@ -778,30 +786,46 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
           *reinterpret_cast<ConfigDescriptor*>(descriptor_buffers_[slot]);
       PutString("ConfigurationDescriptor\n");
       PutStringAndHex("  total length", config_desc.total_length);
+      assert(config_desc.total_length <= kSizeOfDescriptorBuffer);
       PutStringAndHex("  Num of Interfaces", config_desc.num_of_interfaces);
-      InterfaceDescriptor& interface_desc =
-          *reinterpret_cast<InterfaceDescriptor*>(descriptor_buffers_[slot] +
-                                                  config_desc.length);
-      PutStringAndHex("  Interface #       ", interface_desc.interface_number);
-      {
-        char s[128];
-        snprintf(
-            s, sizeof(s), "  Class=0x%02X SubClass=0x%02X Protocol=0x%02X\n",
-            interface_desc.interface_class, interface_desc.interface_subclass,
-            interface_desc.interface_protocol);
-        PutString(s);
+      int ofs = config_desc.length;
+      while (ofs < config_desc.total_length) {
+        const uint8_t length =
+            RefWithOffset<uint8_t*>(descriptor_buffers_[slot], ofs)[0];
+        const uint8_t type =
+            RefWithOffset<uint8_t*>(descriptor_buffers_[slot], ofs)[1];
+        PutStringAndHex("Descriptor type", type);
+        PutStringAndHex("Descriptor length", length);
+        if (type == kDescriptorTypeInterface) {
+          InterfaceDescriptor& interface_desc =
+              *RefWithOffset<InterfaceDescriptor*>(descriptor_buffers_[slot],
+                                                   ofs);
+          PutStringAndHex("Interface #       ",
+                          interface_desc.interface_number);
+          {
+            char s[128];
+            snprintf(s, sizeof(s),
+                     "  Class=0x%02X SubClass=0x%02X Protocol=0x%02X\n",
+                     interface_desc.interface_class,
+                     interface_desc.interface_subclass,
+                     interface_desc.interface_protocol);
+            PutString(s);
+          }
+          if (interface_desc.interface_class ==
+                  InterfaceDescriptor::kClassHID &&
+              interface_desc.interface_subclass ==
+                  InterfaceDescriptor::kSubClassSupportBootProtocol &&
+              interface_desc.interface_protocol ==
+                  InterfaceDescriptor::kProtocolKeyboard) {
+            PutString("Found USB HID Keyboard (with boot protocol)\n");
+            SetConfig(slot, config_desc.config_value);
+            return;
+          }
+        }
+        ofs += length;
       }
-      if (interface_desc.interface_class != InterfaceDescriptor::kClassHID ||
-          interface_desc.interface_subclass !=
-              InterfaceDescriptor::kSubClassSupportBootProtocol ||
-          interface_desc.interface_protocol !=
-              InterfaceDescriptor::kProtocolKeyboard) {
-        PutString("Not supported interface\n");
-        slot_info_[slot].state = SlotInfo::kNotSupportedDevice;
-        return;
-      }
-      PutString("Found USB HID Keyboard (with boot protocol)\n");
-      SetConfig(slot, config_desc.config_value);
+      PutString("No supported interface found\n");
+      slot_info_[slot].state = SlotInfo::kNotSupportedDevice;
     } break;
     case SlotInfo::kSettingConfiguration:
       PutString("TransferEvent\n");
