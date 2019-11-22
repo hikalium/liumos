@@ -30,7 +30,6 @@ KERNEL_SRCS= $(COMMON_SRCS) \
 			 sleep_handler.S syscall.cc syscall_handler.S \
 			 xhci.cc
 
-KERNEL_LIBS=third_party/newlib-cygwin_dest/lib/libc.a
 LOADER_OBJS= $(addsuffix .o, $(basename $(LOADER_SRCS)))
 LOADER_DEPS= $(addsuffix .o.d, $(basename $(LOADER_SRCS)))
 KERNEL_OBJS= $(addsuffix .elf.o, $(basename $(KERNEL_SRCS)))
@@ -81,7 +80,7 @@ CXXFLAGS_KERNEL= \
 				 -nostdlibinc \
 				 -D__ELF__ -D_LDBL_EQ_DBL \
 				 -I$(LIBCXX_FOR_KERNEL_INC_PATH) \
-				 -Ithird_party/newlib-cygwin_dest/include/ \
+				 -Ithird_party_root/include/ \
 				 -I$(CLANG_SYSTEM_INC_PATH) \
 				 $(CLANG_WARNINGS) \
 				 -Wno-gnu-include-next \
