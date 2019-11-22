@@ -1,24 +1,18 @@
-include cc_cache.gen.mk
+THIS_DIR:=$(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
-THIS_DIR:=$(dir $(lastword $(MAKEFILE_LIST)))
 OSNAME=${shell uname -s}
-CLANG_SYSTEM_INC_PATH=$(shell $(THIS_DIR)./scripts/get_clang_builtin_include_dir.sh)
 
 ifeq ($(OSNAME),Darwin)
-cc_cache.gen.mk : Makefile
-	@ echo "" > $@ && \
-		LLVM_PREFIX=`brew --prefix llvm` && \
-		echo "LLVM_CC:=$$LLVM_PREFIX/bin/clang" >> $@ && \
-		echo "LLVM_CXX:=$$LLVM_PREFIX/bin/clang++" >> $@ && \
-		echo "LLVM_LLD_LINK:=$$LLVM_PREFIX/bin/lld-link" >> $@ && \
-		echo "LLVM_LD_LLD:=$$LLVM_PREFIX/bin/ld.lld" >> $@
-	cat $@
+$(THIS_DIR)cc_cache.gen.mk : $(THIS_DIR)scripts/gen_tool_defs_linux.sh
+	@ $(THIS_DIR)scripts/gen_tool_defs_macos.sh > $@
 else
-cc_cache.gen.mk : Makefile
-	@ echo "" > $@ && \
-		echo "LLVM_CC:=`which clang`" >> $@ && \
-		echo "LLVM_CXX:=`which clang++`" >> $@ && \
-		echo "LLVM_LLD_LINK:=`which lld-link-4.0`" >> $@
-	cat $@
+$(THIS_DIR)cc_cache.gen.mk : $(THIS_DIR)scripts/gen_tool_defs_linux.sh
+	@ $(THIS_DIR)scripts/gen_tool_defs_linux.sh > $@
 endif
 
+include $(THIS_DIR)cc_cache.gen.mk
+CLANG_SYSTEM_INC_PATH=$(shell $(THIS_DIR)./scripts/get_clang_builtin_include_dir.sh $(LLVM_CXX))
+
+dump_config : 
+	@ echo LLVM_CC=$(LLVM_CC)
+	@ echo CLANG_SYSTEM_INC_PATH=$(CLANG_SYSTEM_INC_PATH)

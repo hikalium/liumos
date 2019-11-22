@@ -1,3 +1,7 @@
+default: src/BOOTX64.EFI
+
+include common.mk
+
 OVMF=ovmf/bios64.bin
 QEMU=qemu-system-x86_64
 QEMU_ARGS=\

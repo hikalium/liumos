@@ -176,20 +176,8 @@ LIUMOS.ELF : $(KERNEL_OBJS) kernel.ld Makefile
 NEWLIB_BUILD_DIR=third_party/newlib-cygwin_build
 
 newlib:
-	git submodule init
-	git submodule update --depth=1
-	mkdir -p $(NEWLIB_BUILD_DIR)
-	cd $(NEWLIB_BUILD_DIR) \
-		&& \
-		CC=/usr/local/opt/llvm/bin/clang \
-		AR=/usr/local/opt/llvm/bin/llvm-ar \
-		RANLIB=/usr/local/opt/llvm/bin/llvm-ranlib \
-		../newlib-cygwin/newlib/configure \
-		CFLAGS="-nostdlibinc -O2 -target x86_64-unknown-none-elf -mcmodel=large" \
-		--target=x86_64-elf --disable-multilib \
-		--prefix=$$(dirname `pwd`)/newlib-cygwin_dest \
-		&& \
-		make -j4 install
+	CC=$(LLVM_CC) AR=$(LLVM_AR) RANLIB=$(LLVM_RANLIB) ./build_newlib.sh
+
 
 LLVM_LIBUNWIND_BUILD_DIR=third_party/llvm-project/libunwind/build
 
