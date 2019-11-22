@@ -1,3 +1,7 @@
+default: BOOTX64.EFI LIUMOS.ELF
+
+include ../common.mk
+
 COMMON_SRCS= \
 			 acpi.cc apic.cc asm.S \
 			 console.cc \
@@ -38,7 +42,6 @@ CLANG_WARNINGS = \
 				 -Wall -Wpedantic -Wextra -Wconditional-uninitialized -Wshorten-64-to-32 \
 				 -Werror \
 				 -Wno-keyword-macro
-CLANG_SYSTEM_INC_PATH=/usr/local/opt/llvm/lib/clang/9.0.0/include
 C_STD = -std=c11
 CXX_STD = -std=c++17
 
@@ -99,10 +102,6 @@ OSX_STD_HEADER_INCLUDE_FLAGS= \
 							  -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include
 
 FONTMAKER=../tools/fontmaker
-
-default: BOOTX64.EFI LIUMOS.ELF
-
-include ../common.mk
 
 $(FONTMAKER) :
 	make -C $(dir $(FONTMAKER)) fontmaker
