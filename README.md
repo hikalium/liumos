@@ -27,6 +27,7 @@ sudo apt install clang lld-4.0 qemu
 
 ## Prepare tools and libraries
 ```
+git submodule update
 make tools
 make libcxx
 ```
