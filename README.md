@@ -15,7 +15,7 @@ A toy operating system supports UEFI boot.
 - Tested on 10.13.6
 
 ```
-brew install qemu llvm dosfstools FiloSottile/musl-cross/musl-cross
+brew install wget cmake qemu llvm dosfstools
 ```
 
 ### Ubuntu 18.04
@@ -27,9 +27,9 @@ sudo apt install clang lld-4.0 qemu
 
 ## Prepare tools and libraries
 ```
-git submodule update
 make tools
-make libcxx
+cd src
+make newlib && make libcxxabi && make libcxx
 ```
 
 ## How to build
@@ -47,9 +47,11 @@ make run
 ```
 
 ## References
+- [newlib](https://sourceware.org/newlib/)
+- [llvm](https://llvm.org/)
+- [tianocore/edk2](https://github.com/tianocore/edk2)
 - [cupnes/x86_64_jisaku_os_samples](https://github.com/cupnes/x86_64_jisaku_os_samples)
 - [yoppeh/efi-clang](https://github.com/yoppeh/efi-clang)
-- [tianocore/edk2](https://github.com/tianocore/edk2)
 
 ## Author
 [hikalium](https://github.com/hikalium)
