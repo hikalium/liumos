@@ -2,7 +2,7 @@
 
 #include "generic.h"
 
-#include "lib/musl/include/elf.h"
+#include <elf.h>
 
 class EFIFile;
 class Process;

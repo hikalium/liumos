@@ -15,7 +15,6 @@ wget -N http://sourceware.org/pub/newlib/${NEWLIB_NAME}.tar.gz -P third_party/
 tar -xvf third_party/${NEWLIB_NAME}.tar.gz -C third_party/
 mkdir -p ${NEWLIB_BUILD_DIR}
 
-
 echo CC=${CC}
 echo AR=${AR}
 echo RANLIB=${RANLIB}

@@ -53,7 +53,7 @@ CFLAGS_LOADER= \
 			   -mno-red-zone \
 			   -nostdlibinc \
 			   $(CLANG_WARNINGS) $(C_STD) \
-			   -Imusl_supplement -Imusl/include
+			   -Ithird_party_root/include
 
 CXXFLAGS_LOADER= \
 				 -DLIUMOS_LOADER \
@@ -61,7 +61,7 @@ CXXFLAGS_LOADER= \
 				 -fno-stack-protector -fno-exceptions -fshort-wchar \
 				 -mno-red-zone \
 				 -nostdlibinc -nostdlib \
-				 -D_LIBCPP_HAS_NO_THREADS -D_LIBCPP_OBJECT_FORMAT_COFF -Ithird_party/llvm-test/include/c++/v1/ \
+				 -D_LIBCPP_HAS_NO_THREADS -D_LIBCPP_OBJECT_FORMAT_COFF -Ithird_party_root/include \
 				 $(CLANG_WARNINGS) $(CXX_STD)
 
 CFLAGS_KERNEL= \
@@ -69,7 +69,6 @@ CFLAGS_KERNEL= \
 			   -fno-stack-protector -fno-exceptions -fshort-wchar \
 			   -mno-red-zone -mstack-alignment=8 \
 			   -nostdlib -nostdinc\
-			   -Ithird_party/newlib-cygwin_dest/include/ \
 			   $(CLANG_WARNINGS) $(C_STD)
 
 # -Wno-gnu-include-next: avoid warning from third_party/newlib-cygwin_dest/include/limits.h:132:3
@@ -88,8 +87,8 @@ CXXFLAGS_KERNEL= \
 
 
 LDFLAGS_KERNEL= \
-				-L$(LIBCXX_FOR_KERNEL_LIB_PATH) -lc++ -lc++abi -lunwind -lm \
-				-Lthird_party/newlib-cygwin_dest/lib -lc \
+				-L$(LIBCXX_FOR_KERNEL_LIB_PATH) -lc++ -lc++abi -lm \
+				-Lthird_party_root/lib -lc \
 				-static # --verbose
 
 CXXFLAGS_FOR_TEST= \
@@ -107,9 +106,6 @@ $(FONTMAKER) :
 
 font.gen.cc : font.txt $(FONTMAKER)
 	$(FONTMAKER) font.txt > font.gen.cc
-
-lib/musl/include/%.h : lib/musl/include/Makefile
-	make -C lib/musl/include/ $*.h
 
 # Test rules
 test_% : %_test.cc Makefile
@@ -172,22 +168,24 @@ LIUMOS.ELF : $(KERNEL_OBJS) kernel.ld Makefile
 	$(LLVM_LD_LLD) $(LDFLAGS_KERNEL) \
 		-o LIUMOS.ELF -e KernelEntry -T kernel.ld $(KERNEL_OBJS)
 
-NEWLIB_BUILD_DIR=third_party/newlib-cygwin_build
-
 newlib:
 	CC=$(LLVM_CC) AR=$(LLVM_AR) RANLIB=$(LLVM_RANLIB) ./build_newlib.sh
 
-
-LLVM_LIBUNWIND_BUILD_DIR=third_party/llvm-project/libunwind/build
-
-submodule:
-	git submodule init
-	git submodule update --depth=1
+libcxxabi:
+	CC=$(LLVM_CC) \
+	   CXX=$(LLVM_CXX) \
+	   LD_LLD=$(LLVM_LD_LLD) \
+	   AR=$(LLVM_AR) \
+	   RANLIB=$(LLVM_RANLIB) \
+	   ./build_libcxxabi.sh
 
 libcxx:
-	./libunwind_config_and_install.sh
-	./libcxxabi_config_and_install.sh
-	./libcxx_config_and_install.sh
+	CC=$(LLVM_CC) \
+	   CXX=$(LLVM_CXX) \
+	   LD_LLD=$(LLVM_LD_LLD) \
+	   AR=$(LLVM_AR) \
+	   RANLIB=$(LLVM_RANLIB) \
+	   ./build_libcxx.sh
 
 run:
 	make -C .. run
@@ -207,10 +205,8 @@ clean :
 	-rm *.bin
 	-rm githash.cc
 
-clean_newlib :
-	-make -C $(NEWLIB_BUILD_DIR) clean
-
-clean_thirdparty :
+clean_third_party :
+	-rm -rf third_party
 	-rm -rf third_party_build
 	-rm -rf third_party_root
 
