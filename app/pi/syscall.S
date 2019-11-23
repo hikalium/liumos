@@ -3,7 +3,7 @@
 write:
 	mov rax, 1
 	syscall
-	retq
+	ret
 
 .global exit
 exit:
