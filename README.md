@@ -12,8 +12,6 @@ A toy operating system supports UEFI boot.
 
 ### macOS
 
-- Tested on 10.13.6
-
 ```
 brew install wget cmake qemu llvm dosfstools
 ```
