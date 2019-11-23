@@ -4,7 +4,8 @@
 [![CircleCI](https://circleci.com/gh/hikalium/liumos.svg?style=svg)](https://circleci.com/gh/hikalium/liumos)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-![liumOS](https://github.com/hikalium/liumos/blob/master/dist/liumos.png)
+![Screenshot](https://github.com/hikalium/liumos/blob/master/docs/2019-11-24.png)
+
 
 A toy operating system supports UEFI boot.
 
