@@ -19,8 +19,7 @@ brew install wget cmake qemu llvm dosfstools
 ### Ubuntu 18.04
 
 ```
-sudo apt install clang lld-4.0 qemu
-
+sudo apt install wget cmake qemu clang-8 lld-8
 ```
 
 ## Prepare tools and libraries
@@ -42,6 +41,12 @@ This repository contains [OVMF](https://github.com/tianocore/tianocore.github.io
 
 ```
 make run
+```
+
+You can connect serial console using telnet
+
+```
+telnet localhost 1235
 ```
 
 ## References
