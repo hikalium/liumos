@@ -118,21 +118,19 @@ test_% : %_test.cc Makefile
 	$(LLVM_CC) $(CFLAGS_LOADER) \
 		-c -o $*.o $*.c
 %.o.d : %.c Makefile
-	$(LLVM_CC) $(CXXFLAGS_LOADER) \
-		-MD -MF $@ -c -o $*.o $*.c
+	@$(LLVM_CC) $(CXXFLAGS_LOADER) -MD -MF $@ -c -o $*.o $*.c >/dev/null 2>&1
 
 %.o : %.cc Makefile
 	$(LLVM_CXX) $(CXXFLAGS_LOADER) \
 		-c -o $*.o $*.cc
 %.o.d : %.cc Makefile
-	$(LLVM_CXX) $(CXXFLAGS_LOADER) \
-		-MD -MF $@ -c -o $*.o $*.cc
+	@$(LLVM_CXX) $(CXXFLAGS_LOADER) -MD -MF $@ -c -o $*.o $*.cc >/dev/null 2>&1
 
 %.o : %.S Makefile
 	$(LLVM_CC) $(CFLAGS_LOADER) \
 		-c -o $*.o $*.S
 %.o.d : %.S Makefile
-	touch $@ # generate dummy
+	@touch $@ # generate dummy
 
 %.o.dump.txt : %.o Makefile
 	objdump -d $*.o > $@
@@ -148,21 +146,19 @@ BOOTX64.EFI : $(LOADER_OBJS) Makefile
 	$(LLVM_CXX) $(CXXFLAGS_KERNEL) \
 		-g -c -o $*.elf.o $*.cc
 %.elf.d : %.cc Makefile
-	$(LLVM_CXX) $(CXXFLAGS_KERNEL) \
-		-MD -MF $@ -c -o $*.elf.o $*.cc
+	@$(LLVM_CXX) $(CXXFLAGS_KERNEL) -MD -MF $@ -c -o $*.elf.o $*.cc >/dev/null 2>&1
 
 %.elf.o : %.c Makefile
 	$(LLVM_CC) $(CFLAGS_KERNEL) \
 		-g -c -o $*.elf.o $*.c
 %.elf.d : %.c Makefile
-	$(LLVM_CXX) $(CXXFLAGS_KERNEL) \
-		-MD -MF $@ -c -o $*.elf.o $*.c
+	@$(LLVM_CXX) $(CXXFLAGS_KERNEL) -MD -MF $@ -c -o $*.elf.o $*.c >/dev/null 2>&1
 
 %.elf.o : %.S Makefile
 	$(LLVM_CC) $(CXXFLAGS_KERNEL) \
 		-c -o $*.elf.o $*.S
 %.elf.d : %.S Makefile
-	touch $@ # generate dummy
+	@touch $@ # generate dummy
 
 LIUMOS.ELF : $(KERNEL_OBJS) kernel.ld Makefile
 	$(LLVM_LD_LLD) $(LDFLAGS_KERNEL) \
