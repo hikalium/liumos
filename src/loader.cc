@@ -126,7 +126,7 @@ void Sleep() {
 void MainForBootProcessor(EFI::Handle image_handle,
                           EFI::SystemTable* system_table) {
   liumos = &liumos_;
-  efi_.Init(system_table);
+  efi_.Init(image_handle, system_table);
   liumos_.loader_info.efi = &efi_;
   efi_.ClearScreen();
 

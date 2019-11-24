@@ -60,6 +60,7 @@ class EFI {
     uint32_t crc32;
     uint32_t reserved;
   };
+  static_assert(sizeof(TableHeader) == 24);
 
   struct InputKey {
     uint16_t ScanCode;
@@ -196,7 +197,7 @@ class EFI {
   };
 
   struct BootServices {
-    char _buf1[24];
+    TableHeader header;
     Status (*RaiseTPL)();
     Status (*RestoreTPL)();
     Status (*AllocatePages)(AllocateType, MemoryType, UINTN pages, void** mem);
@@ -217,8 +218,16 @@ class EFI {
     uint64_t (*WaitForEvent)(uint64_t NumberOfEvents,
                              void** Event,
                              uint64_t* Index);
-    uint64_t _buf4_2[3];
-    uint64_t _buf5[9];
+    Status (*SignalEvent)();
+    Status (*CloseEvent)();
+    Status (*CheckEvent)();
+    // Protocol Handler Services
+    uint64_t _buf5[3];
+    Status (*HandleProtocol)(Handle, const GUID*, void **);
+    uint64_t _buf5_1[2];
+    Status (*LocateHandle)();
+    uint64_t _buf5_2[2];
+    // Image Services
     uint64_t (*LoadImage)(unsigned char BootPolicy,
                           void* ParentImageHandle,
                           DevicePathProtocol*,
@@ -345,23 +354,20 @@ class EFI {
                                     void* NotificationHandle);
   };
 
-  struct _LOADED_IMAGE_PROTOCOL {
-    unsigned int Revision;
-    void* ParentHandle;
-    struct SystemTable* SystemTable;
-    // Source location of the image
-    void* DeviceHandle;
-    struct _DEVICE_PATH_PROTOCOL* FilePath;
-    void* Reserved;
-    // Image’s load options
-    unsigned int LoadOptionsSize;
-    void* LoadOptions;
-    // Location where image was loaded
-    void* ImageBase;
-    uint64_t ImageSize;
-    MemoryType ImageCodeType;
-    MemoryType ImageDataType;
-    uint64_t (*Unload)(void* ImageHandle);
+  struct LoadedImageProtocol {
+    uint32_t revision;
+    Handle parent_handle;
+    SystemTable* system_table;
+    Handle device_handle;
+    struct _DEVICE_PATH_PROTOCOL* file_path;
+    void* reserved;
+    uint32_t load_options_size;
+    void *load_options;
+    void* image_base;
+    uint64_t image_size;
+    MemoryType image_code_type;
+    MemoryType image_data_type;
+    Status (*unload)(Handle ImageHandle);
   };
 
   struct _DEVICE_PATH_TO_TEXT_PROTOCOL {
@@ -416,7 +422,7 @@ class EFI {
   EFI::FileProtocol* OpenFile(const wchar_t* path);
   void ReadFileInfo(FileProtocol* file, FileInfo* info);
   void* AllocatePages(UINTN pages);
-  void Init(SystemTable* system_table);
+  void Init(Handle, SystemTable*);
   const GraphicsOutputProtocol::ModeInfo& GetGraphicsModeInfo() {
     assert(graphics_output_protocol_);
     assert(graphics_output_protocol_->mode);
@@ -425,6 +431,7 @@ class EFI {
   void ListAllFiles();
 
  private:
+  Handle image_handle_;
   SystemTable* system_table_;
   GraphicsOutputProtocol* graphics_output_protocol_;
   SimpleFileSystemProtocol* simple_fs_;

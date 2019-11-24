@@ -27,6 +27,11 @@ static const GUID kFileSystemInfoGUID = {
     0x6d3f,
     0x11d2,
     {0x8e, 0x39, 0x00, 0xa0, 0xc9, 0x69, 0x72, 0x3b}};
+static const GUID kLoadedImageProtocolGUID = {
+    0x5B1B31A1,
+    0x9562,
+    0x11d2,
+    {0x8E, 0x3F, 0x00, 0xA0, 0xC9, 0x69, 0x72, 0x3B}};
 
 static void AssertSuccess(EFI::Status status, const char* msg) {
   if (status == EFI::Status::kSuccess)
@@ -166,20 +171,28 @@ void* EFI::AllocatePages(UINTN pages) {
   return mem;
 }
 
-void EFI::Init(SystemTable* system_table) {
+void EFI::Init(Handle image_handle, SystemTable* system_table) {
+  image_handle_ = image_handle;
   system_table_ = system_table;
   system_table_->boot_services->SetWatchdogTimer(0, 0, 0, nullptr);
   system_table_->boot_services->LocateProtocol(
       &kGraphicsOutputProtocolGUID, nullptr,
       (void**)&graphics_output_protocol_);
-  system_table_->boot_services->LocateProtocol(&kSimpleFileSystemProtocolGUID,
-                                               nullptr, (void**)&simple_fs_);
-  assert(simple_fs_);
   liumos->acpi.rsdt = static_cast<ACPI::RSDT*>(
       EFI::GetConfigurationTableByUUID(&kACPITableGUID));
   assert(liumos->acpi.rsdt);
-  Status status = simple_fs_->OpenVolume(simple_fs_, &root_file_);
-  assert(status == Status::kSuccess);
+  // Open volume which we boot from
+  LoadedImageProtocol* loaded_image_protocol;
+  assert(system_table_->boot_services->HandleProtocol(
+             image_handle, &kLoadedImageProtocolGUID,
+             reinterpret_cast<void**>(&loaded_image_protocol)) ==
+         Status::kSuccess);
+  assert(system_table_->boot_services->HandleProtocol(
+             loaded_image_protocol->device_handle, &kSimpleFileSystemProtocolGUID,
+             reinterpret_cast<void**>(&simple_fs_)) ==
+         Status::kSuccess);
+  assert(simple_fs_);
+  assert(simple_fs_->OpenVolume(simple_fs_, &root_file_) == Status::kSuccess);
 }
 
 static void PutWString(const wchar_t* s) {
