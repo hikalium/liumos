@@ -188,9 +188,9 @@ void EFI::Init(Handle image_handle, SystemTable* system_table) {
              reinterpret_cast<void**>(&loaded_image_protocol)) ==
          Status::kSuccess);
   assert(system_table_->boot_services->HandleProtocol(
-             loaded_image_protocol->device_handle, &kSimpleFileSystemProtocolGUID,
-             reinterpret_cast<void**>(&simple_fs_)) ==
-         Status::kSuccess);
+             loaded_image_protocol->device_handle,
+             &kSimpleFileSystemProtocolGUID,
+             reinterpret_cast<void**>(&simple_fs_)) == Status::kSuccess);
   assert(simple_fs_);
   assert(simple_fs_->OpenVolume(simple_fs_, &root_file_) == Status::kSuccess);
 }

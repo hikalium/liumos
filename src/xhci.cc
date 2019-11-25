@@ -545,7 +545,6 @@ static void PutDataStageTD(XHCI::Controller::CtrlEPTRing& tring,
   tring.Push();
 }
 
-
 void Controller::RequestDeviceDescriptor(int slot,
                                          SlotInfo::SlotState next_state) {
   auto& slot_info = slot_info_[slot];

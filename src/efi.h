@@ -223,7 +223,7 @@ class EFI {
     Status (*CheckEvent)();
     // Protocol Handler Services
     uint64_t _buf5[3];
-    Status (*HandleProtocol)(Handle, const GUID*, void **);
+    Status (*HandleProtocol)(Handle, const GUID*, void**);
     uint64_t _buf5_1[2];
     Status (*LocateHandle)();
     uint64_t _buf5_2[2];
@@ -362,7 +362,7 @@ class EFI {
     struct _DEVICE_PATH_PROTOCOL* file_path;
     void* reserved;
     uint32_t load_options_size;
-    void *load_options;
+    void* load_options;
     void* image_base;
     uint64_t image_size;
     MemoryType image_code_type;
