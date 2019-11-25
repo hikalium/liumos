@@ -2,85 +2,80 @@
 
 #include <math.h>
 
-class PolygonBox {
+class PolygonCube {
  public:
-  static void Update(void) {
+  void Draw(void) {
     // http://k.osask.jp/wiki/?p20191125a
-    int thx = 0, thy = 0, thz = 0, i, l;
     constexpr double kToRad = 3.14159265358979323 / 0x8000;
-    for (;;) {
-      thx = (thx + 182) & 0xffff;
-      thy = (thy + 273) & 0xffff;
-      thz = (thz + 364) & 0xffff;
-      double xp = cos(thx * kToRad), xa = sin(thx * kToRad);
-      double yp = cos(thy * kToRad), ya = sin(thy * kToRad);
-      double zp = cos(thz * kToRad), za = sin(thz * kToRad);
-      for (i = 0; i < 8; i++) {
-        double xt, yt, zt;
-        zt = vertz[i] * xp + verty[i] * xa;
-        yt = verty[i] * xp - vertz[i] * xa;
-        xt = vertx[i] * yp + zt * ya;
-        vz[i] = zt * yp - vertx[i] * ya;
-        vx[i] = xt * zp - yt * za;
-        vy[i] = yt * zp + xt * za;
-      }
-      l = 0;
-      for (i = 0; i < 6; i++) {
-        centerz4[i] = vz[squar[l + 0]] + vz[squar[l + 1]] + vz[squar[l + 2]] +
-                      vz[squar[l + 3]] + 1024.0;
-        l += 4;
-      }
-      FillRect(40, 0, 160, 160, 0x000000);
-      DrawObj();
-      liumos->screen_sheet->Flush(liumos->screen_sheet->GetXSize() - width, 0,
-                                  width, height);
-      liumos->hpet->BusyWait(50);
+    thx_ = (thx_ + 182) & 0xffff;
+    thy_ = (thy_ + 273) & 0xffff;
+    thz_ = (thz_ + 364) & 0xffff;
+    double xp = cos(thx_ * kToRad), xa = sin(thx_ * kToRad);
+    double yp = cos(thy_ * kToRad), ya = sin(thy_ * kToRad);
+    double zp = cos(thz_ * kToRad), za = sin(thz_ * kToRad);
+    for (int i = 0; i < 8; i++) {
+      double xt, yt, zt;
+      zt = vertz[i] * xp + verty[i] * xa;
+      yt = verty[i] * xp - vertz[i] * xa;
+      xt = vertx[i] * yp + zt * ya;
+      vz_[i] = zt * yp - vertx[i] * ya;
+      vx_[i] = xt * zp - yt * za;
+      vy_[i] = yt * zp + xt * za;
     }
+    for (int i = 0; i < 6; i++) {
+      const int l = i * 4;
+      centerz4_[i] = vz_[squar[l + 0]] + vz_[squar[l + 1]] + vz_[squar[l + 2]] +
+                     vz_[squar[l + 3]] + 1024.0;
+    }
+    FillRect(40, 0, 160, 160, 0x000000);
+    DrawObj();
+    liumos->screen_sheet->Flush(liumos->screen_sheet->GetXSize() - width, 0,
+                                width, height);
   }
 
  private:
-  static void FillRect(int x, int y, int w, int h, uint32_t c) {
+  void FillRect(int x, int y, int w, int h, uint32_t c) {
     liumos->screen_sheet->DrawRectWithoutFlush(
         liumos->screen_sheet->GetXSize() - width + x, y, w, h, c);
   }
 
-  static void DrawObj() {
+  void DrawObj() {
     for (int i = 0; i < 8; i++) {
-      double t = 300.0 / (vz[i] + 400.0);
-      scx[i] = (vx[i] * t) + 128;
-      scy[i] = (vy[i] * t) + 80;
+      double t = 300.0 / (vz_[i] + 400.0);
+      scx_[i] = (vx_[i] * t) + 128;
+      scy_[i] = (vy_[i] * t) + 80;
     }
     for (;;) {
       double max = 0.0;
       int j = -1, k;
       for (k = 0; k < 6; k++) {
-        if (max < centerz4[k]) {
-          max = centerz4[k];
+        if (max < centerz4_[k]) {
+          max = centerz4_[k];
           j = k;
         }
       }
       if (j < 0)
         break;
       int i = j * 4;
-      centerz4[j] = 0.0;
-      double e0x = vx[squar[i + 1]] - vx[squar[i + 0]];
-      double e0y = vy[squar[i + 1]] - vy[squar[i + 0]];
-      double e1x = vx[squar[i + 2]] - vx[squar[i + 1]];
-      double e1y = vy[squar[i + 2]] - vy[squar[i + 1]];
+      centerz4_[j] = 0.0;
+      double e0x = vx_[squar[i + 1]] - vx_[squar[i + 0]];
+      double e0y = vy_[squar[i + 1]] - vy_[squar[i + 0]];
+      double e1x = vx_[squar[i + 2]] - vx_[squar[i + 1]];
+      double e1y = vy_[squar[i + 2]] - vy_[squar[i + 1]];
       if (e0x * e1y <= e0y * e1x)
         DrawPoly(j);
     }
   }
 
-  static void DrawPoly(int j) {
+  void DrawPoly(int j) {
     int i = j * 4, i1 = i + 3;
-    int p0x = scx[squar[i1]], p0y = scy[squar[i1]], p1x, p1y;
+    int p0x = scx_[squar[i1]], p0y = scy_[squar[i1]], p1x, p1y;
     int y, ymin = 0x7fffffff, ymax = 0, x, dx, y0, y1;
     int *buf, buf0[160], buf1[160];
     int c = col[j];
     for (; i <= i1; i++) {
-      p1x = scx[squar[i]];
-      p1y = scy[squar[i]];
+      p1x = scx_[squar[i]];
+      p1y = scy_[squar[i]];
       if (ymin > p1y)
         ymin = p1y;
       if (ymax < p1y)
@@ -122,8 +117,10 @@ class PolygonBox {
         FillRect(p1x, y, p0x - p1x + 1, 1, c);
     }
   }
-  static double vx[8], vy[8], vz[8], centerz4[6];
-  static int scx[8], scy[8];
+  double vx_[8], vy_[8], vz_[8];
+  double centerz4_[6];
+  int scx_[8], scy_[8];
+  int thx_, thy_, thz_;
   static constexpr int squar[24] = {0, 4, 6, 2, 1, 3, 7, 5, 0, 2, 3, 1,
                                     0, 1, 5, 4, 4, 5, 7, 6, 6, 7, 3, 2};
   static constexpr uint32_t col[6] = {0xff0000, 0x00ff00, 0x0000ff,
@@ -138,9 +135,6 @@ class PolygonBox {
   static constexpr double vertz[8] = {50.0, -50.0, 50.0, -50.0,
                                       50.0, -50.0, 50.0, -50.0};
 };
-double PolygonBox::vx[8], PolygonBox::vy[8], PolygonBox::vz[8],
-    PolygonBox::centerz4[6];
-int PolygonBox::scx[8], PolygonBox::scy[8];
 
 void CellularAutomaton() {
   constexpr int map_ysize_shift = 4;
@@ -200,5 +194,9 @@ void CellularAutomaton() {
 }
 
 void SubTask() {
-  PolygonBox::Update();
+  PolygonCube pcube;
+  for (;;) {
+    pcube.Draw();
+    liumos->hpet->BusyWait(10);
+  }
 }
