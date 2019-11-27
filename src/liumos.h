@@ -21,6 +21,7 @@
 #include "process.h"
 #include "serial.h"
 #include "sheet.h"
+#include "sheet_painter.h"
 #include "sys_constant.h"
 #include "text_box.h"
 
@@ -45,9 +46,6 @@ void Version();
 void Run(TextBox& tbox);
 void WaitAndProcess(TextBox& tbox);
 }  // namespace ConsoleCommand
-
-// @font.gen.c
-extern uint8_t font[0x100][16];
 
 // @graphics.cc
 void InitGraphics(void);

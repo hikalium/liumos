@@ -26,7 +26,7 @@ void Console::PutChar(char c) {
   } else if (c == '\b') {
     cursor_x_ -= 8;
   } else {
-    sheet_->DrawCharacter(c, cursor_x_, cursor_y_);
+    SheetPainter::DrawCharacter(*sheet_, c, cursor_x_, cursor_y_, true);
     cursor_x_ += 8;
   }
   if (cursor_x_ >= sheet_->GetXSize()) {
@@ -37,12 +37,14 @@ void Console::PutChar(char c) {
     cursor_x_ = (sheet_->GetXSize() - 8) & ~7;
   }
   if (c == '\b') {
-    sheet_->DrawRect(cursor_x_, cursor_y_, 8, 16, 0x000000);
+    SheetPainter::DrawRect(*sheet_, cursor_x_, cursor_y_, 8, 16, 0x000000,
+                           true);
   }
   if (cursor_y_ + 16 > sheet_->GetYSize()) {
     sheet_->BlockTransfer(0, 0, 0, 16, sheet_->GetXSize(),
                           sheet_->GetYSize() - 16);
-    sheet_->DrawRect(0, cursor_y_ - 16, sheet_->GetXSize(), 16, 0x000000);
+    SheetPainter::DrawRect(*sheet_, 0, cursor_y_ - 16, sheet_->GetXSize(), 16,
+                           0x000000, true);
     cursor_y_ -= 16;
   }
 }

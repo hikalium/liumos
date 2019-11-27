@@ -35,8 +35,9 @@ class PolygonCube {
 
  private:
   void FillRect(int x, int y, int w, int h, uint32_t c) {
-    liumos->screen_sheet->DrawRectWithoutFlush(
-        liumos->screen_sheet->GetXSize() - width + x, y, w, h, c);
+    SheetPainter::DrawRect(*liumos->screen_sheet,
+                           liumos->screen_sheet->GetXSize() - width + x, y, w,
+                           h, c);
   }
 
   void DrawObj() {
@@ -182,7 +183,8 @@ void CellularAutomaton() {
         if (p & 1)
           col = 0xff0088 * (p & 2) + 0x00cc00 * (p & 1);
         map[y * xsize + x] >>= 1;
-        liumos->screen_sheet->DrawRectWithoutFlush(
+        SheetPainter::DrawRect(
+            *liumos->screen_sheet,
             liumos->screen_sheet->GetXSize() - canvas_xsize + x * pixel_size,
             y * pixel_size, pixel_size, pixel_size, col);
       }

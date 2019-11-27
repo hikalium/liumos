@@ -64,7 +64,7 @@ void InitializeVRAMForKernel() {
       *liumos->dram_allocator, GetKernelPML4(), kernel_virtual_vram_base,
       reinterpret_cast<uint64_t>(liumos->vram_sheet->GetBuf()),
       liumos->vram_sheet->GetBufSize(), kPageAttrPresent | kPageAttrWritable);
-  virtual_vram_.Init(reinterpret_cast<uint8_t*>(kernel_virtual_vram_base),
+  virtual_vram_.Init(reinterpret_cast<uint32_t*>(kernel_virtual_vram_base),
                      xsize, ysize, ppsl);
 
   constexpr uint64_t kernel_virtual_screen_base = 0xFFFF'FFFF'8800'0000ULL;
@@ -72,12 +72,12 @@ void InitializeVRAMForKernel() {
       *liumos->dram_allocator, GetKernelPML4(), kernel_virtual_screen_base,
       reinterpret_cast<uint64_t>(liumos->screen_sheet->GetBuf()),
       liumos->screen_sheet->GetBufSize(), kPageAttrPresent | kPageAttrWritable);
-  virtual_screen_.Init(reinterpret_cast<uint8_t*>(kernel_virtual_screen_base),
+  virtual_screen_.Init(reinterpret_cast<uint32_t*>(kernel_virtual_screen_base),
                        xsize, ysize, ppsl);
   virtual_screen_.SetParent(&virtual_vram_);
 
   liumos->screen_sheet = &virtual_screen_;
-  liumos->screen_sheet->DrawRect(0, 0, xsize, ysize, 0xc6c6c6);
+  SheetPainter::DrawRect(*liumos->screen_sheet, 0, 0, xsize, ysize, 0xc6c6c6);
 }
 
 void SubTask();  // @subtask.cc

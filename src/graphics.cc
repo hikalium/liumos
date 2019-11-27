@@ -9,7 +9,7 @@ Sheet screen_sheet_;
 void InitGraphics() {
   const EFI::GraphicsOutputProtocol::ModeInfo& mode =
       CoreFunc::GetEFI().GetGraphicsModeInfo();
-  vram_sheet_.Init(static_cast<uint8_t*>(
+  vram_sheet_.Init(static_cast<uint32_t*>(
 
                        mode.frame_buffer_base),
                    mode.info->horizontal_resolution,
@@ -22,16 +22,14 @@ void InitGraphics() {
 
 void InitDoubleBuffer() {
   screen_sheet_.Init(
-      liumos->dram_allocator->AllocPages<uint8_t*>(
+      liumos->dram_allocator->AllocPages<uint32_t*>(
           (vram_sheet_.GetBufSize() + kPageSize - 1) >> kPageSizeExponent),
       vram_sheet_.GetXSize(), vram_sheet_.GetYSize(),
       vram_sheet_.GetPixelsPerScanLine());
   screen_sheet_.SetParent(&vram_sheet_);
-  memcpy(screen_sheet_.GetBuf(), vram_sheet_.GetBuf(),
-         screen_sheet_.GetBufSize());
+  screen_sheet->Flush(0, 0, screen_sheet->GetXSize(), screen_sheet->GetYSize());
   screen_sheet = &screen_sheet_;
   liumos->screen_sheet = screen_sheet;
-  screen_sheet->Flush(0, 0, screen_sheet->GetXSize(), screen_sheet->GetYSize());
 }
 
 void DrawPPMFile(EFIFile& file, int px, int py) {
@@ -84,7 +82,7 @@ void DrawPPMFile(EFIFile& file, int px, int py) {
       channel_count++;
       if (channel_count == 3) {
         channel_count = 0;
-        liumos->screen_sheet->DrawRect(px + x++, py + y, 1, 1, rgb);
+        SheetPainter::DrawPoint(*liumos->screen_sheet, px + x++, py + y, rgb);
         if (x >= width) {
           x = 0;
           y++;
@@ -93,4 +91,5 @@ void DrawPPMFile(EFIFile& file, int px, int py) {
     }
     tmp = 0;
   }
+  liumos->screen_sheet->Flush(px, py, width, height);
 }
