@@ -67,7 +67,7 @@ CXXFLAGS_LOADER= \
 CFLAGS_KERNEL= \
 			   -target x86_64-unknown-none-elf \
 			   -fno-stack-protector -fno-exceptions -fshort-wchar \
-			   -mno-red-zone -mstack-alignment=8 \
+			   -mno-red-zone \
 			   -nostdlib -nostdinc\
 			   $(CLANG_WARNINGS) $(C_STD)
 
@@ -75,7 +75,7 @@ CFLAGS_KERNEL= \
 CXXFLAGS_KERNEL= \
 				 -target x86_64-unknown-none-elf \
 				 -fno-stack-protector -fno-exceptions -fshort-wchar -fno-rtti \
-				 -mno-red-zone -mstack-alignment=8 -mcmodel=large \
+				 -mno-red-zone -mcmodel=large \
 				 -nostdlibinc \
 				 -D__ELF__ -D_LDBL_EQ_DBL \
 				 -I$(LIBCXX_FOR_KERNEL_INC_PATH) \
