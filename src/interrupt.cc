@@ -6,15 +6,22 @@ __attribute__((ms_abi)) extern "C" void IntHandler(uint64_t intcode,
   liumos->idt->IntHandler(intcode, info);
 }
 
+static void PrintInterruptInfo(uint64_t intcode, const InterruptInfo* info) {
+  PutStringAndHex("Int#  ", intcode);
+  PutStringAndHex("CS    ", info->int_ctx.cs);
+  PutStringAndHex("at CPL", info->int_ctx.cs & 3);
+  PutStringAndHex("SS    ", info->int_ctx.ss);
+  PutStringAndHex("RFLAGS", info->int_ctx.rflags);
+  PutStringAndHex("RIP   ", info->int_ctx.rip);
+  PutStringAndHex("RSP   ", info->int_ctx.rsp);
+  PutStringAndHex("RBP   ", info->greg.rbp);
+  PutStringAndHex("Error Code", info->error_code);
+  PutChar('\n');
+}
+
 void IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
   if (liumos->is_multi_task_enabled && ReadRSP() < kKernelBaseAddr) {
-    PutStringAndHex("Int#", intcode);
-    PutStringAndHex("at CPL", info->int_ctx.cs & 3);
-    PutStringAndHex("RIP", info->int_ctx.rip);
-    PutStringAndHex("CS      ", info->int_ctx.cs);
-    PutStringAndHex("SS      ", info->int_ctx.ss);
-    PutStringAndHex("RSP", info->int_ctx.rsp);
-    PutStringAndHex("Error Code", info->error_code);
+    PrintInterruptInfo(intcode, info);
     Process& proc = liumos->scheduler->GetCurrentProcess();
     PutStringAndHex("Context#", proc.GetID());
     Panic("Handling exception in user mode stack");
@@ -23,13 +30,7 @@ void IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
     handler_list_[intcode](intcode, info);
     return;
   }
-  PutStringAndHex("Int#", intcode);
-  PutStringAndHex("at CPL", info->int_ctx.cs & 3);
-  PutStringAndHex("RIP", info->int_ctx.rip);
-  PutStringAndHex("CS      ", info->int_ctx.cs);
-  PutStringAndHex("SS      ", info->int_ctx.ss);
-  PutStringAndHex("RSP", info->int_ctx.rsp);
-  PutStringAndHex("Error Code", info->error_code);
+  PrintInterruptInfo(intcode, info);
   if (liumos->is_multi_task_enabled) {
     Process& proc = liumos->scheduler->GetCurrentProcess();
     PutStringAndHex("Context#", proc.GetID());
@@ -64,7 +65,6 @@ void IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
   if (intcode == 0x03) {
     PutStringAndHex("Handler current RSP", ReadRSP());
     PutString("Int3\n");
-    PutStringAndHex("CS      ", info->int_ctx.cs);
     return;
   }
   if (intcode == 0x06) {
