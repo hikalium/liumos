@@ -831,6 +831,8 @@ void Run(TextBox& tbox) {
     PutChar('\n');
   } else if (IsEqualString(line, "logo")) {
     DrawPPMFile(*liumos->loader_info.files.liumos_ppm, 0, 0);
+  } else if (IsEqualString(line, "ud2")) {
+    __asm__ volatile("ud2;");
   } else {
     PutString("Command not found: ");
     PutString(tbox.GetRecordedString());
