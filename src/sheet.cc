@@ -24,25 +24,39 @@ void Sheet::BlockTransfer(int to_x,
   Flush(to_x, to_y, w, h);
 }
 
-void Sheet::Flush(int px, int py, int w, int h) {
-  // Assume parent has the same resolution with this sheet
+void Sheet::Flush(int fx, int fy, int w, int h) {
+  // Transfer (px, py)(w * h) area to parent
   if (!parent_)
     return;
-  if (w & 1) {
-    for (int y = py; y < py + h; y++) {
+  assert(0 <= fx && 0 <= fy && (fx + w) <= xsize_ && (fy + h) <= ysize_);
+  const int px = fx + x_;
+  const int py = fy + y_;
+  if (px >= parent_->xsize_ || py >= parent_->ysize_ || (px + w) < 0 ||
+      (py + h) < 0) {
+    // This sheet has no intersections with its parent.
+    return;
+  }
+  for (int y = py; y < py + h; y++) {
+    if (!parent_->IsInRectY(y))
+      continue;
+    const int begin = (0 < px) ? px : 0;
+    const int end = (px + w < parent_->xsize_) ? (px + w) : parent_->xsize_;
+    const int tw = end - begin;
+    assert(tw > 0);
+    if (tw & 1) {
       RepeatMove4Bytes(
-          w,
+          tw,
           &reinterpret_cast<uint32_t*>(
-              parent_->buf_)[y * pixels_per_scan_line_ + px],
-          &reinterpret_cast<uint32_t*>(buf_)[y * pixels_per_scan_line_ + px]);
-    }
-  } else {
-    for (int y = py; y < py + h; y++) {
+              parent_->buf_)[y * parent_->pixels_per_scan_line_ + begin],
+          &reinterpret_cast<uint32_t*>(
+              buf_)[(y - y_) * pixels_per_scan_line_ + (begin - x_)]);
+    } else {
       RepeatMove8Bytes(
-          w / 2,
+          tw >> 1,
           &reinterpret_cast<uint32_t*>(
-              parent_->buf_)[y * pixels_per_scan_line_ + px],
-          &reinterpret_cast<uint32_t*>(buf_)[y * pixels_per_scan_line_ + px]);
+              parent_->buf_)[y * parent_->pixels_per_scan_line_ + begin],
+          &reinterpret_cast<uint32_t*>(
+              buf_)[(y - y_) * pixels_per_scan_line_ + (begin - x_)]);
     }
   }
 }
