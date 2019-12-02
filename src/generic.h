@@ -10,7 +10,9 @@
 
 [[noreturn]] void Panic(const char* s);
 
-#ifndef LIUMOS_TEST
+#ifdef LIUMOS_TEST
+#include <cassert>
+#else
 void __assert(const char* expr_str, const char* file, int line);
 #undef assert
 #define assert(expr) \

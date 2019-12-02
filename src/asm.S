@@ -15,6 +15,13 @@
 // Following functions are written with ms_abi calling convention.
 // __attribute__((ms_abi)) will be required when used from C code.
 
+/* This macro avoids symbol mismatching in test binary on macOS */
+#if defined(__APPLE__)
+# define cdecl(s) _##s
+#else
+# define cdecl(s) s
+#endif
+
 .global Die
 Die:
 	cli
@@ -58,132 +65,6 @@ ReadSSSelector:
 	mov rax, 0
 	mov ax, ss
 	ret
-
-.global AsmIntHandler00_DivideError
-AsmIntHandler00_DivideError:
-	push 0
-	push rcx
-	mov rcx, 0x00
-	jmp IntHandlerWrapper
-
-.global AsmIntHandler03
-AsmIntHandler03:
-	push 0
-	push rcx
-	mov rcx, 0x03
-	jmp IntHandlerWrapper
-
-.global AsmIntHandler06
-AsmIntHandler06:
-	push 0
-	push rcx
-	mov rcx, 0x06
-	jmp IntHandlerWrapper
-
-.global AsmIntHandler07_DeviceNotAvailable
-AsmIntHandler07_DeviceNotAvailable:
-	push 0
-	push rcx
-	mov rcx, 0x07
-	jmp IntHandlerWrapper
-
-.global AsmIntHandler08
-AsmIntHandler08:
-	push rcx
-	mov rcx, 0x08
-	jmp IntHandlerWrapper
-
-.global AsmIntHandler0D
-AsmIntHandler0D:
-	push rcx
-	mov rcx, 0x0D
-	jmp IntHandlerWrapper
-
-.global AsmIntHandler0E
-AsmIntHandler0E:
-	push rcx
-	mov rcx, 0x0E
-	jmp IntHandlerWrapper
-
-.global AsmIntHandler10_x87FPUError
-AsmIntHandler10_x87FPUError:
-	push 0
-	push rcx
-	mov rcx, 0x10
-	jmp IntHandlerWrapper
-
-.global AsmIntHandler13_SIMDFPException
-AsmIntHandler13_SIMDFPException:
-	push 0
-	push rcx
-	mov rcx, 0x13
-	jmp IntHandlerWrapper
-
-.global AsmIntHandler20
-AsmIntHandler20:
-	push 0
-	push rcx
-	mov rcx, 0x20
-	jmp IntHandlerWrapper
-
-.global AsmIntHandler21
-AsmIntHandler21:
-	push 0
-	push rcx
-	mov rcx, 0x21
-	jmp IntHandlerWrapper
-
-.global AsmIntHandlerNotImplemented
-AsmIntHandlerNotImplemented:
-	push 0
-	push rcx
-	mov rcx, 0x100
-	jmp IntHandlerWrapper
-
-.global IntHandler
-// TODO: Save xmm registers
-IntHandlerWrapper:
-  push r15
-  push r14
-  push r13
-  push r12
-  push r11
-  push r10
-  push r9
-  push r8
-  push rdi
-  push rsi
-  push rbp
-  push rbx
-  push rdx
-  push rax
-
-	mov rdx, rsp 
-	mov rbp, rsp
-	and rsp, -16
-	call IntHandler
-	mov rsp, rbp
-
-.global RestoreRegistersAndIRETQ
-RestoreRegistersAndIRETQ:
-  pop rax
-  pop rdx
-  pop rbx
-  pop rbp
-  pop rsi
-  pop rdi
-  pop r8
-  pop r9
-  pop r10
-  pop r11
-  pop r12
-  pop r13
-  pop r14
-  pop r15
-
-	pop rcx
-	add rsp, 8
-	iretq
 
 .global ReadCPUID
 ReadCPUID:
@@ -326,8 +207,8 @@ ChangeRSP:
 	push rax
 	ret
 
-.global RepeatMoveBytes
-RepeatMoveBytes:
+.global cdecl(RepeatMoveBytes)
+cdecl(RepeatMoveBytes):
 	// rcx: count
 	// rdx: dst
 	// r8: src
@@ -339,8 +220,8 @@ RepeatMoveBytes:
 	xchg rsi, r8
 	ret
 
-.global RepeatMove4Bytes
-RepeatMove4Bytes:
+.global cdecl(RepeatMove4Bytes)
+cdecl(RepeatMove4Bytes):
 	// rcx: count
 	// rdx: dst
 	// r8: src
@@ -352,8 +233,8 @@ RepeatMove4Bytes:
 	xchg rsi, r8
 	ret
 
-.global RepeatStore4Bytes
-RepeatStore4Bytes:
+.global cdecl(RepeatStore4Bytes)
+cdecl(RepeatStore4Bytes):
 	// rcx: count
 	// rdx: dst
 	// r8: value
@@ -364,8 +245,8 @@ RepeatStore4Bytes:
 	xchg rdi, rdx
 	ret
 
-.global RepeatMove8Bytes
-RepeatMove8Bytes:
+.global cdecl(RepeatMove8Bytes)
+cdecl(RepeatMove8Bytes):
 	// rcx: count
 	// rdx: dst
 	// r8: src
@@ -377,8 +258,8 @@ RepeatMove8Bytes:
 	xchg rsi, r8
 	ret
 
-.global RepeatStore8Bytes
-RepeatStore8Bytes:
+.global cdecl(RepeatStore8Bytes)
+cdecl(RepeatStore8Bytes):
 	// rcx: count
 	// rdx: dst
 	// r8: value

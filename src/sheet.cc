@@ -1,5 +1,6 @@
 #include "sheet.h"
 #include "asm.h"
+#include "generic.h"
 
 void Sheet::BlockTransfer(int to_x,
                           int to_y,

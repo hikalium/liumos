@@ -3,7 +3,7 @@ default: BOOTX64.EFI LIUMOS.ELF
 include ../common.mk
 
 COMMON_SRCS= \
-			 acpi.cc apic.cc asm.S \
+			 acpi.cc apic.cc asm.S inthandler.S \
 			 console.cc \
 			 efi.cc elf.cc execution_context.cc \
 			 gdt.cc generic.cc githash.cc graphics.cc guid.cc \
@@ -112,6 +112,10 @@ test_% : %_test.cc Makefile
 	$(CXX) $(CXXFLAGS_FOR_TEST) -o $*_test.bin $*_test.cc
 	@./$*_test.bin
 
+test_sheet : sheet_test.cc sheet.cc Makefile
+	$(CXX) $(CXXFLAGS_FOR_TEST) -o sheet_test.bin sheet_test.cc sheet.cc asm.S
+	@./sheet_test.bin
+
 # Loader rules
 
 %.o : %.c Makefile
@@ -196,6 +200,7 @@ unittest:
 	make test_ring_buffer
 	make test_paging
 	make test_xhci_trbring
+	make test_sheet
 
 clean :
 	-rm *.EFI
