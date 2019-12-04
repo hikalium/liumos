@@ -1,9 +1,16 @@
 #include "liumos.h"
+#include "sheet.h"
 
 #include <math.h>
 
 class PolygonCube {
  public:
+  PolygonCube() {
+    sheet_ = new Sheet();
+    sheet_->Init(buf_, width, height, width,
+                 liumos->screen_sheet->GetXSize() - width - 16);
+    sheet_->SetParent(liumos->vram_sheet);
+  }
   void Draw(void) {
     // http://k.osask.jp/wiki/?p20191125a
     constexpr double kToRad = 3.14159265358979323 / 0x8000;
@@ -29,15 +36,12 @@ class PolygonCube {
     }
     FillRect(40, 0, 160, 160, 0x000000);
     DrawObj();
-    liumos->screen_sheet->Flush(liumos->screen_sheet->GetXSize() - width, 0,
-                                width, height);
+    sheet_->Flush(0, 0, width, height);
   }
 
  private:
   void FillRect(int x, int y, int w, int h, uint32_t c) {
-    SheetPainter::DrawRect(*liumos->screen_sheet,
-                           liumos->screen_sheet->GetXSize() - width + x, y, w,
-                           h, c);
+    SheetPainter::DrawRect(*sheet_, x, y, w, h, c);
   }
 
   void DrawObj() {
@@ -118,23 +122,25 @@ class PolygonCube {
         FillRect(p1x, y, p0x - p1x + 1, 1, c);
     }
   }
-  double vx_[8], vy_[8], vz_[8];
-  double centerz4_[6];
-  int scx_[8], scy_[8];
-  int thx_, thy_, thz_;
+  Sheet* sheet_;
+  static constexpr int width = 256;
+  static constexpr int height = 160;
   static constexpr int squar[24] = {0, 4, 6, 2, 1, 3, 7, 5, 0, 2, 3, 1,
                                     0, 1, 5, 4, 4, 5, 7, 6, 6, 7, 3, 2};
   static constexpr uint32_t col[6] = {0xff0000, 0x00ff00, 0x0000ff,
                                       0xffff00, 0xff00ff, 0x00ffff};
 
-  static constexpr int width = 256;
-  static constexpr int height = 160;
   static constexpr double vertx[8] = {50.0,  50.0,  50.0,  50.0,
                                       -50.0, -50.0, -50.0, -50.0};
   static constexpr double verty[8] = {50.0, 50.0, -50.0, -50.0,
                                       50.0, 50.0, -50.0, -50.0};
   static constexpr double vertz[8] = {50.0, -50.0, 50.0, -50.0,
                                       50.0, -50.0, 50.0, -50.0};
+  uint32_t buf_[width * width];
+  double vx_[8], vy_[8], vz_[8];
+  double centerz4_[6];
+  int scx_[8], scy_[8];
+  int thx_, thy_, thz_;
 };
 
 void CellularAutomaton() {
