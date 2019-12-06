@@ -44,15 +44,37 @@ void Sheet::Flush(int fx, int fy, int w, int h) {
     const int end = (px + w < parent_->xsize_) ? (px + w) : parent_->xsize_;
     const int tw = end - begin;
     assert(tw > 0);
+    int tbegin = begin;
     for (int x = begin; x < end; x++) {
       bool is_overlapped = false;
       for (Sheet* s = front_; s && !is_overlapped; s = s->front_) {
         is_overlapped = s->IsInRectOnParent(x, y);
       }
-      if (is_overlapped)
+      if (is_overlapped) {
+        int tend = x;
+        if (tend - tbegin) {
+          RepeatMove4Bytes(
+              tend - tbegin,
+              &parent_->buf_[y * parent_->pixels_per_scan_line_ + tbegin],
+              &buf_[(y - y_) * pixels_per_scan_line_ + (tbegin - x_)]);
+        }
+        tbegin = x + 1;
         continue;
-      parent_->buf_[y * parent_->pixels_per_scan_line_ + x] =
-          buf_[(y - y_) * pixels_per_scan_line_ + (x - x_)];
+      }
+    }
+    int tend = end;
+    if (tend - tbegin) {
+      if ((tend - tbegin) & 1) {
+        RepeatMove4Bytes(
+            tend - tbegin,
+            &parent_->buf_[y * parent_->pixels_per_scan_line_ + tbegin],
+            &buf_[(y - y_) * pixels_per_scan_line_ + (tbegin - x_)]);
+      } else {
+        RepeatMove8Bytes(
+            (tend - tbegin) >> 1,
+            &parent_->buf_[y * parent_->pixels_per_scan_line_ + tbegin],
+            &buf_[(y - y_) * pixels_per_scan_line_ + (tbegin - x_)]);
+      }
     }
   }
 }
