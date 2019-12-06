@@ -12,6 +12,7 @@ class Sheet {
             int x = 0,
             int y = 0) {
     parent_ = nullptr;
+    front_ = nullptr;
     buf_ = buf;
     xsize_ = xsize;
     ysize_ = ysize;
@@ -20,6 +21,7 @@ class Sheet {
     y_ = y;
   }
   void SetParent(Sheet* parent) { parent_ = parent; }
+  void SetFront(Sheet* front) { front_ = front; }
   int GetXSize() { return xsize_; }
   int GetYSize() { return ysize_; }
   int GetPixelsPerScanLine() { return pixels_per_scan_line_; }
@@ -33,7 +35,10 @@ class Sheet {
 
  private:
   bool IsInRectY(int y) { return 0 <= y && y < ysize_; }
-  Sheet* parent_;
+  bool IsInRectOnParent(int x, int y) {
+    return y_ <= y && y < y_ + ysize_ && x_ <= x && x < x_ + xsize_;
+  }
+  Sheet *parent_, *front_;
   uint32_t* buf_;
   int xsize_, ysize_;
   int x_, y_;

@@ -44,20 +44,15 @@ void Sheet::Flush(int fx, int fy, int w, int h) {
     const int end = (px + w < parent_->xsize_) ? (px + w) : parent_->xsize_;
     const int tw = end - begin;
     assert(tw > 0);
-    if (tw & 1) {
-      RepeatMove4Bytes(
-          tw,
-          &reinterpret_cast<uint32_t*>(
-              parent_->buf_)[y * parent_->pixels_per_scan_line_ + begin],
-          &reinterpret_cast<uint32_t*>(
-              buf_)[(y - y_) * pixels_per_scan_line_ + (begin - x_)]);
-    } else {
-      RepeatMove8Bytes(
-          tw >> 1,
-          &reinterpret_cast<uint32_t*>(
-              parent_->buf_)[y * parent_->pixels_per_scan_line_ + begin],
-          &reinterpret_cast<uint32_t*>(
-              buf_)[(y - y_) * pixels_per_scan_line_ + (begin - x_)]);
+    for (int x = begin; x < end; x++) {
+      bool is_overlapped = false;
+      for (Sheet* s = front_; s && !is_overlapped; s = s->front_) {
+        is_overlapped = s->IsInRectOnParent(x, y);
+      }
+      if (is_overlapped)
+        continue;
+      parent_->buf_[y * parent_->pixels_per_scan_line_ + x] =
+          buf_[(y - y_) * pixels_per_scan_line_ + (x - x_)];
     }
   }
 }

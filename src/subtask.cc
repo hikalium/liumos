@@ -10,6 +10,7 @@ class PolygonCube {
     sheet_->Init(buf_, width, height, width,
                  liumos->screen_sheet->GetXSize() - width - 16);
     sheet_->SetParent(liumos->vram_sheet);
+    liumos->screen_sheet->SetFront(sheet_);
   }
   void Draw(void) {
     // http://k.osask.jp/wiki/?p20191125a
