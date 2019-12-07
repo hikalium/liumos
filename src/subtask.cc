@@ -8,7 +8,7 @@ class PolygonCube {
   PolygonCube() {
     sheet_ = new Sheet();
     sheet_->Init(buf_, width, height, width,
-                 liumos->screen_sheet->GetXSize() - width - 16);
+                 liumos->screen_sheet->GetXSize() - width - 64, 64);
     sheet_->SetParent(liumos->vram_sheet);
     liumos->screen_sheet->SetFront(sheet_);
   }
