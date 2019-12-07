@@ -224,6 +224,9 @@ format :
 commit :
 	make -C .. commit
 
+install :
+	make -C .. install
+
 sym : LIUMOS.ELF
 	/usr/local/opt/binutils/bin/gobjdump -t LIUMOS.ELF | more
 
