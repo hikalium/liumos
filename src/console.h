@@ -6,11 +6,18 @@ class SerialPort;
 
 class Console {
  public:
+  struct CursorPosition {
+    int x, y;
+  };
   Console()
       : cursor_x_(0), cursor_y_(0), sheet_(nullptr), serial_port_(nullptr) {}
-  void ResetCursorPosition() {
-    cursor_x_ = 0;
-    cursor_y_ = 0;
+  void SetCursorPosition(int x, int y) {
+    cursor_x_ = x;
+    cursor_y_ = y;
+  }
+  void ResetCursorPosition() { SetCursorPosition(0, 0); }
+  struct CursorPosition GetCursorPosition() {
+    return {cursor_x_, cursor_y_};
   }
   void SetSheet(Sheet* sheet) { sheet_ = sheet; }
   void SetSerial(SerialPort* serial_port) { serial_port_ = serial_port; }

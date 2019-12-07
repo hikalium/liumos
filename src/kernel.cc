@@ -76,8 +76,10 @@ void InitializeVRAMForKernel() {
                        xsize, ysize, ppsl);
   virtual_screen_.SetParent(&virtual_vram_);
 
+  assert(liumos->screen_sheet->GetBufSize() == virtual_screen_.GetBufSize());
+  memcpy(virtual_screen_.GetBuf(), liumos->screen_sheet->GetBuf(),
+         virtual_screen_.GetBufSize());
   liumos->screen_sheet = &virtual_screen_;
-  SheetPainter::DrawRect(*liumos->screen_sheet, 0, 0, xsize, ysize, 0xc6c6c6);
 }
 
 void SubTask();  // @subtask.cc
@@ -187,6 +189,8 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
 
   new (&virtual_console_) Console();
   virtual_console_.SetSheet(liumos->screen_sheet);
+  auto [cursor_x, cursor_y] = liumos->main_console->GetCursorPosition();
+  virtual_console_.SetCursorPosition(cursor_x, cursor_y);
   liumos->main_console = &virtual_console_;
 
   com1_.Init(kPortCOM1);
