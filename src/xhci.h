@@ -114,12 +114,16 @@ class Controller {
   static constexpr uint32_t kTRBTypeCommandCompletionEvent = 33;
   static constexpr uint32_t kTRBTypePortStatusChangeEvent = 34;
 
+  static constexpr uint32_t kPortSCBitCurrentConnectStatus = 1 << 0;
+  static constexpr uint32_t kPortSCBitPortEnableDisable = 1 << 1;
+  static constexpr uint32_t kPortSCBitPortReset = 1 << 4;
+  static constexpr uint32_t kPortSCBitPortLinkState = 0b111100000;
+  static constexpr uint32_t kPortSCPortLinkStateShift = 5;
+  static constexpr uint32_t kPortSCBitPortPower = 1 << 9;
   static constexpr uint32_t kPortSCBitConnectStatusChange = 1 << 17;
   static constexpr uint32_t kPortSCBitEnableStatusChange = 1 << 18;
   static constexpr uint32_t kPortSCBitPortResetChange = 1 << 21;
   static constexpr uint32_t kPortSCBitPortLinkStateChange = 1 << 22;
-  static constexpr uint32_t kPortSCBitPortReset = 1 << 4;
-  static constexpr uint32_t kPortSCBitPortPower = 1 << 9;
   static constexpr uint32_t kPortSCPreserveMask =
       0b00001110000000011100001111100000;
 
@@ -199,6 +203,10 @@ class Controller {
   void NotifyHostControllerDoorbell();
   void NotifyDeviceContextDoorbell(int slot, int dci);
   uint32_t ReadPORTSC(int slot);
+  uint32_t ReadPORTSCLinkState(int slot) {
+    return (ReadPORTSC(slot) & kPortSCBitPortLinkState) >>
+           kPortSCPortLinkStateShift;
+  };
   void WritePORTSC(int slot, uint32_t data);
   void ResetPort(int port);
   void DisablePort(int port);
@@ -237,6 +245,9 @@ class Controller {
   RingBuffer<uint16_t, 16> keyid_buffer_;
   enum PortState {
     kDisconnected,
+    kAttached,
+    kAttachedUSB2,
+    //
     kNeedsPortReset,
     kNeedsSlotAssignment,
     kWaitingForSlotAssignment,

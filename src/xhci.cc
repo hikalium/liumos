@@ -198,19 +198,6 @@ void Controller::HandlePortStatusChange(int port) {
     PutHex64(GetBits<8, 5>(portsc));
     PutString("\n");
   }
-  /*
-    WritePORTSC(port, (portsc & kPortSCPreserveMask) | (0b1111111 << 17));
-    if ((portsc & 1) == 0) {
-      port_state_[port] = kDisconnected;
-      return;
-    }
-    if (port_state_[port] != kDisconnected) {
-      PutStringAndHex("  Status Changed but already gave up. port", port);
-      return;
-    }
-    PutStringAndHex("  Reset requested on port", port);
-    port_state_[port] = kNeedsPortReset;
-    */
 }
 
 class Controller::DeviceContext {
@@ -923,7 +910,7 @@ void Controller::CheckPortAndInitiateProcess() {
       return;
   }
   for (int i = 0; i < kMaxNumOfPorts; i++) {
-    if (port_state_[i] == kNeedsPortReset) {
+    if (port_state_[i] == kAttachedUSB2) {
       ResetPort(i);
       return;
     }
@@ -1003,6 +990,22 @@ void Controller::PollEvents() {
         break;
     }
     primary_event_ring_->PopEvent();
+  }
+  for (int port = 1; port <= max_ports_; port++) {
+    uint32_t portsc = ReadPORTSC(port);
+    if (port_state_[port] == kDisconnected &&
+        (portsc & kPortSCBitCurrentConnectStatus)) {
+      port_state_[port] = kAttached;
+      PutStringAndHex("Device attached. port", port);
+      PutStringAndHex("  PORTSC", portsc);
+    }
+    if (port_state_[port] == kAttached &&
+        !(portsc & kPortSCBitPortEnableDisable) &&
+        !(portsc & kPortSCBitPortReset) && ReadPORTSCLinkState(port) == 7) {
+      port_state_[port] = kAttachedUSB2;
+      PutStringAndHex("USB2 Device attached. port", port);
+      PutStringAndHex("  PORTSC", portsc);
+    }
   }
 }
 
@@ -1088,33 +1091,7 @@ void Controller::Init() {
     PutString("Waiting for HCHalt == 0...\n");
   }
 
-  {
-    volatile BasicTRB* no_op_trb = cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
-    no_op_trb[0].data = 0;
-    no_op_trb[0].option = 0;
-    no_op_trb[0].control = (kTRBTypeNoOpCommand << 10);
-    cmd_ring_->Push();
-  }
-  {
-    volatile BasicTRB* no_op_trb = cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
-    no_op_trb[0].data = 0;
-    no_op_trb[0].option = 0;
-    no_op_trb[0].control = (kTRBTypeNoOpCommand << 10);
-    cmd_ring_->Push();
-  }
-
   NotifyHostControllerDoorbell();
-
-  for (int port = 1; port <= max_ports_; port++) {
-    uint32_t portsc = ReadPORTSC(port);
-    if (!portsc)
-      continue;
-    PutStringAndHex("port", port);
-    PutStringAndHex("  PORTSC", portsc);
-    if (portsc & 1 && port_state_[port] == kDisconnected) {
-      port_state_[port] = kNeedsPortReset;
-    }
-  }
 }
 
 }  // namespace XHCI
