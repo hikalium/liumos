@@ -50,6 +50,7 @@ struct BasicTRB {
 static_assert(sizeof(BasicTRB) == 16);
 
 struct SetupStageTRB {
+  // [xHCI] 6.4.1.2.1 Setup Stage TRB
   volatile uint8_t request_type;
   volatile uint8_t request;
   volatile uint16_t value;
@@ -65,8 +66,44 @@ struct SetupStageTRB {
   static constexpr uint8_t kReqGetDescriptor = 6;
   static constexpr uint8_t kReqSetConfiguration = 9;
 
-  static constexpr uint32_t kTransferTypeNoDataStage = 0;
-  static constexpr uint32_t kTransferTypeInDataStage = 3;
+  enum class TransferType : uint32_t {
+    // Table 4-7: USB SETUP Data to Data Stage TRB and Status Stage TRB mapping
+    kNoDataStage = 0,
+    kInDataStage = 3,
+  };
+
+  void SetRequest(uint8_t request_type,
+                  uint8_t request,
+                  uint16_t value,
+                  uint16_t index,
+                  uint16_t length) {
+    this->request_type = request_type;
+    this->request = request;
+    this->value = value;
+    this->index = index;
+    this->length = length;
+  }
+  void SetControl(TransferType transfer_type,
+                  bool is_immediate_data,
+                  bool shoud_interrupt_on_completion) {
+    // Cycle bit will be set in TRBRing::Push();
+    control = (static_cast<uint32_t>(transfer_type) << 16) |
+              (BasicTRB::kTRBTypeSetupStage << 10) |
+              (static_cast<uint32_t>(is_immediate_data) << 6) |
+              (static_cast<uint32_t>(shoud_interrupt_on_completion) << 5);
+  }
+#ifndef LIUMOS_TEST
+  void Print() {
+    PutString("SetupStageTRB:\n");
+    PutStringAndHex("request_type", request_type);
+    PutStringAndHex("request", request);
+    PutStringAndHex("value", value);
+    PutStringAndHex("index", index);
+    PutStringAndHex("length", length);
+    PutStringAndHex("option", option);
+    PutStringAndHex("control", control);
+  }
+#endif
 };
 static_assert(sizeof(SetupStageTRB) == 16);
 
@@ -75,7 +112,24 @@ struct DataStageTRB {
   volatile uint32_t option;
   volatile uint32_t control;
 
-  static constexpr uint32_t kDirectionIn = (1 << 16);
+  void SetControl(bool is_data_direction_in,
+                  bool is_immediate_data,
+                  bool shoud_interrupt_on_completion) {
+    // Cycle bit will be set in TRBRing::Push();
+    control =
+        (static_cast<uint32_t>(is_data_direction_in) << 16) |
+        (BasicTRB::kTRBTypeDataStage << 10) |
+        (static_cast<uint32_t>(is_immediate_data) << 6) |
+        (static_cast<uint32_t>(shoud_interrupt_on_completion) << 5 | (1 << 2));
+  }
+#ifndef LIUMOS_TEST
+  void Print() {
+    PutString("DataStageTRB:\n");
+    PutStringAndHex("buf", buf);
+    PutStringAndHex("option", option);
+    PutStringAndHex("control", control);
+  }
+#endif
 };
 static_assert(sizeof(DataStageTRB) == 16);
 
@@ -83,6 +137,21 @@ struct StatusStageTRB {
   volatile uint64_t reserved;
   volatile uint32_t option;
   volatile uint32_t control;
+
+  void SetControl(bool is_status_direction_in,
+                  bool shoud_interrupt_on_completion) {
+    control = (static_cast<uint32_t>(is_status_direction_in) << 16) |
+              (BasicTRB::kTRBTypeStatusStage << 10) |
+              (static_cast<uint32_t>(shoud_interrupt_on_completion) << 5);
+  }
+#ifndef LIUMOS_TEST
+  void Print() {
+    PutString("StatusStageTRB:\n");
+    PutStringAndHex("reserved", reserved);
+    PutStringAndHex("option", option);
+    PutStringAndHex("control", control);
+  }
+#endif
 };
 static_assert(sizeof(StatusStageTRB) == 16);
 
