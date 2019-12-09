@@ -66,6 +66,8 @@ struct SetupStageTRB {
   static constexpr uint8_t kReqGetDescriptor = 6;
   static constexpr uint8_t kReqSetConfiguration = 9;
 
+  static constexpr uint32_t kControlBitImmediateData = 1 << 6;
+
   enum class TransferType : uint32_t {
     // Table 4-7: USB SETUP Data to Data Stage TRB and Status Stage TRB mapping
     kNoDataStage = 0,
@@ -84,24 +86,22 @@ struct SetupStageTRB {
     this->length = length;
   }
   void SetControl(TransferType transfer_type,
-                  bool is_immediate_data,
                   bool shoud_interrupt_on_completion) {
     // Cycle bit will be set in TRBRing::Push();
     control = (static_cast<uint32_t>(transfer_type) << 16) |
-              (BasicTRB::kTRBTypeSetupStage << 10) |
-              (static_cast<uint32_t>(is_immediate_data) << 6) |
+              (BasicTRB::kTRBTypeSetupStage << 10) | kControlBitImmediateData |
               (static_cast<uint32_t>(shoud_interrupt_on_completion) << 5);
   }
 #ifndef LIUMOS_TEST
   void Print() {
     PutString("SetupStageTRB:\n");
-    PutStringAndHex("request_type", request_type);
-    PutStringAndHex("request", request);
-    PutStringAndHex("value", value);
-    PutStringAndHex("index", index);
-    PutStringAndHex("length", length);
-    PutStringAndHex("option", option);
-    PutStringAndHex("control", control);
+    PutStringAndHex("  request_type", request_type);
+    PutStringAndHex("  request", request);
+    PutStringAndHex("  value", value);
+    PutStringAndHex("  index", index);
+    PutStringAndHex("  length", length);
+    PutStringAndHex("  option", option);
+    PutStringAndHex("  control", control);
   }
 #endif
 };
@@ -125,9 +125,9 @@ struct DataStageTRB {
 #ifndef LIUMOS_TEST
   void Print() {
     PutString("DataStageTRB:\n");
-    PutStringAndHex("buf", buf);
-    PutStringAndHex("option", option);
-    PutStringAndHex("control", control);
+    PutStringAndHex("  buf", buf);
+    PutStringAndHex("  option", option);
+    PutStringAndHex("  control", control);
   }
 #endif
 };
@@ -147,9 +147,9 @@ struct StatusStageTRB {
 #ifndef LIUMOS_TEST
   void Print() {
     PutString("StatusStageTRB:\n");
-    PutStringAndHex("reserved", reserved);
-    PutStringAndHex("option", option);
-    PutStringAndHex("control", control);
+    PutStringAndHex("  reserved", reserved);
+    PutStringAndHex("  option", option);
+    PutStringAndHex("  control", control);
   }
 #endif
 };

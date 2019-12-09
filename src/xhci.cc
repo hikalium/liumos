@@ -367,7 +367,7 @@ static const char* GetSpeedNameFromPORTSCPortSpeed(uint32_t port_speed) {
   return nullptr;
 }
 
-void Controller::SendAddressDeviceCommand(int slot, uint16_t max_packet_size) {
+void Controller::SendAddressDeviceCommand(int slot) {
   auto& slot_info = slot_info_[slot];
   int port = slot_info.port;
   // 4.3.3 Device Slot Initialization
@@ -401,11 +401,7 @@ void Controller::SendAddressDeviceCommand(int slot, uint16_t max_packet_size) {
                            ctrl_ep_tring_phys_addr);
   dctx.SetDequeueCycleState(DeviceContext::kDCIEPContext0, 1);
   dctx.SetErrorCount(DeviceContext::kDCIEPContext0, 3);
-  if (max_packet_size) {
-    slot_info.max_packet_size = max_packet_size;
-  } else {
-    slot_info.max_packet_size = GetMaxPacketSizeFromPORTSCPortSpeed(port_speed);
-  }
+  slot_info.max_packet_size = GetMaxPacketSizeFromPORTSCPortSpeed(port_speed);
   dctx.SetMaxPacketSize(DeviceContext::kDCIEPContext0,
                         slot_info.max_packet_size);
   assert(slot_info.output_ctx);
@@ -451,7 +447,7 @@ void Controller::HandleEnableSlotCompleted(int slot, int port) {
       TransferRequestBlockRing<kNumOfCtrlEPRingEntries>*>(
       sizeof(TransferRequestBlockRing<kNumOfCtrlEPRingEntries>));
 
-  SendAddressDeviceCommand(slot, 0);
+  SendAddressDeviceCommand(slot);
 }
 
 static void ConfigureSetupStageTRBForGetDescriptorRequest(
@@ -465,18 +461,14 @@ static void ConfigureSetupStageTRBForGetDescriptorRequest(
                  (static_cast<uint16_t>(desc_type) << 8) | desc_idx, 0,
                  desc_length);
   trb.option = 8; /* TRB Transfer Length. Always 8. */
-  trb.SetControl(SetupStageTRB::TransferType::kInDataStage, true, false);
+  trb.SetControl(SetupStageTRB::TransferType::kInDataStage, false);
 }
 
 static void ConfigureSetupStageTRBForSetConfiguration(struct SetupStageTRB& trb,
                                                       uint16_t config_value) {
-  trb.request_type = 0;
-  trb.request = SetupStageTRB::kReqSetConfiguration;
-  trb.value = config_value;
-  trb.index = 0;
-  trb.length = 0;
+  trb.SetRequest(0, SetupStageTRB::kReqSetConfiguration, config_value, 0, 0);
   trb.option = 8;
-  trb.SetControl(SetupStageTRB::TransferType::kNoDataStage, true, false);
+  trb.SetControl(SetupStageTRB::TransferType::kNoDataStage, false);
 }
 
 static void ConfigureStatusStageTRBForInput(struct StatusStageTRB& trb,
@@ -564,13 +556,10 @@ void Controller::SetHIDBootProtocol(int slot) {
   assert(slot_info.ctrl_ep_tring);
   auto& tring = *slot_info.ctrl_ep_tring;
   SetupStageTRB& setup = *tring.GetNextEnqueueEntry<SetupStageTRB*>();
-  setup.request_type = 0b00100001;
-  setup.request = 0x0B;
-  setup.value = 0;
-  setup.index = 0;
-  setup.length = 0;
+  setup.SetRequest(0b00100001, 0x0B /*SET_PROTOCOL*/, 0 /*Boot Protocol*/,
+                   0 /* interface */, 0);
   setup.option = 8;
-  setup.SetControl(SetupStageTRB::TransferType::kNoDataStage, true, false);
+  setup.SetControl(SetupStageTRB::TransferType::kNoDataStage, false);
   tring.Push();
   StatusStageTRB& status = *tring.GetNextEnqueueEntry<StatusStageTRB*>();
   ConfigureStatusStageTRBForOutput(status, true);
@@ -579,6 +568,30 @@ void Controller::SetHIDBootProtocol(int slot) {
   slot_info_[slot].state = SlotInfo::kSettingBootProtocol;
   NotifyDeviceContextDoorbell(slot, 1);
 }
+void Controller::GetHIDProtocol(int slot) {
+  auto& slot_info = slot_info_[slot];
+  assert(slot_info.ctrl_ep_tring);
+  auto& tring = *slot_info.ctrl_ep_tring;
+  int desc_size = 1;
+  SetupStageTRB& setup = *tring.GetNextEnqueueEntry<SetupStageTRB*>();
+  // [HID] 7.2.5 Get_Protocol Request
+  setup.SetRequest(0b10100001, 0x01 /*GET_REPORT*/, 0, 0, 1);
+  setup.option = 8;
+  setup.SetControl(SetupStageTRB::TransferType::kInDataStage, false);
+  setup.Print();
+  tring.Push();
+  DataStageTRB& data = *tring.GetNextEnqueueEntry<DataStageTRB*>();
+  PutDataStageTD(tring, v2p(descriptor_buffers_[slot]), desc_size, true);
+  data.Print();
+  StatusStageTRB& status = *tring.GetNextEnqueueEntry<StatusStageTRB*>();
+  ConfigureStatusStageTRBForInput(status, false);
+  status.Print();
+  tring.Push();
+
+  slot_info_[slot].state = SlotInfo::kCheckingProtocol;
+  NotifyDeviceContextDoorbell(slot, 1);
+}
+
 void Controller::GetHIDReport(int slot) {
   auto& slot_info = slot_info_[slot];
   assert(slot_info.ctrl_ep_tring);
@@ -589,7 +602,7 @@ void Controller::GetHIDReport(int slot) {
   setup.SetRequest(0b10100001, 0x01 /*GET_REPORT*/, 0x2201 /*Report|Input*/, 0,
                    desc_size);
   setup.option = 8;
-  setup.SetControl(SetupStageTRB::TransferType::kInDataStage, true, false);
+  setup.SetControl(SetupStageTRB::TransferType::kInDataStage, false);
   setup.Print();
   tring.Push();
   DataStageTRB& data = *tring.GetNextEnqueueEntry<DataStageTRB*>();
@@ -752,6 +765,7 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
       assert(config_desc.total_length <= kSizeOfDescriptorBuffer);
       PutStringAndHex("  Num of Interfaces", config_desc.num_of_interfaces);
       int ofs = config_desc.length;
+      int boot_interface_number = -1;
       while (ofs < config_desc.total_length) {
         const uint8_t length =
             RefWithOffset<uint8_t*>(descriptor_buffers_[slot], ofs)[0];
@@ -780,12 +794,17 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
                   InterfaceDescriptor::kSubClassSupportBootProtocol &&
               interface_desc.interface_protocol ==
                   InterfaceDescriptor::kProtocolKeyboard) {
-            PutString("Found USB HID Keyboard (with boot protocol)\n");
-            SetConfig(slot, config_desc.config_value);
-            return;
+            boot_interface_number = interface_desc.interface_number;
           }
         }
         ofs += length;
+      }
+      if (boot_interface_number >= 0) {
+        PutStringAndHex(
+            "Found USB HID Keyboard (with boot protocol). Interface#",
+            boot_interface_number);
+        SetConfig(slot, config_desc.config_value);
+        return;
       }
       PutString("No supported interface found\n");
       slot_info_[slot].state = SlotInfo::kNotSupportedDevice;
@@ -804,10 +823,24 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
       bzero(key_buffers_[slot], sizeof(key_buffers_[0]));
       GetHIDReport(slot);
       break;
+    case SlotInfo::kCheckingProtocol: {
+      PutString("TransferEvent\n");
+      PutStringAndHex("  Slot ID", slot);
+      PutString("Checking Protocol Received Data:\n");
+      for (int i = 0; i < 1; i++) {
+        PutHex8ZeroFilled(descriptor_buffers_[slot][i]);
+        if ((i & 0b1111) == 0b1111)
+          PutChar('\n');
+        else
+          PutChar(' ');
+      }
+      PutChar('\n');
+      // slot_info_[slot].state = SlotInfo::kNotSupportedDevice;
+    } break;
     case SlotInfo::kGettingReport: {
       assert(e.GetTransferSizeResidue() == 0);
       HandleKeyInput(slot, descriptor_buffers_[slot]);
-      // GetHIDReport(slot);
+      GetHIDReport(slot);
     } break;
     default: {
       PutString("TransferEvent\n");

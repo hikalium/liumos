@@ -186,6 +186,7 @@ class Controller {
       kCheckingConfigDescriptor,
       kSettingConfiguration,
       kSettingBootProtocol,
+      kCheckingProtocol,
       kGettingReport,
       kNotSupportedDevice,
     } state;
@@ -211,7 +212,7 @@ class Controller {
   void ResetPort(int port);
   void DisablePort(int port);
   void HandlePortStatusChange(int port);
-  void SendAddressDeviceCommand(int slot, uint16_t max_packet_size);
+  void SendAddressDeviceCommand(int slot);
   void HandleEnableSlotCompleted(int slot, int port);
   void PressKey(int hid_idx, uint8_t mod);
   void HandleKeyInput(int slot, uint8_t data[8]);
@@ -220,6 +221,7 @@ class Controller {
   void RequestConfigDescriptor(int slot);
   void SetConfig(int slot, uint8_t config_value);
   void SetHIDBootProtocol(int slot);
+  void GetHIDProtocol(int slot);
   void GetHIDReport(int slot);
   void HandleTransferEvent(BasicTRB& e);
   void CheckPortAndInitiateProcess();
