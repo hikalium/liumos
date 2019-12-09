@@ -765,7 +765,8 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
       assert(config_desc.total_length <= kSizeOfDescriptorBuffer);
       PutStringAndHex("  Num of Interfaces", config_desc.num_of_interfaces);
       int ofs = config_desc.length;
-      int boot_interface_number = -1;
+      InterfaceDescriptor* boot_interface_desc = nullptr;
+      EndpointDescriptor* boot_endpoint_desc = nullptr;
       while (ofs < config_desc.total_length) {
         const uint8_t length =
             RefWithOffset<uint8_t*>(descriptor_buffers_[slot], ofs)[0];
@@ -774,11 +775,15 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
         PutStringAndHex("Descriptor type", type);
         PutStringAndHex("Descriptor length", length);
         if (type == kDescriptorTypeInterface) {
+          if (boot_interface_desc && !boot_endpoint_desc) {
+            boot_interface_desc = nullptr;
+          }
           InterfaceDescriptor& interface_desc =
               *RefWithOffset<InterfaceDescriptor*>(descriptor_buffers_[slot],
                                                    ofs);
           PutStringAndHex("Interface #       ",
                           interface_desc.interface_number);
+          PutStringAndHex("Num of endpoints", interface_desc.num_of_endpoints);
           {
             char s[128];
             snprintf(s, sizeof(s),
@@ -794,15 +799,25 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
                   InterfaceDescriptor::kSubClassSupportBootProtocol &&
               interface_desc.interface_protocol ==
                   InterfaceDescriptor::kProtocolKeyboard) {
-            boot_interface_number = interface_desc.interface_number;
+            boot_interface_desc = &interface_desc;
+          }
+        } else if (type == kDescriptorTypeEndpoint) {
+          if (boot_interface_desc && !boot_endpoint_desc) {
+            boot_endpoint_desc = RefWithOffset<EndpointDescriptor*>(
+                descriptor_buffers_[slot], ofs);
           }
         }
         ofs += length;
       }
-      if (boot_interface_number >= 0) {
+      if (boot_interface_desc && boot_endpoint_desc) {
         PutStringAndHex(
             "Found USB HID Keyboard (with boot protocol). Interface#",
-            boot_interface_number);
+            boot_interface_desc->interface_number);
+        PutStringAndHex("  EP address", boot_endpoint_desc->endpoint_address);
+        PutStringAndHex("  EP attr", boot_endpoint_desc->attributes);
+        PutStringAndHex("  Max Packet Size",
+                        boot_endpoint_desc->max_packet_size);
+        PutStringAndHex("  Interval", boot_endpoint_desc->interval_ms);
         SetConfig(slot, config_desc.config_value);
         return;
       }

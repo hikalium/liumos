@@ -101,6 +101,7 @@ class Controller {
   static constexpr uint8_t kDescriptorTypeDevice = 1;
   static constexpr uint8_t kDescriptorTypeConfig = 2;
   static constexpr uint8_t kDescriptorTypeInterface = 4;
+  static constexpr uint8_t kDescriptorTypeEndpoint = 5;
 
   static constexpr int kKeyBufModifierIndex = 32;
 
@@ -177,6 +178,16 @@ class Controller {
     static constexpr uint8_t kProtocolKeyboard = 1;
   };
   static_assert(sizeof(InterfaceDescriptor) == 9);
+
+  packed_struct EndpointDescriptor {
+    uint8_t length;
+    uint8_t type;
+    uint8_t endpoint_address;
+    uint8_t attributes;
+    uint16_t max_packet_size;
+    uint8_t interval_ms;
+  };
+  static_assert(sizeof(EndpointDescriptor) == 7);
 
   struct SlotInfo {
     enum SlotState {
