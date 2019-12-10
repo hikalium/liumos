@@ -450,27 +450,6 @@ void Controller::HandleEnableSlotCompleted(int slot, int port) {
   SendAddressDeviceCommand(slot);
 }
 
-static void ConfigureSetupStageTRBForGetDescriptorRequest(
-    struct SetupStageTRB& trb,
-    uint8_t desc_type,
-    uint8_t desc_idx,
-    uint16_t desc_length) {
-  // [USB2] 9.4 Standard Device Requests
-  trb.SetRequest(SetupStageTRB::kReqTypeBitDirectionDeviceToHost,
-                 SetupStageTRB::kReqGetDescriptor,
-                 (static_cast<uint16_t>(desc_type) << 8) | desc_idx, 0,
-                 desc_length);
-  trb.option = 8; /* TRB Transfer Length. Always 8. */
-  trb.SetControl(SetupStageTRB::TransferType::kInDataStage, false);
-}
-
-static void ConfigureSetupStageTRBForSetConfiguration(struct SetupStageTRB& trb,
-                                                      uint16_t config_value) {
-  trb.SetRequest(0, SetupStageTRB::kReqSetConfiguration, config_value, 0, 0);
-  trb.option = 8;
-  trb.SetControl(SetupStageTRB::TransferType::kNoDataStage, false);
-}
-
 static void ConfigureStatusStageTRBForInput(struct StatusStageTRB& trb,
                                             bool interrupt_on_completion) {
   trb.reserved = 0;
@@ -503,8 +482,10 @@ void Controller::RequestDeviceDescriptor(int slot,
   auto& tring = *slot_info.ctrl_ep_tring;
   int desc_size = sizeof(DeviceDescriptor);
   SetupStageTRB& setup = *tring.GetNextEnqueueEntry<SetupStageTRB*>();
-  ConfigureSetupStageTRBForGetDescriptorRequest(setup, kDescriptorTypeDevice, 0,
-                                                desc_size);
+  setup.SetParams(SetupStageTRB::kReqTypeBitDirectionDeviceToHost,
+                  SetupStageTRB::kReqGetDescriptor,
+                  (static_cast<uint16_t>(kDescriptorTypeDevice) << 8) | 0, 0,
+                  desc_size, false);
   tring.Push();
 
   PutDataStageTD(tring, v2p(descriptor_buffers_[slot]), desc_size, true);
@@ -524,8 +505,10 @@ void Controller::RequestConfigDescriptor(int slot) {
   auto& tring = *slot_info.ctrl_ep_tring;
   int desc_size = kSizeOfDescriptorBuffer;
   SetupStageTRB& setup = *tring.GetNextEnqueueEntry<SetupStageTRB*>();
-  ConfigureSetupStageTRBForGetDescriptorRequest(setup, kDescriptorTypeConfig, 0,
-                                                desc_size);
+  setup.SetParams(SetupStageTRB::kReqTypeBitDirectionDeviceToHost,
+                  SetupStageTRB::kReqGetDescriptor,
+                  (static_cast<uint16_t>(kDescriptorTypeConfig) << 8) | 0, 0,
+                  desc_size, false);
   tring.Push();
   PutDataStageTD(tring, v2p(descriptor_buffers_[slot]), desc_size, true);
   StatusStageTRB& status = *tring.GetNextEnqueueEntry<StatusStageTRB*>();
@@ -541,7 +524,8 @@ void Controller::SetConfig(int slot, uint8_t config_value) {
   assert(slot_info.ctrl_ep_tring);
   auto& tring = *slot_info.ctrl_ep_tring;
   SetupStageTRB& setup = *tring.GetNextEnqueueEntry<SetupStageTRB*>();
-  ConfigureSetupStageTRBForSetConfiguration(setup, config_value);
+  setup.SetParams(0, SetupStageTRB::kReqSetConfiguration, config_value, 0, 0,
+                  false);
   tring.Push();
   StatusStageTRB& status = *tring.GetNextEnqueueEntry<StatusStageTRB*>();
   ConfigureStatusStageTRBForOutput(status, true);
@@ -556,10 +540,8 @@ void Controller::SetHIDBootProtocol(int slot) {
   assert(slot_info.ctrl_ep_tring);
   auto& tring = *slot_info.ctrl_ep_tring;
   SetupStageTRB& setup = *tring.GetNextEnqueueEntry<SetupStageTRB*>();
-  setup.SetRequest(0b00100001, 0x0B /*SET_PROTOCOL*/, 0 /*Boot Protocol*/,
-                   0 /* interface */, 0);
-  setup.option = 8;
-  setup.SetControl(SetupStageTRB::TransferType::kNoDataStage, false);
+  setup.SetParams(0b00100001, 0x0B /*SET_PROTOCOL*/, 0 /*Boot Protocol*/,
+                  0 /* interface */, 0, false);
   tring.Push();
   StatusStageTRB& status = *tring.GetNextEnqueueEntry<StatusStageTRB*>();
   ConfigureStatusStageTRBForOutput(status, true);
@@ -575,9 +557,7 @@ void Controller::GetHIDProtocol(int slot) {
   int desc_size = 1;
   SetupStageTRB& setup = *tring.GetNextEnqueueEntry<SetupStageTRB*>();
   // [HID] 7.2.5 Get_Protocol Request
-  setup.SetRequest(0b10100001, 0x01 /*GET_REPORT*/, 0, 0, 1);
-  setup.option = 8;
-  setup.SetControl(SetupStageTRB::TransferType::kInDataStage, false);
+  setup.SetParams(0b10100001, 0x01 /*GET_REPORT*/, 0, 0, 1, false);
   setup.Print();
   tring.Push();
   DataStageTRB& data = *tring.GetNextEnqueueEntry<DataStageTRB*>();
@@ -599,18 +579,12 @@ void Controller::GetHIDReport(int slot) {
   int desc_size = 8;
   SetupStageTRB& setup = *tring.GetNextEnqueueEntry<SetupStageTRB*>();
   // [HID] 7.2.1 Get_Report Request
-  setup.SetRequest(0b10100001, 0x01 /*GET_REPORT*/, 0x2201 /*Report|Input*/, 0,
-                   desc_size);
-  setup.option = 8;
-  setup.SetControl(SetupStageTRB::TransferType::kInDataStage, false);
-  setup.Print();
+  setup.SetParams(0b10100001, 0x01 /*GET_REPORT*/, 0x2201 /*Report|Input*/, 0,
+                  desc_size, false);
   tring.Push();
-  DataStageTRB& data = *tring.GetNextEnqueueEntry<DataStageTRB*>();
   PutDataStageTD(tring, v2p(descriptor_buffers_[slot]), desc_size, true);
-  data.Print();
   StatusStageTRB& status = *tring.GetNextEnqueueEntry<StatusStageTRB*>();
   ConfigureStatusStageTRBForInput(status, false);
-  status.Print();
   tring.Push();
 
   slot_info_[slot].state = SlotInfo::kGettingReport;

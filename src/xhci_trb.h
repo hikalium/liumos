@@ -71,9 +71,39 @@ struct SetupStageTRB {
   enum class TransferType : uint32_t {
     // Table 4-7: USB SETUP Data to Data Stage TRB and Status Stage TRB mapping
     kNoDataStage = 0,
+    kOutDataStage = 2,
     kInDataStage = 3,
   };
 
+  void SetParams(uint8_t bmRequestType,
+                 uint8_t bRequest,
+                 uint16_t wValue,
+                 uint16_t wIndex,
+                 uint16_t wLength,
+                 bool shoud_interrupt_on_completion) {
+    SetRequest(bmRequestType, bRequest, wValue, wIndex, wLength);
+    option = 8;  // always 8
+    SetControl((wLength == 0) ? TransferType::kNoDataStage
+                              : ((bRequest & kReqTypeBitDirectionDeviceToHost)
+                                     ? TransferType::kInDataStage
+                                     : TransferType::kOutDataStage),
+               shoud_interrupt_on_completion);
+  }
+
+#ifndef LIUMOS_TEST
+  void Print() {
+    PutString("SetupStageTRB:\n");
+    PutStringAndHex("  request_type", request_type);
+    PutStringAndHex("  request", request);
+    PutStringAndHex("  value", value);
+    PutStringAndHex("  index", index);
+    PutStringAndHex("  length", length);
+    PutStringAndHex("  option", option);
+    PutStringAndHex("  control", control);
+  }
+#endif
+
+ private:
   void SetRequest(uint8_t request_type,
                   uint8_t request,
                   uint16_t value,
@@ -92,18 +122,6 @@ struct SetupStageTRB {
               (BasicTRB::kTRBTypeSetupStage << 10) | kControlBitImmediateData |
               (static_cast<uint32_t>(shoud_interrupt_on_completion) << 5);
   }
-#ifndef LIUMOS_TEST
-  void Print() {
-    PutString("SetupStageTRB:\n");
-    PutStringAndHex("  request_type", request_type);
-    PutStringAndHex("  request", request);
-    PutStringAndHex("  value", value);
-    PutStringAndHex("  index", index);
-    PutStringAndHex("  length", length);
-    PutStringAndHex("  option", option);
-    PutStringAndHex("  control", control);
-  }
-#endif
 };
 static_assert(sizeof(SetupStageTRB) == 16);
 
