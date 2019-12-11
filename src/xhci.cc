@@ -450,20 +450,6 @@ void Controller::HandleEnableSlotCompleted(int slot, int port) {
   SendAddressDeviceCommand(slot);
 }
 
-static void ConfigureStatusStageTRBForInput(struct StatusStageTRB& trb,
-                                            bool interrupt_on_completion) {
-  trb.reserved = 0;
-  trb.option = 0;
-  trb.SetControl(false, interrupt_on_completion);
-}
-
-static void ConfigureStatusStageTRBForOutput(struct StatusStageTRB& trb,
-                                             bool interrupt_on_completion) {
-  trb.reserved = 0;
-  trb.option = 0;
-  trb.SetControl(true, interrupt_on_completion);
-}
-
 static void PutDataStageTD(XHCI::Controller::CtrlEPTRing& tring,
                            uint64_t buf_phys_addr,
                            int size,
@@ -491,7 +477,7 @@ void Controller::RequestDeviceDescriptor(int slot,
   PutDataStageTD(tring, v2p(descriptor_buffers_[slot]), desc_size, true);
 
   StatusStageTRB& status = *tring.GetNextEnqueueEntry<StatusStageTRB*>();
-  ConfigureStatusStageTRBForInput(status, false);
+  status.SetParams(false, false);
   tring.Push();
 
   slot_info_[slot].state = next_state;
@@ -512,7 +498,7 @@ void Controller::RequestConfigDescriptor(int slot) {
   tring.Push();
   PutDataStageTD(tring, v2p(descriptor_buffers_[slot]), desc_size, true);
   StatusStageTRB& status = *tring.GetNextEnqueueEntry<StatusStageTRB*>();
-  ConfigureStatusStageTRBForInput(status, false);
+  status.SetParams(false, false);
   tring.Push();
 
   slot_info_[slot].state = SlotInfo::kCheckingConfigDescriptor;
@@ -528,7 +514,7 @@ void Controller::SetConfig(int slot, uint8_t config_value) {
                   false);
   tring.Push();
   StatusStageTRB& status = *tring.GetNextEnqueueEntry<StatusStageTRB*>();
-  ConfigureStatusStageTRBForOutput(status, true);
+  status.SetParams(true, true);
   tring.Push();
 
   slot_info_[slot].state = SlotInfo::kSettingConfiguration;
@@ -544,7 +530,7 @@ void Controller::SetHIDBootProtocol(int slot) {
                   0 /* interface */, 0, false);
   tring.Push();
   StatusStageTRB& status = *tring.GetNextEnqueueEntry<StatusStageTRB*>();
-  ConfigureStatusStageTRBForOutput(status, true);
+  status.SetParams(true, true);
   tring.Push();
 
   slot_info_[slot].state = SlotInfo::kSettingBootProtocol;
@@ -564,7 +550,7 @@ void Controller::GetHIDProtocol(int slot) {
   PutDataStageTD(tring, v2p(descriptor_buffers_[slot]), desc_size, true);
   data.Print();
   StatusStageTRB& status = *tring.GetNextEnqueueEntry<StatusStageTRB*>();
-  ConfigureStatusStageTRBForInput(status, false);
+  status.SetParams(false, false);
   status.Print();
   tring.Push();
 
@@ -584,7 +570,7 @@ void Controller::GetHIDReport(int slot) {
   tring.Push();
   PutDataStageTD(tring, v2p(descriptor_buffers_[slot]), desc_size, true);
   StatusStageTRB& status = *tring.GetNextEnqueueEntry<StatusStageTRB*>();
-  ConfigureStatusStageTRBForInput(status, false);
+  status.SetParams(false, false);
   tring.Push();
 
   slot_info_[slot].state = SlotInfo::kGettingReport;

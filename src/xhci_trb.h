@@ -156,12 +156,13 @@ struct StatusStageTRB {
   volatile uint32_t option;
   volatile uint32_t control;
 
-  void SetControl(bool is_status_direction_in,
-                  bool shoud_interrupt_on_completion) {
-    control = (static_cast<uint32_t>(is_status_direction_in) << 16) |
-              (BasicTRB::kTRBTypeStatusStage << 10) |
-              (static_cast<uint32_t>(shoud_interrupt_on_completion) << 5);
+  void SetParams(bool is_status_direction_in,
+                 bool shoud_interrupt_on_completion) {
+    reserved = 0;
+    option = 0;
+    SetControl(is_status_direction_in, shoud_interrupt_on_completion);
   }
+
 #ifndef LIUMOS_TEST
   void Print() {
     PutString("StatusStageTRB:\n");
@@ -170,6 +171,14 @@ struct StatusStageTRB {
     PutStringAndHex("  control", control);
   }
 #endif
+
+ private:
+  void SetControl(bool is_status_direction_in,
+                  bool shoud_interrupt_on_completion) {
+    control = (static_cast<uint32_t>(is_status_direction_in) << 16) |
+              (BasicTRB::kTRBTypeStatusStage << 10) |
+              (static_cast<uint32_t>(shoud_interrupt_on_completion) << 5);
+  }
 };
 static_assert(sizeof(StatusStageTRB) == 16);
 
