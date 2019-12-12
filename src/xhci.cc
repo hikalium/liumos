@@ -304,12 +304,16 @@ class Controller::InputContext {
     size_t size = 0x20 * num_of_ctx;
     InputContext& ctx = *AllocMemoryForMappedIO<InputContext*>(size);
     bzero(&ctx, size);
-    if (num_of_ctx > 1) {
-      volatile uint32_t& add_ctx_flags = ctx.input_ctrl_ctx_[1];
-      add_ctx_flags = (1 << (num_of_ctx - 1)) - 1;
-    }
     new (&ctx.device_ctx_) DeviceContext(max_dci);
     return ctx;
+  }
+
+  void Clear() { bzero(input_ctrl_ctx_, sizeof(input_ctrl_ctx_)); }
+
+  void SetAddContext(int dci, bool value) {
+    volatile uint32_t& add_ctx_flags = input_ctrl_ctx_[1];
+    add_ctx_flags =
+        (~(1 << dci) & add_ctx_flags) | (static_cast<uint32_t>(value) << dci);
   }
 
   void DumpInputControlContext() {
@@ -373,6 +377,9 @@ void Controller::SendAddressDeviceCommand(int slot) {
   // 4.3.3 Device Slot Initialization
   assert(slot_info.input_ctx);
   InputContext& ctx = *slot_info.input_ctx;
+  ctx.Clear();
+  ctx.SetAddContext(0, true);
+  ctx.SetAddContext(1, true);
   DeviceContext& dctx = ctx.GetDeviceContext();
   // 3. Initialize the Input Slot Context data structure (6.2.2)
   dctx.SetRootHubPortNumber(port);
