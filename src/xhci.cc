@@ -441,6 +441,48 @@ void Controller::SendAddressDeviceCommand(int slot) {
   slot_info.state = SlotInfo::kWaitingForSecondAddressDeviceCommandCompletion;
 }
 
+static void SetConfigureEndpointCommandTRB(
+    volatile BasicTRB& trb,
+    int slot,
+    Controller::InputContext& input_ctx) {
+  // 4.6.6 Configure Endpoint
+  //   If the Drop Context flag is ‘0’ and the Add Context flag is ‘1’, the xHC
+  //   shall...
+  // 6.4.3.5 Configure Endpoint Command TRB
+  constexpr uint32_t kTRBTypeConfigureEndpointCommand = 12;
+  const uint64_t input_ctx_paddr = v2p(&input_ctx);
+  assert((input_ctx_paddr & 0b1111) == 0);
+  trb.data = input_ctx_paddr;
+  trb.option = 0;
+  trb.control = (kTRBTypeConfigureEndpointCommand << 10) | (slot << 24);
+}
+
+void Controller::SendConfigureEndpointCommand(int slot) {
+  auto& slot_info = slot_info_[slot];
+  assert(slot_info.input_ctx);
+  InputContext& ctx = *slot_info.input_ctx;
+  ctx.Clear();
+  /*
+     [xHCI] 6.2.3.2 Configure Endpoint Command Usage
+  An Input Endpoint Context is considered “valid” by the Configure Endpoint
+  Command if the Add Context flag is ‘1’ and: 1) the values of the Max Packet
+  Size, Max Burst Size, and the Interval are considered within range for
+  endpoint type and the speed of the device, 2) if MaxPStreams > 0, then the TR
+  Dequeue Pointer field points to an array of valid Stream Contexts, or if
+  MaxPStreams = 0, then the TR Dequeue Pointer field points to a Transfer Ring,
+    3) the EP State field = Disabled, and 4) all other fields are within their
+  valid range of values.
+  */
+
+  volatile BasicTRB& trb = *cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
+  SetConfigureEndpointCommandTRB(trb, slot, ctx);
+  PutStringAndHex("ConfigureEndpointCommand Enqueued to",
+                  cmd_ring_->GetNextEnqueueIndex());
+  cmd_ring_->Push();
+  NotifyHostControllerDoorbell();
+  PrintUSBSTS();
+}
+
 void Controller::HandleEnableSlotCompleted(int slot, int port) {
   port_state_[port] = kSlotAssigned;
 
@@ -804,7 +846,8 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
       PutString("Setting Boot Protocol done\n");
       PutString("Start running USB Keyboard\n");
       bzero(key_buffers_[slot], sizeof(key_buffers_[0]));
-      GetHIDReport(slot);
+      SendConfigureEndpointCommand(slot);
+      // GetHIDReport(slot);
       break;
     case SlotInfo::kCheckingProtocol: {
       PutString("TransferEvent\n");
@@ -823,7 +866,7 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
     case SlotInfo::kGettingReport: {
       assert(e.GetTransferSizeResidue() == 0);
       HandleKeyInput(slot, descriptor_buffers_[slot]);
-      GetHIDReport(slot);
+      // GetHIDReport(slot);
     } break;
     default: {
       PutString("TransferEvent\n");

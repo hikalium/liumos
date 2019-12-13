@@ -198,6 +198,7 @@ class Controller {
       kSettingConfiguration,
       kSettingBootProtocol,
       kCheckingProtocol,
+      kWaitingForConfigureEndpointCommandCompletion,
       kGettingReport,
       kNotSupportedDevice,
     } state;
@@ -224,6 +225,7 @@ class Controller {
   void DisablePort(int port);
   void HandlePortStatusChange(int port);
   void SendAddressDeviceCommand(int slot);
+  void SendConfigureEndpointCommand(int slot);
   void HandleEnableSlotCompleted(int slot, int port);
   void PressKey(int hid_idx, uint8_t mod);
   void HandleKeyInput(int slot, uint8_t data[8]);
