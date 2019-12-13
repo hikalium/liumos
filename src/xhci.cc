@@ -206,6 +206,7 @@ class Controller::DeviceContext {
  public:
   static constexpr int kDCISlotContext = 0;
   static constexpr int kDCIEPContext0 = 1;
+  static constexpr int kDCIEPContext1Out = 2;
   static constexpr int kEPTypeControl = 4;
   static DeviceContext& Alloc(int max_dci) {
     const int num_of_ctx = max_dci + 1;
@@ -1075,7 +1076,8 @@ void Controller::Init() {
   }
   for (int i = 1; i < max_slots_; i++) {
     bzero(&slot_info_[i], sizeof(slot_info_[0]));
-    slot_info_[i].output_ctx = &DeviceContext::Alloc(1);
+    slot_info_[i].output_ctx =
+        &DeviceContext::Alloc(DeviceContext::kDCIEPContext1Out);
   }
 
   op_regs_->command = op_regs_->command | kUSBCMDMaskRunStop;
