@@ -108,13 +108,6 @@ class Controller {
   static constexpr uint32_t kUSBCMDMaskRunStop = 0b01;
   static constexpr uint32_t kUSBCMDMaskHCReset = 0b10;
 
-  static constexpr uint32_t kTRBTypeEnableSlotCommand = 9;
-  static constexpr uint32_t kTRBTypeAddressDeviceCommand = 11;
-  static constexpr uint32_t kTRBTypeNoOpCommand = 23;
-  static constexpr uint32_t kTRBTypeTransferEvent = 32;
-  static constexpr uint32_t kTRBTypeCommandCompletionEvent = 33;
-  static constexpr uint32_t kTRBTypePortStatusChangeEvent = 34;
-
   static constexpr uint32_t kPortSCBitCurrentConnectStatus = 1 << 0;
   static constexpr uint32_t kPortSCBitPortEnableDisable = 1 << 1;
   static constexpr uint32_t kPortSCBitPortReset = 1 << 4;

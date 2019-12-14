@@ -431,7 +431,7 @@ void Controller::SendAddressDeviceCommand(int slot) {
   volatile BasicTRB& trb = *cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
   trb.data = v2p(&ctx);
   trb.option = 0;
-  trb.control = (kTRBTypeAddressDeviceCommand << 10) | (slot << 24);
+  trb.control = (BasicTRB::kTRBTypeAddressDeviceCommand << 10) | (slot << 24);
   PutStringAndHex("AddressDeviceCommand Enqueued to",
                   cmd_ring_->GetNextEnqueueIndex());
   PutStringAndHex("  phys addr", v2p(&trb));
@@ -935,7 +935,7 @@ void Controller::CheckPortAndInitiateProcess() {
       slot_request_for_port_.insert({v2p(&enable_slot_trb), i});
       enable_slot_trb.data = 0;
       enable_slot_trb.option = 0;
-      enable_slot_trb.control = (kTRBTypeEnableSlotCommand << 10);
+      enable_slot_trb.control = (BasicTRB::kTRBTypeEnableSlotCommand << 10);
       cmd_ring_->Push();
       NotifyHostControllerDoorbell();
       return;
@@ -974,10 +974,10 @@ void Controller::PollEvents() {
     uint8_t type = e.GetTRBType();
 
     switch (type) {
-      case kTRBTypeCommandCompletionEvent:
+      case BasicTRB::kTRBTypeCommandCompletionEvent:
         if (e.IsCompletedWithSuccess()) {
           BasicTRB& cmd_trb = cmd_ring_->GetEntryFromPhysAddr(e.data);
-          if (cmd_trb.GetTRBType() == kTRBTypeEnableSlotCommand) {
+          if (cmd_trb.GetTRBType() == BasicTRB::kTRBTypeEnableSlotCommand) {
             uint64_t cmd_trb_phys_addr = e.data;
             auto it = slot_request_for_port_.find(cmd_trb_phys_addr);
             assert(it != slot_request_for_port_.end());
@@ -985,7 +985,7 @@ void Controller::PollEvents() {
             slot_request_for_port_.erase(it);
             break;
           }
-          if (cmd_trb.GetTRBType() == kTRBTypeAddressDeviceCommand) {
+          if (cmd_trb.GetTRBType() == BasicTRB::kTRBTypeAddressDeviceCommand) {
             HandleAddressDeviceCompleted(e.GetSlotID());
             break;
           }
@@ -1005,7 +1005,7 @@ void Controller::PollEvents() {
           }
         }
         break;
-      case kTRBTypePortStatusChangeEvent:
+      case BasicTRB::kTRBTypePortStatusChangeEvent:
         if (e.IsCompletedWithSuccess()) {
           HandlePortStatusChange(static_cast<int>(GetBits<31, 24>(e.data)));
           break;
@@ -1014,7 +1014,7 @@ void Controller::PollEvents() {
         e.PrintCompletionCode();
         PutStringAndHex("  Slot ID", GetBits<31, 24>(e.data));
         break;
-      case kTRBTypeTransferEvent:
+      case BasicTRB::kTRBTypeTransferEvent:
         HandleTransferEvent(e);
         break;
       default:

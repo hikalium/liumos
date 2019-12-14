@@ -12,6 +12,12 @@ struct BasicTRB {
   static constexpr uint32_t kTRBTypeSetupStage = 2;
   static constexpr uint32_t kTRBTypeDataStage = 3;
   static constexpr uint32_t kTRBTypeStatusStage = 4;
+  static constexpr uint32_t kTRBTypeEnableSlotCommand = 9;
+  static constexpr uint32_t kTRBTypeAddressDeviceCommand = 11;
+  static constexpr uint32_t kTRBTypeNoOpCommand = 23;
+  static constexpr uint32_t kTRBTypeTransferEvent = 32;
+  static constexpr uint32_t kTRBTypeCommandCompletionEvent = 33;
+  static constexpr uint32_t kTRBTypePortStatusChangeEvent = 34;
 
   static constexpr uint8_t kCompletionCodeSuccess = 0x01;
   static constexpr uint8_t kCompletionCodeUSBTransactionError = 0x04;
