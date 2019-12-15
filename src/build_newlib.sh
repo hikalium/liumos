@@ -24,6 +24,6 @@ cd ${NEWLIB_BUILD_DIR}
 ${NEWLIB_SRC_DIR}/newlib/configure \
 --target=x86_64-elf --disable-multilib \
 --prefix=${BUILD_ROOT} \
-CFLAGS="-nostdlibinc -O2 -target x86_64-unknown-none-elf -fPIC -mcmodel=large"
+CFLAGS="-g -nostdlibinc -O2 -target x86_64-unknown-none-elf -fPIC -mcmodel=large"
 make clean
 make -j4 install

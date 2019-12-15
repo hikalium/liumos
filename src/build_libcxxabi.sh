@@ -29,7 +29,7 @@ mkdir -p ${BUILD_DIR}
 cd ${BUILD_DIR}
 
 COMMON_COMPILER_FLAGS="\
-	-nostdlibinc -I$NEWLIB_INC_PATH \
+	-g -nostdlibinc -I$NEWLIB_INC_PATH \
 	-fdeclspec -mcmodel=large \
 	-D__ELF__ -U__APPLE__ \
 	-D_LDBL_EQ_DBL -D_LIBCPP_HAS_NO_THREADS -D_LIBCPP_HAS_NO_LIBRARY_ALIGNED_ALLOCATION \
