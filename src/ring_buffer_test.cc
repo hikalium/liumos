@@ -3,6 +3,7 @@
 #ifdef LIUMOS_TEST
 
 #include <stdio.h>
+
 #include <cassert>
 
 int main() {

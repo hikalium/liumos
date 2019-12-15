@@ -1,6 +1,6 @@
-#include "liumos.h"
-
 #include "pmem.h"
+
+#include "liumos.h"
 
 void PersistentObjectHeader::Init(uint64_t id, uint64_t num_of_pages) {
   signature_ = ~kSignature;

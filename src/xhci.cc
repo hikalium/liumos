@@ -1,11 +1,11 @@
 #include "xhci.h"
 
+#include <cstdio>
+#include <utility>
+
 #include "kernel.h"
 #include "keyid.h"
 #include "liumos.h"
-
-#include <cstdio>
-#include <utility>
 
 namespace XHCI {
 
@@ -200,6 +200,50 @@ void Controller::HandlePortStatusChange(int port) {
   }
 }
 
+class Controller::EndpointContext {
+ public:
+  void SetEPType(uint32_t type) {
+    data_[1] = CombineFieldBits<5, 3>(data_[1], type);
+  }
+  void SetTRDequeuePointer(uint64_t tr_deq_ptr) {
+    data_[2] = CombineFieldBits<31, 4>(data_[2],
+                                       static_cast<uint32_t>(tr_deq_ptr >> 4));
+    data_[3] = static_cast<uint32_t>(tr_deq_ptr >> 32);
+  }
+  uint64_t GetTRDequeuePointer() {
+    return (static_cast<uint64_t>(data_[3]) << 32) | data_[2];
+  }
+  void SetDequeueCycleState(uint32_t dcs) {
+    data_[2] = CombineFieldBits<0, 0>(data_[2], dcs);
+  }
+  void SetErrorCount(uint32_t c_err) {
+    data_[1] = CombineFieldBits<2, 1>(data_[1], c_err);
+  }
+  void SetMaxPacketSize(uint32_t max_packet_size) {
+    data_[1] = CombineFieldBits<31, 16>(data_[1], max_packet_size);
+  }
+  uint8_t GetEPState() { return GetBits<2, 0>(data_[0]); }
+  void DumpEPContext() {
+    PutString("EP Context");
+    PutStringAndHex("  EP Type", GetBits<5, 3>(data_[1]));
+    PutStringAndHex("  Max Packet Size", GetBits<31, 16>(data_[1]));
+    PutStringAndHex("  TR Dequeue Pointer",
+                    (GetBits<31, 4>(data_[2]) << 4) |
+                        (static_cast<uint64_t>(data_[3]) << 32));
+    PutStringAndHex("  Dequeue Cycle State", GetBits<0, 0>(data_[2]));
+    PutStringAndHex("  Error Count", GetBits<2, 1>(data_[1]));
+    for (int i = 0; i < 8; i++) {
+      for (int x = 3; x >= 0; x--) {
+        PutHex8ZeroFilled(data_[i] >> (x * 8));
+      }
+      PutString("\n");
+    }
+  }
+
+ private:
+  volatile uint32_t data_[8];
+};
+
 class Controller::DeviceContext {
   friend class InputContext;
 
@@ -208,6 +252,34 @@ class Controller::DeviceContext {
   static constexpr int kDCIEPContext0 = 1;
   static constexpr int kDCIEPContext1Out = 2;
   static constexpr int kEPTypeControl = 4;
+
+  uint8_t GetSlotState() { return GetBits<31, 27>(slot_ctx_[3]); }
+  void SetContextEntries(uint32_t num_of_ent) {
+    slot_ctx_[0] = CombineFieldBits<31, 27>(slot_ctx_[0], num_of_ent);
+  }
+  void SetPortSpeed(uint32_t port_speed) {
+    slot_ctx_[0] = CombineFieldBits<23, 20>(slot_ctx_[0], port_speed);
+  }
+  void SetRootHubPortNumber(uint32_t root_port_num) {
+    slot_ctx_[1] = CombineFieldBits<23, 16>(slot_ctx_[1], root_port_num);
+  }
+  void DumpSlotContext() {
+    PutString("Slot Context:\n");
+    PutStringAndHex("  Root Hub Port Number", GetBits<23, 16>(slot_ctx_[1]));
+    PutStringAndHex("  Route String", GetBits<19, 0>(slot_ctx_[0]));
+    PutStringAndHex("  Context Entries", GetBits<31, 27>(slot_ctx_[0]));
+    for (int i = 0; i < 8; i++) {
+      for (int x = 3; x >= 0; x--) {
+        PutHex8ZeroFilled(slot_ctx_[i] >> (x * 8));
+      }
+      PutString("\n");
+    }
+  }
+  EndpointContext& GetEndpointContext(int dci) {
+    assert(1 <= dci && dci <= 31);
+    return endpoint_ctx_[dci - 1];
+  }
+
   static DeviceContext& Alloc(int max_dci) {
     const int num_of_ctx = max_dci + 1;
     size_t size = 0x20 * num_of_ctx;
@@ -215,85 +287,14 @@ class Controller::DeviceContext {
     new (ctx) DeviceContext(max_dci);
     return *ctx;
   }
-  void SetContextEntries(uint32_t num_of_ent) {
-    endpoint_ctx[kDCISlotContext][0] =
-        CombineFieldBits<31, 27>(endpoint_ctx[kDCISlotContext][0], num_of_ent);
-  }
-  void SetPortSpeed(uint32_t port_speed) {
-    endpoint_ctx[kDCISlotContext][0] =
-        CombineFieldBits<23, 20>(endpoint_ctx[kDCISlotContext][0], port_speed);
-  }
-  void SetRootHubPortNumber(uint32_t root_port_num) {
-    endpoint_ctx[kDCISlotContext][1] = CombineFieldBits<23, 16>(
-        endpoint_ctx[kDCISlotContext][1], root_port_num);
-  }
-  void SetEPType(int dci, uint32_t type) {
-    endpoint_ctx[dci][1] = CombineFieldBits<5, 3>(endpoint_ctx[dci][1], type);
-  }
-  void SetTRDequeuePointer(int dci, uint64_t tr_deq_ptr) {
-    endpoint_ctx[dci][2] = CombineFieldBits<31, 4>(
-        endpoint_ctx[dci][2], static_cast<uint32_t>(tr_deq_ptr >> 4));
-    endpoint_ctx[dci][3] = static_cast<uint32_t>(tr_deq_ptr >> 32);
-  }
-  uint64_t GetTRDequeuePointer(int dci) {
-    return (static_cast<uint64_t>(endpoint_ctx[dci][3]) << 32) |
-           endpoint_ctx[dci][2];
-  }
-  void SetDequeueCycleState(int dci, uint32_t dcs) {
-    endpoint_ctx[dci][2] = CombineFieldBits<0, 0>(endpoint_ctx[dci][2], dcs);
-  }
-  void SetErrorCount(int dci, uint32_t c_err) {
-    endpoint_ctx[dci][1] = CombineFieldBits<2, 1>(endpoint_ctx[dci][1], c_err);
-  }
-  void SetMaxPacketSize(int dci, uint32_t max_packet_size) {
-    endpoint_ctx[dci][1] =
-        CombineFieldBits<31, 16>(endpoint_ctx[dci][1], max_packet_size);
-  }
-  uint8_t GetSlotState() {
-    return GetBits<31, 27>(endpoint_ctx[kDCISlotContext][3]);
-  }
-  uint8_t GetEPState(int dci) { return GetBits<2, 0>(endpoint_ctx[dci][0]); }
-  void DumpSlotContext() {
-    PutString("Slot Context:\n");
-    PutStringAndHex("  Root Hub Port Number",
-                    GetBits<23, 16>(endpoint_ctx[kDCISlotContext][1]));
-    PutStringAndHex("  Route String",
-                    GetBits<19, 0>(endpoint_ctx[kDCISlotContext][0]));
-    PutStringAndHex("  Context Entries",
-                    GetBits<31, 27>(endpoint_ctx[kDCISlotContext][0]));
-    for (int i = 0; i < 8; i++) {
-      for (int x = 3; x >= 0; x--) {
-        PutHex8ZeroFilled(endpoint_ctx[kDCISlotContext][i] >> (x * 8));
-      }
-      PutString("\n");
-    }
-  }
-  void DumpEPContext(int dci) {
-    assert(dci >= 1);
-    PutStringAndHex("EP Context", dci - 1);
-    PutStringAndHex("  EP Type", GetBits<5, 3>(endpoint_ctx[dci][1]));
-    PutStringAndHex("  Max Packet Size", GetBits<31, 16>(endpoint_ctx[dci][1]));
-    PutStringAndHex("  TR Dequeue Pointer",
-                    (GetBits<31, 4>(endpoint_ctx[dci][2]) << 4) |
-                        (static_cast<uint64_t>(endpoint_ctx[dci][3]) << 32));
-    PutStringAndHex("  Dequeue Cycle State",
-                    GetBits<0, 0>(endpoint_ctx[dci][2]));
-    PutStringAndHex("  Error Count", GetBits<2, 1>(endpoint_ctx[dci][1]));
-    for (int i = 0; i < 8; i++) {
-      for (int x = 3; x >= 0; x--) {
-        PutHex8ZeroFilled(endpoint_ctx[dci][i] >> (x * 8));
-      }
-      PutString("\n");
-    }
-  }
-
   DeviceContext(int max_dci) {
     assert(0 <= max_dci && max_dci <= 31);
-    bzero(this, sizeof(endpoint_ctx[0]) * (max_dci + 1));
+    bzero(this, sizeof(slot_ctx_) + sizeof(EndpointContext) * max_dci);
   }
 
  private:
-  volatile uint32_t endpoint_ctx[32][8];
+  volatile uint32_t slot_ctx_[8];
+  EndpointContext endpoint_ctx_[2 * 15 + 1];
 };
 
 class Controller::InputContext {
@@ -404,14 +405,14 @@ void Controller::SendAddressDeviceCommand(int slot) {
   }
   PutString(speed_str);
   PutString("\n");
-  dctx.SetEPType(DeviceContext::kDCIEPContext0, DeviceContext::kEPTypeControl);
-  dctx.SetTRDequeuePointer(DeviceContext::kDCIEPContext0,
-                           ctrl_ep_tring_phys_addr);
-  dctx.SetDequeueCycleState(DeviceContext::kDCIEPContext0, 1);
-  dctx.SetErrorCount(DeviceContext::kDCIEPContext0, 3);
+  EndpointContext& ep0 = dctx.GetEndpointContext(DeviceContext::kDCIEPContext0);
+  ep0.SetEPType(DeviceContext::kEPTypeControl);
+  ep0.SetTRDequeuePointer(ctrl_ep_tring_phys_addr);
+  ep0.SetDequeueCycleState(1);
+  ep0.SetErrorCount(3);
   slot_info.max_packet_size = GetMaxPacketSizeFromPORTSCPortSpeed(port_speed);
-  dctx.SetMaxPacketSize(DeviceContext::kDCIEPContext0,
-                        slot_info.max_packet_size);
+  ep0.SetMaxPacketSize(slot_info.max_packet_size);
+
   assert(slot_info.output_ctx);
   DeviceContext& out_device_ctx = *slot_info.output_ctx;
   device_context_base_array_[slot] = v2p(&out_device_ctx);
@@ -455,13 +456,20 @@ static void SetConfigureEndpointCommandTRB(
   trb.data = input_ctx_paddr;
   trb.option = 0;
   trb.control = (kTRBTypeConfigureEndpointCommand << 10) | (slot << 24);
+  trb.PrintHex();
 }
 
 void Controller::SendConfigureEndpointCommand(int slot) {
   auto& slot_info = slot_info_[slot];
   assert(slot_info.input_ctx);
+
   InputContext& ctx = *slot_info.input_ctx;
   ctx.Clear();
+  ctx.SetAddContext(DeviceContext::kDCIEPContext1Out, true);
+
+  DeviceContext& dctx = ctx.GetDeviceContext();
+  dctx.SetRootHubPortNumber(slot_info.port);
+  dctx.SetContextEntries(1);
   /*
      [xHCI] 6.2.3.2 Configure Endpoint Command Usage
   An Input Endpoint Context is considered “valid” by the Configure Endpoint
@@ -491,11 +499,12 @@ void Controller::HandleEnableSlotCompleted(int slot, int port) {
   PutStringAndHex("EnableSlotCommand completed.. Slot ID", slot);
   PutStringAndHex("  With RootPort ID", port);
 
-  slot_info.input_ctx = &InputContext::Alloc(1);
-  new (slot_info.output_ctx) DeviceContext(1);
-  slot_info.ctrl_ep_tring = AllocMemoryForMappedIO<
-      TransferRequestBlockRing<kNumOfCtrlEPRingEntries>*>(
-      sizeof(TransferRequestBlockRing<kNumOfCtrlEPRingEntries>));
+  slot_info.input_ctx = &InputContext::Alloc(DeviceContext::kDCIEPContext1Out);
+  new (slot_info.output_ctx) DeviceContext(DeviceContext::kDCIEPContext1Out);
+  slot_info.ctrl_ep_tring =
+      AllocMemoryForMappedIO<CtrlEPTRing*>(sizeof(CtrlEPTRing));
+  slot_info.int_ep_tring =
+      AllocMemoryForMappedIO<IntEPTRing*>(sizeof(IntEPTRing));
 
   SendAddressDeviceCommand(slot);
 }

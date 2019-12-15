@@ -1,8 +1,8 @@
 #pragma once
 
-#include "generic.h"
-
 #include <elf.h>
+
+#include "generic.h"
 
 class EFIFile;
 class Process;

@@ -1,12 +1,12 @@
-#include "liumos.h"
+#include <stdio.h>
+#include <stdlib.h>
 
+#include <vector>
+
+#include "liumos.h"
 #include "pci.h"
 #include "pmem.h"
 #include "xhci.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <vector>
 
 namespace ConsoleCommand {
 

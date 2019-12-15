@@ -1,9 +1,9 @@
 #include "pci.h"
 
-#include "liumos.h"
-
 #include <cstdio>
 #include <string>
+
+#include "liumos.h"
 
 constexpr uint16_t kIOAddrPCIConfigAddr = 0x0CF8;
 constexpr uint16_t kIOAddrPCIConfigData = 0x0CFC;

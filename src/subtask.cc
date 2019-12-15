@@ -1,7 +1,7 @@
+#include <math.h>
+
 #include "liumos.h"
 #include "sheet.h"
-
-#include <math.h>
 
 class PolygonCube {
  public:

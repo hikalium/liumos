@@ -14,6 +14,7 @@ class Controller {
  public:
   class DeviceContext;
   class InputContext;
+  class EndpointContext;
   void Init();
   void PollEvents();
   void PrintPortSC();
@@ -87,6 +88,9 @@ class Controller {
 
   static constexpr int kNumOfCtrlEPRingEntries = 32;
   using CtrlEPTRing = TransferRequestBlockRing<kNumOfCtrlEPRingEntries>;
+
+  static constexpr int kNumOfIntEPRingEntries = 32;
+  using IntEPTRing = TransferRequestBlockRing<kNumOfIntEPRingEntries>;
 
  private:
   class EventRing;
@@ -199,6 +203,7 @@ class Controller {
     InputContext* input_ctx;
     DeviceContext* output_ctx;
     CtrlEPTRing* ctrl_ep_tring;
+    IntEPTRing* int_ep_tring;
     int max_packet_size;
   };
 

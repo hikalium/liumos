@@ -51,6 +51,15 @@ struct BasicTRB {
       PutString("  = Short Packet\n");
     }
   }
+  void PrintHex() const volatile {
+    const volatile uint8_t* buf =
+        reinterpret_cast<const volatile uint8_t*>(this);
+    for (size_t i = 0; i < sizeof(*this); i++) {
+      PutHex8ZeroFilled(buf[i]);
+      if ((i & 3) == 3)
+        PutChar('\n');
+    }
+  }
 #endif
 };
 static_assert(sizeof(BasicTRB) == 16);

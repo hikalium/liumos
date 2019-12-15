@@ -1,8 +1,7 @@
 #pragma once
 
-#include "generic.h"
-
 #include "execution_context.h"
+#include "generic.h"
 #include "kernel_virtual_heap_allocator.h"
 
 class Process {
