@@ -243,6 +243,7 @@ class Controller::EndpointContext {
  private:
   volatile uint32_t data_[8];
 };
+static_assert(sizeof(Controller::EndpointContext) == 0x20);
 
 class Controller::DeviceContext {
   friend class InputContext;
@@ -296,6 +297,7 @@ class Controller::DeviceContext {
   volatile uint32_t slot_ctx_[8];
   EndpointContext endpoint_ctx_[2 * 15 + 1];
 };
+static_assert(sizeof(Controller::DeviceContext) == 0x400);
 
 class Controller::InputContext {
  public:
