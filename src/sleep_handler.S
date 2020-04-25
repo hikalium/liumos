@@ -31,6 +31,8 @@ SleepSub:
   push rbx
   push rdx
   push rax
+	sub rsp, 512 + 8
+
 	cli
 
 	mov rdx, rsp 

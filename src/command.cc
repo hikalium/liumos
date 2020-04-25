@@ -1,3 +1,4 @@
+#include <immintrin.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -827,6 +828,15 @@ void Run(TextBox& tbox) {
       PutString(s);
     }
     PutString("\n");
+  } else if (IsEqualString(line, "fxsave")) {
+    static uint8_t buf[512];
+    _fxsave(buf);
+    for (int i = 0; i < 32; i++) {
+      PutHex8ZeroFilled(buf[i]);
+      if ((i & 0xF) != 0xF)
+        continue;
+      PutString("\n");
+    }
   } else if (IsEqualString(line, "ascii")) {
     for (int i = 0; i < 0x100; i++) {
       PutChar(i);

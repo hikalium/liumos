@@ -96,6 +96,17 @@ class ExecutionContext {
     cpu_context_.int_ctx.rsp = reinterpret_cast<uint64_t>(rsp);
     cpu_context_.int_ctx.ss = ss;
     cpu_context_.int_ctx.rflags = rflags | 2;
+    // 10.2.3 MXCSR Control and Status Register
+    // Mask all FPU exceptions
+    /*
+    for(int i = 0; i < 512; i++){
+      cpu_context_.fpu_context.data[i] = 0;
+    }
+    cpu_context_.fpu_context.data[24] = 0x80;
+    cpu_context_.fpu_context.data[25] = 0x1F;
+    cpu_context_.fpu_context.data[26] = 0x00;
+    cpu_context_.fpu_context.data[27] = 0x00;
+    */
     cpu_context_.cr3 = cr3;
     kernel_rsp_ = kernel_rsp;
     heap_used_size_ = 0;

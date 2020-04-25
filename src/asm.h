@@ -25,11 +25,7 @@ struct CPUFeatureIndex {
 };
 
 static const char* CPUFeatureString[] = {
-    "x2APIC",
-    "XSAVE",
-    "OSXSAVE",
-    "APIC",
-    "FXSR",
+    "x2APIC", "XSAVE", "OSXSAVE", "APIC", "FXSR",
 };
 
 packed_struct CPUFeatureSet {
@@ -89,18 +85,26 @@ packed_struct InterruptContext {
 };
 static_assert(sizeof(InterruptContext) == 40);
 
+struct FPUContenxt {
+  uint8_t data[512];
+};
+
 packed_struct CPUContext {
   uint64_t cr3;
   GeneralRegisterContext greg;
   InterruptContext int_ctx;
+  FPUContenxt fpu_context;
 };
 
 packed_struct InterruptInfo {
+  // This struct is placed at top of the interrupt stack.
+  FPUContenxt fpu_context;  // used by FXSAVE / FXRSTOR
+  uint64_t dummy;
   GeneralRegisterContext greg;
   uint64_t error_code;
   InterruptContext int_ctx;
 };
-static_assert(sizeof(InterruptInfo) == (16 + 4 + 1) * 8);
+static_assert(sizeof(InterruptInfo) == (16 + 4 + 1) * 8 + 8 + 512);
 
 enum class IDTType {
   kInterruptGate = 0xE,
@@ -187,6 +191,9 @@ __attribute__((ms_abi)) void ReadCPUID(CPUID*, uint32_t eax, uint32_t ecx);
 
 __attribute__((ms_abi)) uint64_t ReadMSR(MSRIndex);
 __attribute__((ms_abi)) void WriteMSR(MSRIndex, uint64_t);
+
+__attribute__((ms_abi)) void FXSave(void*);
+__attribute__((ms_abi)) void FXRestore(void*);
 
 __attribute__((ms_abi)) void ReadGDTR(GDTR*);
 __attribute__((ms_abi)) void WriteGDTR(GDTR*);

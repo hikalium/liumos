@@ -83,9 +83,8 @@ void IdentifyCPU() {
     Panic("APIC not supported");
   if (!(cpuid.edx & kCPUID01H_EDXBitMSR))
     Panic("MSR not supported");
-  if(!GetBit<CPUFeatureIndex::kFXSR>(f.features))
+  if (!GetBit<CPUFeatureIndex::kFXSR>(f.features))
     Panic("FXSR not supported");
-
 
   if (7 <= f.max_cpuid) {
     ReadCPUID(&cpuid, 7, 0);
