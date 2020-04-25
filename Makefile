@@ -13,7 +13,7 @@ QEMU_ARGS=\
 					 -drive format=raw,file=fat:rw:mnt -net none \
 					 -serial tcp::1234,server,nowait \
 					 -serial tcp::1235,server,nowait \
-                     -device qemu-xhci -device usb-mouse -device usb-kbd
+                     -device qemu-xhci -device usb-mouse
 
 
 QEMU_ARGS_PMEM=\
@@ -66,7 +66,7 @@ run_xhci_gdb : files .FORCE
 	lldb $(LLDB_ARGS) -- $(QEMU) $(QEMU_ARGS_XHCI) $(QEMU_ARGS)
 	
 run : files pmem.img .FORCE
-	$(QEMU) $(QEMU_ARGS_PMEM) || reset
+	$(QEMU) $(QEMU_ARGS_PMEM)
 
 run_gdb : files pmem.img .FORCE
 	$(QEMU) $(QEMU_ARGS_PMEM) -gdb tcp::1192 -S || reset
