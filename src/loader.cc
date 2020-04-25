@@ -59,6 +59,7 @@ void PrintLogoFile() {
 void IdentifyCPU() {
   CPUID cpuid;
   CPUFeatureSet& f = cpu_features;
+  f.features = 0;
 
   ReadCPUID(&cpuid, 0, 0);
   f.max_cpuid = cpuid.eax;
@@ -75,7 +76,12 @@ void IdentifyCPU() {
   if (!(cpuid.edx & kCPUID01H_EDXBitMSR))
     Panic("MSR not supported");
   f.x2apic = cpuid.ecx & kCPUID01H_ECXBitx2APIC;
+  f.features |= ((cpuid.ecx >> 21) & 1) << CPUFeatureIndex::kX2APIC;
+  f.features |= ((cpuid.ecx >> 26) & 1) << CPUFeatureIndex::kXSAVE;
+  f.features |= ((cpuid.ecx >> 27) & 1) << CPUFeatureIndex::kOSXSAVE;
+  f.features |= ((cpuid.edx >> 9) & 1) << CPUFeatureIndex::kAPIC;
   f.clfsh = cpuid.edx & (1 << 19);
+
 
   if (7 <= f.max_cpuid) {
     ReadCPUID(&cpuid, 7, 0);

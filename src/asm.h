@@ -19,6 +19,18 @@ constexpr uint64_t kLocalAPICBaseBitx2APICEnabled = (1 << 10);
 
 constexpr uint64_t kRFlagsInterruptEnable = (1ULL << 9);
 
+struct CPUFeatureIndex {
+  enum { kX2APIC, kXSAVE, kOSXSAVE, kAPIC, kSize };
+  int dummy;
+};
+
+static const char* CPUFeatureString[] = {
+    "x2APIC",
+    "XSAVE",
+    "OSXSAVE",
+    "APIC",
+};
+
 packed_struct CPUFeatureSet {
   uint64_t max_phy_addr;
   uint64_t phy_addr_mask;               // = (1ULL << max_phy_addr) - 1
@@ -29,7 +41,9 @@ packed_struct CPUFeatureSet {
   bool x2apic;
   bool clfsh;
   bool clflushopt;
+  uint64_t features;
   char brand_string[48];
+  static_assert(sizeof(features) * 8 >= CPUFeatureIndex::kSize);
 };
 
 packed_struct CPUID {

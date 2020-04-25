@@ -755,6 +755,9 @@ void Run(TextBox& tbox) {
     PutStringAndHex("phy_addr_mask", f.phy_addr_mask);
     PutStringAndBool("CLFLUSH supported", f.clfsh);
     PutStringAndBool("CLFLUSHOPT supported", f.clflushopt);
+    for (int i = 0; i < CPUFeatureIndex::kSize; i++) {
+      PutStringAndBool(CPUFeatureString[i], (f.features >> i) & 1);
+    }
   } else if (IsEqualString(line, "lspci")) {
     ListPCIDevices();
   } else if (IsEqualString(line, "version")) {
