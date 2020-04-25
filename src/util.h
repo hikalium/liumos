@@ -6,6 +6,11 @@ constexpr TExpr GetBits(TExpr v) {
   return (v >> lo) & ((1 << (hi - lo + 1)) - 1);
 }
 
+template <int bit, typename TExpr>
+constexpr bool GetBit(TExpr v) {
+  return (v >> bit) & 1;
+}
+
 template <int hi, int lo, typename TExpr>
 constexpr TExpr CombineFieldBits(TExpr src, TExpr value) {
   assert(hi >= lo);

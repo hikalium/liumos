@@ -20,7 +20,7 @@ constexpr uint64_t kLocalAPICBaseBitx2APICEnabled = (1 << 10);
 constexpr uint64_t kRFlagsInterruptEnable = (1ULL << 9);
 
 struct CPUFeatureIndex {
-  enum { kX2APIC, kXSAVE, kOSXSAVE, kAPIC, kSize };
+  enum { kX2APIC, kXSAVE, kOSXSAVE, kAPIC, kFXSR, kSize };
   int dummy;
 };
 
@@ -29,6 +29,7 @@ static const char* CPUFeatureString[] = {
     "XSAVE",
     "OSXSAVE",
     "APIC",
+    "FXSR",
 };
 
 packed_struct CPUFeatureSet {

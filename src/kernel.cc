@@ -266,11 +266,11 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
 
   StoreIntFlag();
 
-  LaunchSubTask(kernel_heap_allocator);
+  //LaunchSubTask(kernel_heap_allocator);
 
   EnableSyscall();
 
-  XHCI::Controller::GetInstance().Init();
+  //XHCI::Controller::GetInstance().Init();
 
   TextBox console_text_box;
   while (1) {
