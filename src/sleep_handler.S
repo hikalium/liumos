@@ -2,6 +2,13 @@
 
 .global Sleep
 Sleep:
+	// Align stack on 16-byte boundary
+	push rbp
+	mov rbp, rsp
+	and rsp, -16
+
+	// Build interrupt stack frame
+	// CPU: SS, RSP, RFLAGS, CS, RIP
 	mov rax, ss
 	push rax
 	push rsp
@@ -10,6 +17,9 @@ Sleep:
 	mov rax, cs
 	push rax
 	call SleepSub
+
+	mov rsp, rbp
+	pop rbp
 	ret
 
 .global SleepHandler

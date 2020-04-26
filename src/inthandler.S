@@ -1,5 +1,9 @@
 .intel_syntax noprefix
 
+// SDM Vol.3: 6.14.2 64-Bit Mode Stack Frame
+// In IA-32e mode, the RSP is aligned to a 16-byte boundary
+// before pushing the stack frame
+
 .global AsmIntHandler00_DivideError
 AsmIntHandler00_DivideError:
 	push 0
@@ -82,7 +86,6 @@ AsmIntHandlerNotImplemented:
 	jmp IntHandlerWrapper
 
 .global IntHandler
-// TODO: Save xmm registers
 IntHandlerWrapper:
   push r15
   push r14

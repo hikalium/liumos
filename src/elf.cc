@@ -185,14 +185,18 @@ Process& LoadELFAndCreateEphemeralProcess(EFIFile& file) {
   void* stack_pointer =
       reinterpret_cast<void*>(map_info.stack.GetVirtEndAddr());
 
+  uint64_t kernel_stack_pointer =
+      liumos->kernel_heap_allocator->AllocPages<uint64_t>(
+          kKernelStackPagesForEachProcess,
+          kPageAttrPresent | kPageAttrWritable) +
+      kPageSize * kKernelStackPagesForEachProcess;
+
+  PutStringAndHex("Kernel stack pointer", kernel_stack_pointer);
+
   ctx.SetRegisters(reinterpret_cast<void (*)(void)>(entry_point),
                    GDT::kUserCS64Selector, stack_pointer, GDT::kUserDSSelector,
                    reinterpret_cast<uint64_t>(&user_page_table),
-                   kRFlagsInterruptEnable,
-                   liumos->kernel_heap_allocator->AllocPages<uint64_t>(
-                       kKernelStackPagesForEachProcess,
-                       kPageAttrPresent | kPageAttrWritable) +
-                       kPageSize * kKernelStackPagesForEachProcess);
+                   kRFlagsInterruptEnable, kernel_stack_pointer);
   Process& proc = liumos->proc_ctrl->Create();
   proc.InitAsEphemeralProcess(ctx);
   return proc;

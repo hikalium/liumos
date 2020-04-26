@@ -106,6 +106,18 @@ void LaunchSubTask(KernelVirtualHeapAllocator& kernel_heap_allocator) {
   liumos->sub_process = &proc;
 }
 
+static void EnsureAddrIs16ByteAligned(Process& from,
+                                      Process& to,
+                                      const char* label,
+                                      void* addr) {
+  if ((reinterpret_cast<uint64_t>(addr) & 0xF) == 0)
+    return;
+  PutStringAndHex(label, addr);
+  PutStringAndHex("From Process#", from.GetID());
+  PutStringAndHex("To   Process#", to.GetID());
+  Panic("Not 16-byte aligned\n");
+}
+
 void SwitchContext(InterruptInfo& int_info,
                    Process& from_proc,
                    Process& to_proc) {
@@ -120,6 +132,10 @@ void SwitchContext(InterruptInfo& int_info,
 
   CPUContext& from = from_proc.GetExecutionContext().GetCPUContext();
   const uint64_t t0 = liumos->hpet->ReadMainCounterValue();
+
+  EnsureAddrIs16ByteAligned(from_proc, to_proc, "int_info.fpu_context",
+                            &int_info.fpu_context);
+
   from.cr3 = ReadCR3();
   from.greg = int_info.greg;
   from.int_ctx = int_info.int_ctx;
