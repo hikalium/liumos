@@ -59,12 +59,27 @@ class Adlib {
     // Set following registers:
     // A0..A8       Frequency (low 8 bits)
     // B0..B8       Key On / Octave / Frequency (high 2 bits)
-    assert(0 <= ch && ch <= 9);
+    assert(0 <= ch && ch <= 8);
     //        A0          98      Set voice frequency's LSB (it'll be a D#)
     WriteReg(0xA0 + ch, freq_num & 0xFF);
     //        B0          31      Turn the voice on; set the octave and freq MSB
     WriteReg(0xB0 + ch, 0b0010'0000 | (octave << 2) | freq_num >> 8);
   }
+  static void SetFreq(int ch, int midi_note_num) {
+    // http://bochs.sourceforge.net/techspec/adlib_sb.txt
+    static uint16_t freq_array[12] = {0x16B, 0x181, 0x198, 0x1B0, 0x1CA, 0x1E5,
+                                      0x202, 0x220, 0x241, 0x263, 0x287, 0x2AE};
+    assert(13 <= midi_note_num && midi_note_num <= 108);
+    int ofs = (midi_note_num - 13) % 12;
+    SetFreq(ch, (midi_note_num - 13) / 12, freq_array[ofs]);
+  }
+  static void StopSound(int ch) { WriteReg(0xB0 + ch, 0); }
+
+  static constexpr int kChNone = -1;
+  static constexpr int kNoteNone = -1;
+  static int note_on_count_[0x100];
+  static int ch_of_note_[0x100];
+  static int note_of_ch_[9];
 
  public:
   static bool DetectAndInit() {
@@ -96,31 +111,58 @@ class Adlib {
     }
     PutString(" found.\n");
     ResetAllRegisters();
-    SetupChannel(0);
-    SetupChannel(1);
-    SetupChannel(2);
+    TurnOffAllNotes();
+    for (int i = 0; i < 9; i++) {
+      SetupChannel(i);
+    }
     return true;
   }
-
-  static void NoteOn(int ch, int midi_note_num) {
-    // http://bochs.sourceforge.net/techspec/adlib_sb.txt
-    static uint16_t freq_array[12] = {0x16B, 0x181, 0x198, 0x1B0, 0x1CA, 0x1E5,
-                                      0x202, 0x220, 0x241, 0x263, 0x287, 0x2AE};
-    assert(13 <= midi_note_num && midi_note_num <= 108);
-    int ofs = (midi_note_num - 13) % 12;
-    SetFreq(ch, (midi_note_num - 13) / 12, freq_array[ofs]);
-    PutString("CH");
-    PutHex8ZeroFilled(ch);
-    PutString(": ");
-    PrintNote("Note on : ", midi_note_num);
+  static void TurnOffAllNotes() {
+    for (int i = 0; i < 9; i++) {
+      StopSound(i);
+      note_of_ch_[i] = kNoteNone;
+    }
+    for (int i = 0; i < 0x100; i++) {
+      note_on_count_[i] = 0;
+      ch_of_note_[i] = kChNone;
+    }
   }
 
-  static void NoteOff(int ch) {
-    WriteReg(0xB0 + ch, 0);
-    PutString("CH");
-    PutHex8ZeroFilled(ch);
-    PutString(": ");
-    PutString("Note off\n");
+  static void NoteOn(int midi_note_num) {
+    assert(13 <= midi_note_num && midi_note_num <= 108);
+    if (note_on_count_[midi_note_num]) {
+      // Already on.
+      note_on_count_[midi_note_num]++;
+      return;
+    }
+    for (int i = 0; i < 9; i++) {
+      if (note_of_ch_[i] != kNoteNone)
+        continue;
+      note_of_ch_[i] = midi_note_num;
+      note_on_count_[midi_note_num] = 1;
+      ch_of_note_[midi_note_num] = i;
+      SetFreq(i, midi_note_num);
+      PrintNote("Note on : ", midi_note_num);
+      return;
+    }
+    // Give up since we have no more channel.
+  }
+
+  static void NoteOff(int midi_note_num) {
+    assert(13 <= midi_note_num && midi_note_num <= 108);
+    if (!note_on_count_[midi_note_num]) {
+      // Already off.
+      return;
+    }
+    note_on_count_[midi_note_num]--;
+    if (note_on_count_[midi_note_num]) {
+      // Keep note on
+      return;
+    }
+    StopSound(ch_of_note_[midi_note_num]);
+    PrintNote("Note off: ", midi_note_num);
+    note_of_ch_[ch_of_note_[midi_note_num]] = kNoteNone;
+    ch_of_note_[midi_note_num] = kChNone;
   }
 };
 
