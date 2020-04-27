@@ -20,6 +20,7 @@ LOADER_SRCS= $(COMMON_SRCS) \
 			 libfunc.cc loader.cc
 
 KERNEL_SRCS= $(COMMON_SRCS) \
+			 adlib.cc \
 			 command.cc \
 			 hpet.cc \
 			 kernel.cc keyboard.cc \
