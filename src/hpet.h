@@ -21,6 +21,7 @@ class HPET {
   uint64_t ReadMainCounterValue();
   uint64_t GetFemtosecondPerCount();
   void BusyWait(uint64_t ms);
+  void BusyWaitMicroSecond(uint64_t);
   void Print(void);
 
  private:

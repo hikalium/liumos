@@ -142,7 +142,7 @@ class Adlib {
       note_on_count_[midi_note_num] = 1;
       ch_of_note_[midi_note_num] = i;
       SetFreq(i, midi_note_num);
-      PrintNote("Note on : ", midi_note_num);
+      // PrintNote("Note on : ", midi_note_num);
       return;
     }
     // Give up since we have no more channel.
@@ -160,10 +160,11 @@ class Adlib {
       return;
     }
     StopSound(ch_of_note_[midi_note_num]);
-    PrintNote("Note off: ", midi_note_num);
+    // PrintNote("Note off: ", midi_note_num);
     note_of_ch_[ch_of_note_[midi_note_num]] = kNoteNone;
     ch_of_note_[midi_note_num] = kChNone;
   }
 };
 
 void TestAdlib();
+void PlayMIDI(EFIFile& file);

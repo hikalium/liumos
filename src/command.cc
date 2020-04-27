@@ -849,6 +849,8 @@ void Run(TextBox& tbox) {
     __asm__ volatile("ud2;");
   } else if (IsEqualString(line, "adlib")) {
     TestAdlib();
+  } else if (IsEqualString(line, "midi")) {
+    PlayMIDI(*liumos->loader_info.files.test_mid);
   } else {
     PutString("Command not found: ");
     PutString(tbox.GetRecordedString());

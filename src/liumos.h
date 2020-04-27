@@ -76,6 +76,7 @@ packed_struct LoaderInfo {
     EFIFile* pi_bin;
     EFIFile* liumos_elf;
     EFIFile* liumos_ppm;
+    EFIFile* test_mid;
   } files;
   EFI* efi;
 };
