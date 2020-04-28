@@ -102,7 +102,7 @@ IntHandlerWrapper:
   push rdx
   push rax
 	sub rsp, 512 + 8
-	fxsave [rsp]
+	fxsave64[rsp]
 
 	mov rdx, rsp 
 	mov rbp, rsp
@@ -113,7 +113,7 @@ IntHandlerWrapper:
 // This function is also called by sleep_handler
 .global RestoreRegistersAndIRETQ
 RestoreRegistersAndIRETQ:
-	fxrstor [rsp]
+	fxrstor64[rsp]
 	add rsp, 512 + 8
   pop rax
   pop rdx

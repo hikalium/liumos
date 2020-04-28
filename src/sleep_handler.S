@@ -42,6 +42,7 @@ SleepSub:
   push rdx
   push rax
 	sub rsp, 512 + 8
+	fxsave64[rsp]
 
 	cli
 
