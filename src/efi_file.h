@@ -8,6 +8,7 @@ class EFIFile {
  public:
   const uint8_t* GetBuf() { return buf_pages_; }
   uint64_t GetFileSize() { return file_size_; }
+  const char* GetFileName() { return file_name_; }
 
  private:
   static constexpr int kFileNameSize = 16;

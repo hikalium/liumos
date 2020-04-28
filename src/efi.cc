@@ -1,4 +1,5 @@
 #include "corefunc.h"
+#include "efi_file_manager.h"
 #include "liumos.h"
 
 static const GUID kACPITableGUID = {
@@ -226,4 +227,37 @@ void EFI::ListAllFiles() {
     PutWString(finfo.file_name);
     PutChar('\n');
   }
+}
+
+int EFI::LoadRootFiles(EFIFile file_list[], int num_of_file) {
+  // 13.5 File Protocol
+  assert(root_file_);
+
+  FileSystemInfo fsinfo;
+  ReadFileSystemInfo(root_file_, &fsinfo);
+
+  PutString("Volume label: ");
+  PutWString(fsinfo.volume_label);
+  PutChar('\n');
+
+  PutString("Files in root:\n");
+
+  int files_used = 0;
+  for (;;) {
+    FileInfo finfo;
+    UINTN buf_size = sizeof(finfo);
+    Status status = root_file_->Read(root_file_, &buf_size, &finfo);
+    assert(status == Status::kSuccess);
+    if (!buf_size)
+      break;  // End of dir entry
+    if (finfo.attr & EFI::kFileAttrDir)
+      continue;  // TODO: Support Dir
+    PutChar('+');
+    PutWString(finfo.file_name);
+    PutChar('\n');
+    EFIFileManager::Load(file_list[files_used++], finfo.file_name);
+    if (num_of_file == files_used)
+      break;
+  }
+  return files_used;
 }

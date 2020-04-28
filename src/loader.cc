@@ -144,7 +144,8 @@ void MainForBootProcessor(EFI::Handle image_handle,
   main_console_.SetSheet(liumos->screen_sheet);
   liumos->main_console = &main_console_;
 
-  efi_.ListAllFiles();
+  liumos_.loader_info.root_files_used =
+      efi_.LoadRootFiles(liumos_.loader_info.root_files, kNumOfRootFiles);
 
   EFIFileManager::Load(logo_ppm, L"logo.ppm");
   liumos_.loader_info.files.logo_ppm = &logo_ppm;

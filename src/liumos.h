@@ -69,6 +69,7 @@ inline T min(T a, T b) {
 }
 
 // @liumos.c
+constexpr int kNumOfRootFiles = 16;
 packed_struct LoaderInfo {
   struct {
     EFIFile* logo_ppm;
@@ -78,6 +79,8 @@ packed_struct LoaderInfo {
     EFIFile* liumos_ppm;
     EFIFile* test_mid;
   } files;
+  EFIFile root_files[kNumOfRootFiles];
+  int root_files_used;
   EFI* efi;
 };
 class PersistentMemoryManager;

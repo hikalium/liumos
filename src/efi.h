@@ -1,5 +1,6 @@
 #pragma once
 
+#include "efi_file.h"
 #include "generic.h"
 #include "guid.h"
 
@@ -110,6 +111,7 @@ class EFI {
   };
 
   static constexpr int kFileNameSize = 32;
+  static constexpr uint64_t kFileAttrDir = 0x10;
 
   struct FileInfo {
     uint64_t size;
@@ -429,6 +431,7 @@ class EFI {
     return *graphics_output_protocol_->mode;
   }
   void ListAllFiles();
+  int LoadRootFiles(EFIFile file_list[], int num_of_file);
 
  private:
   Handle image_handle_;
