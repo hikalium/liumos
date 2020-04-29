@@ -13,7 +13,6 @@ CPUFeatureSet cpu_features;
 SerialPort com1;
 EFIFile logo_ppm;
 EFIFile liumos_ppm;
-EFIFile test_mid;
 EFIFile hello_bin_file;
 EFIFile pi_bin_file;
 EFIFile liumos_elf_file;
@@ -157,8 +156,6 @@ void MainForBootProcessor(EFI::Handle image_handle,
   liumos_.loader_info.files.hello_bin = &hello_bin_file;
   EFIFileManager::Load(liumos_ppm, L"liumos.ppm");
   liumos_.loader_info.files.liumos_ppm = &liumos_ppm;
-  EFIFileManager::Load(test_mid, L"test.mid");
-  liumos_.loader_info.files.test_mid = &test_mid;
 
   efi_.GetMemoryMapAndExitBootServices(image_handle, efi_memory_map);
   liumos->efi_memory_map = &efi_memory_map;

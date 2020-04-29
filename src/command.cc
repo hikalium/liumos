@@ -600,6 +600,17 @@ static void ListPCIDevices() {
   PCI::GetInstance().PrintDevices();
 }
 
+static void PlayMIDI(const char* file_name) {
+  for (int i = 0; i < liumos->loader_info.root_files_used; i++) {
+    if (strcmp(liumos->loader_info.root_files[i].GetFileName(), file_name) ==
+        0) {
+      PlayMIDI(liumos->loader_info.root_files[i]);
+      return;
+    }
+  }
+  PutString("midi file not found.");
+}
+
 void Run(TextBox& tbox) {
   const char* line = tbox.GetRecordedString();
   if (IsEqualString(line, "hello")) {
@@ -850,7 +861,8 @@ void Run(TextBox& tbox) {
   } else if (IsEqualString(line, "adlib")) {
     TestAdlib();
   } else if (IsEqualString(line, "midi")) {
-    PlayMIDI(*liumos->loader_info.files.test_mid);
+    const char* file_name = "test.mid";
+    PlayMIDI(file_name);
   } else if (IsEqualString(line, "ls")) {
     for (int i = 0; i < liumos->loader_info.root_files_used; i++) {
       PutString(liumos->loader_info.root_files[i].GetFileName());

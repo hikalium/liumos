@@ -77,8 +77,9 @@ void PlayMIDI(EFIFile& file) {
 
         for (q = 0; q < tracksize;) {
           delta = ParseMIDIValue(&data[p + 0], &q);
-          sprintf(s, "%8d:", delta);
-          PutString(s);
+          // sprintf(s, "%8d:", delta);
+          // PutString(s);
+          PutChar('.');
 
           if (delta)
             liumos->hpet->BusyWaitMicroSecond(microsTimePerDeltaTime * delta);
