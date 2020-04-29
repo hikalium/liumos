@@ -198,6 +198,7 @@ run:
 	make -C .. run
 
 unittest:
+	make test_command_line_args
 	make test_ring_buffer
 	make test_paging
 	make test_xhci_trbring

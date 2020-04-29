@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "adlib.h"
+#include "command_line_args.h"
 #include "liumos.h"
 #include "pci.h"
 #include "pmem.h"
@@ -613,6 +614,11 @@ static void PlayMIDI(const char* file_name) {
 
 void Run(TextBox& tbox) {
   const char* line = tbox.GetRecordedString();
+  CommandLineArgs args;
+  if (!args.Parse(line)) {
+    PutString("Failed to parse command line\n");
+    return;
+  }
   if (IsEqualString(line, "hello")) {
     PutString("Hello, world!\n");
   } else if (IsEqualString(line, "reset")) {
@@ -860,8 +866,12 @@ void Run(TextBox& tbox) {
     __asm__ volatile("ud2;");
   } else if (IsEqualString(line, "adlib")) {
     TestAdlib();
-  } else if (IsEqualString(line, "midi")) {
-    const char* file_name = "test.mid";
+  } else if (IsEqualString(args.GetArg(0), "midi")) {
+    if (args.GetNumOfArgs() < 2) {
+      PutString("midi <file>\n");
+      return;
+    }
+    const char* file_name = args.GetArg(1);
     PlayMIDI(file_name);
   } else if (IsEqualString(line, "ls")) {
     for (int i = 0; i < liumos->loader_info.root_files_used; i++) {
