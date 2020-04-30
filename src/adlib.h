@@ -24,6 +24,7 @@ class Adlib {
     }
   }
   static void SetupChannel(int ch) {
+    // volume is 6bit (0 - 63)
     // Channel        0   1   2   3   4   5   6   7   8
     // Operator 1    00  01  02  08  09  0A  10  11  12
     // Operator 2    03  04  05  0B  0C  0D  13  14  15
@@ -33,7 +34,7 @@ class Adlib {
     //        20          01      Set the modulator's multiple to 1
     WriteReg(0x20 + op1ofs, 0x01);
     //        40          10      Set the modulator's level to about 40 dB
-    WriteReg(0x40 + op1ofs, 0x10);
+    WriteReg(0x40 + op1ofs, 0b0001'0000);
     //        60          F0      Modulator attack:  quick;   decay:   long
     WriteReg(0x60 + op1ofs, 0xF0);
     //        80          77      Modulator sustain: medium;  release: medium
@@ -42,7 +43,7 @@ class Adlib {
     WriteReg(0x20 + op2ofs, 0x01);
     //        43          00      Set the carrier to maximum volume (about 47
     //        dB)
-    WriteReg(0x40 + op2ofs, 0x00);
+    SetVolume(ch, 63);
     //        63          F0      Carrier attack:  quick;   decay:   long
     WriteReg(0x60 + op2ofs, 0xF0);
     //        83          77      Carrier sustain: medium;  release: medium
@@ -72,6 +73,10 @@ class Adlib {
     assert(13 <= midi_note_num && midi_note_num <= 108);
     int ofs = (midi_note_num - 13) % 12;
     SetFreq(ch, (midi_note_num - 13) / 12, freq_array[ofs]);
+  }
+  static void SetVolume(int ch, uint8_t volume) {
+    int op2ofs = (ch / 3) * 8 + ch % 3 + 3;
+    WriteReg(0x40 + op2ofs, 0b0011'1111 - (volume & 0b0011'1111));
   }
   static void StopSound(int ch) { WriteReg(0xB0 + ch, 0); }
 

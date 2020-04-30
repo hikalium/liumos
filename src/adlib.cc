@@ -7,11 +7,10 @@ int Adlib::note_on_count_[0x100];
 int Adlib::ch_of_note_[0x100];
 int Adlib::note_of_ch_[9];
 
-unsigned int ParseMIDIValue(const uint8_t* base, unsigned int* offset) {
-  unsigned int i, r;
-
+unsigned int ParseMIDIValue(const uint8_t* base, int* offset) {
+  unsigned int r;
+  int i;
   r = 0;
-
   for (i = 0; i < 4; i++) {
     r = r << 7;
     r += (base[*offset + i] & 0x7f);
@@ -20,189 +19,176 @@ unsigned int ParseMIDIValue(const uint8_t* base, unsigned int* offset) {
       break;
     }
   }
-
   *offset += i;
-
   return r;
 }
 
-const char* MIDI_Notes[12] = {"C ", "C#", "D ", "D#", "E ", "F ",
-                              "F#", "G ", "G#", "A ", "A#", "B "};
+struct MIDIPlayerState {
+  unsigned int delta_per_quarter_note;
+  unsigned int micro_second_per_quarter_note;
+  unsigned int micro_second_per_delta;
+};
+
+class MIDIEvent {
+ public:
+  bool Init(const uint8_t* data) {
+    if (!data)
+      return false;
+    data_ = data;
+    int ofs = 0;
+    delta_ = ParseMIDIValue(data, &ofs);
+    type_ = data[ofs++];
+    param_ofs_ = ofs;
+    if (type_ == 0xff) {
+      // Meta Event
+      meta_type_ = data[ofs++];
+      meta_data_length_ = ParseMIDIValue(data, &ofs);
+      event_size_ = ofs + meta_data_length_;
+      return true;
+    }
+    switch (type_ & 0xf0) {
+      case 0x80:
+      case 0x90:
+      case 0xa0:
+      case 0xb0:
+      case 0xe0:
+        event_size_ = ofs + 2;
+        return true;
+      case 0xc0:
+      case 0xd0:
+        event_size_ = ofs + 1;
+        return true;
+    }
+    return false;
+  }
+  int GetSize() const { return event_size_; };
+  int GetDelta() const { return delta_; }
+  int GetType() const { return type_; }
+  int GetMetaType() const { return meta_type_; }
+  int GetParam(int index) const {
+    assert(0 <= index && index < (event_size_ - param_ofs_));
+    return data_[param_ofs_ + index];
+  }
+
+ private:
+  const uint8_t* data_;
+  int delta_;
+  int param_ofs_;
+  uint8_t type_;
+  uint8_t meta_type_;
+  uint8_t meta_data_length_;
+  uint8_t event_size_;
+};
+
+class MIDITrackStream {
+ public:
+  bool Init(const uint8_t* data, const uint16_t data_size, int ofs) {
+    // returns the parameter is valid or not
+    data_ = data;
+    data_size_ = data_size;
+    ofs_base_ = ofs;
+    ofs_ = ofs_base_;
+    if (strncmp(reinterpret_cast<const char*>(&data_[ofs_]), "MTrk", 4) != 0) {
+      PutString("Not a Track.\n");
+      return false;
+    }
+    ofs_ += 4;
+
+    int track_data_size = 0;
+    for (int i = 0; i < 4; i++) {
+      track_data_size <<= 8;
+      track_data_size |= data_[ofs_ + i];
+    }
+    track_size_ = track_data_size + 4 + 4;
+    ofs_ += 4;
+
+    char s[128];
+    sprintf(s, "Track size=%d ofs_base=%d ofs=%d\n", track_size_, ofs_base_,
+            ofs_);
+    PutString(s);
+    assert(data_size_ - ofs_base_ >= track_size_);
+    return true;
+  }
+  int GetSize() { return track_size_; }
+  const MIDIEvent* GetNextEvent() {
+    if (ofs_ >= (ofs_base_ + track_size_))
+      return nullptr;
+    if (!event_.Init(&data_[ofs_]))
+      return nullptr;
+    ofs_ += event_.GetSize();
+    return &event_;
+  }
+
+ private:
+  MIDIEvent event_;
+  const uint8_t* data_;
+  int data_size_;
+  int ofs_base_;
+  int track_size_;
+  int ofs_;
+};
 
 void PlayMIDI(EFIFile& file) {
   if (!Adlib::DetectAndInit()) {
     return;
   }
-
   const uint8_t* data = file.GetBuf();
-  unsigned int data_size = static_cast<unsigned int>(file.GetFileSize());
-  unsigned int p, q, tracksize, r, datalength, delta;
+  int data_size = static_cast<int>(file.GetFileSize());
+
+  int p;
   char s[128];
-  unsigned int DeltaTimePerQuarterNote, microsTimePerQuarterNote,
-      microsTimePerDeltaTime;
+  MIDIPlayerState state;
 
-  DeltaTimePerQuarterNote = 480;
-  microsTimePerQuarterNote = 500000;
-  microsTimePerDeltaTime = microsTimePerQuarterNote / DeltaTimePerQuarterNote;
   p = 0;
-  if (strncmp(reinterpret_cast<const char*>(&data[p + 0]), "MThd", 4) == 0) {
-    p += 4;
-    p += 4;
+  if (strncmp(reinterpret_cast<const char*>(&data[p + 0]), "MThd", 4) != 0) {
+    PutString("midi:Unknown header.\n");
+    return;
+  }
+  p += 4;
+  p += 4;
 
-    sprintf(s, "SMF Format%d ", (data[p + 0] << 8) | data[p + 1]);
-    PutString(s);
-    p += 2;
+  sprintf(s, "SMF Format%d ", (data[p + 0] << 8) | data[p + 1]);
+  PutString(s);
+  p += 2;
 
-    sprintf(s, "Tracks:%d\n", (data[p + 0] << 8) | data[p + 1]);
-    PutString(s);
-    p += 2;
+  sprintf(s, "Tracks:%d\n", (data[p + 0] << 8) | data[p + 1]);
+  PutString(s);
+  p += 2;
 
-    DeltaTimePerQuarterNote = (data[p + 0] << 8) | data[p + 1];
-    microsTimePerDeltaTime = microsTimePerQuarterNote / DeltaTimePerQuarterNote;
-    sprintf(s, "DeltaTime(per quarter note):%d\n", DeltaTimePerQuarterNote);
-    PutString(s);
-    p += 2;
+  state.micro_second_per_quarter_note = 500000;
+  state.delta_per_quarter_note = (data[p + 0] << 8) | data[p + 1];
+  state.micro_second_per_delta =
+      state.micro_second_per_quarter_note / state.delta_per_quarter_note;
+  sprintf(s, "DeltaTime(per quarter note):%d\n", state.delta_per_quarter_note);
+  PutString(s);
+  p += 2;
 
-    for (; p < data_size;) {
-      if (strncmp(reinterpret_cast<const char*>(&data[p + 0]), "MTrk", 4) ==
-          0) {
-        PutString("Track:\n");
-        p += 4;
+  for (; p < data_size;) {
+    MIDITrackStream track;
+    assert(track.Init(data, data_size, p));
+    while (const MIDIEvent* event = track.GetNextEvent()) {
+      int delta = event->GetDelta();
+      PutChar('.');
 
-        tracksize = (data[p + 0] << 24) | (data[p + 1] << 16) |
-                    (data[p + 2] << 8) | data[p + 3];
-        sprintf(s, "size:0x%X\n", tracksize);
-        PutString(s);
-        p += 4;
+      if (delta)
+        liumos->hpet->BusyWaitMicroSecond(state.micro_second_per_delta * delta);
 
-        for (q = 0; q < tracksize;) {
-          delta = ParseMIDIValue(&data[p + 0], &q);
-          // sprintf(s, "%8d:", delta);
-          // PutString(s);
-          PutChar('.');
-
-          if (delta)
-            liumos->hpet->BusyWaitMicroSecond(microsTimePerDeltaTime * delta);
-
-          if (data[p + q + 0] == 0xff) {
-            PutString("Meta ");
-            q++;
-            r = data[p + q + 0];
-            q++;
-            datalength = ParseMIDIValue(&data[p + 0], &q);
-            if (r == 0x00) {  //シーケンス番号
-              sprintf(s, "SequenceNumber size:%d\n", datalength);
-              PutString(s);
-              q += datalength;
-            } else if (r == 0x01) {  //テキスト
-              sprintf(s, "TEXT size:%d\n", datalength);
-              PutString(s);
-              q += datalength;
-            } else if (r == 0x02) {  //著作権表示
-              sprintf(s, "Copyright size:%d\n", datalength);
-              PutString(s);
-              q += datalength;
-            } else if (r == 0x03) {  //トラック名
-              sprintf(s, "TrackName size:%d\n", datalength);
-              PutString(s);
-              q += datalength;
-            } else if (r == 0x04) {  //楽器名
-              sprintf(s, "InstrumentName size:%d\n", datalength);
-              PutString(s);
-              q += datalength;
-            } else if (r == 0x05) {  //歌詞
-              sprintf(s, "Lyrics size:%d\n", datalength);
-              PutString(s);
-              q += datalength;
-            } else if (r == 0x06) {  //マーカー
-              sprintf(s, "Marker size:%d\n", datalength);
-              PutString(s);
-              q += datalength;
-            } else if (r == 0x07) {  //キューポイント
-              sprintf(s, "QueuePoint size:%d\n", datalength);
-              PutString(s);
-              q += datalength;
-            } else if (r == 0x08) {  //音色（プログラム）名
-              sprintf(s, "ProgramName size:%d\n", datalength);
-              PutString(s);
-              q += datalength;
-            } else if (r == 0x09) {  //音源（デバイス）名
-              sprintf(s, "DeviceName size:%d\n", datalength);
-              PutString(s);
-              q += datalength;
-            } else if (r == 0x20) {  // MIDIチャンネルプリフィックス
-              sprintf(s, "MIDIChannelPrefix size:%d\n", datalength);
-              PutString(s);
-              q += datalength;
-            } else if (r == 0x21) {  //ポート指定
-              sprintf(s, "OutPutPort size:%d\n", datalength);
-              PutString(s);
-              q += datalength;
-            } else if (r == 0x2f) {  // End of Track
-              sprintf(s, "End of Track size:%d\n", datalength);
-              PutString(s);
-              q += datalength;
-            } else if (r == 0x51) {  //テンポ設定（4分音符あたりのマイクロ秒）
-              microsTimePerQuarterNote = (data[p + q + 0] << 16) |
-                                         (data[p + q + 1] << 8) |
-                                         data[p + q + 2];
-              sprintf(s, "Tempo %dmicrosec per quarter note.\n", datalength);
-              microsTimePerDeltaTime =
-                  microsTimePerQuarterNote / DeltaTimePerQuarterNote;
-              PutString(s);
-              q += datalength;
-            } else if (r == 0x54) {  // SMPTEオフセット
-              sprintf(s, "SMPTE_Offset size:%d\n", datalength);
-              PutString(s);
-              q += datalength;
-            } else if (r == 0x58) {  //拍子の設定
-              sprintf(s, "Beat size:%d\n", datalength);
-              PutString(s);
-              q += datalength;
-            } else if (r == 0x59) {  //調の設定
-              sprintf(s, "Tone size:%d\n", datalength);
-              PutString(s);
-              q += datalength;
-            } else if (r == 0x7f) {  //シーケンサ特定メタイベント
-              sprintf(s, "SequencerSpecialMetaEvent size:%d\n", datalength);
-              PutString(s);
-              q += datalength;
-            } else {
-              PutString("midi:Unknown Meta Event.\n");
-              break;
-            }
-          } else if ((data[p + q + 0] & 0xf0) == 0x80) {  // note off
-            Adlib::NoteOff(data[p + q + 1]);
-            q += 3;
-          } else if ((data[p + q + 0] & 0xf0) == 0x90) {  // note on or off
-            if (data[p + q + 2] == 0x00) {                // note off
-              Adlib::NoteOff(data[p + q + 1]);
-            } else {
-              Adlib::NoteOn(data[p + q + 1]);
-            }
-            q += 3;
-          } else if ((data[p + q + 0] & 0xf0) ==
-                     0xa0) {  // Polyphonic Key Pressure
-            q += 3;
-          } else if ((data[p + q + 0] & 0xf0) == 0xb0) {  // Control Change
-            q += 3;
-          } else if ((data[p + q + 0] & 0xf0) == 0xc0) {  // Program Change
-            q += 2;
-          } else if ((data[p + q + 0] & 0xf0) == 0xd0) {  // Channel Pressure
-            q += 2;
-          } else if ((data[p + q + 0] & 0xf0) == 0xe0) {  // Pitch Bend
-            q += 3;
-          } else {
-            break;
-          }
+      if ((event->GetType() & 0xf0) == 0x80) {
+        // Note Off
+        // 0b1000'nnnn 0b0kkk'kkkk 0b0vvv'vvvv
+        // n: port number
+        // k: note number
+        // v: velocity
+        Adlib::NoteOff(event->GetParam(0));
+      } else if ((event->GetType() & 0xf0) == 0x90) {  // note on or off
+        if (event->GetParam(1) == 0x00) {              // note off
+          Adlib::NoteOff(event->GetParam(0));
+        } else {
+          Adlib::NoteOn(event->GetParam(0));
         }
-        p += tracksize;
-      } else {
-        PutString("midi:Unknown Track.\n");
       }
     }
-  } else {
-    PutString("midi:Unknown header.\n");
+    p += track.GetSize();
   }
   Adlib::TurnOffAllNotes();
 }
