@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <algorithm>
+
 int Adlib::note_on_count_[0x100];
 int Adlib::ch_of_note_[0x100];
 int Adlib::note_of_ch_[9];
@@ -151,7 +153,8 @@ void PlayMIDI(EFIFile& file) {
   PutString(s);
   p += 2;
 
-  sprintf(s, "Tracks:%d\n", (data[p + 0] << 8) | data[p + 1]);
+  int num_of_tracks = (data[p + 0] << 8) | data[p + 1];
+  sprintf(s, "Tracks:%d\n", num_of_tracks);
   PutString(s);
   p += 2;
 
@@ -163,32 +166,66 @@ void PlayMIDI(EFIFile& file) {
   PutString(s);
   p += 2;
 
-  for (; p < data_size;) {
-    MIDITrackStream track;
-    assert(track.Init(data, data_size, p));
-    while (const MIDIEvent* event = track.GetNextEvent()) {
-      int delta = event->GetDelta();
-      PutChar('.');
+  constexpr int kMaxNumOfTracks = 24;
+  MIDITrackStream tracks[kMaxNumOfTracks];
+  const MIDIEvent* next_event[kMaxNumOfTracks];
+  assert(num_of_tracks < kMaxNumOfTracks);
+  int delta_used[kMaxNumOfTracks];
 
-      if (delta)
-        liumos->hpet->BusyWaitMicroSecond(state.micro_second_per_delta * delta);
+  for (int i = 0; i < num_of_tracks; i++) {
+    assert(p < data_size);
+    assert(tracks[i].Init(data, data_size, p));
+    next_event[i] = tracks[i].GetNextEvent();
+    delta_used[i] = 0;
+    p += tracks[i].GetSize();
+  }
 
-      if ((event->GetType() & 0xf0) == 0x80) {
-        // Note Off
-        // 0b1000'nnnn 0b0kkk'kkkk 0b0vvv'vvvv
-        // n: port number
-        // k: note number
-        // v: velocity
-        Adlib::NoteOff(event->GetParam(0));
-      } else if ((event->GetType() & 0xf0) == 0x90) {  // note on or off
-        if (event->GetParam(1) == 0x00) {              // note off
-          Adlib::NoteOff(event->GetParam(0));
-        } else {
-          Adlib::NoteOn(event->GetParam(0));
+  bool has_next_event = true;
+  while (has_next_event) {
+    for (int i = 0; i < num_of_tracks; i++) {
+      while (next_event[i]) {
+        const MIDIEvent& event = *next_event[i];
+        if (event.GetDelta() - delta_used[i] > 0)
+          break;
+        if ((event.GetType() & 0xf0) == 0x80) {
+          // Note Off
+          // 0b1000'nnnn 0b0kkk'kkkk 0b0vvv'vvvv
+          // n: port number
+          // k: note number
+          // v: velocity
+          Adlib::NoteOff(event.GetParam(0));
+        } else if ((event.GetType() & 0xf0) == 0x90) {  // note on or off
+          if (event.GetParam(1) == 0x00) {              // note off
+            Adlib::NoteOff(event.GetParam(0));
+          } else {
+            Adlib::NoteOn(event.GetParam(0));
+          }
         }
+        next_event[i] = tracks[i].GetNextEvent();
+        delta_used[i] = 0;
       }
     }
-    p += track.GetSize();
+    // Determine min delta
+    has_next_event = false;
+    int min_delta = 0;
+    for (int i = 0; i < num_of_tracks; i++) {
+      if (!next_event[i])
+        continue;
+      if (!has_next_event) {
+        min_delta = next_event[i]->GetDelta() - delta_used[i];
+      } else {
+        min_delta =
+            std::min(min_delta, next_event[i]->GetDelta() - delta_used[i]);
+      }
+      has_next_event = true;
+    }
+    if (min_delta != 0) {
+      liumos->hpet->BusyWaitMicroSecond(state.micro_second_per_delta *
+                                        min_delta);
+    }
+    for (int i = 0; i < num_of_tracks; i++) {
+      delta_used[i] += min_delta;
+    }
   }
   Adlib::TurnOffAllNotes();
 }
