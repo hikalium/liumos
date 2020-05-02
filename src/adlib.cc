@@ -45,6 +45,7 @@ class MIDIEvent {
       // Meta Event
       meta_type_ = data[ofs++];
       meta_data_length_ = ParseMIDIValue(data, &ofs);
+      meta_data_ofs_ = ofs;
       event_size_ = ofs + meta_data_length_;
       return true;
     }
@@ -71,11 +72,16 @@ class MIDIEvent {
     assert(0 <= index && index < (event_size_ - param_ofs_));
     return data_[param_ofs_ + index];
   }
+  int GetMetaData(int index) const {
+    assert(0 <= index && index < (event_size_ - meta_data_ofs_));
+    return data_[meta_data_ofs_ + index];
+  }
 
  private:
   const uint8_t* data_;
   int delta_;
   int param_ofs_;
+  int meta_data_ofs_;
   uint8_t type_;
   uint8_t meta_type_;
   uint8_t meta_data_length_;
@@ -84,7 +90,7 @@ class MIDIEvent {
 
 class MIDITrackStream {
  public:
-  bool Init(const uint8_t* data, const uint16_t data_size, int ofs) {
+  bool Init(const uint8_t* data, int data_size, int ofs) {
     // returns the parameter is valid or not
     data_ = data;
     data_size_ = data_size;
@@ -131,14 +137,16 @@ class MIDITrackStream {
 };
 
 void PlayMIDI(EFIFile& file) {
+  char s[128];
   if (!Adlib::DetectAndInit()) {
     return;
   }
   const uint8_t* data = file.GetBuf();
   int data_size = static_cast<int>(file.GetFileSize());
+  sprintf(s, "data_size=%d ", data_size);
+  PutString(s);
 
   int p;
-  char s[128];
   MIDIPlayerState state;
 
   p = 0;
@@ -199,6 +207,19 @@ void PlayMIDI(EFIFile& file) {
             Adlib::NoteOff(event.GetParam(0));
           } else {
             Adlib::NoteOn(event.GetParam(0));
+          }
+        } else if ((event.GetType() == 0xff)) {
+          // Meta
+          if (event.GetMetaType() == 0x51) {
+            // Tempo (micro sec per quarter note)
+            state.micro_second_per_quarter_note = (event.GetMetaData(0) << 16) |
+                                                  (event.GetMetaData(1) << 8) |
+                                                  event.GetMetaData(2);
+            sprintf(s, "Tempo %d micro sec per quarter note.\n",
+                    state.micro_second_per_quarter_note);
+            PutString(s);
+            state.micro_second_per_delta = state.micro_second_per_quarter_note /
+                                           state.delta_per_quarter_note;
           }
         }
         next_event[i] = tracks[i].GetNextEvent();
