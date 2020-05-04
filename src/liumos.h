@@ -16,6 +16,7 @@
 #include "kernel_virtual_heap_allocator.h"
 #include "keyboard.h"
 #include "keyid.h"
+#include "libfunc.h"
 #include "paging.h"
 #include "phys_page_allocator.h"
 #include "process.h"
@@ -54,19 +55,6 @@ void DrawPPMFile(EFIFile& file, int px, int py);
 
 // @keyboard.cc
 constexpr uint16_t kIOPortKeyboardData = 0x0060;
-
-// @libfunc.cc
-extern "C" {
-int strncmp(const char* s1, const char* s2, size_t n);
-int strcmp(const char* s1, const char* s2);
-void* memcpy(void* dst, const void* src, size_t n);
-void bzero(volatile void* s, size_t n);
-int atoi(const char* str);
-}
-template <typename T>
-inline T min(T a, T b) {
-  return a < b ? a : b;
-}
 
 // @liumos.c
 constexpr int kNumOfRootFiles = 16;

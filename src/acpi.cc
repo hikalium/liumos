@@ -17,18 +17,18 @@ void ACPI::DetectTables() {
   XSDT* xsdt = liumos->acpi.rsdt->xsdt;
   const int num_of_xsdt_entries = (xsdt->length - kDescriptionHeaderSize) >> 3;
   for (int i = 0; i < num_of_xsdt_entries; i++) {
-    const char* signature = static_cast<const char*>(xsdt->entry[i]);
-    if (strncmp(signature, "NFIT", 4) == 0)
+    const auto signature = xsdt->entry[i];
+    if (memcmp(signature, "NFIT", 4) == 0)
       liumos->acpi.nfit = static_cast<NFIT*>(xsdt->entry[i]);
-    if (strncmp(signature, "HPET", 4) == 0)
+    if (memcmp(signature, "HPET", 4) == 0)
       liumos->acpi.hpet = static_cast<HPET*>(xsdt->entry[i]);
-    if (strncmp(signature, "APIC", 4) == 0)
+    if (memcmp(signature, "APIC", 4) == 0)
       liumos->acpi.madt = static_cast<MADT*>(xsdt->entry[i]);
-    if (strncmp(signature, "SRAT", 4) == 0)
+    if (memcmp(signature, "SRAT", 4) == 0)
       liumos->acpi.srat = static_cast<SRAT*>(xsdt->entry[i]);
-    if (strncmp(signature, "SLIT", 4) == 0)
+    if (memcmp(signature, "SLIT", 4) == 0)
       liumos->acpi.slit = static_cast<SLIT*>(xsdt->entry[i]);
-    if (strncmp(signature, "FACP", 4) == 0)
+    if (memcmp(signature, "FACP", 4) == 0)
       liumos->acpi.fadt = static_cast<FADT*>(xsdt->entry[i]);
   }
   if (!liumos->acpi.madt)

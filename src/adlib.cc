@@ -96,7 +96,7 @@ class MIDITrackStream {
     data_size_ = data_size;
     ofs_base_ = ofs;
     ofs_ = ofs_base_;
-    if (strncmp(reinterpret_cast<const char*>(&data_[ofs_]), "MTrk", 4) != 0) {
+    if (memcmp(&data_[ofs_], "MTrk", 4) != 0) {
       PutString("Not a Track.\n");
       return false;
     }
@@ -150,7 +150,7 @@ void PlayMIDI(EFIFile& file) {
   MIDIPlayerState state;
 
   p = 0;
-  if (strncmp(reinterpret_cast<const char*>(&data[p + 0]), "MThd", 4) != 0) {
+  if (memcmp(&data[p + 0], "MThd", 4) != 0) {
     PutString("midi:Unknown header.\n");
     return;
   }

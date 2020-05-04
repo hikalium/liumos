@@ -1,8 +1,20 @@
-#include <stdint.h>
+#include "libfunc.h"
 
 extern "C" {
 
-int strncmp(const char* s1, const char* s2, size_t n) {
+int TEST_TARGET(strncmp)(const char* s1, const char* s2, size_t n) {
+  for (size_t i = 0; i < n; i++) {
+    if (s1[i] - s2[i])
+      return s1[i] - s2[i];
+    if (!s1[i] || !s2[i])
+      break;
+  }
+  return 0;
+}
+
+int TEST_TARGET(memcmp)(const void* b1, const void* b2, size_t n) {
+  const char* s1 = reinterpret_cast<const char*>(b1);
+  const char* s2 = reinterpret_cast<const char*>(b2);
   for (size_t i = 0; i < n; i++) {
     if (s1[i] - s2[i])
       return s1[i] - s2[i];

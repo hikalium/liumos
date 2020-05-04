@@ -117,6 +117,10 @@ test_sheet : sheet_test.cc sheet.cc Makefile
 	$(CXX) $(CXXFLAGS_FOR_TEST) -o sheet_test.bin sheet_test.cc sheet.cc asm.S
 	@./sheet_test.bin
 
+test_libfunc : libfunc_test.cc libfunc.cc Makefile
+	$(CXX) $(CXXFLAGS_FOR_TEST) -o libfunc_test.bin libfunc_test.cc libfunc.cc
+	@./libfunc_test.bin
+
 # Loader rules
 
 %.o : %.c Makefile
@@ -198,6 +202,7 @@ run:
 	make -C .. run
 
 unittest:
+	make test_libfunc
 	make test_command_line_args
 	make test_ring_buffer
 	make test_paging

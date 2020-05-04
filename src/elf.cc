@@ -26,7 +26,7 @@ struct PhdrMappingInfo {
 };
 
 static const Elf64_Ehdr* EnsureLoadable(const uint8_t* buf) {
-  if (strncmp(reinterpret_cast<const char*>(buf), ELFMAG, SELFMAG) != 0) {
+  if (memcmp(buf, ELFMAG, SELFMAG) != 0) {
     PutString("Not an ELF file\n");
     return nullptr;
   }
