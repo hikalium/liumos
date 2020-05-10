@@ -1,5 +1,6 @@
 #include "liumos.h"
 
+constexpr uint64_t kSyscallIndex_sys_read = 0;
 constexpr uint64_t kSyscallIndex_sys_write = 1;
 constexpr uint64_t kSyscallIndex_sys_exit = 60;
 constexpr uint64_t kSyscallIndex_arch_prctl = 158;
@@ -9,7 +10,22 @@ constexpr uint64_t kArchSetFS = 0x1002;
 // constexpr uint64_t kArchGetGS = 0x1004;
 
 __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
+  // This function will be called under exceptions are masked
   uint64_t idx = args[0];
+  if (idx == kSyscallIndex_sys_read) {
+    const uint64_t fildes = args[1];
+    uint8_t* buf = reinterpret_cast<uint8_t*>(args[2]);
+    uint64_t nbyte = args[3];
+    if (fildes != 0) {
+      PutStringAndHex("fildes", fildes);
+      Panic("Only stdin is supported for now.");
+    }
+    if (nbyte < 1)
+      return;
+
+    buf[0] = 'A';
+    return;
+  }
   if (idx == kSyscallIndex_sys_write) {
     uint64_t t0 = liumos->hpet->ReadMainCounterValue();
     const uint64_t fildes = args[1];
@@ -26,7 +42,8 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     liumos->scheduler->GetCurrentProcess().AddSysTimeFemtoSec(
         (t1 - t0) * liumos->hpet->GetFemtosecondPerCount());
     return;
-  } else if (idx == kSyscallIndex_sys_exit) {
+  }
+  if (idx == kSyscallIndex_sys_exit) {
     const uint64_t exit_code = args[1];
     PutStringAndHex("exit: exit_code", exit_code);
     liumos->scheduler->KillCurrentProcess();
@@ -36,7 +53,9 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     for (;;) {
       StoreIntFlagAndHalt();
     };
-  } else if (idx == kSyscallIndex_arch_prctl) {
+    return;
+  }
+  if (idx == kSyscallIndex_arch_prctl) {
     Panic("arch_prctl!");
     if (args[1] == kArchSetFS) {
       WriteMSR(MSRIndex::kFSBase, args[2]);

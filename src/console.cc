@@ -56,7 +56,7 @@ uint16_t Console::GetCharWithoutBlocking() {
     uint16_t keyid;
     if ((keyid = liumos->keyboard_ctrl->ReadKeyID()) ||
         (keyid = XHCI::Controller::GetInstance().ReadKeyboardInput())) {
-      if (!keyid && keyid & KeyID::kMaskBreak)
+      if (!keyid && (keyid & KeyID::kMaskBreak))
         continue;
       if (keyid == KeyID::kEnter) {
         return '\n';

@@ -24,7 +24,11 @@ QEMU_ARGS_PMEM=\
 VNC_PASSWORD=a
 PORT_MONITOR=1240
 
-APPS=app/hello/hello.bin app/pi/pi.bin app/fizzbuzz/fizzbuzz.bin
+APPS=\
+	 app/hello/hello.bin \
+	 app/pi/pi.bin \
+	 app/fizzbuzz/fizzbuzz.bin \
+	 app/readtest/readtest.bin
 
 ifdef SSH_CONNECTION
 QEMU_ARGS+= -vnc :5,password
