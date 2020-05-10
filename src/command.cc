@@ -714,28 +714,6 @@ void Run(TextBox& tbox) {
     Free();
   } else if (IsEqualString(line, "time")) {
     Time();
-  } else if (IsEqualString(line, "hello.bin")) {
-    Process& proc =
-        LoadELFAndCreateEphemeralProcess(*liumos->loader_info.files.hello_bin);
-    liumos->scheduler->LaunchAndWaitUntilExit(proc);
-  } else if (IsEqualString(line, "pi.bin")) {
-    Process& proc =
-        LoadELFAndCreateEphemeralProcess(*liumos->loader_info.files.pi_bin);
-    liumos->scheduler->LaunchAndWaitUntilExit(proc);
-  } else if (IsEqualString(line, "fizzbuzz.bin")) {
-    EFIFile* file = nullptr;
-    for (int i = 0; i < liumos->loader_info.root_files_used; i++) {
-      if (IsEqualString(liumos->loader_info.root_files[i].GetFileName(),
-                        "fizzbuzz.bin")) {
-        file = &liumos->loader_info.root_files[i];
-        break;
-      }
-    }
-    if (!file) {
-      return;
-    }
-    Process& proc = LoadELFAndCreateEphemeralProcess(*file);
-    liumos->scheduler->LaunchAndWaitUntilExit(proc);
   } else if (strncmp(line, "eval ", 5) == 0) {
     int us = atoi(&line[5]);
     PutStringAndHex("Eval in time slice", us);
@@ -893,9 +871,22 @@ void Run(TextBox& tbox) {
       PutChar('\n');
     }
   } else {
-    PutString("Command not found: ");
-    PutString(tbox.GetRecordedString());
-    tbox.putc('\n');
+    EFIFile* file = nullptr;
+    for (int i = 0; i < liumos->loader_info.root_files_used; i++) {
+      if (IsEqualString(liumos->loader_info.root_files[i].GetFileName(),
+                        line)) {
+        file = &liumos->loader_info.root_files[i];
+        break;
+      }
+    }
+    if (!file) {
+      PutString("Not a command or file: ");
+      PutString(line);
+      tbox.putc('\n');
+      return;
+    }
+    Process& proc = LoadELFAndCreateEphemeralProcess(*file);
+    liumos->scheduler->LaunchAndWaitUntilExit(proc);
   }
 }
 
