@@ -722,6 +722,20 @@ void Run(TextBox& tbox) {
     Process& proc =
         LoadELFAndCreateEphemeralProcess(*liumos->loader_info.files.pi_bin);
     liumos->scheduler->LaunchAndWaitUntilExit(proc);
+  } else if (IsEqualString(line, "fizzbuzz.bin")) {
+    EFIFile* file = nullptr;
+    for (int i = 0; i < liumos->loader_info.root_files_used; i++) {
+      if (IsEqualString(liumos->loader_info.root_files[i].GetFileName(),
+                        "fizzbuzz.bin")) {
+        file = &liumos->loader_info.root_files[i];
+        break;
+      }
+    }
+    if (!file) {
+      return;
+    }
+    Process& proc = LoadELFAndCreateEphemeralProcess(*file);
+    liumos->scheduler->LaunchAndWaitUntilExit(proc);
   } else if (strncmp(line, "eval ", 5) == 0) {
     int us = atoi(&line[5]);
     PutStringAndHex("Eval in time slice", us);
