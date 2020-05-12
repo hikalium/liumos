@@ -128,5 +128,6 @@ format :
 
 commit : format unittest
 	git add .
+	./scripts/ensure_objs_are_not_under_git_control.sh
 	git diff HEAD --color=always | less -R
 	git commit

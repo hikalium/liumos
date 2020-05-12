@@ -7,4 +7,5 @@ mnt/
 *.dSYM
 *.vdi
 *.txt
+*.o
 cc_cache.gen.mk
