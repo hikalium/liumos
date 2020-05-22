@@ -8,6 +8,7 @@
 #include "corefunc.h"
 #include "liumos.h"
 #include "pci.h"
+#include "virtio_net.h"
 #include "xhci.h"
 
 LiumOS* liumos;
@@ -288,6 +289,7 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
   EnableSyscall();
 
   // XHCI::Controller::GetInstance().Init();
+  Virtio::Net::GetInstance().Init();
 
   TextBox console_text_box;
   while (1) {

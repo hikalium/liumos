@@ -17,6 +17,7 @@ static const std::unordered_multimap<uint32_t, const char*> device_infos = {
     {0x31A8'8086, "Intel XHCI Controller"},
     {0x1111'1234, "QEMU Virtual Video Controller"},
     {0x8168'10ec, "RTL8111/8168/8411 PCI Express Gigabit Ethernet Controller"},
+    {0x1000'1af4, "Virtio Network Card"},
 };
 
 static void SelectRegister(uint32_t bus,

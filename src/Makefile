@@ -29,6 +29,7 @@ KERNEL_SRCS= $(COMMON_SRCS) \
 			 pci.cc \
 			 scheduler.cc subtask.cc \
 			 sleep_handler.S syscall.cc syscall_handler.S \
+			 virtio_net.cc \
 			 xhci.cc
 
 LOADER_OBJS= $(addsuffix .o, $(basename $(LOADER_SRCS)))
