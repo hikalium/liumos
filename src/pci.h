@@ -13,6 +13,15 @@ class PCI {
   void PrintDevices();
   const auto& GetDeviceList() const { return device_list_; }
 
+  static uint8_t ReadConfigRegister8(uint32_t bus,
+                                       uint32_t device,
+                                       uint32_t func,
+                                       uint32_t reg);
+  static uint8_t ReadConfigRegister8(const DeviceLocation& dev,
+                                       uint32_t reg) {
+    return ReadConfigRegister8(dev.bus, dev.device, dev.func, reg);
+  }
+
   static uint32_t ReadConfigRegister32(uint32_t bus,
                                        uint32_t device,
                                        uint32_t func,
@@ -56,6 +65,19 @@ class PCI {
     uint64_t phys_addr;
     uint64_t size;
   };
+  struct BARForIO {
+    uint16_t base;
+  };
+  static BARForIO GetBARForIO(const DeviceLocation& dev) {
+    constexpr uint32_t kPCIRegOffsetBAR = 0x10;
+    constexpr uint64_t kPCIBARMaskType = 0b11;
+    constexpr uint64_t kPCIBARBitsTypeIOSpace = 0b01;
+
+    const uint64_t bar_raw_val =
+        PCI::ReadConfigRegister32(dev, kPCIRegOffsetBAR);
+    assert((bar_raw_val & kPCIBARMaskType) == kPCIBARBitsTypeIOSpace);
+    return {static_cast<uint16_t>(bar_raw_val & ~kPCIBARMaskType)};
+  }
   static BAR64 GetBAR64(const DeviceLocation& dev) {
     constexpr uint32_t kPCIRegOffsetBAR = 0x10;
     constexpr uint64_t kPCIBARMaskType = 0b111;

@@ -137,6 +137,20 @@ WriteIOPort8:
   out dx, al
   ret
 
+.global ReadIOPort16
+ReadIOPort16:
+  mov edx, ecx
+  xor rax, rax
+  in ax, dx
+  ret
+
+.global WriteIOPort16
+WriteIOPort16:
+	mov ax, dx
+  mov dx, cx
+  out dx, ax
+  ret
+
 .global ReadIOPort32
 ReadIOPort32:
   mov edx, ecx

@@ -32,6 +32,14 @@ static void SelectRegister(uint32_t bus,
                 (1 << 31) | (bus << 16) | (device << 11) | (func << 8) | reg);
 }
 
+uint8_t PCI::ReadConfigRegister8(uint32_t bus,
+                                   uint32_t device,
+                                   uint32_t func,
+                                   uint32_t reg) {
+  SelectRegister(bus, device, func, reg & 0b1111'1100);
+  return (ReadIOPort32(kIOAddrPCIConfigData) >> (reg & 3)) & 0xFF;
+}
+
 uint32_t PCI::ReadConfigRegister32(uint32_t bus,
                                    uint32_t device,
                                    uint32_t func,
