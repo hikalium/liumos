@@ -18,7 +18,6 @@ class Net {
     uint16_t gso_size;
     uint16_t csum_start;
     uint16_t csum_offset;
-    uint16_t num_buffers;
     //
     static constexpr uint8_t kFlagNeedsChecksum = 1;
     static constexpr uint8_t kGSOTypeNone = 0;
@@ -56,7 +55,7 @@ class Net {
       proto_type[0] = 0x08;
       proto_type[1] = 0x00;
       hw_addr_len = 6;
-      hw_addr_len = 4;
+      proto_addr_len = 4;
       op[0] = 0x00;
       op[1] = 0x01;
     }
@@ -93,6 +92,12 @@ class Net {
     void* GetDescriptorBuf(int idx) {
       assert(0 <= idx && idx < queue_size_);
       return buf_[idx];
+    }
+    uint32_t GetDescriptorSize(int idx) {
+      assert(0 <= idx && idx < queue_size_);
+      Descriptor& desc =
+          *reinterpret_cast<Descriptor*>(base_ + sizeof(Descriptor) * idx);
+      return desc.len;
     }
     void SetAvailableRingEntry(int idx, uint16_t desc_idx) {
       assert(0 <= idx && idx < queue_size_);

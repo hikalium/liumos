@@ -177,22 +177,23 @@ void Net::Init() {
   auto& txq = vq_[kIndexOfTXVirtqueue];
   txq.SetDescriptor(0, AllocMemoryForMappedIO<void*>(kPageSize), kPageSize, 0,
                     0);
-  PacketBufHeader& hdr =
-      *reinterpret_cast<PacketBufHeader*>(txq.GetDescriptorBuf(0));
-  hdr.flags = PacketBufHeader::kFlagNeedsChecksum;
-  hdr.gso_type = PacketBufHeader::kGSOTypeNone;
-  hdr.header_length = sizeof(PacketBufHeader);
-  hdr.gso_size = 0;
-  hdr.csum_start = 0;
-  hdr.csum_offset = sizeof(PacketBufHeader);
-  hdr.num_buffers = 1;
-  ARPPacket& arp = *reinterpret_cast<ARPPacket*>(
-      reinterpret_cast<uint8_t*>(txq.GetDescriptorBuf(0)) +
-      sizeof(PacketBufHeader));
-  // As shown in https://wiki.qemu.org/Documentation/Networking
-  uint8_t target_ip[4] = {10, 0, 2, 2};
-  uint8_t src_ip[4] = {10, 0, 2, 15};
-  arp.SetupRequest(target_ip, src_ip, mac_addr_);
+  {
+    PacketBufHeader& hdr =
+        *reinterpret_cast<PacketBufHeader*>(txq.GetDescriptorBuf(0));
+    hdr.flags = PacketBufHeader::kFlagNeedsChecksum;
+    hdr.gso_type = PacketBufHeader::kGSOTypeNone;
+    hdr.header_length = sizeof(PacketBufHeader);
+    hdr.gso_size = 0;
+    hdr.csum_start = 0;
+    hdr.csum_offset = sizeof(PacketBufHeader);
+    ARPPacket& arp = *reinterpret_cast<ARPPacket*>(
+        reinterpret_cast<uint8_t*>(txq.GetDescriptorBuf(0)) +
+        sizeof(PacketBufHeader));
+    // As shown in https://wiki.qemu.org/Documentation/Networking
+    uint8_t target_ip[4] = {10, 0, 2, 2};
+    uint8_t src_ip[4] = {10, 0, 2, 15};
+    arp.SetupRequest(target_ip, src_ip, mac_addr_);
+  }
   txq.SetDescriptor(0, txq.GetDescriptorBuf(0),
                     sizeof(PacketBufHeader) + sizeof(ARPPacket), 0, 0);
   txq.SetAvailableRingEntry(0, 0);
@@ -207,17 +208,7 @@ void Net::Init() {
   uint8_t last_status = ReadConfigReg8(18);
   PutStringAndHex("Device Status(RW)  ", last_status);
 
-  PutString("waiting for rx packet...");
-  while (rxq.GetUsedRingIndex() == 0) {
-    uint8_t status = ReadConfigReg8(18);
-    if (status == last_status)
-      continue;
-    PutStringAndHex("Device Status(RW)  ", status);
-    last_status = status;
-  }
-  PutString("done");
-
-  PutString("waiting for tx packet...");
+  PutString("sending ARP packet...");
   while (txq.GetUsedRingIndex() == 0) {
     uint8_t status = ReadConfigReg8(18);
     if (status == last_status)
@@ -225,7 +216,43 @@ void Net::Init() {
     PutStringAndHex("Device Status(RW)  ", status);
     last_status = status;
   }
-  PutString("done");
+  PutString("done\n");
+
+  PutString("waiting for reply...");
+  while (rxq.GetUsedRingIndex() == 0) {
+    uint8_t status = ReadConfigReg8(18);
+    if (status == last_status)
+      continue;
+    PutStringAndHex("Device Status(RW)  ", status);
+    last_status = status;
+  }
+  PutString("done\n");
+
+  {
+    int buf_size = rxq.GetUsedRingEntry(0).len;
+    PutStringAndDecimal("recv buf size", rxq.GetUsedRingEntry(0).len);
+    int packet_size = buf_size - sizeof(PacketBufHeader);
+    PutStringAndDecimal("packet size", packet_size);
+    uint8_t* reply_bin = reinterpret_cast<uint8_t*>(rxq.GetDescriptorBuf(0)) +
+                         sizeof(PacketBufHeader);
+    for (int i = 0; i < packet_size; i++) {
+      PutHex8ZeroFilled(reply_bin[i]);
+      PutChar((i & 0xF) == 0xF ? '\n' : ' ');
+    }
+    PutChar('\n');
+    ARPPacket& arp = *reinterpret_cast<ARPPacket*>(
+        reinterpret_cast<uint8_t*>(rxq.GetDescriptorBuf(0)) +
+        sizeof(PacketBufHeader));
+    for (int i = 0; i < 4; i++) {
+      PutDecimal64(arp.sender_proto_addr[i]);
+      PutChar(i == 3 ? ' ' : '.');
+    }
+    PutString("is at ");
+    for (int i = 0; i < 6; i++) {
+      PutHex8ZeroFilled(arp.sender_eth_addr[i]);
+      PutChar(i == 5 ? '\n' : ':');
+    }
+  }
 }
 
 }  // namespace Virtio

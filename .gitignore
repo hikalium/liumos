@@ -8,4 +8,5 @@ mnt/
 *.vdi
 *.txt
 *.o
+*.dat
 cc_cache.gen.mk
