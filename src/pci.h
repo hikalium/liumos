@@ -14,11 +14,10 @@ class PCI {
   const auto& GetDeviceList() const { return device_list_; }
 
   static uint8_t ReadConfigRegister8(uint32_t bus,
-                                       uint32_t device,
-                                       uint32_t func,
-                                       uint32_t reg);
-  static uint8_t ReadConfigRegister8(const DeviceLocation& dev,
-                                       uint32_t reg) {
+                                     uint32_t device,
+                                     uint32_t func,
+                                     uint32_t reg);
+  static uint8_t ReadConfigRegister8(const DeviceLocation& dev, uint32_t reg) {
     return ReadConfigRegister8(dev.bus, dev.device, dev.func, reg);
   }
 

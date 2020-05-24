@@ -74,6 +74,7 @@ static uint64_t CalcSizeOfVirtqueue(int queue_size) {
 }
 void Net::Virtqueue::Alloc(int queue_size) {
   // 2.6.2 Legacy Interfaces: A Note on Virtqueue Layout
+  assert(0 <= queue_size && queue_size <= kMaxQueueSize);
   queue_size_ = queue_size;
   base_ = AllocMemoryForMappedIO<uint8_t*>(CalcSizeOfVirtqueue(queue_size));
 }
@@ -132,25 +133,13 @@ void Net::Init() {
     PutStringAndHex("Queue Size(R)      ", queue_size);
     vq_[i].Alloc(queue_size);
     PutStringAndHex("Queue Addr(phys)   ", vq_[i].GetPhysAddr());
-    WriteConfigReg16(8, vq_[i].GetPhysAddr());
+    uint64_t vq_pfn = vq_[i].GetPhysAddr() >> kPageSizeExponent;
+    assert(vq_pfn == (vq_pfn & 0xFFFF'FFFF));
+    WriteConfigReg32(8, static_cast<uint32_t>(vq_pfn));
     PutStringAndHex("Queue Addr(RW)     ", ReadConfigReg32(8));
   }
 
-  // Populate RX Buffer
-  auto &rxq = vq_[kIndexOfRXVirtqueue];
-  rxq.SetDescriptor(
-      0, v2p(AllocMemoryForMappedIO<uint64_t>(kPageSize)), kPageSize,
-      2 /* device write only */, 0);
-  rxq.SetAvailableRingIndex(0);
-  WriteConfigReg16(14 /* queue_select */, kIndexOfRXVirtqueue);
-  WriteConfigReg16(16 /* Queue Notify */, 0);
-
   WriteDeviceStatus(ReadDeviceStatus() | kDeviceStatusDriverOK);
-
-  PutStringAndHex("Device Features(R) ", ReadConfigReg32(0));
-  PutStringAndHex("Device Features(RW)", ReadConfigReg32(4));
-  PutStringAndHex("Device Status(RW)  ", ReadConfigReg8(18));
-  PutStringAndHex("ISR Status(R)      ", ReadConfigReg8(19));
 
   PutString("MAC Addr: ");
   for (int i = 0; i < 6; i++) {
@@ -159,9 +148,77 @@ void Net::Init() {
     PutChar(i == 5 ? '\n' : ':');
   }
 
-  PutString("waiting for first packet...");
-  while(rxq.GetUsedRingIndex() == 0) {
-    PutStringAndHex("Device Status(RW)  ", ReadConfigReg8(18));
+  // Populate RX Buffer
+  auto& rxq = vq_[kIndexOfRXVirtqueue];
+  rxq.SetDescriptor(0, AllocMemoryForMappedIO<void*>(kPageSize), kPageSize,
+                    2 /* device write only */, 0);
+  rxq.SetAvailableRingIndex(1);
+  WriteConfigReg16(16 /* Queue Notify */, kIndexOfRXVirtqueue);
+
+  // Populate TX Buffer
+  /*
+     ARP: who has 10.10.10.135? Tell 10.10.10.90
+     ff ff ff ff ff ff  // dst
+     f8 ff c2 01 df 39  // src
+     08 06              // ether type (ARP)
+     00 01              // hardware type (ethernet)
+     08 00              // protocol type (ipv4)
+     06                 // hw addr len (6)
+     04                 // proto addr len (4)
+     00 01              // operation (arp request)
+     f8 ff c2 01 df 39  // sender eth addr
+     0a 0a 0a 5a        // sender protocol addr
+     00 00 00 00 00 00  // target eth addr (0 since its unknown)
+     0a 0a 0a 87        // target protocol addr
+     */
+  auto& txq = vq_[kIndexOfTXVirtqueue];
+  txq.SetDescriptor(0, AllocMemoryForMappedIO<void*>(kPageSize), kPageSize, 0,
+                    0);
+  PacketBufHeader& hdr =
+      *reinterpret_cast<PacketBufHeader*>(txq.GetDescriptorBuf(0));
+  hdr.flags = PacketBufHeader::kFlagNeedsChecksum;
+  hdr.gso_type = PacketBufHeader::kGSOTypeNone;
+  hdr.header_length = sizeof(PacketBufHeader);
+  hdr.gso_size = 0;
+  hdr.csum_start = 0;
+  hdr.csum_offset = sizeof(PacketBufHeader);
+  hdr.num_buffers = 1;
+  ARPPacket& arp = *reinterpret_cast<ARPPacket*>(
+      reinterpret_cast<uint8_t*>(txq.GetDescriptorBuf(0)) +
+      sizeof(PacketBufHeader));
+  // As shown in https://wiki.qemu.org/Documentation/Networking
+  uint8_t target_ip[4] = {10, 0, 2, 2};
+  uint8_t src_ip[4] = {10, 0, 2, 15};
+  arp.SetupRequest(target_ip, src_ip, mac_addr_);
+  txq.SetDescriptor(0, txq.GetDescriptorBuf(0),
+                    sizeof(PacketBufHeader) + sizeof(ARPPacket), 0, 0);
+  txq.SetAvailableRingEntry(0, 0);
+  txq.SetAvailableRingIndex(1);
+  WriteConfigReg16(16 /* Queue Notify */, kIndexOfTXVirtqueue);
+
+  PutStringAndHex("Device Features(R) ", ReadConfigReg32(0));
+  PutStringAndHex("Device Features(RW)", ReadConfigReg32(4));
+  PutStringAndHex("Device Status(RW)  ", ReadConfigReg8(18));
+  PutStringAndHex("ISR Status(R)      ", ReadConfigReg8(19));
+
+  uint8_t last_status = ReadConfigReg8(18);
+  PutStringAndHex("Device Status(RW)  ", last_status);
+  PutString("waiting for tx packet...");
+  while (txq.GetUsedRingIndex() == 0) {
+    uint8_t status = ReadConfigReg8(18);
+    if (status == last_status)
+      continue;
+    PutStringAndHex("Device Status(RW)  ", status);
+    last_status = status;
+  }
+  PutString("done");
+  PutString("waiting for rx packet...");
+  while (rxq.GetUsedRingIndex() == 0) {
+    uint8_t status = ReadConfigReg8(18);
+    if (status == last_status)
+      continue;
+    PutStringAndHex("Device Status(RW)  ", status);
+    last_status = status;
   }
   PutString("done");
 }
