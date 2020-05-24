@@ -111,15 +111,15 @@ font.gen.cc : font.txt $(FONTMAKER)
 
 # Test rules
 test_% : %_test.cc Makefile
-	$(CXX) $(CXXFLAGS_FOR_TEST) -o $*_test.bin $*_test.cc
+	$(LLVM_CXX) $(CXXFLAGS_FOR_TEST) -o $*_test.bin $*_test.cc
 	@./$*_test.bin
 
 test_sheet : sheet_test.cc sheet.cc Makefile
-	$(CXX) $(CXXFLAGS_FOR_TEST) -o sheet_test.bin sheet_test.cc sheet.cc asm.S
+	$(LLVM_CXX) $(CXXFLAGS_FOR_TEST) -o sheet_test.bin sheet_test.cc sheet.cc asm.S
 	@./sheet_test.bin
 
 test_libfunc : libfunc_test.cc libfunc.cc Makefile
-	$(CXX) $(CXXFLAGS_FOR_TEST) -o libfunc_test.bin libfunc_test.cc libfunc.cc
+	$(LLVM_CXX) $(CXXFLAGS_FOR_TEST) -o libfunc_test.bin libfunc_test.cc libfunc.cc
 	@./libfunc_test.bin
 
 # Loader rules

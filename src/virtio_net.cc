@@ -76,7 +76,9 @@ void Net::Virtqueue::Alloc(int queue_size) {
   // 2.6.2 Legacy Interfaces: A Note on Virtqueue Layout
   assert(0 <= queue_size && queue_size <= kMaxQueueSize);
   queue_size_ = queue_size;
-  base_ = AllocMemoryForMappedIO<uint8_t*>(CalcSizeOfVirtqueue(queue_size));
+  const uint64_t buf_size = CalcSizeOfVirtqueue(queue_size);
+  base_ = AllocMemoryForMappedIO<uint8_t*>(buf_size);
+  bzero(base_, buf_size);
 }
 
 void Net::Init() {
@@ -152,6 +154,7 @@ void Net::Init() {
   auto& rxq = vq_[kIndexOfRXVirtqueue];
   rxq.SetDescriptor(0, AllocMemoryForMappedIO<void*>(kPageSize), kPageSize,
                     2 /* device write only */, 0);
+  rxq.SetAvailableRingEntry(0, 0);
   rxq.SetAvailableRingIndex(1);
   WriteConfigReg16(16 /* Queue Notify */, kIndexOfRXVirtqueue);
 
@@ -203,8 +206,9 @@ void Net::Init() {
 
   uint8_t last_status = ReadConfigReg8(18);
   PutStringAndHex("Device Status(RW)  ", last_status);
-  PutString("waiting for tx packet...");
-  while (txq.GetUsedRingIndex() == 0) {
+
+  PutString("waiting for rx packet...");
+  while (rxq.GetUsedRingIndex() == 0) {
     uint8_t status = ReadConfigReg8(18);
     if (status == last_status)
       continue;
@@ -212,8 +216,9 @@ void Net::Init() {
     last_status = status;
   }
   PutString("done");
-  PutString("waiting for rx packet...");
-  while (rxq.GetUsedRingIndex() == 0) {
+
+  PutString("waiting for tx packet...");
+  while (txq.GetUsedRingIndex() == 0) {
     uint8_t status = ReadConfigReg8(18);
     if (status == last_status)
       continue;

@@ -6,13 +6,12 @@ OVMF=ovmf/bios64.bin
 QEMU=qemu-system-x86_64
 #-soundhw adlib
 QEMU_ARGS=\
-		  -nic user,model=virtio-net-pci \
 		  -device qemu-xhci -device usb-mouse \
 		  -bios $(OVMF) \
 		  -machine q35,nvdimm -cpu qemu64 -smp 4 \
 		  -monitor stdio \
 		  -monitor telnet:127.0.0.1:$(PORT_MONITOR),server,nowait \
-		  -m 8G,slots=2,maxmem=10G \
+		  -m 2G,slots=2,maxmem=4G \
 		  -drive format=raw,file=fat:rw:mnt -net none \
 		  -serial tcp::1234,server,nowait \
 		  -serial tcp::1235,server,nowait
@@ -54,7 +53,7 @@ app/% : .FORCE
 
 files : src/BOOTX64.EFI $(APPS) src/LIUMOS.ELF .FORCE
 	mkdir -p mnt/
-	-rm -r mnt/*
+	-rm -rf mnt/*
 	mkdir -p mnt/EFI/BOOT
 	cp src/BOOTX64.EFI mnt/EFI/BOOT/
 	cp dist/* mnt/
@@ -73,6 +72,11 @@ run_xhci_gdb : files .FORCE
 	
 run : files pmem.img .FORCE
 	$(QEMU) $(QEMU_ARGS_PMEM)
+
+run_nic_linux : files pmem.img .FORCE
+	sudo $(QEMU) $(QEMU_ARGS_PMEM) \
+		--enable-kvm \
+		-net nic,model=virtio -net tap
 
 run_gdb : files pmem.img .FORCE
 	$(QEMU) $(QEMU_ARGS_PMEM) -gdb tcp::1192 -S || reset

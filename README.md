@@ -20,7 +20,7 @@ brew install wget cmake qemu llvm dosfstools
 ### Ubuntu 18.04
 
 ```
-sudo apt install wget cmake qemu clang-8 lld-8
+sudo apt install wget cmake qemu clang-8 lld-8 libc++-8-dev libc++abi-8-dev clang-format
 ```
 
 ## Prepare tools and libraries
