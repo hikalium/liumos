@@ -9,8 +9,14 @@ constexpr uint64_t kArchSetFS = 0x1002;
 // constexpr uint64_t kArchGetFS = 0x1003;
 // constexpr uint64_t kArchGetGS = 0x1004;
 
+extern "C" uint64_t GetCurrentKernelStack(void) {
+  ExecutionContext& ctx =
+      liumos->scheduler->GetCurrentProcess().GetExecutionContext();
+  return ctx.GetKernelRSP();
+}
 __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
   // This function will be called under exceptions are masked
+  // with Kernel Stack
   uint64_t idx = args[0];
   if (idx == kSyscallIndex_sys_read) {
     const uint64_t fildes = args[1];
@@ -22,6 +28,8 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     }
     if (nbyte < 1)
       return;
+
+    StoreIntFlagAndHalt();
 
     buf[0] = 'A';
     return;
@@ -47,9 +55,6 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     const uint64_t exit_code = args[1];
     PutStringAndHex("exit: exit_code", exit_code);
     liumos->scheduler->KillCurrentProcess();
-    ExecutionContext& ctx =
-        liumos->scheduler->GetCurrentProcess().GetExecutionContext();
-    ChangeRSP(ctx.GetKernelRSP());
     for (;;) {
       StoreIntFlagAndHalt();
     };

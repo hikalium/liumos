@@ -23,11 +23,14 @@ AsmSyscallHandler:
 	push rdi
 	push rax
 
-	mov rcx, rsp
 	mov rbp, rsp
 	and rsp, -16
+	call GetCurrentKernelStack
+	mov rsp, rax	// Switch to kernel stack
+	and rsp, -16
+	mov rcx, rbp	// First parameter
 	call SyscallHandler
-	mov rsp, rbp
+	mov rsp, rbp	// Revert to user stack
 
 	pop rax
 	pop rdi
