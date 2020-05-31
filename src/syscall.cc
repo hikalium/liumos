@@ -29,9 +29,14 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     if (nbyte < 1)
       return;
 
-    StoreIntFlagAndHalt();
+    uint16_t keyid;
+    while ((keyid = liumos->main_console->GetCharWithoutBlocking()) ==
+               KeyID::kNoInput ||
+           (keyid & KeyID::kMaskBreak)) {
+      StoreIntFlagAndHalt();
+    }
 
-    buf[0] = 'A';
+    buf[0] = keyid;
     return;
   }
   if (idx == kSyscallIndex_sys_write) {

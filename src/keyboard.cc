@@ -68,7 +68,7 @@ static const uint16_t kKeyCodeTableWithShift[0x80] = {
     0x00, 0x00, 0x00, '_', 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     '|', 0x00, 0x00};
 
-constexpr uint16_t kKeyScanCodeMaskBreak = 0x80;
+constexpr uint8_t kKeyScanCodeMaskBreak = 0x80;
 
 void KeyboardController::Init() {
   state_shift_ = false;
@@ -84,6 +84,8 @@ void KeyboardController::IntHandlerSub(uint64_t, InterruptInfo*) {
 }
 
 uint16_t KeyboardController::ParseKeyCode(uint8_t keycode) {
+  bool is_break = keycode & kKeyScanCodeMaskBreak;
+  keycode &= ~kKeyScanCodeMaskBreak;
   uint16_t keyid;
   if (state_shift_) {
     keyid = kKeyCodeTableWithShift[keycode];
@@ -99,13 +101,18 @@ uint16_t KeyboardController::ParseKeyCode(uint8_t keycode) {
   if ('A' <= keyid && keyid <= 'Z' && !state_shift_)
     keyid += 0x20;
 
-  if (keycode & kKeyScanCodeMaskBreak) {
-    if (keyid == kShiftL || keyid == kShiftR)
-      state_shift_ = false;
+  if (is_break)
     keyid |= kMaskBreak;
-  } else {
-    if (keyid == kShiftL || keyid == kShiftR)
+
+  switch (keycode) {
+    case kShiftL:
+    case kShiftR:
       state_shift_ = true;
+      break;
+    case kShiftL | kMaskBreak:
+    case kShiftR | kMaskBreak:
+      state_shift_ = false;
+      break;
   }
   return keyid;
 }
