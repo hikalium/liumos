@@ -104,14 +104,18 @@ uint16_t KeyboardController::ParseKeyCode(uint8_t keycode) {
   if (is_break)
     keyid |= kMaskBreak;
 
-  switch (keycode) {
+  switch (keyid) {
     case kShiftL:
+      state_shift_ |= kStateShiftL;
+      break;
     case kShiftR:
-      state_shift_ = true;
+      state_shift_ |= kStateShiftR;
       break;
     case kShiftL | kMaskBreak:
+      state_shift_ &= ~kStateShiftL;
+      break;
     case kShiftR | kMaskBreak:
-      state_shift_ = false;
+      state_shift_ &= kStateShiftR;
       break;
   }
   return keyid;

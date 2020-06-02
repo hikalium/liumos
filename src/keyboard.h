@@ -23,7 +23,9 @@ class KeyboardController {
   uint16_t ParseKeyCode(uint8_t keycode);
   static KeyboardController* last_instance_;
   RingBuffer<uint8_t, 16> keycode_buffer_;
-  bool state_shift_;
+  uint8_t state_shift_;
+  static constexpr uint8_t kStateShiftL = 0b01;
+  static constexpr uint8_t kStateShiftR = 0b10;
 };
 
 uint16_t ParseKeyCode(uint8_t keycode);
