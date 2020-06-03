@@ -81,7 +81,8 @@ run_nic_macos : files pmem.img .FORCE
 run_nic_linux : files pmem.img .FORCE
 	sudo $(QEMU) $(QEMU_ARGS_PMEM) \
 		--enable-kvm \
-		-net nic,model=virtio -net tap
+		-nic tap,id=u1,model=virtio \
+		-object filter-dump,id=f1,netdev=u1,file=dump.dat
 
 run_gdb : files pmem.img .FORCE
 	$(QEMU) $(QEMU_ARGS_PMEM) -gdb tcp::1192 -S || reset
