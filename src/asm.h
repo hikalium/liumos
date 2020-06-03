@@ -204,7 +204,7 @@ __attribute__((ms_abi)) void Int03(void);
 __attribute__((ms_abi)) uint8_t ReadIOPort8(uint16_t);
 __attribute__((ms_abi)) void WriteIOPort8(uint16_t, uint8_t);
 __attribute__((ms_abi)) uint16_t ReadIOPort16(uint16_t);
-__attribute__((ms_abi)) void WriteIOPort16(uint16_t, uint8_t);
+__attribute__((ms_abi)) void WriteIOPort16(uint16_t, uint16_t);
 __attribute__((ms_abi)) uint32_t ReadIOPort32(uint16_t);
 __attribute__((ms_abi)) void WriteIOPort32(uint16_t addr, uint32_t data);
 __attribute__((ms_abi)) void StoreIntFlag(void);
