@@ -180,44 +180,38 @@ void Net::Init() {
   {
     PacketBufHeader& hdr =
         *reinterpret_cast<PacketBufHeader*>(txq.GetDescriptorBuf(0));
-    hdr.flags = PacketBufHeader::kFlagNeedsChecksum;
+    hdr.flags = 0;
     hdr.gso_type = PacketBufHeader::kGSOTypeNone;
-    hdr.header_length = sizeof(PacketBufHeader);
+    hdr.header_length = 0x00;
     hdr.gso_size = 0;
     hdr.csum_start = 0;
-    hdr.csum_offset = sizeof(PacketBufHeader);
+    hdr.csum_offset = 0;
   }
-  /*
     {
     ARPPacket& arp = *reinterpret_cast<ARPPacket*>(
         reinterpret_cast<uint8_t*>(txq.GetDescriptorBuf(0)) +
         sizeof(PacketBufHeader));
     // As shown in https://wiki.qemu.org/Documentation/Networking
-    uint8_t target_ip[4] = {10, 0, 2, 2};
-    uint8_t src_ip[4] = {10, 0, 2, 15};
+    uint8_t target_ip[4] = {10, 10, 10, 90};
+    uint8_t src_ip[4] = {10, 10, 10, 18};
     arp.SetupRequest(target_ip, src_ip, mac_addr_);
     txq.SetDescriptor(0, txq.GetDescriptorBuf(0),
                     sizeof(PacketBufHeader) + sizeof(ARPPacket), 0, 0);
   }
-  */
+  /*
   {
-    /*
-       IPv4
-       Next hop: 10.0.2.2: 52:55:0A:00:02:02
-        dst: 10.10.10.1
-
-       */
     IPv4UDPPacket& ipv4 = *reinterpret_cast<IPv4UDPPacket*>(
         reinterpret_cast<uint8_t*>(txq.GetDescriptorBuf(0)) +
         sizeof(PacketBufHeader));
     // As shown in https://wiki.qemu.org/Documentation/Networking
-    uint8_t dst_ip[4] = {10, 10, 10, 1};
-    uint8_t src_ip[4] = {10, 0, 2, 15};
-    uint8_t next_mac[6] = {0x52, 0x55, 0x0A, 0x00, 0x02, 0x02};
+    uint8_t dst_ip[4] = {10, 10, 10, 90};
+    uint8_t src_ip[4] = {10, 10, 10, 19};
+    uint8_t next_mac[6] = {0xf8, 0xff, 0xc2, 0x01, 0xdf, 0x39};
     ipv4.SetupRequest(dst_ip, src_ip, mac_addr_, next_mac);
     txq.SetDescriptor(0, txq.GetDescriptorBuf(0),
                       sizeof(PacketBufHeader) + sizeof(IPv4UDPPacket), 0, 0);
   }
+  */
   txq.SetAvailableRingEntry(0, 0);
   txq.SetAvailableRingIndex(1);
   WriteConfigReg16(16 /* Queue Notify */, kIndexOfTXVirtqueue);
