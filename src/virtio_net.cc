@@ -81,9 +81,47 @@ void Net::Virtqueue::Alloc(int queue_size) {
   bzero(base_, buf_size);
 }
 
+void PrintRXBuf(uint8_t* buf, int buf_size) {
+  PutStringAndDecimal("recv buf size", buf_size);
+  int packet_size = buf_size - sizeof(Net::PacketBufHeader);
+  PutStringAndDecimal("packet size", packet_size);
+  uint8_t* reply_bin = buf + sizeof(Net::PacketBufHeader);
+  for (int i = 0; i < packet_size; i++) {
+    PutHex8ZeroFilled(reply_bin[i]);
+    PutChar((i & 0xF) == 0xF ? '\n' : ' ');
+  }
+  PutChar('\n');
+  Net::ARPPacket& arp =
+      *reinterpret_cast<Net::ARPPacket*>(buf + sizeof(Net::PacketBufHeader));
+  if (!arp.HasEthType(Net::ARPPacket::kEthTypeARP)) {
+    PutString("Not an ARP packet\n");
+    return;
+  }
+  for (int i = 0; i < 4; i++) {
+    PutDecimal64(arp.sender_proto_addr[i]);
+    PutChar(i == 3 ? ' ' : '.');
+  }
+  PutString("is at ");
+  for (int i = 0; i < 6; i++) {
+    PutHex8ZeroFilled(arp.sender_eth_addr[i]);
+    PutChar(i == 5 ? '\n' : ':');
+  }
+}
+
+void Net::PollRXQueue() {
+  auto& rxq = vq_[kIndexOfRXVirtqueue];
+  auto& rxq_cursor_ = vq_cursor_[kIndexOfRXVirtqueue];
+  if (rxq.GetUsedRingIndex() == rxq_cursor_) {
+    return;
+  }
+  PutStringAndHex("rxq_cursor_", rxq_cursor_);
+  PrintRXBuf(rxq.GetDescriptorBuf(rxq_cursor_),
+             rxq.GetUsedRingEntry(rxq_cursor_).len);
+  rxq_cursor_++;
+}
+
 void Net::Init() {
   PutString("Virtio::Net::Init()\n");
-
   if (auto dev = FindVirtioNet()) {
     dev_ = *dev;
   } else {
@@ -134,6 +172,8 @@ void Net::Init() {
     PutStringAndHex("Queue Select(RW)   ", ReadConfigReg16(14));
     PutStringAndHex("Queue Size(R)      ", queue_size);
     vq_[i].Alloc(queue_size);
+    vq_size_[i] = queue_size;
+    vq_cursor_[i] = 0;
     PutStringAndHex("Queue Addr(phys)   ", vq_[i].GetPhysAddr());
     uint64_t vq_pfn = vq_[i].GetPhysAddr() >> kPageSizeExponent;
     assert(vq_pfn == (vq_pfn & 0xFFFF'FFFF));
@@ -152,10 +192,12 @@ void Net::Init() {
 
   // Populate RX Buffer
   auto& rxq = vq_[kIndexOfRXVirtqueue];
-  rxq.SetDescriptor(0, AllocMemoryForMappedIO<void*>(kPageSize), kPageSize,
-                    2 /* device write only */, 0);
-  rxq.SetAvailableRingEntry(0, 0);
-  rxq.SetAvailableRingIndex(1);
+  for (int i = 0; i < vq_size_[kIndexOfRXVirtqueue]; i++) {
+    rxq.SetDescriptor(i, AllocMemoryForMappedIO<void*>(kPageSize), kPageSize,
+                      2 /* device write only */, 0);
+    rxq.SetAvailableRingEntry(i, i);
+    rxq.SetAvailableRingIndex(i + 1);
+  }
   WriteConfigReg16(16 /* Queue Notify */, kIndexOfRXVirtqueue);
 
   // Populate TX Buffer
@@ -178,8 +220,7 @@ void Net::Init() {
   txq.SetDescriptor(0, AllocMemoryForMappedIO<void*>(kPageSize), kPageSize, 0,
                     0);
   {
-    PacketBufHeader& hdr =
-        *reinterpret_cast<PacketBufHeader*>(txq.GetDescriptorBuf(0));
+    PacketBufHeader& hdr = *txq.GetDescriptorBuf<PacketBufHeader*>(0);
     hdr.flags = 0;
     hdr.gso_type = PacketBufHeader::kGSOTypeNone;
     hdr.header_length = 0x00;
@@ -187,16 +228,15 @@ void Net::Init() {
     hdr.csum_start = 0;
     hdr.csum_offset = 0;
   }
-    {
-    ARPPacket& arp = *reinterpret_cast<ARPPacket*>(
-        reinterpret_cast<uint8_t*>(txq.GetDescriptorBuf(0)) +
-        sizeof(PacketBufHeader));
+  {
+    ARPPacket& arp = *reinterpret_cast<ARPPacket*>(txq.GetDescriptorBuf(0) +
+                                                   sizeof(PacketBufHeader));
     // As shown in https://wiki.qemu.org/Documentation/Networking
     uint8_t target_ip[4] = {10, 10, 10, 90};
     uint8_t src_ip[4] = {10, 10, 10, 18};
     arp.SetupRequest(target_ip, src_ip, mac_addr_);
     txq.SetDescriptor(0, txq.GetDescriptorBuf(0),
-                    sizeof(PacketBufHeader) + sizeof(ARPPacket), 0, 0);
+                      sizeof(PacketBufHeader) + sizeof(ARPPacket), 0, 0);
   }
   /*
   {
@@ -234,41 +274,10 @@ void Net::Init() {
   }
   PutString("done\n");
 
-  PutString("waiting for reply...");
-  while (rxq.GetUsedRingIndex() == 0) {
-    uint8_t status = ReadConfigReg8(18);
-    if (status == last_status)
-      continue;
-    PutStringAndHex("Device Status(RW)  ", status);
-    last_status = status;
+  PutString("Polling RX...");
+  while (true) {
+    PollRXQueue();
   }
   PutString("done\n");
-
-  {
-    int buf_size = rxq.GetUsedRingEntry(0).len;
-    PutStringAndDecimal("recv buf size", rxq.GetUsedRingEntry(0).len);
-    int packet_size = buf_size - sizeof(PacketBufHeader);
-    PutStringAndDecimal("packet size", packet_size);
-    uint8_t* reply_bin = reinterpret_cast<uint8_t*>(rxq.GetDescriptorBuf(0)) +
-                         sizeof(PacketBufHeader);
-    for (int i = 0; i < packet_size; i++) {
-      PutHex8ZeroFilled(reply_bin[i]);
-      PutChar((i & 0xF) == 0xF ? '\n' : ' ');
-    }
-    PutChar('\n');
-    ARPPacket& arp = *reinterpret_cast<ARPPacket*>(
-        reinterpret_cast<uint8_t*>(rxq.GetDescriptorBuf(0)) +
-        sizeof(PacketBufHeader));
-    for (int i = 0; i < 4; i++) {
-      PutDecimal64(arp.sender_proto_addr[i]);
-      PutChar(i == 3 ? ' ' : '.');
-    }
-    PutString("is at ");
-    for (int i = 0; i < 6; i++) {
-      PutHex8ZeroFilled(arp.sender_eth_addr[i]);
-      PutChar(i == 5 ? '\n' : ':');
-    }
-  }
 }
-
 }  // namespace Virtio

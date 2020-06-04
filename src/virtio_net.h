@@ -36,6 +36,15 @@ class Net {
     uint8_t target_eth_addr[6];
     uint8_t target_proto_addr[4];
 
+    static constexpr uint8_t kEthTypeARP[2] = {0x08, 0x06};
+
+    void SetEthType(const uint8_t(&etype)[2]) {
+      eth_type[0] = etype[0];
+      eth_type[1] = etype[1];
+    }
+    bool HasEthType(const uint8_t(&etype)[2]) {
+      return eth_type[0] == etype[0] && eth_type[1] == etype[1];
+    }
     void SetupRequest(const uint8_t(&target_ip)[4], const uint8_t(&src_ip)[4],
                       const uint8_t(&src_mac)[6]) {
       for (int i = 0; i < 6; i++) {
@@ -48,8 +57,7 @@ class Net {
         sender_proto_addr[i] = src_ip[i];
         target_proto_addr[i] = target_ip[i];
       }
-      eth_type[0] = 0x08;
-      eth_type[1] = 0x06;
+      SetEthType(kEthTypeARP);
       hw_type[0] = 0x00;
       hw_type[1] = 0x01;
       proto_type[0] = 0x08;
@@ -161,9 +169,10 @@ class Net {
       desc.flags = flags;
       desc.next = next;
     }
-    void* GetDescriptorBuf(int idx) {
+    template <typename T = uint8_t*>
+    T GetDescriptorBuf(int idx) {
       assert(0 <= idx && idx < queue_size_);
-      return buf_[idx];
+      return reinterpret_cast<T>(buf_[idx]);
     }
     uint32_t GetDescriptorSize(int idx) {
       assert(0 <= idx && idx < queue_size_);
@@ -209,6 +218,7 @@ class Net {
     void* buf_[kMaxQueueSize];
   };
 
+  void PollRXQueue();
   void Init();
 
   static Net& GetInstance() {
@@ -232,6 +242,8 @@ class Net {
   uint8_t mac_addr_[6];
   uint16_t config_io_addr_base_;
   Virtqueue vq_[kNumOfVirtqueues];
+  uint16_t vq_size_[kNumOfVirtqueues];
+  uint16_t vq_cursor_[kNumOfVirtqueues];
 
   uint8_t ReadConfigReg8(int ofs);
   uint16_t ReadConfigReg16(int ofs);
