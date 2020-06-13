@@ -79,9 +79,9 @@ run_nic_macos : files pmem.img .FORCE
 		-object filter-dump,id=f1,netdev=u1,file=dump.dat
 
 run_nic_linux : files pmem.img .FORCE
-	sudo $(QEMU) $(QEMU_ARGS_PMEM) \
+	$(QEMU) $(QEMU_ARGS_PMEM) \
 		--enable-kvm \
-		-nic tap,id=u1,model=virtio \
+		-nic tap,ifname=tap0,id=u1,model=virtio,script=no \
 		-object filter-dump,id=f1,netdev=u1,file=dump.dat
 
 run_gdb : files pmem.img .FORCE

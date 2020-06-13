@@ -50,6 +50,16 @@ You can connect serial console using telnet
 telnet localhost 1235
 ```
 
+## Setup tap interface (for linux)
+
+`make run_nic_linux` runs liumOS on QEMU with a tap interface.
+To avoid running QEMU with sudo, you need to setup a tap interface in advance.
+
+```
+sudo tunctl -u <user>
+sudo brctl addif <bridge> tap0
+```
+
 ## References
 - [newlib](https://sourceware.org/newlib/)
 - [llvm](https://llvm.org/)
