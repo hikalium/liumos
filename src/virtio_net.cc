@@ -103,8 +103,8 @@ void PrintARPPacket(Net::ARPPacket& arp) {
       }
       return;
     case Net::ARPPacket::Operation::kReply:
-      PutIPv4Addr(arp.target_proto_addr);
-      PutString("is at ");
+      PutIPv4Addr(arp.sender_proto_addr);
+      PutString(" is at ");
       for (int i = 0; i < 6; i++) {
         PutHex8ZeroFilled(arp.sender_eth_addr[i]);
         PutChar(i == 5 ? '\n' : ':');
