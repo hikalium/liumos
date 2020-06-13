@@ -81,31 +81,79 @@ void Net::Virtqueue::Alloc(int queue_size) {
   bzero(base_, buf_size);
 }
 
-void PrintRXBuf(uint8_t* buf, int buf_size) {
-  PutStringAndDecimal("recv buf size", buf_size);
-  int packet_size = buf_size - sizeof(Net::PacketBufHeader);
-  PutStringAndDecimal("packet size", packet_size);
-  uint8_t* reply_bin = buf + sizeof(Net::PacketBufHeader);
-  for (int i = 0; i < packet_size; i++) {
-    PutHex8ZeroFilled(reply_bin[i]);
+void PutIPv4Addr(Net::IPv4Addr addr) {
+  for (int i = 0; i < 4; i++) {
+    PutDecimal64(addr.addr[i]);
+    if (i != 3)
+      PutChar('.');
+  }
+}
+
+void PrintARPPacket(Net::ARPPacket& arp) {
+  switch (arp.GetOperation()) {
+    case Net::ARPPacket::Operation::kRequest:
+      PutString("Who has ");
+      PutIPv4Addr(arp.target_proto_addr);
+      PutString("? Tell ");
+      PutIPv4Addr(arp.sender_proto_addr);
+      PutString(" at ");
+      for (int i = 0; i < 6; i++) {
+        PutHex8ZeroFilled(arp.sender_eth_addr[i]);
+        PutChar(i == 5 ? '\n' : ':');
+      }
+      return;
+    case Net::ARPPacket::Operation::kReply:
+      PutIPv4Addr(arp.target_proto_addr);
+      PutString("is at ");
+      for (int i = 0; i < 6; i++) {
+        PutHex8ZeroFilled(arp.sender_eth_addr[i]);
+        PutChar(i == 5 ? '\n' : ':');
+      }
+      return;
+    default:
+      break;
+  }
+  PutString("Recieved ARP with invalid Operation\n");
+}
+
+bool Net::ARPPacketHandler(uint8_t* frame_data, size_t frame_size) {
+  if (frame_size < sizeof(ARPPacket)) {
+    return false;
+  }
+  ARPPacket& arp = *reinterpret_cast<Net::ARPPacket*>(frame_data);
+  if (!arp.HasEthType(Net::ARPPacket::kEthTypeARP)) {
+    return false;
+  }
+  PrintARPPacket(arp);
+  if (arp.GetOperation() != ARPPacket::Operation::kRequest ||
+      !arp.target_proto_addr.IsEqualTo(self_ip_)) {
+    // This is ARP, but not a request to me
+    PutString("Not for me");
+    return true;
+  }
+  // Reply to ARP
+  ARPPacket& reply = *GetNextTXPacketBuf<ARPPacket*>(sizeof(ARPPacket));
+  reply.SetupReply(arp.sender_proto_addr, self_ip_, arp.sender_eth_addr,
+                   mac_addr_);
+  SendPacket();
+  PutString("Reply sent!: ");
+  PrintARPPacket(reply);
+  return true;
+}
+
+void Net::ProcessPacket(uint8_t* buf, size_t buf_size) {
+  size_t frame_size = buf_size - sizeof(Net::PacketBufHeader);
+  uint8_t* frame_data = buf + sizeof(Net::PacketBufHeader);
+  if (ARPPacketHandler(frame_data, frame_size)) {
+    return;
+  }
+  return;
+  PutStringAndDecimal("frame size", frame_size);
+  for (size_t i = 0; i < frame_size; i++) {
+    PutHex8ZeroFilled(frame_data[i]);
     PutChar((i & 0xF) == 0xF ? '\n' : ' ');
   }
   PutChar('\n');
-  Net::ARPPacket& arp =
-      *reinterpret_cast<Net::ARPPacket*>(buf + sizeof(Net::PacketBufHeader));
-  if (!arp.HasEthType(Net::ARPPacket::kEthTypeARP)) {
-    PutString("Not an ARP packet\n");
-    return;
-  }
-  for (int i = 0; i < 4; i++) {
-    PutDecimal64(arp.sender_proto_addr[i]);
-    PutChar(i == 3 ? ' ' : '.');
-  }
-  PutString("is at ");
-  for (int i = 0; i < 6; i++) {
-    PutHex8ZeroFilled(arp.sender_eth_addr[i]);
-    PutChar(i == 5 ? '\n' : ':');
-  }
 }
 
 void Net::PollRXQueue() {
@@ -115,8 +163,8 @@ void Net::PollRXQueue() {
     return;
   }
   PutStringAndHex("rxq_cursor_", rxq_cursor_);
-  PrintRXBuf(rxq.GetDescriptorBuf(rxq_cursor_),
-             rxq.GetUsedRingEntry(rxq_cursor_).len);
+  Net::ProcessPacket(rxq.GetDescriptorBuf(rxq_cursor_),
+                     rxq.GetUsedRingEntry(rxq_cursor_).len);
   rxq_cursor_++;
 }
 
@@ -192,6 +240,7 @@ void Net::Init() {
 
   // Populate RX Buffer
   auto& rxq = vq_[kIndexOfRXVirtqueue];
+  vq_cursor_[kIndexOfRXVirtqueue] = 0;
   for (int i = 0; i < vq_size_[kIndexOfRXVirtqueue]; i++) {
     rxq.SetDescriptor(i, AllocMemoryForMappedIO<void*>(kPageSize), kPageSize,
                       2 /* device write only */, 0);
@@ -201,43 +250,14 @@ void Net::Init() {
   WriteConfigReg16(16 /* Queue Notify */, kIndexOfRXVirtqueue);
 
   // Populate TX Buffer
-  /*
-     ARP: who has 10.10.10.135? Tell 10.10.10.90
-     ff ff ff ff ff ff  // dst
-     f8 ff c2 01 df 39  // src
-     08 06              // ether type (ARP)
-     00 01              // hardware type (ethernet)
-     08 00              // protocol type (ipv4)
-     06                 // hw addr len (6)
-     04                 // proto addr len (4)
-     00 01              // operation (arp request)
-     f8 ff c2 01 df 39  // sender eth addr
-     0a 0a 0a 5a        // sender protocol addr
-     00 00 00 00 00 00  // target eth addr (0 since its unknown)
-     0a 0a 0a 87        // target protocol addr
-     */
   auto& txq = vq_[kIndexOfTXVirtqueue];
-  txq.SetDescriptor(0, AllocMemoryForMappedIO<void*>(kPageSize), kPageSize, 0,
-                    0);
-  {
-    PacketBufHeader& hdr = *txq.GetDescriptorBuf<PacketBufHeader*>(0);
-    hdr.flags = 0;
-    hdr.gso_type = PacketBufHeader::kGSOTypeNone;
-    hdr.header_length = 0x00;
-    hdr.gso_size = 0;
-    hdr.csum_start = 0;
-    hdr.csum_offset = 0;
+  vq_cursor_[kIndexOfTXVirtqueue] = 0;
+  for (int i = 0; i < vq_size_[kIndexOfTXVirtqueue]; i++) {
+    txq.SetDescriptor(i, AllocMemoryForMappedIO<void*>(kPageSize), kPageSize,
+                      0 /* device read only */, 0);
   }
-  {
-    ARPPacket& arp = *reinterpret_cast<ARPPacket*>(txq.GetDescriptorBuf(0) +
-                                                   sizeof(PacketBufHeader));
-    // As shown in https://wiki.qemu.org/Documentation/Networking
-    uint8_t target_ip[4] = {10, 10, 10, 90};
-    uint8_t src_ip[4] = {10, 10, 10, 18};
-    arp.SetupRequest(target_ip, src_ip, mac_addr_);
-    txq.SetDescriptor(0, txq.GetDescriptorBuf(0),
-                      sizeof(PacketBufHeader) + sizeof(ARPPacket), 0, 0);
-  }
+
+  self_ip_ = {10, 10, 10, 123};
   /*
   {
     IPv4UDPPacket& ipv4 = *reinterpret_cast<IPv4UDPPacket*>(
@@ -252,9 +272,6 @@ void Net::Init() {
                       sizeof(PacketBufHeader) + sizeof(IPv4UDPPacket), 0, 0);
   }
   */
-  txq.SetAvailableRingEntry(0, 0);
-  txq.SetAvailableRingIndex(1);
-  WriteConfigReg16(16 /* Queue Notify */, kIndexOfTXVirtqueue);
 
   PutStringAndHex("Device Features(R) ", ReadConfigReg32(0));
   PutStringAndHex("Device Features(RW)", ReadConfigReg32(4));
@@ -263,16 +280,6 @@ void Net::Init() {
 
   uint8_t last_status = ReadConfigReg8(18);
   PutStringAndHex("Device Status(RW)  ", last_status);
-
-  PutString("sending ARP packet...");
-  while (txq.GetUsedRingIndex() == 0) {
-    uint8_t status = ReadConfigReg8(18);
-    if (status == last_status)
-      continue;
-    PutStringAndHex("Device Status(RW)  ", status);
-    last_status = status;
-  }
-  PutString("done\n");
 
   PutString("Polling RX...");
   while (true) {

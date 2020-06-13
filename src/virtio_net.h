@@ -22,6 +22,13 @@ class Net {
     static constexpr uint8_t kFlagNeedsChecksum = 1;
     static constexpr uint8_t kGSOTypeNone = 0;
   };
+  packed_struct IPv4Addr {
+    uint8_t addr[4];
+    bool IsEqualTo(IPv4Addr to) {
+      return *reinterpret_cast<uint32_t *>(addr) ==
+             *reinterpret_cast<uint32_t *>(to.addr);
+    }
+  };
   packed_struct ARPPacket {
     uint8_t dst[6];
     uint8_t src[6];
@@ -32,12 +39,25 @@ class Net {
     uint8_t proto_addr_len;
     uint8_t op[2];
     uint8_t sender_eth_addr[6];
-    uint8_t sender_proto_addr[4];
+    IPv4Addr sender_proto_addr;
     uint8_t target_eth_addr[6];
-    uint8_t target_proto_addr[4];
-
+    IPv4Addr target_proto_addr;
+    /*
+      ARP example : who has 10.10.10.135? Tell 10.10.10.90
+      ff ff ff ff ff ff  // dst
+      f8 ff c2 01 df 39  // src
+      08 06              // ether type (ARP)
+      00 01              // hardware type (ethernet)
+      08 00              // protocol type (ipv4)
+      06                 // hw addr len (6)
+      04                 // proto addr len (4)
+      00 01              // operation (arp request)
+      f8 ff c2 01 df 39  // sender eth addr
+      0a 0a 0a 5a        // sender protocol addr
+      00 00 00 00 00 00  // target eth addr (0 since its unknown)
+      0a 0a 0a 87        // target protocol addr
+     */
     static constexpr uint8_t kEthTypeARP[2] = {0x08, 0x06};
-
     void SetEthType(const uint8_t(&etype)[2]) {
       eth_type[0] = etype[0];
       eth_type[1] = etype[1];
@@ -45,7 +65,21 @@ class Net {
     bool HasEthType(const uint8_t(&etype)[2]) {
       return eth_type[0] == etype[0] && eth_type[1] == etype[1];
     }
-    void SetupRequest(const uint8_t(&target_ip)[4], const uint8_t(&src_ip)[4],
+    enum class Operation {
+      kUnknown,
+      kRequest,
+      kReply,
+    };
+    Operation GetOperation() {
+      if (op[0] != 0)
+        return Operation::kUnknown;
+      if (op[1] == 0x01)
+        return Operation::kRequest;
+      if (op[1] == 0x02)
+        return Operation::kReply;
+      return Operation::kUnknown;
+    }
+    void SetupRequest(const IPv4Addr target_ip, const IPv4Addr src_ip,
                       const uint8_t(&src_mac)[6]) {
       for (int i = 0; i < 6; i++) {
         dst[i] = 0xff;
@@ -53,10 +87,8 @@ class Net {
         sender_eth_addr[i] = src_mac[i];
         target_eth_addr[i] = 0x00;
       }
-      for (int i = 0; i < 4; i++) {
-        sender_proto_addr[i] = src_ip[i];
-        target_proto_addr[i] = target_ip[i];
-      }
+      sender_proto_addr = src_ip;
+      target_proto_addr = target_ip;
       SetEthType(kEthTypeARP);
       hw_type[0] = 0x00;
       hw_type[1] = 0x01;
@@ -65,7 +97,27 @@ class Net {
       hw_addr_len = 6;
       proto_addr_len = 4;
       op[0] = 0x00;
-      op[1] = 0x01;
+      op[1] = 0x01; // Request
+    }
+    void SetupReply(const IPv4Addr target_ip, const IPv4Addr src_ip,
+                      const uint8_t(&target_mac)[6], const uint8_t(&src_mac)[6]) {
+      for (int i = 0; i < 6; i++) {
+        dst[i] = target_mac[i];
+        src[i] = src_mac[i];
+        target_eth_addr[i] = target_mac[i];
+        sender_eth_addr[i] = src_mac[i];
+      }
+      sender_proto_addr = src_ip;
+      target_proto_addr = target_ip;
+      SetEthType(kEthTypeARP);
+      hw_type[0] = 0x00;
+      hw_type[1] = 0x01;
+      proto_type[0] = 0x08;
+      proto_type[1] = 0x00;
+      hw_addr_len = 6;
+      proto_addr_len = 4;
+      op[0] = 0x00;
+      op[1] = 0x02; // Reply
     }
   };
   packed_struct IPv4UDPPacket {
@@ -244,6 +296,38 @@ class Net {
   Virtqueue vq_[kNumOfVirtqueues];
   uint16_t vq_size_[kNumOfVirtqueues];
   uint16_t vq_cursor_[kNumOfVirtqueues];
+  IPv4Addr self_ip_;
+
+  bool ARPPacketHandler(uint8_t* frame_data, size_t frame_size);
+  void ProcessPacket(uint8_t* buf, size_t buf_size);
+
+  template <typename T = uint8_t*>
+  T GetNextTXPacketBuf(size_t size) {
+    assert(size < kPageSize);
+    auto& txq = vq_[kIndexOfTXVirtqueue];
+    const int idx =
+        vq_cursor_[kIndexOfTXVirtqueue] % vq_size_[kIndexOfTXVirtqueue];
+    txq.SetDescriptor(idx, txq.GetDescriptorBuf(idx),
+                      sizeof(PacketBufHeader) + sizeof(ARPPacket), 0, 0);
+    return reinterpret_cast<T>(txq.GetDescriptorBuf(idx) +
+                               sizeof(PacketBufHeader));
+  }
+  void SendPacket() {
+    const int idx =
+        vq_cursor_[kIndexOfTXVirtqueue] % vq_size_[kIndexOfTXVirtqueue];
+    auto& txq = vq_[kIndexOfTXVirtqueue];
+    PacketBufHeader& hdr = *txq.GetDescriptorBuf<PacketBufHeader*>(idx);
+    hdr.flags = 0;
+    hdr.gso_type = PacketBufHeader::kGSOTypeNone;
+    hdr.header_length = 0x00;
+    hdr.gso_size = 0;
+    hdr.csum_start = 0;
+    hdr.csum_offset = 0;
+    txq.SetAvailableRingEntry(idx, idx);
+    vq_cursor_[kIndexOfTXVirtqueue]++;
+    txq.SetAvailableRingIndex(idx + 1);
+    WriteConfigReg16(16 /* Queue Notify */, kIndexOfTXVirtqueue);
+  }
 
   uint8_t ReadConfigReg8(int ofs);
   uint16_t ReadConfigReg16(int ofs);
