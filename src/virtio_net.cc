@@ -120,15 +120,15 @@ bool Net::ARPPacketHandler(uint8_t* frame_data, size_t frame_size) {
   if (frame_size < sizeof(ARPPacket)) {
     return false;
   }
-  ARPPacket& arp = *reinterpret_cast<Net::ARPPacket*>(frame_data);
-  if (!arp.HasEthType(Net::ARPPacket::kEthTypeARP)) {
+  EtherFrame& eth = *reinterpret_cast<Net::EtherFrame*>(frame_data);
+  if (!eth.HasEthType(Net::EtherFrame::kTypeARP)) {
     return false;
   }
+  ARPPacket&arp = *reinterpret_cast<Net::ARPPacket*>(frame_data);
   PrintARPPacket(arp);
   if (arp.GetOperation() != ARPPacket::Operation::kRequest ||
       !arp.target_proto_addr.IsEqualTo(self_ip_)) {
     // This is ARP, but not a request to me
-    PutString("Not for me");
     return true;
   }
   // Reply to ARP

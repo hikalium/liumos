@@ -29,10 +29,21 @@ class Net {
              *reinterpret_cast<uint32_t *>(to.addr);
     }
   };
-  packed_struct ARPPacket {
+  packed_struct EtherFrame {
     uint8_t dst[6];
     uint8_t src[6];
     uint8_t eth_type[2];
+    static constexpr uint8_t kTypeARP[2] = {0x08, 0x06};
+    void SetEthType(const uint8_t(&etype)[2]) {
+      eth_type[0] = etype[0];
+      eth_type[1] = etype[1];
+    }
+    bool HasEthType(const uint8_t(&etype)[2]) {
+      return eth_type[0] == etype[0] && eth_type[1] == etype[1];
+    }
+  };
+  packed_struct ARPPacket {
+    EtherFrame eth;
     uint8_t hw_type[2];
     uint8_t proto_type[2];
     uint8_t hw_addr_len;
@@ -57,14 +68,6 @@ class Net {
       00 00 00 00 00 00  // target eth addr (0 since its unknown)
       0a 0a 0a 87        // target protocol addr
      */
-    static constexpr uint8_t kEthTypeARP[2] = {0x08, 0x06};
-    void SetEthType(const uint8_t(&etype)[2]) {
-      eth_type[0] = etype[0];
-      eth_type[1] = etype[1];
-    }
-    bool HasEthType(const uint8_t(&etype)[2]) {
-      return eth_type[0] == etype[0] && eth_type[1] == etype[1];
-    }
     enum class Operation {
       kUnknown,
       kRequest,
@@ -82,14 +85,14 @@ class Net {
     void SetupRequest(const IPv4Addr target_ip, const IPv4Addr src_ip,
                       const uint8_t(&src_mac)[6]) {
       for (int i = 0; i < 6; i++) {
-        dst[i] = 0xff;
-        src[i] = src_mac[i];
+        eth.dst[i] = 0xff;
+        eth.src[i] = src_mac[i];
         sender_eth_addr[i] = src_mac[i];
         target_eth_addr[i] = 0x00;
       }
       sender_proto_addr = src_ip;
       target_proto_addr = target_ip;
-      SetEthType(kEthTypeARP);
+      eth.SetEthType(EtherFrame::kTypeARP);
       hw_type[0] = 0x00;
       hw_type[1] = 0x01;
       proto_type[0] = 0x08;
@@ -102,14 +105,14 @@ class Net {
     void SetupReply(const IPv4Addr target_ip, const IPv4Addr src_ip,
                       const uint8_t(&target_mac)[6], const uint8_t(&src_mac)[6]) {
       for (int i = 0; i < 6; i++) {
-        dst[i] = target_mac[i];
-        src[i] = src_mac[i];
+        eth.dst[i] = target_mac[i];
+        eth.src[i] = src_mac[i];
         target_eth_addr[i] = target_mac[i];
         sender_eth_addr[i] = src_mac[i];
       }
       sender_proto_addr = src_ip;
       target_proto_addr = target_ip;
-      SetEthType(kEthTypeARP);
+      eth.SetEthType(EtherFrame::kTypeARP);
       hw_type[0] = 0x00;
       hw_type[1] = 0x01;
       proto_type[0] = 0x08;
