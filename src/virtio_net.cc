@@ -144,16 +144,14 @@ bool Net::ARPPacketHandler(uint8_t* frame_data, size_t frame_size) {
 void Net::ProcessPacket(uint8_t* buf, size_t buf_size) {
   size_t frame_size = buf_size - sizeof(Net::PacketBufHeader);
   uint8_t* frame_data = buf + sizeof(Net::PacketBufHeader);
-  if (ARPPacketHandler(frame_data, frame_size)) {
-    return;
+  if (!ARPPacketHandler(frame_data, frame_size)) {
+    PutStringAndDecimal("frame size", frame_size);
+    for (size_t i = 0; i < frame_size; i++) {
+      PutHex8ZeroFilled(frame_data[i]);
+      PutChar((i & 0xF) == 0xF ? '\n' : ' ');
+    }
+    PutChar('\n');
   }
-  return;
-  PutStringAndDecimal("frame size", frame_size);
-  for (size_t i = 0; i < frame_size; i++) {
-    PutHex8ZeroFilled(frame_data[i]);
-    PutChar((i & 0xF) == 0xF ? '\n' : ' ');
-  }
-  PutChar('\n');
 }
 
 void Net::PollRXQueue() {
@@ -162,10 +160,16 @@ void Net::PollRXQueue() {
   if (rxq.GetUsedRingIndex() == rxq_cursor_) {
     return;
   }
-  PutStringAndHex("rxq_cursor_", rxq_cursor_);
-  Net::ProcessPacket(rxq.GetDescriptorBuf(rxq_cursor_),
-                     rxq.GetUsedRingEntry(rxq_cursor_).len);
-  rxq_cursor_++;
+  while(rxq.GetUsedRingIndex() != rxq_cursor_) {
+    PutStringAndHex("rxq_cursor_", rxq_cursor_);
+    int idx = rxq_cursor_ % vq_size_[kIndexOfRXVirtqueue];
+    Net::ProcessPacket(rxq.GetDescriptorBuf(idx),
+        rxq.GetUsedRingEntry(idx).len);
+    rxq.GetUsedRingEntry(idx).len = 0;
+    rxq_cursor_++;
+  }
+  rxq.SetAvailableRingIndex(rxq_cursor_ - 1);
+  WriteConfigReg16(16 /* Queue Notify */, kIndexOfRXVirtqueue);
 }
 
 void Net::Init() {
