@@ -25,13 +25,14 @@ class Net {
   packed_struct IPv4Addr {
     uint8_t addr[4];
     bool IsEqualTo(IPv4Addr to) {
-      return *reinterpret_cast<uint32_t *>(addr) ==
-             *reinterpret_cast<uint32_t *>(to.addr);
+      return *reinterpret_cast<uint32_t*>(addr) ==
+             *reinterpret_cast<uint32_t*>(to.addr);
     }
   };
+  packed_struct EtherAddr { uint8_t mac[6]; };
   packed_struct EtherFrame {
-    uint8_t dst[6];
-    uint8_t src[6];
+    EtherAddr dst;
+    EtherAddr src;
     uint8_t eth_type[2];
     static constexpr uint8_t kTypeARP[2] = {0x08, 0x06};
     void SetEthType(const uint8_t(&etype)[2]) {
@@ -85,8 +86,8 @@ class Net {
     void SetupRequest(const IPv4Addr target_ip, const IPv4Addr src_ip,
                       const uint8_t(&src_mac)[6]) {
       for (int i = 0; i < 6; i++) {
-        eth.dst[i] = 0xff;
-        eth.src[i] = src_mac[i];
+        eth.dst.mac[i] = 0xff;
+        eth.src.mac[i] = src_mac[i];
         sender_eth_addr[i] = src_mac[i];
         target_eth_addr[i] = 0x00;
       }
@@ -100,13 +101,13 @@ class Net {
       hw_addr_len = 6;
       proto_addr_len = 4;
       op[0] = 0x00;
-      op[1] = 0x01; // Request
+      op[1] = 0x01;  // Request
     }
     void SetupReply(const IPv4Addr target_ip, const IPv4Addr src_ip,
-                      const uint8_t(&target_mac)[6], const uint8_t(&src_mac)[6]) {
+                    const uint8_t(&target_mac)[6], const uint8_t(&src_mac)[6]) {
       for (int i = 0; i < 6; i++) {
-        eth.dst[i] = target_mac[i];
-        eth.src[i] = src_mac[i];
+        eth.dst.mac[i] = target_mac[i];
+        eth.src.mac[i] = src_mac[i];
         target_eth_addr[i] = target_mac[i];
         sender_eth_addr[i] = src_mac[i];
       }
@@ -120,7 +121,7 @@ class Net {
       hw_addr_len = 6;
       proto_addr_len = 4;
       op[0] = 0x00;
-      op[1] = 0x02; // Reply
+      op[1] = 0x02;  // Reply
     }
   };
   packed_struct IPv4UDPPacket {

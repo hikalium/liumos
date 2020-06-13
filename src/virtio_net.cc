@@ -124,7 +124,7 @@ bool Net::ARPPacketHandler(uint8_t* frame_data, size_t frame_size) {
   if (!eth.HasEthType(Net::EtherFrame::kTypeARP)) {
     return false;
   }
-  ARPPacket&arp = *reinterpret_cast<Net::ARPPacket*>(frame_data);
+  ARPPacket& arp = *reinterpret_cast<Net::ARPPacket*>(frame_data);
   PrintARPPacket(arp);
   if (arp.GetOperation() != ARPPacket::Operation::kRequest ||
       !arp.target_proto_addr.IsEqualTo(self_ip_)) {
@@ -160,11 +160,11 @@ void Net::PollRXQueue() {
   if (rxq.GetUsedRingIndex() == rxq_cursor_) {
     return;
   }
-  while(rxq.GetUsedRingIndex() != rxq_cursor_) {
+  while (rxq.GetUsedRingIndex() != rxq_cursor_) {
     PutStringAndHex("rxq_cursor_", rxq_cursor_);
     int idx = rxq_cursor_ % vq_size_[kIndexOfRXVirtqueue];
     Net::ProcessPacket(rxq.GetDescriptorBuf(idx),
-        rxq.GetUsedRingEntry(idx).len);
+                       rxq.GetUsedRingEntry(idx).len);
     rxq.GetUsedRingEntry(idx).len = 0;
     rxq_cursor_++;
   }
