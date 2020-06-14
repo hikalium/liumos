@@ -142,7 +142,7 @@ class Net {
     EtherFrame eth;
     uint8_t version_and_ihl;
     uint8_t dscp_and_ecn;
-    uint8_t total_length[2];
+    uint8_t length[2];
     uint16_t ident;
     uint16_t flags;
     uint8_t ttl;
@@ -150,6 +150,13 @@ class Net {
     InternetChecksum csum;
     IPv4Addr src_ip;
     IPv4Addr dst_ip;
+
+    void SetDataLength(uint16_t size) {
+      size += sizeof(IPv4Packet) - sizeof(EtherFrame);  // IP header size
+      size = (size + 1) & ~1;                           // make size odd
+      length[0] = size >> 8;
+      length[1] = size & 0xFF;
+    }
   };
   packed_struct ICMPPacket {
     enum class Type : uint8_t {
@@ -163,78 +170,27 @@ class Net {
     InternetChecksum csum;
   };
   packed_struct IPv4UDPPacket {
-    // Ethernet
-    uint8_t dst[6];
-    uint8_t src[6];
-    uint8_t eth_type[2];
-    // IPv4
-    uint8_t version_and_ihl;
-    uint8_t dscp_and_ecn;
-    uint8_t total_length[2];
-    uint16_t ident;
-    uint16_t flags;
-    uint8_t ttl;
-    uint8_t protocol;
-    uint16_t checksum;
-    uint8_t src_ip[4];
-    uint8_t dst_ip[4];
-    // UDP
+    IPv4Packet ip;
     uint8_t src_port[2];  // optional
     uint8_t dst_port[2];
-    uint8_t udp_length[2];
-    uint8_t udp_checksum[2];
-    uint32_t udp_data;
+    uint8_t length[2];
+    InternetChecksum csum;
 
-    void CalcAndSetChecksum() {
-      uint16_t* p = reinterpret_cast<uint16_t*>(&this->version_and_ihl);
-      uint32_t sum = 0;
-      for (int i = 0; i < 5; i++) {
-        if (i == 5) {
-          // Skip checksum itself
-          continue;
-        }
-        sum += (*p >> 8) | ((*p << 8) & 0xff00);
-      }
-      while (checksum >> 16) {
-        sum = (sum & 0xffff) + (sum >> 16);
-      }
-      checksum = sum;
+    void SetDestinationPort(uint16_t port) {
+      dst_port[0] = port >> 8;
+      dst_port[1] = port & 0xFF;
     }
-
-    void SetupRequest(const uint8_t(&dst_ip)[4], const uint8_t(&src_ip)[4],
-                      const uint8_t(&src_mac)[6], const uint8_t(&next_mac)[6]) {
-      for (int i = 0; i < 6; i++) {
-        dst[i] = next_mac[i];
-        src[i] = src_mac[i];
-      }
-      for (int i = 0; i < 4; i++) {
-        this->src_ip[i] = src_ip[i];
-        this->dst_ip[i] = dst_ip[i];
-      }
-      eth_type[0] = 0x08;
-      eth_type[1] = 0x00;
-      version_and_ihl = 0x45;  // version 4, header length is 20 bytes
-      dscp_and_ecn = 0x00;
-      total_length[0] = 0x00;
-      total_length[1] = 20;  // overall size of ip packet including ip header
-      ident = 0x4242;
-      flags = 0x0040;  // don't fragment
-      ttl = 32;
-      protocol = 17;  // UDP
-      CalcAndSetChecksum();
-      // UDP
-      src_port[0] = 0;
-      src_port[1] = 0;
-      dst_port[0] = 0;
-      dst_port[1] = 80;
-      udp_length[0] = 0;
-      udp_length[1] = 4;
-      udp_checksum[0] = 0;
-      udp_checksum[1] = 0;
-      udp_data = 0x55AA55AA;
+    void SetSourcePort(uint16_t port) {
+      src_port[0] = port >> 8;
+      src_port[1] = port & 0xFF;
+    }
+    void SetDataSize(uint16_t size) {
+      size += 8;               // UDP header size
+      size = (size + 1) & ~1;  // make size odd
+      length[0] = size >> 8;
+      length[1] = size & 0xFF;
     }
   };
-  static_assert(sizeof(IPv4UDPPacket) == 20 + 6 * 2 + 2 + 2 * 4 + 4);
   class Virtqueue {
    public:
     packed_struct Descriptor {

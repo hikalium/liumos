@@ -125,6 +125,7 @@ using EtherFrame = Net::EtherFrame;
 using ARPPacket = Net::ARPPacket;
 using IPv4Packet = Net::IPv4Packet;
 using ICMPPacket = Net::ICMPPacket;
+using IPv4UDPPacket = Net::IPv4UDPPacket;
 
 static bool ARPPacketHandler(uint8_t* frame_data, size_t frame_size) {
   if (frame_size < sizeof(ARPPacket)) {
@@ -166,6 +167,32 @@ InternetChecksum CalcChecksum(void* buf, size_t start, size_t end) {
   return {static_cast<uint8_t>((sum >> 8) & 0xFF),
           static_cast<uint8_t>(sum & 0xFF)};
 }
+InternetChecksum CalcUDPChecksum(void* buf,
+                                 size_t start,
+                                 size_t end,
+                                 Net::IPv4Addr src_addr,
+                                 Net::IPv4Addr dst_addr,
+                                 uint8_t (&udp_length)[2]) {
+  // https://tools.ietf.org/html/rfc1071
+  uint8_t* p = reinterpret_cast<uint8_t*>(buf);
+  uint32_t sum = 0;
+  // Pseudo-header
+  sum += (static_cast<uint16_t>(src_addr.addr[0]) << 8) | src_addr.addr[1];
+  sum += (static_cast<uint16_t>(src_addr.addr[2]) << 8) | src_addr.addr[3];
+  sum += (static_cast<uint16_t>(dst_addr.addr[0]) << 8) | dst_addr.addr[1];
+  sum += (static_cast<uint16_t>(dst_addr.addr[2]) << 8) | dst_addr.addr[3];
+  sum += (static_cast<uint16_t>(udp_length[0]) << 8) | udp_length[1];
+  sum += 17;  // Protocol: UDP
+  for (size_t i = start; i < end; i += 2) {
+    sum += (static_cast<uint16_t>(p[i + 0])) << 8 | p[i + 1];
+  }
+  while (sum >> 16) {
+    sum = (sum & 0xffff) + (sum >> 16);
+  }
+  sum = ~sum;
+  return {static_cast<uint8_t>((sum >> 8) & 0xFF),
+          static_cast<uint8_t>(sum & 0xFF)};
+}
 static void SendICMPEchoReply(const ICMPPacket& req, size_t req_frame_size) {
   if (req_frame_size < sizeof(ICMPPacket)) {
     return;
@@ -191,6 +218,38 @@ static void SendICMPEchoReply(const ICMPPacket& req, size_t req_frame_size) {
   // Send
   net.SendPacket();
   PutString("Reply sent!: ");
+
+  // UDP
+  const char* s = "Hello! This is liumOS. Are you there?\n";
+  uint16_t dst_port = 11111;
+  uint16_t packet_size =
+      static_cast<uint16_t>((sizeof(IPv4UDPPacket) + strlen(s) + 1) & ~1);
+  IPv4UDPPacket& p = *net.GetNextTXPacketBuf<IPv4UDPPacket*>(packet_size);
+  char* data = reinterpret_cast<char*>(reinterpret_cast<uint8_t*>(&p) +
+                                       sizeof(IPv4UDPPacket));
+  memcpy(&p, &req, packet_size);
+  memcpy(data, s, strlen(s));
+  // Setup UDP
+  p.SetDestinationPort(dst_port);
+  p.SetSourcePort(12345);
+  p.SetDataSize(strlen(s));
+  p.csum.Clear();
+  p.csum = CalcUDPChecksum(&p, offsetof(IPv4UDPPacket, src_port), packet_size,
+                           req.ip.dst_ip, req.ip.src_ip, p.length);
+  // Setup IP
+  p.ip.protocol = IPv4Packet::Protocol::kUDP;
+  p.ip.SetDataLength(packet_size - sizeof(IPv4Packet));
+  p.ip.dst_ip = req.ip.src_ip;
+  p.ip.src_ip = req.ip.dst_ip;
+  p.ip.csum.Clear();
+  p.ip.csum = CalcChecksum(&p, offsetof(IPv4Packet, version_and_ihl),
+                           sizeof(IPv4Packet));
+  // Setup Eth
+  p.ip.eth.dst = req.ip.eth.src;
+  p.ip.eth.src = net.GetSelfEtherAddr();
+  // Send
+  net.SendPacket();
+  PutString("UDP sent!: ");
 }
 
 static bool ICMPPacketHandler(IPv4Packet& p, size_t frame_size) {
