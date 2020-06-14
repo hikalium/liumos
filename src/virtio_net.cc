@@ -120,6 +120,7 @@ void PrintARPPacket(Net::ARPPacket& arp) {
   PutString("Recieved ARP with invalid Operation\n");
 }
 
+using InternetChecksum = Net::InternetChecksum;
 using EtherFrame = Net::EtherFrame;
 using ARPPacket = Net::ARPPacket;
 using IPv4Packet = Net::IPv4Packet;
@@ -151,6 +152,47 @@ static bool ARPPacketHandler(uint8_t* frame_data, size_t frame_size) {
   return true;
 }
 
+InternetChecksum CalcChecksum(void* buf, size_t start, size_t end) {
+  // https://tools.ietf.org/html/rfc1071
+  uint8_t* p = reinterpret_cast<uint8_t*>(buf);
+  uint32_t sum = 0;
+  for (size_t i = start; i < end; i += 2) {
+    sum += (static_cast<uint16_t>(p[i + 0])) << 8 | p[i + 1];
+  }
+  while (sum >> 16) {
+    sum = (sum & 0xffff) + (sum >> 16);
+  }
+  sum = ~sum;
+  return {static_cast<uint8_t>((sum >> 8) & 0xFF),
+          static_cast<uint8_t>(sum & 0xFF)};
+}
+static void SendICMPEchoReply(const ICMPPacket& req, size_t req_frame_size) {
+  if (req_frame_size < sizeof(ICMPPacket)) {
+    return;
+  }
+  PutStringAndHex("req_frame_size", req_frame_size);
+  Net& net = Net::GetInstance();
+  // Reply to ARP
+  ICMPPacket& reply = *net.GetNextTXPacketBuf<ICMPPacket*>(req_frame_size);
+  memcpy(&reply, &req, req_frame_size);
+  // Setup ICMP
+  reply.type = ICMPPacket::Type::kEchoReply;
+  reply.csum.Clear();
+  reply.csum = CalcChecksum(&reply, offsetof(ICMPPacket, type), req_frame_size);
+  // Setup IP
+  reply.ip.dst_ip = req.ip.src_ip;
+  reply.ip.src_ip = req.ip.dst_ip;
+  reply.ip.csum.Clear();
+  reply.ip.csum = CalcChecksum(&reply, offsetof(IPv4Packet, version_and_ihl),
+                               req_frame_size);
+  // Setup Eth
+  reply.ip.eth.dst = req.ip.eth.src;
+  reply.ip.eth.src = net.GetSelfEtherAddr();
+  // Send
+  net.SendPacket();
+  PutString("Reply sent!: ");
+}
+
 static bool ICMPPacketHandler(IPv4Packet& p, size_t frame_size) {
   if (p.protocol != IPv4Packet::Protocol::kICMP) {
     return false;
@@ -162,6 +204,7 @@ static bool ICMPPacketHandler(IPv4Packet& p, size_t frame_size) {
   ICMPPacket& icmp = *reinterpret_cast<Net::ICMPPacket*>(&p);
   if (icmp.type == ICMPPacket::Type::kEchoRequest) {
     PutString("Echo Request\n");
+    SendICMPEchoReply(icmp, frame_size);
   } else if (icmp.type == ICMPPacket::Type::kEchoReply) {
     PutString("Echo Reply\n");
   } else {

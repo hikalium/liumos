@@ -30,6 +30,15 @@ class Net {
     }
   };
   packed_struct EtherAddr { uint8_t mac[6]; };
+  packed_struct InternetChecksum {
+    // https://tools.ietf.org/html/rfc1071
+    uint8_t csum[2];
+
+    void Clear() {
+      csum[0] = 0;
+      csum[1] = 0;
+    }
+  };
   packed_struct EtherFrame {
     EtherAddr dst;
     EtherAddr src;
@@ -138,7 +147,7 @@ class Net {
     uint16_t flags;
     uint8_t ttl;
     Protocol protocol;
-    uint16_t checksum;
+    InternetChecksum csum;
     IPv4Addr src_ip;
     IPv4Addr dst_ip;
   };
@@ -151,7 +160,7 @@ class Net {
     IPv4Packet ip;
     Type type;
     uint8_t code;
-    uint8_t csum[2];
+    InternetChecksum csum;
   };
   packed_struct IPv4UDPPacket {
     // Ethernet
@@ -308,12 +317,12 @@ class Net {
 
   template <typename T = uint8_t*>
   T GetNextTXPacketBuf(size_t size) {
-    assert(size < kPageSize);
+    uint32_t buf_size = static_cast<uint32_t>(sizeof(PacketBufHeader) + size);
+    assert(buf_size < kPageSize);
     auto& txq = vq_[kIndexOfTXVirtqueue];
     const int idx =
         vq_cursor_[kIndexOfTXVirtqueue] % vq_size_[kIndexOfTXVirtqueue];
-    txq.SetDescriptor(idx, txq.GetDescriptorBuf(idx),
-                      sizeof(PacketBufHeader) + sizeof(ARPPacket), 0, 0);
+    txq.SetDescriptor(idx, txq.GetDescriptorBuf(idx), buf_size, 0, 0);
     return reinterpret_cast<T>(txq.GetDescriptorBuf(idx) +
                                sizeof(PacketBufHeader));
   }
