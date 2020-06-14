@@ -125,6 +125,36 @@ class Net {
       op[1] = 0x02;  // Reply
     }
   };
+  packed_struct IPv4Packet {
+    enum class Protocol : uint8_t {
+      kICMP = 1,
+      kTCP = 6,
+      kUDP = 17,
+    };
+
+    EtherFrame eth;
+    uint8_t version_and_ihl;
+    uint8_t dscp_and_ecn;
+    uint8_t total_length[2];
+    uint16_t ident;
+    uint16_t flags;
+    uint8_t ttl;
+    Protocol protocol;
+    uint16_t checksum;
+    IPv4Addr src_ip;
+    IPv4Addr dst_ip;
+  };
+  packed_struct ICMPPacket {
+    enum class Type : uint8_t {
+      kEchoReply = 0,
+      kEchoRequest = 8,
+    };
+
+    IPv4Packet ip;
+    Type type;
+    uint8_t code;
+    uint8_t csum[2];
+  };
   packed_struct IPv4UDPPacket {
     // Ethernet
     uint8_t dst[6];

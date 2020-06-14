@@ -142,14 +142,34 @@ bool Net::ARPPacketHandler(uint8_t* frame_data, size_t frame_size) {
 }
 
 bool Net::IPv4PacketHandler(uint8_t* frame_data, size_t frame_size) {
-  if (frame_size < sizeof(ARPPacket)) {
+  if (frame_size < sizeof(IPv4Packet)) {
     return false;
   }
   EtherFrame& eth = *reinterpret_cast<Net::EtherFrame*>(frame_data);
   if (!eth.HasEthType(Net::EtherFrame::kTypeIPv4)) {
     return false;
   }
-  PutString("IPv4 Packet!\n");
+  PutString("IPv4: ");
+  IPv4Packet& p = *reinterpret_cast<Net::IPv4Packet*>(frame_data);
+  PutIPv4Addr(p.src_ip);
+  PutString(" -> ");
+  PutIPv4Addr(p.dst_ip);
+  PutStringAndHex(" protocol", static_cast<uint8_t>(p.protocol));
+  if (p.protocol == Net::IPv4Packet::Protocol::kICMP) {
+    PutString("ICMP: ");
+    ICMPPacket& icmp = *reinterpret_cast<Net::ICMPPacket*>(frame_data);
+    if (icmp.type == Net::ICMPPacket::Type::kEchoRequest) {
+      PutString("Echo Request\n");
+    } else if (icmp.type == Net::ICMPPacket::Type::kEchoReply) {
+      PutString("Echo Reply\n");
+    } else {
+      PutString("Unknown type\n");
+    }
+  } else if (p.protocol == Net::IPv4Packet::Protocol::kTCP) {
+    PutString("TCP: \n");
+  } else if (p.protocol == Net::IPv4Packet::Protocol::kUDP) {
+    PutString("UDP: \n");
+  }
   return true;
 }
 
