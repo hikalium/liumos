@@ -51,9 +51,9 @@ class Net {
     uint8_t hw_addr_len;
     uint8_t proto_addr_len;
     uint8_t op[2];
-    uint8_t sender_eth_addr[6];
+    EtherAddr sender_eth_addr;
     IPv4Addr sender_proto_addr;
-    uint8_t target_eth_addr[6];
+    EtherAddr target_eth_addr;
     IPv4Addr target_proto_addr;
     /*
       ARP example : who has 10.10.10.135? Tell 10.10.10.90
@@ -85,13 +85,13 @@ class Net {
       return Operation::kUnknown;
     }
     void SetupRequest(const IPv4Addr target_ip, const IPv4Addr src_ip,
-                      const uint8_t(&src_mac)[6]) {
+                      const EtherAddr src_mac) {
       for (int i = 0; i < 6; i++) {
         eth.dst.mac[i] = 0xff;
-        eth.src.mac[i] = src_mac[i];
-        sender_eth_addr[i] = src_mac[i];
-        target_eth_addr[i] = 0x00;
+        target_eth_addr.mac[i] = 0x00;
       }
+      eth.src = src_mac;
+      sender_eth_addr = src_mac;
       sender_proto_addr = src_ip;
       target_proto_addr = target_ip;
       eth.SetEthType(EtherFrame::kTypeARP);
@@ -105,13 +105,11 @@ class Net {
       op[1] = 0x01;  // Request
     }
     void SetupReply(const IPv4Addr target_ip, const IPv4Addr src_ip,
-                    const uint8_t(&target_mac)[6], const uint8_t(&src_mac)[6]) {
-      for (int i = 0; i < 6; i++) {
-        eth.dst.mac[i] = target_mac[i];
-        eth.src.mac[i] = src_mac[i];
-        target_eth_addr[i] = target_mac[i];
-        sender_eth_addr[i] = src_mac[i];
-      }
+                    const EtherAddr target_mac, const EtherAddr src_mac) {
+      eth.dst = target_mac;
+      eth.src = src_mac;
+      target_eth_addr = target_mac;
+      sender_eth_addr = src_mac;
       sender_proto_addr = src_ip;
       target_proto_addr = target_ip;
       eth.SetEthType(EtherFrame::kTypeARP);
@@ -308,6 +306,36 @@ class Net {
   void PollRXQueue();
   void Init();
 
+  template <typename T = uint8_t*>
+  T GetNextTXPacketBuf(size_t size) {
+    assert(size < kPageSize);
+    auto& txq = vq_[kIndexOfTXVirtqueue];
+    const int idx =
+        vq_cursor_[kIndexOfTXVirtqueue] % vq_size_[kIndexOfTXVirtqueue];
+    txq.SetDescriptor(idx, txq.GetDescriptorBuf(idx),
+                      sizeof(PacketBufHeader) + sizeof(ARPPacket), 0, 0);
+    return reinterpret_cast<T>(txq.GetDescriptorBuf(idx) +
+                               sizeof(PacketBufHeader));
+  }
+  const IPv4Addr GetSelfIPv4Addr() { return self_ip_; }
+  const EtherAddr GetSelfEtherAddr() { return {mac_addr_}; }
+  void SendPacket() {
+    const int idx =
+        vq_cursor_[kIndexOfTXVirtqueue] % vq_size_[kIndexOfTXVirtqueue];
+    auto& txq = vq_[kIndexOfTXVirtqueue];
+    PacketBufHeader& hdr = *txq.GetDescriptorBuf<PacketBufHeader*>(idx);
+    hdr.flags = 0;
+    hdr.gso_type = PacketBufHeader::kGSOTypeNone;
+    hdr.header_length = 0x00;
+    hdr.gso_size = 0;
+    hdr.csum_start = 0;
+    hdr.csum_offset = 0;
+    txq.SetAvailableRingEntry(idx, idx);
+    vq_cursor_[kIndexOfTXVirtqueue]++;
+    txq.SetAvailableRingIndex(idx + 1);
+    WriteConfigReg16(16 /* Queue Notify */, kIndexOfTXVirtqueue);
+  }
+
   static Net& GetInstance() {
     if (!net_) {
       net_ = liumos->kernel_heap_allocator->Alloc<Net>();
@@ -326,44 +354,14 @@ class Net {
 
   static Net* net_;
   PCI::DeviceLocation dev_;
-  uint8_t mac_addr_[6];
+  EtherAddr mac_addr_;
   uint16_t config_io_addr_base_;
   Virtqueue vq_[kNumOfVirtqueues];
   uint16_t vq_size_[kNumOfVirtqueues];
   uint16_t vq_cursor_[kNumOfVirtqueues];
   IPv4Addr self_ip_;
 
-  bool ARPPacketHandler(uint8_t* frame_data, size_t frame_size);
-  bool IPv4PacketHandler(uint8_t* frame_data, size_t frame_size);
   void ProcessPacket(uint8_t* buf, size_t buf_size);
-
-  template <typename T = uint8_t*>
-  T GetNextTXPacketBuf(size_t size) {
-    assert(size < kPageSize);
-    auto& txq = vq_[kIndexOfTXVirtqueue];
-    const int idx =
-        vq_cursor_[kIndexOfTXVirtqueue] % vq_size_[kIndexOfTXVirtqueue];
-    txq.SetDescriptor(idx, txq.GetDescriptorBuf(idx),
-                      sizeof(PacketBufHeader) + sizeof(ARPPacket), 0, 0);
-    return reinterpret_cast<T>(txq.GetDescriptorBuf(idx) +
-                               sizeof(PacketBufHeader));
-  }
-  void SendPacket() {
-    const int idx =
-        vq_cursor_[kIndexOfTXVirtqueue] % vq_size_[kIndexOfTXVirtqueue];
-    auto& txq = vq_[kIndexOfTXVirtqueue];
-    PacketBufHeader& hdr = *txq.GetDescriptorBuf<PacketBufHeader*>(idx);
-    hdr.flags = 0;
-    hdr.gso_type = PacketBufHeader::kGSOTypeNone;
-    hdr.header_length = 0x00;
-    hdr.gso_size = 0;
-    hdr.csum_start = 0;
-    hdr.csum_offset = 0;
-    txq.SetAvailableRingEntry(idx, idx);
-    vq_cursor_[kIndexOfTXVirtqueue]++;
-    txq.SetAvailableRingIndex(idx + 1);
-    WriteConfigReg16(16 /* Queue Notify */, kIndexOfTXVirtqueue);
-  }
 
   uint8_t ReadConfigReg8(int ofs);
   uint16_t ReadConfigReg16(int ofs);

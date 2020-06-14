@@ -89,6 +89,14 @@ void PutIPv4Addr(Net::IPv4Addr addr) {
   }
 }
 
+void PutEtherAddr(Net::EtherAddr addr) {
+  for (int i = 0; i < 6; i++) {
+    PutHex8ZeroFilled(addr.mac[i]);
+    if (i != 5)
+      PutChar(':');
+  }
+}
+
 void PrintARPPacket(Net::ARPPacket& arp) {
   switch (arp.GetOperation()) {
     case Net::ARPPacket::Operation::kRequest:
@@ -97,18 +105,14 @@ void PrintARPPacket(Net::ARPPacket& arp) {
       PutString("? Tell ");
       PutIPv4Addr(arp.sender_proto_addr);
       PutString(" at ");
-      for (int i = 0; i < 6; i++) {
-        PutHex8ZeroFilled(arp.sender_eth_addr[i]);
-        PutChar(i == 5 ? '\n' : ':');
-      }
+      PutEtherAddr(arp.sender_eth_addr);
+      PutChar('\n');
       return;
     case Net::ARPPacket::Operation::kReply:
       PutIPv4Addr(arp.sender_proto_addr);
       PutString(" is at ");
-      for (int i = 0; i < 6; i++) {
-        PutHex8ZeroFilled(arp.sender_eth_addr[i]);
-        PutChar(i == 5 ? '\n' : ':');
-      }
+      PutEtherAddr(arp.sender_eth_addr);
+      PutChar('\n');
       return;
     default:
       break;
@@ -116,32 +120,59 @@ void PrintARPPacket(Net::ARPPacket& arp) {
   PutString("Recieved ARP with invalid Operation\n");
 }
 
-bool Net::ARPPacketHandler(uint8_t* frame_data, size_t frame_size) {
+using EtherFrame = Net::EtherFrame;
+using ARPPacket = Net::ARPPacket;
+using IPv4Packet = Net::IPv4Packet;
+using ICMPPacket = Net::ICMPPacket;
+
+static bool ARPPacketHandler(uint8_t* frame_data, size_t frame_size) {
   if (frame_size < sizeof(ARPPacket)) {
     return false;
   }
-  EtherFrame& eth = *reinterpret_cast<Net::EtherFrame*>(frame_data);
+  EtherFrame& eth = *reinterpret_cast<EtherFrame*>(frame_data);
   if (!eth.HasEthType(Net::EtherFrame::kTypeARP)) {
     return false;
   }
-  ARPPacket& arp = *reinterpret_cast<Net::ARPPacket*>(frame_data);
+  ARPPacket& arp = *reinterpret_cast<ARPPacket*>(frame_data);
   PrintARPPacket(arp);
+  Net& net = Net::GetInstance();
   if (arp.GetOperation() != ARPPacket::Operation::kRequest ||
-      !arp.target_proto_addr.IsEqualTo(self_ip_)) {
+      !arp.target_proto_addr.IsEqualTo(net.GetSelfIPv4Addr())) {
     // This is ARP, but not a request to me
     return true;
   }
   // Reply to ARP
-  ARPPacket& reply = *GetNextTXPacketBuf<ARPPacket*>(sizeof(ARPPacket));
-  reply.SetupReply(arp.sender_proto_addr, self_ip_, arp.sender_eth_addr,
-                   mac_addr_);
-  SendPacket();
+  ARPPacket& reply = *net.GetNextTXPacketBuf<ARPPacket*>(sizeof(ARPPacket));
+  reply.SetupReply(arp.sender_proto_addr, net.GetSelfIPv4Addr(),
+                   arp.sender_eth_addr, net.GetSelfEtherAddr());
+  net.SendPacket();
   PutString("Reply sent!: ");
   PrintARPPacket(reply);
   return true;
 }
 
-bool Net::IPv4PacketHandler(uint8_t* frame_data, size_t frame_size) {
+static bool ICMPPacketHandler(IPv4Packet& p, size_t frame_size) {
+  if (p.protocol != IPv4Packet::Protocol::kICMP) {
+    return false;
+  }
+  if (frame_size < sizeof(ICMPPacket)) {
+    return false;
+  }
+  PutString("ICMP: ");
+  ICMPPacket& icmp = *reinterpret_cast<Net::ICMPPacket*>(&p);
+  if (icmp.type == ICMPPacket::Type::kEchoRequest) {
+    PutString("Echo Request\n");
+  } else if (icmp.type == ICMPPacket::Type::kEchoReply) {
+    PutString("Echo Reply\n");
+  } else {
+    PutString("Unknown type\n");
+  }
+  return true;
+}
+
+static bool IPv4PacketHandler(uint8_t* frame_data, size_t frame_size) {
+  using EtherFrame = Net::EtherFrame;
+  using IPv4Packet = Net::IPv4Packet;
   if (frame_size < sizeof(IPv4Packet)) {
     return false;
   }
@@ -155,17 +186,10 @@ bool Net::IPv4PacketHandler(uint8_t* frame_data, size_t frame_size) {
   PutString(" -> ");
   PutIPv4Addr(p.dst_ip);
   PutStringAndHex(" protocol", static_cast<uint8_t>(p.protocol));
-  if (p.protocol == Net::IPv4Packet::Protocol::kICMP) {
-    PutString("ICMP: ");
-    ICMPPacket& icmp = *reinterpret_cast<Net::ICMPPacket*>(frame_data);
-    if (icmp.type == Net::ICMPPacket::Type::kEchoRequest) {
-      PutString("Echo Request\n");
-    } else if (icmp.type == Net::ICMPPacket::Type::kEchoReply) {
-      PutString("Echo Reply\n");
-    } else {
-      PutString("Unknown type\n");
-    }
-  } else if (p.protocol == Net::IPv4Packet::Protocol::kTCP) {
+  if (ICMPPacketHandler(p, frame_size)) {
+    return true;
+  }
+  if (p.protocol == Net::IPv4Packet::Protocol::kTCP) {
     PutString("TCP: \n");
   } else if (p.protocol == Net::IPv4Packet::Protocol::kUDP) {
     PutString("UDP: \n");
@@ -270,10 +294,10 @@ void Net::Init() {
 
   PutString("MAC Addr: ");
   for (int i = 0; i < 6; i++) {
-    mac_addr_[i] = ReadConfigReg8(0x14 + i);
-    PutHex8ZeroFilled(mac_addr_[i]);
-    PutChar(i == 5 ? '\n' : ':');
+    mac_addr_.mac[i] = ReadConfigReg8(0x14 + i);
   }
+  PutEtherAddr(mac_addr_);
+  PutChar('\n');
 
   // Populate RX Buffer
   auto& rxq = vq_[kIndexOfRXVirtqueue];
