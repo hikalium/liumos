@@ -35,6 +35,7 @@ class Net {
     EtherAddr src;
     uint8_t eth_type[2];
     static constexpr uint8_t kTypeARP[2] = {0x08, 0x06};
+    static constexpr uint8_t kTypeIPv4[2] = {0x08, 0x00};
     void SetEthType(const uint8_t(&etype)[2]) {
       eth_type[0] = etype[0];
       eth_type[1] = etype[1];
@@ -303,6 +304,7 @@ class Net {
   IPv4Addr self_ip_;
 
   bool ARPPacketHandler(uint8_t* frame_data, size_t frame_size);
+  bool IPv4PacketHandler(uint8_t* frame_data, size_t frame_size);
   void ProcessPacket(uint8_t* buf, size_t buf_size);
 
   template <typename T = uint8_t*>

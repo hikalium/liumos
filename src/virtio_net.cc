@@ -141,10 +141,23 @@ bool Net::ARPPacketHandler(uint8_t* frame_data, size_t frame_size) {
   return true;
 }
 
+bool Net::IPv4PacketHandler(uint8_t* frame_data, size_t frame_size) {
+  if (frame_size < sizeof(ARPPacket)) {
+    return false;
+  }
+  EtherFrame& eth = *reinterpret_cast<Net::EtherFrame*>(frame_data);
+  if (!eth.HasEthType(Net::EtherFrame::kTypeIPv4)) {
+    return false;
+  }
+  PutString("IPv4 Packet!\n");
+  return true;
+}
+
 void Net::ProcessPacket(uint8_t* buf, size_t buf_size) {
   size_t frame_size = buf_size - sizeof(Net::PacketBufHeader);
   uint8_t* frame_data = buf + sizeof(Net::PacketBufHeader);
-  if (!ARPPacketHandler(frame_data, frame_size)) {
+  if (!ARPPacketHandler(frame_data, frame_size) &&
+      !IPv4PacketHandler(frame_data, frame_size)) {
     PutStringAndDecimal("frame size", frame_size);
     for (size_t i = 0; i < frame_size; i++) {
       PutHex8ZeroFilled(frame_data[i]);
