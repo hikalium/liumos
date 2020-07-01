@@ -59,6 +59,7 @@ files : src/BOOTX64.EFI $(APPS) src/LIUMOS.ELF .FORCE
 	cp dist/* mnt/
 	cp $(APPS) mnt/
 	cp src/LIUMOS.ELF mnt/LIUMOS.ELF
+	make -C app/rusttest install
 
 run_nopmem : files .FORCE
 	$(QEMU) $(QEMU_ARGS)

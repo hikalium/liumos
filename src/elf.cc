@@ -103,6 +103,10 @@ static const Elf64_Ehdr* ParseProgramHeader(EFIFile& file,
       seg_map = &proc_map_info.data;
       phdr_info = &phdr_map_info.data;
     }
+    if(!seg_map) {
+      PutStringAndHex("Skip phdr mapping. index", i);
+      continue;
+    }
     assert(seg_map);
     uint64_t vaddr = FloorToPageAlignment(phdr->p_vaddr);
     seg_map->Set(vaddr, 0,
