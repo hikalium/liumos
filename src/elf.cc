@@ -93,21 +93,13 @@ static const Elf64_Ehdr* ParseProgramHeader(EFIFile& file,
 
     assert(IsAlignedToPageSize(phdr->p_align));
 
-    SegmentMapping* seg_map = nullptr;
-    PhdrInfo* phdr_info = nullptr;
+    SegmentMapping* seg_map = &proc_map_info.data;
+    PhdrInfo* phdr_info = &phdr_map_info.data;
     if (phdr->p_flags & PF_X) {
       seg_map = &proc_map_info.code;
       phdr_info = &phdr_map_info.code;
     }
-    if (phdr->p_flags & PF_W) {
-      seg_map = &proc_map_info.data;
-      phdr_info = &phdr_map_info.data;
-    }
-    if(!seg_map) {
-      PutStringAndHex("Skip phdr mapping. index", i);
-      continue;
-    }
-    assert(seg_map);
+    assert(!seg_map->GetMapSize()); // Avoid overwriting
     uint64_t vaddr = FloorToPageAlignment(phdr->p_vaddr);
     seg_map->Set(vaddr, 0,
                  CeilToPageAlignment(phdr->p_memsz + (phdr->p_vaddr - vaddr)));
