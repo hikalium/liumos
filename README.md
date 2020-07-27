@@ -7,7 +7,7 @@
 ![Screenshot](https://github.com/hikalium/liumos/blob/master/docs/2019-11-24.png)
 
 
-A toy operating system supports UEFI boot.
+A toy operating system which supports NVDIMM natively.
 
 ## Requirements
 
