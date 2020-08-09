@@ -11,6 +11,8 @@
 *.gen.mk
 *.dump.txt
 *.d
+*.plist
 githash.cc
 
 third_party*
+.dSYM
