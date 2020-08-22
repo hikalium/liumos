@@ -76,7 +76,7 @@ run : files pmem.img .FORCE
 
 run_nic_macos : files pmem.img .FORCE
 	$(QEMU) $(QEMU_ARGS_PMEM) \
-		-nic user,id=u1,model=virtio \
+		-nic user,id=u1,model=virtio,hostfwd=tcp::10023-:23 \
 		-object filter-dump,id=f1,netdev=u1,file=dump.dat
 
 run_nic_linux : files pmem.img .FORCE
