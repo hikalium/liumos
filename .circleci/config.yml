@@ -2,13 +2,13 @@ version: 2
 jobs:
     build:
         docker:
-            - image: ubuntu:18.04
+            - image: hikalium/ubuntu-for-compilium:latest
         steps:
             - checkout
             - run:
                 name: Install build tools
                 command: >
-                    apt update && apt install -y build-essential wget clang-8 lld-8 libc++-8-dev libc++abi-8-dev
+                    apt update && apt install -y git build-essential wget clang-8 lld-8 libc++-8-dev libc++abi-8-dev
             - run:
                 name: Run unit test
                 command: make unittest
