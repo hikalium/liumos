@@ -30,3 +30,9 @@ clean_third_party :
 
 unittest:
 	make $(MAKE_ARGS) unittest
+
+format :
+	clang-format -i *.cc *.h
+
+commit :
+	make -C .. commit

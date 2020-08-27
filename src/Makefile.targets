@@ -209,12 +209,6 @@ unittest: test_libfunc \
 	test_xhci_trbring \
 	test_sheet \
 
-format :
-	clang-format -i *.cc *.h
-
-commit :
-	make -C .. commit
-
 install :
 	make -C .. install
 

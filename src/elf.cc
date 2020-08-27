@@ -99,7 +99,7 @@ static const Elf64_Ehdr* ParseProgramHeader(EFIFile& file,
       seg_map = &proc_map_info.code;
       phdr_info = &phdr_map_info.code;
     }
-    assert(!seg_map->GetMapSize()); // Avoid overwriting
+    assert(!seg_map->GetMapSize());  // Avoid overwriting
     uint64_t vaddr = FloorToPageAlignment(phdr->p_vaddr);
     seg_map->Set(vaddr, 0,
                  CeilToPageAlignment(phdr->p_memsz + (phdr->p_vaddr - vaddr)));

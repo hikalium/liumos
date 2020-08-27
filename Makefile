@@ -132,6 +132,10 @@ vnc :
 unittest :
 	make -C src unittest
 
+ci :
+	circleci config validate
+	circleci local execute
+
 clean :
 	make -C src clean
 

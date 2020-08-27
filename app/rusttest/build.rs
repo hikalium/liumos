@@ -12,12 +12,14 @@ fn get_object_name(s: &str) -> String {
 fn main() {
     let srcs = ["hello.c", "syscall.S"];
     let out_dir = env::var("OUT_DIR").unwrap();
+    let llvm_cc_path = env::var("LLVM_CC").unwrap();
+    let llvm_ar_path = env::var("LLVM_AR").unwrap();
 
     for f in &srcs {
         let src = format!("src/{}", f);
         let dst = format!("{}/{}", out_dir, get_object_name(f));
         println!("{:?} => {:?}", src, dst);
-        if !Command::new("/usr/local/Cellar/llvm/9.0.0_1/bin/clang")
+        if !Command::new(Path::new(&llvm_cc_path))
             .args(&[
                 src.as_str(),
                 "-target",
@@ -33,7 +35,7 @@ fn main() {
             panic!("Failed to build {}", f);
         }
     }
-    if !Command::new("/usr/local/Cellar/llvm/9.0.0_1/bin/llvm-ar")
+    if !Command::new(llvm_ar_path)
         .args(&["crs", "libliumos.a", "hello.o", "syscall.o"])
         .current_dir(&Path::new(&out_dir))
         .status()
