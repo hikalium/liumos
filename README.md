@@ -11,6 +11,16 @@ A toy operating system which supports NVDIMM natively.
 
 ## Requirements
 
+### Common
+
+[Install Rust toolchain](https://www.rust-lang.org/tools/install)
+
+```
+rustup toolchain install nightly && rustup default nightly
+rustup component add rust-src
+cargo install cargo-xbuild
+```
+
 ### macOS
 
 ```
