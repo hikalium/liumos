@@ -28,6 +28,7 @@ APPS=\
 	 app/hello/hello.bin \
 	 app/pi/pi.bin \
 	 app/fizzbuzz/fizzbuzz.bin \
+	 app/rawsocksend/rawsocksend.bin \
 	 app/readtest/readtest.bin
 
 ifdef SSH_CONNECTION

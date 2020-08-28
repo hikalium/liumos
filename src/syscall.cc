@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #include "liumos.h"
 
 constexpr uint64_t kSyscallIndex_sys_read = 0;
@@ -75,8 +77,13 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     PutStringAndHex("arg2", args[2]);
     PutStringAndHex("arg3", args[3]);
   }
-  PutStringAndHex("idx", idx);
-  Panic("syscall handler!");
+  char s[64];
+  snprintf(s, sizeof(s), "Unhandled syscall. rax = %lu\n", idx);
+  PutString(s);
+  liumos->scheduler->KillCurrentProcess();
+  for (;;) {
+    StoreIntFlagAndHalt();
+  };
 }
 
 void EnableSyscall() {
