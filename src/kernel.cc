@@ -288,8 +288,8 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
 
   EnableSyscall();
 
-  XHCI::Controller::GetInstance().Init();
-  Virtio::Net::GetInstance().Init();
+  // XHCI::Controller::GetInstance().Init();
+  // Virtio::Net::GetInstance().Init();
 
   TextBox console_text_box;
   while (1) {

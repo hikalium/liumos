@@ -4,6 +4,7 @@
 
 constexpr uint64_t kSyscallIndex_sys_read = 0;
 constexpr uint64_t kSyscallIndex_sys_write = 1;
+constexpr uint64_t kSyscallIndex_sys_socket = 41;
 constexpr uint64_t kSyscallIndex_sys_exit = 60;
 constexpr uint64_t kSyscallIndex_arch_prctl = 158;
 // constexpr uint64_t kArchSetGS = 0x1001;
@@ -76,6 +77,26 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     PutStringAndHex("arg1", args[1]);
     PutStringAndHex("arg2", args[2]);
     PutStringAndHex("arg3", args[3]);
+  }
+  if (idx == kSyscallIndex_sys_socket) {
+    int domain = static_cast<int>(args[1]);
+    int type = static_cast<int>(args[2]);
+    int protocol = static_cast<int>(args[3]);
+    constexpr int kDomainIPv4 = 2;
+    if (domain != kDomainIPv4) {
+      Panic("domain != IPv4");
+    }
+    constexpr int kTypeRawSocket = 3;
+    if (type != kTypeRawSocket) {
+      Panic("type != kTypeRawSocket");
+    }
+    constexpr int kProtocolICMP = 1;
+    if (protocol != kProtocolICMP) {
+      Panic("protocol != kProtocolICMP");
+    }
+    PutString("socket(IPv4, Raw, ICMP)\n");
+    args[1] = 3;
+    return;
   }
   char s[64];
   snprintf(s, sizeof(s), "Unhandled syscall. rax = %lu\n", idx);
