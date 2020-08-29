@@ -8,6 +8,7 @@
 #include "corefunc.h"
 #include "liumos.h"
 #include "pci.h"
+#include "ps2_mouse.h"
 #include "virtio_net.h"
 #include "xhci.h"
 
@@ -276,6 +277,9 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
             ist1_virt_base + (kNumOfKernelStackPages << kPageSizeExponent));
   idt_.Init();
   keyboard_ctrl_.Init();
+
+  PS2MouseController& mouse_ctrl = PS2MouseController::GetInstance();
+  mouse_ctrl.Init();
 
   idt_.SetIntHandler(0x20, TimerHandler);
 

@@ -78,6 +78,13 @@ AsmIntHandler21:
 	mov rcx, 0x21
 	jmp IntHandlerWrapper
 
+.global AsmIntHandler22
+AsmIntHandler22:
+	push 0
+	push rcx
+	mov rcx, 0x22
+	jmp IntHandlerWrapper
+
 .global AsmIntHandlerNotImplemented
 AsmIntHandlerNotImplemented:
 	push 0

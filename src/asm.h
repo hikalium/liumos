@@ -254,6 +254,7 @@ __attribute__((ms_abi)) void AsmIntHandler10_x87FPUError(void);
 __attribute__((ms_abi)) void AsmIntHandler13_SIMDFPException(void);
 __attribute__((ms_abi)) void AsmIntHandler20(void);
 __attribute__((ms_abi)) void AsmIntHandler21(void);
+__attribute__((ms_abi)) void AsmIntHandler22(void);
 __attribute__((ms_abi)) void AsmIntHandlerNotImplemented(void);
 __attribute__((ms_abi)) void Disable8259PIC(void);
 }

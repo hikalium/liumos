@@ -139,6 +139,7 @@ void IDT::Init() {
            AsmIntHandler13_SIMDFPException);
   SetEntry(0x20, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler20);
   SetEntry(0x21, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler21);
+  SetEntry(0x22, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler22);
   WriteIDTR(&idtr);
   liumos->idt = this;
 }
