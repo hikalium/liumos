@@ -294,17 +294,30 @@ CLFlushOptimized:
 	clflushopt [rcx]
 	ret
 
+// Microsoft x64 calling convention:
+//   args: rcx, rdx, r8, r9
+//   callee-saved: RBX, RBP, RDI, RSI, RSP, R12, R13, R14, R15
+//   caller-saved: RAX, RCX, RDX, R8, R9, R10, R11
+// System V AMD64 ABI:
+//   args: RDI, RSI, RDX, RCX, R8, R9
+//   callee-saved: RBX, RBP, R12, R13, R14, R15
+//   caller-saved: otherwise
+// Linux kernel x86-64 syscall:
+//   idx: RAX
+//   args: RDI, RSI, RDX, R10, R8, R9
 .global JumpToKernel
 JumpToKernel:
 	// rcx: kernel ptr
 	// rdx: kernel info
 	// r8: kernel stack
+	// r9: LoaderInfo
 	// convert calling convention from Microsoft x64 to SystemV AMD64
 	push rbp
 	mov rbp, rsp
 	mov rsp, r8
 
 	mov rdi, rdx
+	mov rsi, r9
 	call rcx
 
 	mov rsp, rbp

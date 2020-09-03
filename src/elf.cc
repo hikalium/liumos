@@ -248,7 +248,7 @@ Process& LoadELFAndCreatePersistentProcess(EFIFile& file,
   return liumos->proc_ctrl->RestoreFromPersistentProcessInfo(pp_info);
 }
 
-void LoadKernelELF(EFIFile& file) {
+void LoadKernelELF(EFIFile& file, LoaderInfo& loader_info) {
   ProcessMappingInfo map_info;
   PhdrMappingInfo phdr_map_info;
 
@@ -286,5 +286,5 @@ void LoadKernelELF(EFIFile& file) {
       kernel_main_stack_virtual_base +
       (kNumOfKernelMainStackPages << kPageSizeExponent);
 
-  JumpToKernel(entry_point, liumos, kernel_main_stack_pointer);
+  JumpToKernel(entry_point, liumos, kernel_main_stack_pointer, loader_info);
 }

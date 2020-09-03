@@ -69,7 +69,6 @@ packed_struct LiumOS {
     ACPI::SLIT* slit;
     ACPI::FADT* fadt;
   } acpi;
-  LoaderInfo loader_info;
   static constexpr int kNumOfPMEMManagers = 4;
   PersistentMemoryManager* pmem[kNumOfPMEMManagers];
   Sheet* vram_sheet;

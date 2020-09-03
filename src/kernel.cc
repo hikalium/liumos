@@ -26,6 +26,7 @@ CPUFeatureSet cpu_features_;
 SerialPort com1_;
 SerialPort com2_;
 HPET hpet_;
+LoaderInfo* loader_info_;
 
 void InitPMEMManagement() {
   using namespace ACPI;
@@ -175,11 +176,18 @@ void CoreFunc::PutChar(char c) {
 }
 
 EFI& CoreFunc::GetEFI() {
-  assert(liumos->loader_info.efi);
-  return *liumos->loader_info.efi;
+  assert(loader_info_);
+  assert(loader_info_->efi);
+  return *loader_info_->efi;
 }
 
-extern "C" void KernelEntry(LiumOS* liumos_passed) {
+LoaderInfo& GetLoaderInfo() {
+  assert(loader_info_);
+  return *loader_info_;
+}
+
+extern "C" void KernelEntry(LiumOS* liumos_passed, LoaderInfo& loader_info) {
+  loader_info_ = &loader_info;
   liumos_ = *liumos_passed;
   liumos = &liumos_;
 
@@ -239,12 +247,12 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
   liumos->scheduler = &scheduler_;
   liumos->is_multi_task_enabled = true;
 
-  int idx = liumos->loader_info.FindFile("LIUMOS.ELF");
+  int idx = GetLoaderInfo().FindFile("LIUMOS.ELF");
   if (idx == -1) {
     PutString("file not found.");
     return;
   }
-  EFIFile& liumos_elf = liumos->loader_info.root_files[idx];
+  EFIFile& liumos_elf = GetLoaderInfo().root_files[idx];
 
   const Elf64_Shdr* sh_ctor = FindSectionHeader(liumos_elf, ".ctors");
   if (sh_ctor) {

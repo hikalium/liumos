@@ -3,6 +3,7 @@
 #include <elf.h>
 
 #include "generic.h"
+#include "loader_info.h"
 
 class EFIFile;
 class Process;
@@ -13,4 +14,4 @@ const Elf64_Shdr* FindSectionHeader(EFIFile& file, const char* name);
 Process& LoadELFAndCreateEphemeralProcess(EFIFile& file);
 Process& LoadELFAndCreatePersistentProcess(EFIFile& file,
                                            PersistentMemoryManager& pmem);
-void LoadKernelELF(EFIFile& file);
+void LoadKernelELF(EFIFile& liumos_elf, LoaderInfo&);

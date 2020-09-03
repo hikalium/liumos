@@ -125,17 +125,18 @@ void Sleep() {
 
 void MainForBootProcessor(EFI::Handle image_handle,
                           EFI::SystemTable* system_table) {
+  LoaderInfo loader_info;
   liumos = &liumos_;
   efi_.Init(image_handle, system_table);
-  liumos_.loader_info.efi = &efi_;
+  loader_info.efi = &efi_;
   efi_.ClearScreen();
 
   InitGraphics();
   main_console_.SetSheet(liumos->screen_sheet);
   liumos->main_console = &main_console_;
 
-  liumos_.loader_info.root_files_used =
-      efi_.LoadRootFiles(liumos_.loader_info.root_files, kNumOfRootFiles);
+  loader_info.root_files_used =
+      efi_.LoadRootFiles(loader_info.root_files, kNumOfRootFiles);
 
   efi_.GetMemoryMapAndExitBootServices(image_handle, efi_memory_map);
   liumos->efi_memory_map = &efi_memory_map;
@@ -173,12 +174,12 @@ void MainForBootProcessor(EFI::Handle image_handle,
   idt.Init();
   InitPaging();
 
-  int idx = liumos->loader_info.FindFile("LIUMOS.ELF");
+  int idx = loader_info.FindFile("LIUMOS.ELF");
   if (idx == -1) {
     PutString("file not found.");
     return;
   }
-  EFIFile& liumos_elf = liumos->loader_info.root_files[idx];
+  EFIFile& liumos_elf = loader_info.root_files[idx];
 
-  LoadKernelELF(liumos_elf);
+  LoadKernelELF(liumos_elf, loader_info);
 }

@@ -6,6 +6,7 @@
 
 #include "adlib.h"
 #include "command_line_args.h"
+#include "kernel.h"
 #include "liumos.h"
 #include "pci.h"
 #include "pmem.h"
@@ -592,12 +593,12 @@ static void ListPCIDevices() {
 }
 
 static void PlayMIDI(const char* file_name) {
-  int idx = liumos->loader_info.FindFile(file_name);
+  int idx = GetLoaderInfo().FindFile(file_name);
   if (idx == -1) {
     PutString("midi file not found.\n");
     return;
   }
-  PlayMIDI(liumos->loader_info.root_files[idx]);
+  PlayMIDI(GetLoaderInfo().root_files[idx]);
 }
 
 void Run(TextBox& tbox) {
@@ -684,22 +685,22 @@ void Run(TextBox& tbox) {
     proc.WaitUntilExit();
   } else if (IsEqualString(line, "pmem run pi.bin")) {
     assert(liumos->pmem[0]);
-    int idx = liumos->loader_info.FindFile("pi.bin");
+    int idx = GetLoaderInfo().FindFile("pi.bin");
     if (idx == -1) {
       PutString("file not found.");
       return;
     }
-    EFIFile& pi_bin = liumos->loader_info.root_files[idx];
+    EFIFile& pi_bin = GetLoaderInfo().root_files[idx];
     Process& proc = LoadELFAndCreatePersistentProcess(pi_bin, *liumos->pmem[0]);
     liumos->scheduler->LaunchAndWaitUntilExit(proc);
   } else if (IsEqualString(line, "pmem run hello.bin")) {
     assert(liumos->pmem[0]);
-    int idx = liumos->loader_info.FindFile("hello.bin");
+    int idx = GetLoaderInfo().FindFile("hello.bin");
     if (idx == -1) {
       PutString("file not found.");
       return;
     }
-    EFIFile& hello_bin = liumos->loader_info.root_files[idx];
+    EFIFile& hello_bin = GetLoaderInfo().root_files[idx];
     Process& proc =
         LoadELFAndCreatePersistentProcess(hello_bin, *liumos->pmem[0]);
     liumos->scheduler->LaunchAndWaitUntilExit(proc);
@@ -714,12 +715,12 @@ void Run(TextBox& tbox) {
   } else if (IsEqualString(line, "time")) {
     Time();
   } else if (strncmp(line, "eval ", 5) == 0) {
-    int idx = liumos->loader_info.FindFile("pi.bin");
+    int idx = GetLoaderInfo().FindFile("pi.bin");
     if (idx == -1) {
       PutString("file not found.");
       return;
     }
-    EFIFile& pi_bin = liumos->loader_info.root_files[idx];
+    EFIFile& pi_bin = GetLoaderInfo().root_files[idx];
     int us = atoi(&line[5]);
     PutStringAndHex("Eval in time slice", us);
     ClearIntFlag();
@@ -857,12 +858,12 @@ void Run(TextBox& tbox) {
     }
     PutChar('\n');
   } else if (IsEqualString(line, "logo")) {
-    int idx = liumos->loader_info.FindFile("liumos.ppm");
+    int idx = GetLoaderInfo().FindFile("liumos.ppm");
     if (idx == -1) {
       PutString("file not found.");
       return;
     }
-    EFIFile& liumos_ppm = liumos->loader_info.root_files[idx];
+    EFIFile& liumos_ppm = GetLoaderInfo().root_files[idx];
     DrawPPMFile(liumos_ppm, 0, 0);
   } else if (IsEqualString(line, "ud2")) {
     __asm__ volatile("ud2;");
@@ -876,16 +877,15 @@ void Run(TextBox& tbox) {
     const char* file_name = args.GetArg(1);
     PlayMIDI(file_name);
   } else if (IsEqualString(line, "ls")) {
-    for (int i = 0; i < liumos->loader_info.root_files_used; i++) {
-      PutString(liumos->loader_info.root_files[i].GetFileName());
+    for (int i = 0; i < GetLoaderInfo().root_files_used; i++) {
+      PutString(GetLoaderInfo().root_files[i].GetFileName());
       PutChar('\n');
     }
   } else {
     EFIFile* file = nullptr;
-    for (int i = 0; i < liumos->loader_info.root_files_used; i++) {
-      if (IsEqualString(liumos->loader_info.root_files[i].GetFileName(),
-                        line)) {
-        file = &liumos->loader_info.root_files[i];
+    for (int i = 0; i < GetLoaderInfo().root_files_used; i++) {
+      if (IsEqualString(GetLoaderInfo().root_files[i].GetFileName(), line)) {
+        file = &GetLoaderInfo().root_files[i];
         break;
       }
     }

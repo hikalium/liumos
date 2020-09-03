@@ -1,6 +1,7 @@
 #pragma once
 
 #include "generic.h"
+#include "loader_info.h"
 
 extern "C" {
 
@@ -241,7 +242,8 @@ __attribute__((ms_abi)) void RepeatStore8Bytes(size_t count,
 __attribute__((ms_abi)) void CLFlushOptimized(const void*);
 __attribute__((ms_abi)) void JumpToKernel(void* kernel_entry_point,
                                           void* vram_sheet,
-                                          uint64_t kernel_stack_pointer);
+                                          uint64_t kernel_stack_pointer,
+                                          LoaderInfo&);
 __attribute__((ms_abi)) void AsmSyscallHandler(void);
 __attribute__((ms_abi)) void AsmIntHandler00_DivideError(void);
 __attribute__((ms_abi)) void AsmIntHandler03(void);
