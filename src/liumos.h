@@ -17,6 +17,7 @@
 #include "keyboard.h"
 #include "keyid.h"
 #include "libfunc.h"
+#include "loader_info.h"
 #include "paging.h"
 #include "phys_page_allocator.h"
 #include "process.h"
@@ -57,19 +58,6 @@ void DrawPPMFile(EFIFile& file, int px, int py);
 constexpr uint16_t kIOPortKeyboardData = 0x0060;
 
 // @liumos.c
-constexpr int kNumOfRootFiles = 16;
-packed_struct LoaderInfo {
-  struct {
-    EFIFile* logo_ppm;
-    EFIFile* hello_bin;
-    EFIFile* pi_bin;
-    EFIFile* liumos_elf;
-    EFIFile* liumos_ppm;
-  } files;
-  EFIFile root_files[kNumOfRootFiles];
-  int root_files_used;
-  EFI* efi;
-};
 class PersistentMemoryManager;
 packed_struct LiumOS {
   struct {

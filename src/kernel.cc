@@ -239,8 +239,14 @@ extern "C" void KernelEntry(LiumOS* liumos_passed) {
   liumos->scheduler = &scheduler_;
   liumos->is_multi_task_enabled = true;
 
-  const Elf64_Shdr* sh_ctor =
-      FindSectionHeader(*liumos->loader_info.files.liumos_elf, ".ctors");
+  int idx = liumos->loader_info.FindFile("LIUMOS.ELF");
+  if (idx == -1) {
+    PutString("file not found.");
+    return;
+  }
+  EFIFile& liumos_elf = liumos->loader_info.root_files[idx];
+
+  const Elf64_Shdr* sh_ctor = FindSectionHeader(liumos_elf, ".ctors");
   if (sh_ctor) {
     PutString("Calling .ctors...\n");
     void (*const* ctors)() =

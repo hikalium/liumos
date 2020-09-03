@@ -16,3 +16,13 @@ void __assert(const char* expr_str, const char* file, int line) {
   PutString("\n");
   Panic("halt...");
 }
+
+bool IsEqualString(const char* a, const char* b) {
+  while (*a == *b) {
+    if (*a == 0)
+      return true;
+    a++;
+    b++;
+  }
+  return false;
+}

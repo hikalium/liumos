@@ -365,16 +365,6 @@ void Free() {
   liumos->dram_allocator->Print();
 }
 
-bool IsEqualString(const char* a, const char* b) {
-  while (*a == *b) {
-    if (*a == 0)
-      return true;
-    a++;
-    b++;
-  }
-  return false;
-}
-
 void label(uint64_t i) {
   PutString("0x");
   PutHex64(i);
@@ -602,14 +592,12 @@ static void ListPCIDevices() {
 }
 
 static void PlayMIDI(const char* file_name) {
-  for (int i = 0; i < liumos->loader_info.root_files_used; i++) {
-    if (strcmp(liumos->loader_info.root_files[i].GetFileName(), file_name) ==
-        0) {
-      PlayMIDI(liumos->loader_info.root_files[i]);
-      return;
-    }
+  int idx = liumos->loader_info.FindFile(file_name);
+  if (idx == -1) {
+    PutString("midi file not found.\n");
+    return;
   }
-  PutString("midi file not found.");
+  PlayMIDI(liumos->loader_info.root_files[idx]);
 }
 
 void Run(TextBox& tbox) {
@@ -696,13 +684,24 @@ void Run(TextBox& tbox) {
     proc.WaitUntilExit();
   } else if (IsEqualString(line, "pmem run pi.bin")) {
     assert(liumos->pmem[0]);
-    Process& proc = LoadELFAndCreatePersistentProcess(
-        *liumos->loader_info.files.pi_bin, *liumos->pmem[0]);
+    int idx = liumos->loader_info.FindFile("pi.bin");
+    if (idx == -1) {
+      PutString("file not found.");
+      return;
+    }
+    EFIFile& pi_bin = liumos->loader_info.root_files[idx];
+    Process& proc = LoadELFAndCreatePersistentProcess(pi_bin, *liumos->pmem[0]);
     liumos->scheduler->LaunchAndWaitUntilExit(proc);
   } else if (IsEqualString(line, "pmem run hello.bin")) {
     assert(liumos->pmem[0]);
-    Process& proc = LoadELFAndCreatePersistentProcess(
-        *liumos->loader_info.files.hello_bin, *liumos->pmem[0]);
+    int idx = liumos->loader_info.FindFile("hello.bin");
+    if (idx == -1) {
+      PutString("file not found.");
+      return;
+    }
+    EFIFile& hello_bin = liumos->loader_info.root_files[idx];
+    Process& proc =
+        LoadELFAndCreatePersistentProcess(hello_bin, *liumos->pmem[0]);
     liumos->scheduler->LaunchAndWaitUntilExit(proc);
   } else if (strncmp(line, "test mem ", 9) == 0) {
     int proximity_domain = atoi(&line[9]);
@@ -715,6 +714,12 @@ void Run(TextBox& tbox) {
   } else if (IsEqualString(line, "time")) {
     Time();
   } else if (strncmp(line, "eval ", 5) == 0) {
+    int idx = liumos->loader_info.FindFile("pi.bin");
+    if (idx == -1) {
+      PutString("file not found.");
+      return;
+    }
+    EFIFile& pi_bin = liumos->loader_info.root_files[idx];
     int us = atoi(&line[5]);
     PutStringAndHex("Eval in time slice", us);
     ClearIntFlag();
@@ -730,16 +735,15 @@ void Run(TextBox& tbox) {
     PutString("Ephemeral Process:\n");
     uint64_t ns_sum_ephemeral = 0;
     for (int i = 0; i < kNumOfTestRun; i++) {
-      Process& proc =
-          LoadELFAndCreateEphemeralProcess(*liumos->loader_info.files.pi_bin);
+      Process& proc = LoadELFAndCreateEphemeralProcess(pi_bin);
       ns_sum_ephemeral += liumos->scheduler->LaunchAndWaitUntilExit(proc);
     }
 
     PutString("Persistent Process:\n");
     uint64_t ns_sum_persistent = 0;
     for (int i = 0; i < kNumOfTestRun; i++) {
-      Process& proc = LoadELFAndCreatePersistentProcess(
-          *liumos->loader_info.files.pi_bin, *liumos->pmem[0]);
+      Process& proc =
+          LoadELFAndCreatePersistentProcess(pi_bin, *liumos->pmem[0]);
       ns_sum_persistent += liumos->scheduler->LaunchAndWaitUntilExit(proc);
     }
     PutString("timeslice(us), ephemeral avg(ns), persistent avg(ns)\n");
@@ -853,7 +857,13 @@ void Run(TextBox& tbox) {
     }
     PutChar('\n');
   } else if (IsEqualString(line, "logo")) {
-    DrawPPMFile(*liumos->loader_info.files.liumos_ppm, 0, 0);
+    int idx = liumos->loader_info.FindFile("liumos.ppm");
+    if (idx == -1) {
+      PutString("file not found.");
+      return;
+    }
+    EFIFile& liumos_ppm = liumos->loader_info.root_files[idx];
+    DrawPPMFile(liumos_ppm, 0, 0);
   } else if (IsEqualString(line, "ud2")) {
     __asm__ volatile("ud2;");
   } else if (IsEqualString(line, "adlib")) {

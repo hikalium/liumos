@@ -11,11 +11,6 @@ PhysicalPageAllocator* dram_allocator;
 PhysicalPageAllocator* pmem_allocator;
 CPUFeatureSet cpu_features;
 SerialPort com1;
-EFIFile logo_ppm;
-EFIFile liumos_ppm;
-EFIFile hello_bin_file;
-EFIFile pi_bin_file;
-EFIFile liumos_elf_file;
 
 LiumOS liumos_;
 PhysicalPageAllocator dram_allocator_;
@@ -51,10 +46,6 @@ void InitDRAMManagement(EFI::MemoryMap& map) {
 void InitMemoryManagement(EFI::MemoryMap& map) {
   InitDRAMManagement(map);
   liumos->dram_allocator = &dram_allocator_;
-}
-
-void PrintLogoFile() {
-  DrawPPMFile(logo_ppm, liumos->screen_sheet->GetXSize() - 256, 0);
 }
 
 void IdentifyCPU() {
@@ -146,24 +137,12 @@ void MainForBootProcessor(EFI::Handle image_handle,
   liumos_.loader_info.root_files_used =
       efi_.LoadRootFiles(liumos_.loader_info.root_files, kNumOfRootFiles);
 
-  EFIFileManager::Load(logo_ppm, L"logo.ppm");
-  liumos_.loader_info.files.logo_ppm = &logo_ppm;
-  EFIFileManager::Load(pi_bin_file, L"pi.bin");
-  liumos_.loader_info.files.pi_bin = &pi_bin_file;
-  EFIFileManager::Load(liumos_elf_file, L"LIUMOS.ELF");
-  liumos_.loader_info.files.liumos_elf = &liumos_elf_file;
-  EFIFileManager::Load(hello_bin_file, L"hello.bin");
-  liumos_.loader_info.files.hello_bin = &hello_bin_file;
-  EFIFileManager::Load(liumos_ppm, L"liumos.ppm");
-  liumos_.loader_info.files.liumos_ppm = &liumos_ppm;
-
   efi_.GetMemoryMapAndExitBootServices(image_handle, efi_memory_map);
   liumos->efi_memory_map = &efi_memory_map;
 
   com1.Init(kPortCOM1);
   main_console_.SetSerial(&com1);
 
-  PrintLogoFile();
   PutString("\nliumOS version: ");
   PutString(GetVersionStr());
   PutString("\n\n");
@@ -194,5 +173,12 @@ void MainForBootProcessor(EFI::Handle image_handle,
   idt.Init();
   InitPaging();
 
-  LoadKernelELF(liumos_elf_file);
+  int idx = liumos->loader_info.FindFile("LIUMOS.ELF");
+  if (idx == -1) {
+    PutString("file not found.");
+    return;
+  }
+  EFIFile& liumos_elf = liumos->loader_info.root_files[idx];
+
+  LoadKernelELF(liumos_elf);
 }
