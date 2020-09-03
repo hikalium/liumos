@@ -44,7 +44,7 @@ static void ShowNFIT_PrintMemoryTypeGUID(ACPI::NFIT::SPARange* spa) {
   GUID* type_guid = reinterpret_cast<GUID*>(&spa->address_range_type_guid);
   PutString("  type:");
   if (IsEqualGUID(type_guid,
-                  &ACPI::NFIT::SPARange::kByteAdressablePersistentMemory))
+                  &ACPI::NFIT::SPARange::kByteAddressablePersistentMemory))
     PutString(" ByteAddressablePersistentMemory");
   else if (IsEqualGUID(type_guid, &ACPI::NFIT::SPARange::kNVDIMMControlRegion))
     PutString(" NVDIMMControlRegion");

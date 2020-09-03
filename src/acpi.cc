@@ -1,6 +1,6 @@
 #include "liumos.h"
 
-const GUID ACPI::NFIT::SPARange::kByteAdressablePersistentMemory = {
+const GUID ACPI::NFIT::SPARange::kByteAddressablePersistentMemory = {
     0x66F0D379,
     0xB4F3,
     0x4074,

@@ -44,7 +44,7 @@ void InitPMEMManagement() {
     NFIT::SPARange* spa_range = reinterpret_cast<NFIT::SPARange*>(&it);
     if (!IsEqualGUID(
             reinterpret_cast<GUID*>(&spa_range->address_range_type_guid),
-            &NFIT::SPARange::kByteAdressablePersistentMemory))
+            &NFIT::SPARange::kByteAddressablePersistentMemory))
       continue;
     PutStringAndHex("SPARange #", spa_range->spa_range_structure_index);
     PutStringAndHex("  Base", spa_range->system_physical_address_range_base);

@@ -71,7 +71,7 @@ packed_struct NFIT {
 
   packed_struct SPARange {
     // System Physical Address Range
-    static const GUID kByteAdressablePersistentMemory;
+    static const GUID kByteAddressablePersistentMemory;
     static const GUID kNVDIMMControlRegion;
 
     uint16_t type;

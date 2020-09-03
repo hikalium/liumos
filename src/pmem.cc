@@ -36,7 +36,7 @@ void PersistentMemoryManager::Init() {
     NFIT::SPARange* spa_range = reinterpret_cast<NFIT::SPARange*>(&it);
     if (!IsEqualGUID(
             reinterpret_cast<GUID*>(&spa_range->address_range_type_guid),
-            &NFIT::SPARange::kByteAdressablePersistentMemory))
+            &NFIT::SPARange::kByteAddressablePersistentMemory))
       continue;
     if (spa_range->system_physical_address_range_base !=
         reinterpret_cast<uint64_t>(this))
