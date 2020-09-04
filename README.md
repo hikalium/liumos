@@ -77,8 +77,34 @@ telnet localhost 1235
 To avoid running QEMU with sudo, you need to setup a tap interface in advance.
 
 ```
-sudo tunctl -u <user>
-sudo brctl addif <bridge> tap0
+sudo ip tuntap add dev tap0 mode tap user $USER
+sudo ip link set dev tap0 master br0
+sudo ip link set dev tap0 up
+```
+
+example output with bridge `br0` connected to `eno1`
+```
+$ ip a | grep -e br0 -e tap0
+2: eno1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq master br0 state UP group default qlen 1000
+4: br0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    inet 10.10.10.93/24 brd 10.10.10.255 scope global dynamic br0
+6: tap0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel master br0 state UP group default qlen 1000
+```
+
+### Setup bridge interface
+
+#### global, persistent
+```
+network:
+  ethernets:
+    eno1:
+      dhcp4: false
+      dhcp6: false
+  bridges:
+    br0:
+      interfaces: [ eno1 ]
+      dhcp4: true
+  version: 2
 ```
 
 ## References
