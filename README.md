@@ -15,6 +15,14 @@ A toy operating system which supports NVDIMM natively.
 
 [Install Rust toolchain](https://www.rust-lang.org/tools/install)
 
+Check the installation (below is an example output):
+```
+$ cargo --version
+cargo 1.46.0 (149022b1d 2020-07-17)
+```
+
+Then, install nightly toolchain and cargo-xbuild for cross compiling.
+
 ```
 rustup toolchain install nightly && rustup default nightly
 rustup component add rust-src
@@ -27,13 +35,16 @@ cargo install cargo-xbuild
 brew install wget cmake qemu llvm dosfstools
 ```
 
-### Ubuntu 18.04
+### Ubuntu 20.04
 
 ```
-sudo apt install wget cmake qemu clang-8 lld-8 libc++-8-dev libc++abi-8-dev clang-format
+sudo apt install wget cmake qemu-system-x86 clang-8 lld-8 libc++-8-dev libc++abi-8-dev clang-format
 ```
 
 ## Prepare tools and libraries
+
+Move to the root of this source tree. Then:
+
 ```
 make tools
 cd src
