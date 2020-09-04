@@ -184,25 +184,6 @@ LIUMOS.ELF : $(KERNEL_OBJS) kernel.ld Makefile
 run:
 	make -C .. run
 
-newlib:
-	CC=$(LLVM_CC) AR=$(LLVM_AR) RANLIB=$(LLVM_RANLIB) ./build_newlib.sh
-
-libcxxabi:
-	CC=$(LLVM_CC) \
-	   CXX=$(LLVM_CXX) \
-	   LD_LLD=$(LLVM_LD_LLD) \
-	   AR=$(LLVM_AR) \
-	   RANLIB=$(LLVM_RANLIB) \
-	   ./build_libcxxabi.sh
-
-libcxx:
-	CC=$(LLVM_CC) \
-	   CXX=$(LLVM_CXX) \
-	   LD_LLD=$(LLVM_LD_LLD) \
-	   AR=$(LLVM_AR) \
-	   RANLIB=$(LLVM_RANLIB) \
-	   ./build_libcxx.sh
-
 unittest: test_libfunc \
 	test_command_line_args \
 	test_ring_buffer \

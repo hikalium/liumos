@@ -36,3 +36,22 @@ format :
 
 commit :
 	make -C .. commit
+
+newlib:
+	CC=$(LLVM_CC) AR=$(LLVM_AR) RANLIB=$(LLVM_RANLIB) ./build_newlib.sh
+
+libcxxabi:
+	CC=$(LLVM_CC) \
+	   CXX=$(LLVM_CXX) \
+	   LD_LLD=$(LLVM_LD_LLD) \
+	   AR=$(LLVM_AR) \
+	   RANLIB=$(LLVM_RANLIB) \
+	   ./build_libcxxabi.sh
+
+libcxx:
+	CC=$(LLVM_CC) \
+	   CXX=$(LLVM_CXX) \
+	   LD_LLD=$(LLVM_LD_LLD) \
+	   AR=$(LLVM_AR) \
+	   RANLIB=$(LLVM_RANLIB) \
+	   ./build_libcxx.sh

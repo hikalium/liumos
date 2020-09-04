@@ -75,6 +75,9 @@ run_xhci_gdb : files .FORCE
 run : files pmem.img .FORCE
 	$(QEMU) $(QEMU_ARGS_PMEM)
 
+run_nogui : files pmem.img .FORCE
+	$(QEMU) -nographic $(QEMU_ARGS_PMEM)
+
 run_nic_macos : files pmem.img .FORCE
 	$(QEMU) $(QEMU_ARGS_PMEM) \
 		-nic user,id=u1,model=virtio,hostfwd=tcp::10023-:23 \
@@ -85,6 +88,13 @@ run_nic_linux : files pmem.img .FORCE
 		--enable-kvm \
 		-nic tap,ifname=tap0,id=u1,model=virtio,script=no \
 		-object filter-dump,id=f1,netdev=u1,file=dump.dat
+
+run_nic_linux_nogui : files pmem.img .FORCE
+	$(QEMU) $(QEMU_ARGS_PMEM) \
+		--enable-kvm \
+		-nic tap,ifname=tap0,id=u1,model=virtio,script=no \
+		-object filter-dump,id=f1,netdev=u1,file=dump.dat \
+		-nographic
 
 run_gdb : files pmem.img .FORCE
 	$(QEMU) $(QEMU_ARGS_PMEM) -gdb tcp::1192 -S || reset
