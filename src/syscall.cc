@@ -4,7 +4,9 @@
 
 constexpr uint64_t kSyscallIndex_sys_read = 0;
 constexpr uint64_t kSyscallIndex_sys_write = 1;
+constexpr uint64_t kSyscallIndex_sys_close = 3;
 constexpr uint64_t kSyscallIndex_sys_socket = 41;
+constexpr uint64_t kSyscallIndex_sys_sendto = 44;
 constexpr uint64_t kSyscallIndex_sys_exit = 60;
 constexpr uint64_t kSyscallIndex_arch_prctl = 158;
 // constexpr uint64_t kArchSetGS = 0x1001;
@@ -59,6 +61,10 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
         (t1 - t0) * liumos->hpet->GetFemtosecondPerCount());
     return;
   }
+  if (idx == kSyscallIndex_sys_close) {
+    args[0] = 0;
+    return;
+  }
   if (idx == kSyscallIndex_sys_exit) {
     const uint64_t exit_code = args[1];
     PutStringAndHex("exit: exit_code", exit_code);
@@ -96,6 +102,10 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     }
     PutString("socket(IPv4, Raw, ICMP)\n");
     args[1] = 3;
+    return;
+  }
+  if (idx == kSyscallIndex_sys_sendto) {
+    PutString("sendto()!\n");
     return;
   }
   char s[64];
