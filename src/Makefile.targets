@@ -61,7 +61,7 @@ CFLAGS_LOADER= \
 CXXFLAGS_LOADER= \
 				 -DLIUMOS_LOADER \
 				 -target x86_64-pc-win32-coff \
-				 -fno-stack-protector -fno-exceptions -fshort-wchar \
+				 -fno-stack-protector -fno-exceptions -fshort-wchar -fno-rtti \
 				 -mno-red-zone \
 				 -nostdlibinc -nostdlib \
 				 -D_LIBCPP_HAS_NO_THREADS -D_LIBCPP_OBJECT_FORMAT_COFF -Ithird_party_root/include \

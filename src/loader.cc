@@ -170,8 +170,7 @@ void MainForBootProcessor(EFI::Handle image_handle,
 
   GDT gdt;
   gdt.Init(kernel_stack_pointer, ist1_pointer);
-  IDT idt;
-  idt.Init();
+  IDT::Init();
   InitPaging();
 
   int idx = loader_info.FindFile("LIUMOS.ELF");

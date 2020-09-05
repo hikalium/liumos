@@ -1,9 +1,11 @@
 #include "liumos.h"
 #include "scheduler.h"
 
+IDT* IDT::idt_;
+
 __attribute__((ms_abi)) extern "C" void IntHandler(uint64_t intcode,
                                                    InterruptInfo* info) {
-  liumos->idt->IntHandler(intcode, info);
+  IDT::GetInstance().IntHandler(intcode, info);
 }
 
 static void PrintInterruptInfo(uint64_t intcode, const InterruptInfo* info) {
@@ -113,6 +115,13 @@ void IDT::SetEntry(int index,
 }
 
 void IDT::Init() {
+  assert(!idt_);
+  static uint8_t idt_buf[sizeof(IDT)];
+  idt_ = reinterpret_cast<IDT*>(idt_buf);
+  idt_->InitInternal();
+}
+
+void IDT::InitInternal() {
   uint16_t cs = ReadCSSelector();
 
   IDTR idtr;
@@ -141,5 +150,4 @@ void IDT::Init() {
   SetEntry(0x21, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler21);
   SetEntry(0x22, cs, 0, IDTType::kInterruptGate, 0, AsmIntHandler22);
   WriteIDTR(&idtr);
-  liumos->idt = this;
 }

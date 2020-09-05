@@ -25,7 +25,7 @@ static void SendToMouse(uint8_t v) {
 
 void PS2MouseController::Init() {
   PutString("Initializing PS/2 Mouse...");
-  liumos->idt->SetIntHandler(0x22, PS2MouseController::IntHandlerEntry);
+  IDT::GetInstance().SetIntHandler(0x22, PS2MouseController::IntHandlerEntry);
   SendToMouse(kKBCCmdMouseReset);
   PutString("done.\n");
 }

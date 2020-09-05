@@ -74,7 +74,7 @@ void KeyboardController::Init() {
   state_shift_ = false;
   new (&keycode_buffer_) RingBuffer<uint8_t, 16>();
   last_instance_ = this;
-  liumos->idt->SetIntHandler(0x21, KeyboardController::IntHandler);
+  IDT::GetInstance().SetIntHandler(0x21, KeyboardController::IntHandler);
   liumos->keyboard_ctrl = this;
 }
 

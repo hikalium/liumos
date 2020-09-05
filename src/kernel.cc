@@ -15,7 +15,6 @@
 LiumOS* liumos;
 
 GDT gdt_;
-IDT idt_;
 KeyboardController keyboard_ctrl_;
 LiumOS liumos_;
 Sheet virtual_vram_;
@@ -289,13 +288,13 @@ extern "C" void KernelEntry(LiumOS* liumos_passed, LoaderInfo& loader_info) {
 
   gdt_.Init(kernel_stack_pointer,
             ist1_virt_base + (kNumOfKernelStackPages << kPageSizeExponent));
-  idt_.Init();
+  IDT::Init();
   keyboard_ctrl_.Init();
 
   PS2MouseController& mouse_ctrl = PS2MouseController::GetInstance();
   mouse_ctrl.Init();
 
-  idt_.SetIntHandler(0x20, TimerHandler);
+  IDT::GetInstance().SetIntHandler(0x20, TimerHandler);
 
   PCI& pci = PCI::GetInstance();
   pci.DetectDevices();
