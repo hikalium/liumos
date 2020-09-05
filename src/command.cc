@@ -612,7 +612,10 @@ void Run(TextBox& tbox) {
   if (IsEqualString(line, "ip")) {
     Virtio::Net& net = Virtio::Net::GetInstance();
     auto ip_addr = net.GetSelfIPv4Addr();
+    auto mac_addr = net.GetSelfEtherAddr();
     Virtio::Net::PutIPv4Addr(ip_addr);
+    PutString(" eth ");
+    Virtio::Net::PutEtherAddr(mac_addr);
     PutString("\n");
     return;
   }

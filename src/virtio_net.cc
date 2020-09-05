@@ -130,7 +130,7 @@ void Virtio::Net::PutIPv4Addr(Net::IPv4Addr addr) {
   }
 }
 
-void PutEtherAddr(Net::EtherAddr addr) {
+void Virtio::Net::PutEtherAddr(Net::EtherAddr addr) {
   for (int i = 0; i < 6; i++) {
     PutHex8ZeroFilled(addr.mac[i]);
     if (i != 5)
@@ -146,13 +146,13 @@ void PrintARPPacket(Net::ARPPacket& arp) {
       PutString("? Tell ");
       Net::PutIPv4Addr(arp.sender_proto_addr);
       PutString(" at ");
-      PutEtherAddr(arp.sender_eth_addr);
+      Net::PutEtherAddr(arp.sender_eth_addr);
       PutChar('\n');
       return;
     case Net::ARPPacket::Operation::kReply:
       Net::PutIPv4Addr(arp.sender_proto_addr);
       PutString(" is at ");
-      PutEtherAddr(arp.sender_eth_addr);
+      Net::PutEtherAddr(arp.sender_eth_addr);
       PutChar('\n');
       return;
     default:
@@ -291,7 +291,7 @@ static bool UDPPacketHandler(IPv4Packet& p, size_t frame_size) {
     Net::DHCPPacket& dhcp = *reinterpret_cast<Net::DHCPPacket*>(&p);
     PutStringAndHex("op", dhcp.op);
     PutString("client MAC Addr: ");
-    PutEtherAddr(dhcp.chaddr);
+    Net::PutEtherAddr(dhcp.chaddr);
     PutString("\nassigned IP Addr: ");
     Net::PutIPv4Addr(dhcp.yiaddr);
     PutString("\n");

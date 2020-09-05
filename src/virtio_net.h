@@ -41,6 +41,7 @@ class Net {
   };
   static constexpr EtherAddr kBroadcastEtherAddr = {0xFF, 0xFF, 0xFF,
                                                     0xFF, 0xFF, 0xFF};
+  static void PutEtherAddr(Net::EtherAddr addr);
   packed_struct InternetChecksum {
     // https://tools.ietf.org/html/rfc1071
     uint8_t csum[2];
