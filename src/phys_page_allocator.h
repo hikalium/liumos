@@ -76,3 +76,5 @@ class PhysicalPageAllocator {
 
   FreeInfo* head_;
 };
+
+PhysicalPageAllocator& GetSystemDRAMAllocator();

@@ -2,8 +2,11 @@
 
 #include "efi.h"
 
+class PhysicalPageAllocator;
+
 constexpr int kNumOfRootFiles = 16;
 packed_struct LoaderInfo {
+  PhysicalPageAllocator* dram_allocator;
   EFIFile root_files[kNumOfRootFiles];
   int root_files_used;
   EFI* efi;
@@ -17,3 +20,5 @@ packed_struct LoaderInfo {
     return -1;
   }
 };
+
+LoaderInfo& GetLoaderInfo();  // Implemented in loader.cc and kernel.cc

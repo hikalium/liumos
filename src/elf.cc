@@ -155,25 +155,25 @@ Process& LoadELFAndCreateEphemeralProcess(EFIFile& file) {
       *liumos->kernel_heap_allocator->Alloc<ExecutionContext>();
   ProcessMappingInfo& map_info = ctx.GetProcessMappingInfo();
   PhdrMappingInfo phdr_map_info;
-  IA_PML4& user_page_table = AllocPageTable(*liumos->dram_allocator);
+  IA_PML4& user_page_table = AllocPageTable(GetSystemDRAMAllocator());
   SetKernelPageEntries(user_page_table);
 
   const Elf64_Ehdr* ehdr = ParseProgramHeader(file, map_info, phdr_map_info);
   assert(ehdr);
 
-  map_info.code.SetPhysAddr(liumos->dram_allocator->AllocPages<uint64_t>(
+  map_info.code.SetPhysAddr(GetSystemDRAMAllocator().AllocPages<uint64_t>(
       ByteSizeToPageSize(map_info.code.GetMapSize())));
-  map_info.data.SetPhysAddr(liumos->dram_allocator->AllocPages<uint64_t>(
+  map_info.data.SetPhysAddr(GetSystemDRAMAllocator().AllocPages<uint64_t>(
       ByteSizeToPageSize(map_info.data.GetMapSize())));
 
   const int kNumOfStackPages = 32;
   map_info.stack.Set(
       0xBEEF'0000,
-      liumos->dram_allocator->AllocPages<uint64_t>(kNumOfStackPages),
+      GetSystemDRAMAllocator().AllocPages<uint64_t>(kNumOfStackPages),
       kNumOfStackPages << kPageSizeExponent);
 
   map_info.Print();
-  LoadAndMap(*liumos->dram_allocator, user_page_table, map_info, phdr_map_info,
+  LoadAndMap(GetSystemDRAMAllocator(), user_page_table, map_info, phdr_map_info,
              kPageAttrUser, false);
 
   uint8_t* entry_point = reinterpret_cast<uint8_t*>(ehdr->e_entry);
@@ -255,9 +255,9 @@ void LoadKernelELF(EFIFile& file, LoaderInfo& loader_info) {
   const Elf64_Ehdr* ehdr = ParseProgramHeader(file, map_info, phdr_map_info);
   assert(ehdr);
 
-  map_info.code.SetPhysAddr(liumos->dram_allocator->AllocPages<uint64_t>(
+  map_info.code.SetPhysAddr(GetSystemDRAMAllocator().AllocPages<uint64_t>(
       ByteSizeToPageSize(map_info.code.GetMapSize())));
-  map_info.data.SetPhysAddr(liumos->dram_allocator->AllocPages<uint64_t>(
+  map_info.data.SetPhysAddr(GetSystemDRAMAllocator().AllocPages<uint64_t>(
       ByteSizeToPageSize(map_info.data.GetMapSize())));
 
   constexpr uint64_t kNumOfKernelMainStackPages = 4;
@@ -265,7 +265,7 @@ void LoadKernelELF(EFIFile& file, LoaderInfo& loader_info) {
 
   map_info.stack.Set(
       kernel_main_stack_virtual_base,
-      liumos->dram_allocator->AllocPages<uint64_t>(kNumOfKernelMainStackPages),
+      GetSystemDRAMAllocator().AllocPages<uint64_t>(kNumOfKernelMainStackPages),
       kNumOfKernelMainStackPages << kPageSizeExponent);
 
   constexpr uint64_t kNumOfKernelHeapPages = 4;
@@ -273,10 +273,10 @@ void LoadKernelELF(EFIFile& file, LoaderInfo& loader_info) {
 
   map_info.heap.Set(
       kernel_heap_virtual_base,
-      liumos->dram_allocator->AllocPages<uint64_t>(kNumOfKernelHeapPages),
+      GetSystemDRAMAllocator().AllocPages<uint64_t>(kNumOfKernelHeapPages),
       kNumOfKernelHeapPages << kPageSizeExponent);
 
-  LoadAndMap(*liumos->dram_allocator, GetKernelPML4(), map_info, phdr_map_info,
+  LoadAndMap(GetSystemDRAMAllocator(), GetKernelPML4(), map_info, phdr_map_info,
              0, false);
 
   uint8_t* entry_point = reinterpret_cast<uint8_t*>(ehdr->e_entry);

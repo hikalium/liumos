@@ -3,8 +3,6 @@
 #include "liumos.h"
 #include "paging.h"
 
-LoaderInfo& GetLoaderInfo();
-
 template <typename PhysType = uint64_t, typename VirtType>
 PhysType v2p(VirtType v) {
   return reinterpret_cast<PhysType>(

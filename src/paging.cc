@@ -156,17 +156,17 @@ void InitPaging() {
   uint64_t direct_map_1gb_pages = (direct_mapping_end + (1ULL << 30) - 1) >> 30;
   PutStringAndHex("direct map 1gb pages", direct_map_1gb_pages);
 
-  IA_PML4* kernel_pml4 = liumos->dram_allocator->AllocPages<IA_PML4*>(1);
+  IA_PML4* kernel_pml4 = GetSystemDRAMAllocator().AllocPages<IA_PML4*>(1);
   kernel_pml4->ClearMapping();
 
   // mapping pages for real memory & memory mapped IOs
-  CreatePageMapping(*liumos->dram_allocator, *kernel_pml4, 0, 0,
+  CreatePageMapping(GetSystemDRAMAllocator(), *kernel_pml4, 0, 0,
                     direct_mapping_end, kPageAttrPresent | kPageAttrWritable);
-  CreatePageMapping(*liumos->dram_allocator, *kernel_pml4,
+  CreatePageMapping(GetSystemDRAMAllocator(), *kernel_pml4,
                     liumos->cpu_features->kernel_phys_page_map_begin, 0,
                     direct_mapping_end, kPageAttrPresent | kPageAttrWritable);
 
-  CreatePageMapping(*liumos->dram_allocator, *kernel_pml4,
+  CreatePageMapping(GetSystemDRAMAllocator(), *kernel_pml4,
                     kLAPICRegisterAreaVirtBase, kLAPICRegisterAreaPhysBase,
                     kLAPICRegisterAreaByteSize,
                     kPageAttrPresent | kPageAttrWritable |

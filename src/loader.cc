@@ -3,19 +3,24 @@
 #include "execution_context.h"
 #include "hpet.h"
 #include "liumos.h"
+#include "loader_info.h"
 #include "util.h"
 
 LiumOS* liumos;
 EFI::MemoryMap efi_memory_map;
-PhysicalPageAllocator* dram_allocator;
 PhysicalPageAllocator* pmem_allocator;
 CPUFeatureSet cpu_features;
 SerialPort com1;
 
 LiumOS liumos_;
-PhysicalPageAllocator dram_allocator_;
 Console main_console_;
 EFI efi_;
+
+LoaderInfo* loader_info_;
+LoaderInfo& GetLoaderInfo() {
+  assert(loader_info_);
+  return *loader_info_;
+}
 
 void FreePages(PhysicalPageAllocator* allocator,
                void* phys_addr,
@@ -28,8 +33,9 @@ void FreePages(PhysicalPageAllocator* allocator,
   allocator->FreePagesWithProximityDomain(phys_addr, num_of_pages, prox_domain);
 }
 
+PhysicalPageAllocator dram_allocator_;
 void InitDRAMManagement(EFI::MemoryMap& map) {
-  dram_allocator = &dram_allocator_;
+  auto dram_allocator = &dram_allocator_;
   new (dram_allocator) PhysicalPageAllocator();
   int available_pages = 0;
   for (int i = 0; i < map.GetNumberOfEntries(); i++) {
@@ -41,11 +47,7 @@ void InitDRAMManagement(EFI::MemoryMap& map) {
               desc->number_of_pages);
   }
   PutStringAndHex("Available DRAM (KiB)", available_pages * 4);
-}
-
-void InitMemoryManagement(EFI::MemoryMap& map) {
-  InitDRAMManagement(map);
-  liumos->dram_allocator = &dram_allocator_;
+  GetLoaderInfo().dram_allocator = dram_allocator;
 }
 
 void IdentifyCPU() {
@@ -126,6 +128,7 @@ void Sleep() {
 void MainForBootProcessor(EFI::Handle image_handle,
                           EFI::SystemTable* system_table) {
   LoaderInfo loader_info;
+  loader_info_ = &loader_info;
   liumos = &liumos_;
   efi_.Init(image_handle, system_table);
   loader_info.efi = &efi_;
@@ -152,19 +155,19 @@ void MainForBootProcessor(EFI::Handle image_handle,
 
   ACPI::DetectTables();
 
-  InitMemoryManagement(efi_memory_map);
+  InitDRAMManagement(efi_memory_map);
 
   InitDoubleBuffer();
   main_console_.SetSheet(liumos->screen_sheet);
 
   constexpr uint64_t kNumOfKernelStackPages = 2;
   uint64_t kernel_stack_base =
-      liumos->dram_allocator->AllocPages<uint64_t>(kNumOfKernelStackPages);
+      GetSystemDRAMAllocator().AllocPages<uint64_t>(kNumOfKernelStackPages);
   uint64_t kernel_stack_pointer =
       kernel_stack_base + (kNumOfKernelStackPages << kPageSizeExponent);
 
   uint64_t ist1_base =
-      liumos->dram_allocator->AllocPages<uint64_t>(kNumOfKernelStackPages);
+      GetSystemDRAMAllocator().AllocPages<uint64_t>(kNumOfKernelStackPages);
   uint64_t ist1_pointer =
       ist1_base + (kNumOfKernelStackPages << kPageSizeExponent);
 

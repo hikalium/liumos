@@ -20,3 +20,8 @@ void PhysicalPageAllocator::FreeInfo::Print() {
   PutHex64(num_of_pages_);
   PutString(" pages\n");
 }
+
+PhysicalPageAllocator& GetSystemDRAMAllocator() {
+  assert(GetLoaderInfo().dram_allocator);
+  return *GetLoaderInfo().dram_allocator;
+}

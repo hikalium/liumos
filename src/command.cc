@@ -364,7 +364,7 @@ void ShowEFIMemoryMap() {
 
 void Free() {
   PutString("DRAM Free List:\n");
-  liumos->dram_allocator->Print();
+  GetSystemDRAMAllocator().Print();
 }
 
 void label(uint64_t i) {
@@ -377,14 +377,14 @@ uint64_t get_seconds() {
   return liumos->hpet->ReadMainCounterValue();
 }
 
-void TestMem(PhysicalPageAllocator* allocator, uint32_t proximity_domain) {
+void TestMem(PhysicalPageAllocator& allocator, uint32_t proximity_domain) {
   constexpr uint64_t kRangeMin = 1ULL << 10;
   constexpr uint64_t kRangeMax = 1ULL << 24;
   PutStringAndHex("Test memory on proximity_domain", proximity_domain);
   constexpr uint64_t array_size_in_pages =
       (sizeof(int) * kRangeMax + kPageSize - 1) >> kPageSizeExponent;
-  int* array = allocator->AllocPagesInProximityDomain<int*>(array_size_in_pages,
-                                                            proximity_domain);
+  int* array = allocator.AllocPagesInProximityDomain<int*>(array_size_in_pages,
+                                                           proximity_domain);
   if (!array) {
     PutString("Alloc failed.");
     return;
@@ -396,7 +396,7 @@ void TestMem(PhysicalPageAllocator* allocator, uint32_t proximity_domain) {
   int32_t* test_mem_map_addr =
       reinterpret_cast<int32_t*>(0xFFFF'FFFE'0000'0000ULL);
 
-  CreatePageMapping(*liumos->dram_allocator, GetKernelPML4(),
+  CreatePageMapping(GetSystemDRAMAllocator(), GetKernelPML4(),
                     reinterpret_cast<uint64_t>(test_mem_map_addr),
                     reinterpret_cast<uint64_t>(array),
                     array_size_in_pages << kPageSizeExponent,
@@ -475,14 +475,14 @@ void TestMem(PhysicalPageAllocator* allocator, uint32_t proximity_domain) {
   StoreIntFlag();
 }
 
-void TestMemWrite(PhysicalPageAllocator* allocator, uint32_t proximity_domain) {
+void TestMemWrite(PhysicalPageAllocator allocator, uint32_t proximity_domain) {
   constexpr uint64_t kRangeMin = 1ULL << 10;
   constexpr uint64_t kRangeMax = 1ULL << 24;
   PutStringAndHex("Test memory on proximity_domain", proximity_domain);
   constexpr uint64_t array_size_in_pages =
       (sizeof(int) * kRangeMax + kPageSize - 1) >> kPageSizeExponent;
-  int* array = allocator->AllocPagesInProximityDomain<int*>(array_size_in_pages,
-                                                            proximity_domain);
+  int* array = allocator.AllocPagesInProximityDomain<int*>(array_size_in_pages,
+                                                           proximity_domain);
   if (!array) {
     PutString("Alloc failed.");
     return;
@@ -494,7 +494,7 @@ void TestMemWrite(PhysicalPageAllocator* allocator, uint32_t proximity_domain) {
   volatile int32_t* test_mem_map_addr =
       reinterpret_cast<volatile int32_t*>(0xFFFF'FFFE'0000'0000ULL);
 
-  CreatePageMapping(*liumos->dram_allocator, GetKernelPML4(),
+  CreatePageMapping(GetSystemDRAMAllocator(), GetKernelPML4(),
                     reinterpret_cast<uint64_t>(test_mem_map_addr),
                     reinterpret_cast<uint64_t>(array),
                     array_size_in_pages << kPageSizeExponent,
@@ -717,10 +717,10 @@ void Run(TextBox& tbox) {
     liumos->scheduler->LaunchAndWaitUntilExit(proc);
   } else if (strncmp(line, "test mem ", 9) == 0) {
     int proximity_domain = atoi(&line[9]);
-    TestMem(liumos->dram_allocator, proximity_domain);
+    TestMem(GetSystemDRAMAllocator(), proximity_domain);
   } else if (strncmp(line, "test memw ", 10) == 0) {
     int proximity_domain = atoi(&line[10]);
-    TestMemWrite(liumos->dram_allocator, proximity_domain);
+    TestMemWrite(GetSystemDRAMAllocator(), proximity_domain);
   } else if (IsEqualString(line, "free")) {
     Free();
   } else if (IsEqualString(line, "time")) {
