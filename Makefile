@@ -5,7 +5,9 @@ include common.mk
 OVMF=ovmf/bios64.bin
 QEMU=qemu-system-x86_64
 #-soundhw adlib
-QEMU_ARGS=\
+OSNAME=${shell uname -s}
+
+QEMU_ARGS_COMMON=\
 		  -device qemu-xhci -device usb-mouse \
 		  -bios $(OVMF) \
 		  -machine q35,nvdimm -cpu qemu64 -smp 4 \
@@ -16,6 +18,25 @@ QEMU_ARGS=\
 		  -serial tcp::1234,server,nowait \
 		  -serial tcp::1235,server,nowait
 
+QEMU_ARGS_NET_MACOS=\
+		-nic user,id=u1,model=virtio,hostfwd=tcp::10023-:23 \
+		-object filter-dump,id=f1,netdev=u1,file=dump.dat
+
+QEMU_ARGS_NET_LINUX=\
+		--enable-kvm \
+		-nic tap,ifname=tap0,id=u1,model=virtio,script=no \
+		-object filter-dump,id=f1,netdev=u1,file=dump.dat
+
+ifeq ($(OSNAME),Darwin)
+QEMU_ARGS=\
+					$(QEMU_ARGS_COMMON) \
+					$(QEMU_ARGS_NET_MACOS)
+else
+QEMU_ARGS=\
+					--enable-kvm \
+					$(QEMU_ARGS_COMMON) \
+					$(QEMU_ARGS_NET_LINUX)
+endif
 
 QEMU_ARGS_PMEM=\
 					 $(QEMU_ARGS) \
@@ -74,27 +95,6 @@ run_xhci_gdb : files .FORCE
 	
 run : files pmem.img .FORCE
 	$(QEMU) $(QEMU_ARGS_PMEM)
-
-run_nogui : files pmem.img .FORCE
-	$(QEMU) -nographic $(QEMU_ARGS_PMEM)
-
-run_nic_macos : files pmem.img .FORCE
-	$(QEMU) $(QEMU_ARGS_PMEM) \
-		-nic user,id=u1,model=virtio,hostfwd=tcp::10023-:23 \
-		-object filter-dump,id=f1,netdev=u1,file=dump.dat
-
-run_nic_linux : files pmem.img .FORCE
-	$(QEMU) $(QEMU_ARGS_PMEM) \
-		--enable-kvm \
-		-nic tap,ifname=tap0,id=u1,model=virtio,script=no \
-		-object filter-dump,id=f1,netdev=u1,file=dump.dat
-
-run_nic_linux_nogui : files pmem.img .FORCE
-	$(QEMU) $(QEMU_ARGS_PMEM) \
-		--enable-kvm \
-		-nic tap,ifname=tap0,id=u1,model=virtio,script=no \
-		-object filter-dump,id=f1,netdev=u1,file=dump.dat \
-		-nographic
 
 run_gdb : files pmem.img .FORCE
 	$(QEMU) $(QEMU_ARGS_PMEM) -gdb tcp::1192 -S || reset

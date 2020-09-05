@@ -73,7 +73,7 @@ telnet localhost 1235
 
 ## Setup tap interface (for linux)
 
-`make run_nic_linux` runs liumOS on QEMU with a tap interface.
+`make run` boots liumOS on QEMU with a tap interface on Linux host.
 To avoid running QEMU with sudo, you need to setup a tap interface in advance.
 
 ```
