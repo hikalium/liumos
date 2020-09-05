@@ -10,6 +10,7 @@
 #include "liumos.h"
 #include "pci.h"
 #include "pmem.h"
+#include "virtio_net.h"
 #include "xhci.h"
 
 namespace ConsoleCommand {
@@ -606,6 +607,13 @@ void Run(TextBox& tbox) {
   CommandLineArgs args;
   if (!args.Parse(line)) {
     PutString("Failed to parse command line\n");
+    return;
+  }
+  if (IsEqualString(line, "ip")) {
+    Virtio::Net& net = Virtio::Net::GetInstance();
+    auto ip_addr = net.GetSelfIPv4Addr();
+    Virtio::Net::PutIPv4Addr(ip_addr);
+    PutString("\n");
     return;
   }
   if (IsEqualString(line, "hello")) {

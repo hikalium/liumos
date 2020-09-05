@@ -184,12 +184,15 @@ LIUMOS.ELF : $(KERNEL_OBJS) kernel.ld Makefile
 run:
 	make -C .. run
 
-unittest: test_libfunc \
+unittest: \
+	test_virtio_net \
+	test_libfunc \
 	test_command_line_args \
 	test_ring_buffer \
 	test_paging \
 	test_xhci_trbring \
-	test_sheet \
+	test_sheet
+	@echo "All tests passed"
 
 install :
 	make -C .. install

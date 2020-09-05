@@ -72,6 +72,7 @@ static uint64_t CalcSizeOfVirtqueue(int queue_size) {
          CeilToPageAlignment(sizeof(uint16_t) * 2 +
                              sizeof(uint32_t) * 2 * queue_size);
 }
+
 void Net::Virtqueue::Alloc(int queue_size) {
   // 2.6.2 Legacy Interfaces: A Note on Virtqueue Layout
   assert(0 <= queue_size && queue_size <= kMaxQueueSize);
@@ -81,7 +82,47 @@ void Net::Virtqueue::Alloc(int queue_size) {
   bzero(base_, buf_size);
 }
 
-void PutIPv4Addr(Net::IPv4Addr addr) {
+uint64_t Net::Virtqueue::GetPhysAddr() {
+  return v2p(reinterpret_cast<uint64_t>(base_));
+}
+
+void Net::Virtqueue::SetDescriptor(int idx,
+                                   void* vaddr,
+                                   uint32_t len,
+                                   uint16_t flags,
+                                   uint16_t next) {
+  assert(0 <= idx && idx < queue_size_);
+  buf_[idx] = vaddr;
+  Descriptor& desc =
+      *reinterpret_cast<Descriptor*>(base_ + sizeof(Descriptor) * idx);
+  desc.addr = v2p(vaddr);
+  desc.len = len;
+  desc.flags = flags;
+  desc.next = next;
+}
+
+uint16_t Net::Virtqueue::GetUsedRingIndex() {
+  // This function returns the index of used ring
+  // which will be written by device on the next data arriving.
+  volatile uint16_t& pidx = *reinterpret_cast<volatile uint16_t*>(
+      base_ +
+      CeilToPageAlignment(sizeof(Descriptor) * queue_size_ +
+                          sizeof(uint16_t) * (2 * queue_size_)) +
+      sizeof(uint16_t));
+  return pidx;
+}
+
+Net::Virtqueue::UsedRingEntry& Net::Virtqueue::GetUsedRingEntry(int idx) {
+  assert(0 <= idx && idx < queue_size_);
+  UsedRingEntry* used_ring = reinterpret_cast<UsedRingEntry*>(
+      base_ +
+      CeilToPageAlignment(sizeof(Descriptor) * queue_size_ +
+                          sizeof(uint16_t) * (2 * queue_size_)) +
+      2 * sizeof(uint16_t));
+  return used_ring[idx];
+}
+
+void Virtio::Net::PutIPv4Addr(Net::IPv4Addr addr) {
   for (int i = 0; i < 4; i++) {
     PutDecimal64(addr.addr[i]);
     if (i != 3)
@@ -101,15 +142,15 @@ void PrintARPPacket(Net::ARPPacket& arp) {
   switch (arp.GetOperation()) {
     case Net::ARPPacket::Operation::kRequest:
       PutString("Who has ");
-      PutIPv4Addr(arp.target_proto_addr);
+      Net::PutIPv4Addr(arp.target_proto_addr);
       PutString("? Tell ");
-      PutIPv4Addr(arp.sender_proto_addr);
+      Net::PutIPv4Addr(arp.sender_proto_addr);
       PutString(" at ");
       PutEtherAddr(arp.sender_eth_addr);
       PutChar('\n');
       return;
     case Net::ARPPacket::Operation::kReply:
-      PutIPv4Addr(arp.sender_proto_addr);
+      Net::PutIPv4Addr(arp.sender_proto_addr);
       PutString(" is at ");
       PutEtherAddr(arp.sender_eth_addr);
       PutChar('\n');
@@ -153,46 +194,6 @@ static bool ARPPacketHandler(uint8_t* frame_data, size_t frame_size) {
   return true;
 }
 
-InternetChecksum CalcChecksum(void* buf, size_t start, size_t end) {
-  // https://tools.ietf.org/html/rfc1071
-  uint8_t* p = reinterpret_cast<uint8_t*>(buf);
-  uint32_t sum = 0;
-  for (size_t i = start; i < end; i += 2) {
-    sum += (static_cast<uint16_t>(p[i + 0])) << 8 | p[i + 1];
-  }
-  while (sum >> 16) {
-    sum = (sum & 0xffff) + (sum >> 16);
-  }
-  sum = ~sum;
-  return {static_cast<uint8_t>((sum >> 8) & 0xFF),
-          static_cast<uint8_t>(sum & 0xFF)};
-}
-InternetChecksum CalcUDPChecksum(void* buf,
-                                 size_t start,
-                                 size_t end,
-                                 Net::IPv4Addr src_addr,
-                                 Net::IPv4Addr dst_addr,
-                                 uint8_t (&udp_length)[2]) {
-  // https://tools.ietf.org/html/rfc1071
-  uint8_t* p = reinterpret_cast<uint8_t*>(buf);
-  uint32_t sum = 0;
-  // Pseudo-header
-  sum += (static_cast<uint16_t>(src_addr.addr[0]) << 8) | src_addr.addr[1];
-  sum += (static_cast<uint16_t>(src_addr.addr[2]) << 8) | src_addr.addr[3];
-  sum += (static_cast<uint16_t>(dst_addr.addr[0]) << 8) | dst_addr.addr[1];
-  sum += (static_cast<uint16_t>(dst_addr.addr[2]) << 8) | dst_addr.addr[3];
-  sum += (static_cast<uint16_t>(udp_length[0]) << 8) | udp_length[1];
-  sum += 17;  // Protocol: UDP
-  for (size_t i = start; i < end; i += 2) {
-    sum += (static_cast<uint16_t>(p[i + 0])) << 8 | p[i + 1];
-  }
-  while (sum >> 16) {
-    sum = (sum & 0xffff) + (sum >> 16);
-  }
-  sum = ~sum;
-  return {static_cast<uint8_t>((sum >> 8) & 0xFF),
-          static_cast<uint8_t>(sum & 0xFF)};
-}
 static void SendICMPEchoReply(const ICMPPacket& req, size_t req_frame_size) {
   if (req_frame_size < sizeof(ICMPPacket)) {
     return;
@@ -205,13 +206,14 @@ static void SendICMPEchoReply(const ICMPPacket& req, size_t req_frame_size) {
   // Setup ICMP
   reply.type = ICMPPacket::Type::kEchoReply;
   reply.csum.Clear();
-  reply.csum = CalcChecksum(&reply, offsetof(ICMPPacket, type), req_frame_size);
+  reply.csum =
+      Net::CalcChecksum(&reply, offsetof(ICMPPacket, type), req_frame_size);
   // Setup IP
   reply.ip.dst_ip = req.ip.src_ip;
   reply.ip.src_ip = req.ip.dst_ip;
   reply.ip.csum.Clear();
-  reply.ip.csum = CalcChecksum(&reply, offsetof(IPv4Packet, version_and_ihl),
-                               req_frame_size);
+  reply.ip.csum = Net::CalcChecksum(
+      &reply, offsetof(IPv4Packet, version_and_ihl), req_frame_size);
   // Setup Eth
   reply.ip.eth.dst = req.ip.eth.src;
   reply.ip.eth.src = net.GetSelfEtherAddr();
@@ -234,7 +236,8 @@ static void SendICMPEchoReply(const ICMPPacket& req, size_t req_frame_size) {
   p.SetSourcePort(12345);
   p.SetDataSize(strlen(s));
   p.csum.Clear();
-  p.csum = CalcUDPChecksum(&p, offsetof(IPv4UDPPacket, src_port), packet_size,
+  p.csum =
+      Net::CalcUDPChecksum(&p, offsetof(IPv4UDPPacket, src_port), packet_size,
                            req.ip.dst_ip, req.ip.src_ip, p.length);
   // Setup IP
   p.ip.protocol = IPv4Packet::Protocol::kUDP;
@@ -242,8 +245,8 @@ static void SendICMPEchoReply(const ICMPPacket& req, size_t req_frame_size) {
   p.ip.dst_ip = req.ip.src_ip;
   p.ip.src_ip = req.ip.dst_ip;
   p.ip.csum.Clear();
-  p.ip.csum = CalcChecksum(&p, offsetof(IPv4Packet, version_and_ihl),
-                           sizeof(IPv4Packet));
+  p.ip.csum = Net::CalcChecksum(&p, offsetof(IPv4Packet, version_and_ihl),
+                                sizeof(IPv4Packet));
   // Setup Eth
   p.ip.eth.dst = req.ip.eth.src;
   p.ip.eth.src = net.GetSelfEtherAddr();
@@ -272,6 +275,35 @@ static bool ICMPPacketHandler(IPv4Packet& p, size_t frame_size) {
   return true;
 }
 
+static bool UDPPacketHandler(IPv4Packet& p, size_t frame_size) {
+  if (p.protocol != IPv4Packet::Protocol::kUDP) {
+    return false;
+  }
+  if (frame_size < sizeof(IPv4UDPPacket)) {
+    return false;
+  }
+  PutString("UDP: ");
+  Net::IPv4UDPPacket& udp = *reinterpret_cast<Net::IPv4UDPPacket*>(&p);
+  PutStringAndHex("src port", udp.GetSourcePort());
+  PutStringAndHex("dst port", udp.GetDestinationPort());
+  if (udp.GetDestinationPort() == 68) {
+    PutString("DHCP: ");
+    Net::DHCPPacket& dhcp = *reinterpret_cast<Net::DHCPPacket*>(&p);
+    PutStringAndHex("op", dhcp.op);
+    PutString("client MAC Addr: ");
+    PutEtherAddr(dhcp.chaddr);
+    PutString("\nassigned IP Addr: ");
+    Net::PutIPv4Addr(dhcp.yiaddr);
+    PutString("\n");
+    Net& net = Net::GetInstance();
+    if (dhcp.op == 2 && dhcp.chaddr.IsEqualTo(net.GetSelfEtherAddr())) {
+      PutString("It's mine!!\n");
+      net.SetSelfIPv4Addr(dhcp.yiaddr);
+    }
+  }
+  return true;
+}
+
 static bool IPv4PacketHandler(uint8_t* frame_data, size_t frame_size) {
   using EtherFrame = Net::EtherFrame;
   using IPv4Packet = Net::IPv4Packet;
@@ -284,11 +316,14 @@ static bool IPv4PacketHandler(uint8_t* frame_data, size_t frame_size) {
   }
   PutString("IPv4: ");
   IPv4Packet& p = *reinterpret_cast<Net::IPv4Packet*>(frame_data);
-  PutIPv4Addr(p.src_ip);
+  Net::PutIPv4Addr(p.src_ip);
   PutString(" -> ");
-  PutIPv4Addr(p.dst_ip);
+  Net::PutIPv4Addr(p.dst_ip);
   PutStringAndHex(" protocol", static_cast<uint8_t>(p.protocol));
   if (ICMPPacketHandler(p, frame_size)) {
+    return true;
+  }
+  if (UDPPacketHandler(p, frame_size)) {
     return true;
   }
   if (p.protocol == Net::IPv4Packet::Protocol::kTCP) {
@@ -329,6 +364,16 @@ void Net::PollRXQueue() {
   }
   rxq.SetAvailableRingIndex(rxq_cursor_ - 1);
   WriteConfigReg16(16 /* Queue Notify */, kIndexOfRXVirtqueue);
+}
+
+Net& Net::GetInstance() {
+  if (!net_) {
+    net_ = liumos->kernel_heap_allocator->Alloc<Net>();
+    bzero(net_, sizeof(Net));
+    new (net_) Net();
+  }
+  assert(net_);
+  return *net_;
 }
 
 void Net::Init() {
@@ -420,21 +465,12 @@ void Net::Init() {
                       0 /* device read only */, 0);
   }
 
-  self_ip_ = {10, 10, 10, 123};
-  /*
   {
-    IPv4UDPPacket& ipv4 = *reinterpret_cast<IPv4UDPPacket*>(
-        reinterpret_cast<uint8_t*>(txq.GetDescriptorBuf(0)) +
-        sizeof(PacketBufHeader));
-    // As shown in https://wiki.qemu.org/Documentation/Networking
-    uint8_t dst_ip[4] = {10, 10, 10, 90};
-    uint8_t src_ip[4] = {10, 10, 10, 19};
-    uint8_t next_mac[6] = {0xf8, 0xff, 0xc2, 0x01, 0xdf, 0x39};
-    ipv4.SetupRequest(dst_ip, src_ip, mac_addr_, next_mac);
-    txq.SetDescriptor(0, txq.GetDescriptorBuf(0),
-                      sizeof(PacketBufHeader) + sizeof(IPv4UDPPacket), 0, 0);
+    // Send DHCP
+    DHCPPacket& request = *GetNextTXPacketBuf<DHCPPacket*>(sizeof(DHCPPacket));
+    request.SetupRequest(GetSelfEtherAddr());
+    SendPacket();
   }
-  */
 
   PutStringAndHex("Device Features(R) ", ReadConfigReg32(0));
   PutStringAndHex("Device Features(RW)", ReadConfigReg32(4));
@@ -444,9 +480,12 @@ void Net::Init() {
   uint8_t last_status = ReadConfigReg8(18);
   PutStringAndHex("Device Status(RW)  ", last_status);
 
-  PutString("Polling RX...");
+  PutString("Waiting DHCP...");
+  SetSelfIPv4Addr(kWildcardIPv4Addr);
   while (true) {
     PollRXQueue();
+    if (!GetSelfIPv4Addr().IsEqualTo(kWildcardIPv4Addr))
+      break;
   }
   PutString("done\n");
 }

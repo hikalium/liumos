@@ -55,3 +55,6 @@ libcxx:
 	   AR=$(LLVM_AR) \
 	   RANLIB=$(LLVM_RANLIB) \
 	   ./build_libcxx.sh
+
+test_% : %_test.cc Makefile
+	make $(MAKE_ARGS) $@
