@@ -11,7 +11,8 @@ class Process {
     kNotScheduled,
     kSleeping,
     kRunning,
-    kKilled,
+    kStopping,
+    kStopped,
   };
   bool IsPersistent() {
     if (ctx_) {
@@ -28,6 +29,7 @@ class Process {
   };
   Status GetStatus() const { return status_; };
   void SetStatus(Status status) { status_ = status; }
+  void Kill();
   void WaitUntilExit();
   void InitAsEphemeralProcess(ExecutionContext& ctx) {
     assert(status_ == Status::kNotInitialized);

@@ -1,7 +1,26 @@
 #include "liumos.h"
 
+void Process::Kill() {
+  switch (status_) {
+    case Status::kNotInitialized:
+    case Status::kNotScheduled:
+      PutString("Tried to stop the process not running");
+      return;
+    case Status::kSleeping:
+      SetStatus(Status::kStopped);
+      return;
+    case Status::kRunning:
+      SetStatus(Status::kStopping);
+      return;
+    case Status::kStopping:
+    case Status::kStopped:
+      return;
+  }
+  assert(false);
+}
+
 void Process::WaitUntilExit() {
-  while (status_ != Status::kKilled) {
+  while (status_ != Status::kStopped) {
     Sleep();
   }
 }

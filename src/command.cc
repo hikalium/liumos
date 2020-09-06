@@ -907,7 +907,18 @@ void Run(TextBox& tbox) {
       return;
     }
     Process& proc = LoadELFAndCreateEphemeralProcess(*file);
-    liumos->scheduler->LaunchAndWaitUntilExit(proc);
+    liumos->scheduler->RegisterProcess(proc);
+    while (proc.GetStatus() != Process::Status::kStopped) {
+      uint16_t keyid = liumos->main_console->GetCharWithoutBlocking();
+      if (KeyID::IsWithCtrl(keyid) && KeyID::IsChar(keyid, 'c')) {
+        // Ctrl-C
+        proc.Kill();
+        proc.WaitUntilExit();
+        PutString("\nkilled.\n");
+        break;
+      }
+      Sleep();
+    }
   }
 }
 

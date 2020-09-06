@@ -71,7 +71,8 @@ static const uint16_t kKeyCodeTableWithShift[0x80] = {
 constexpr uint8_t kKeyScanCodeMaskBreak = 0x80;
 
 void KeyboardController::Init() {
-  state_shift_ = false;
+  state_shift_ = 0;
+  state_ctrl_ = 0;
   new (&keycode_buffer_) RingBuffer<uint8_t, 16>();
   last_instance_ = this;
   IDT::GetInstance().SetIntHandler(0x21, KeyboardController::IntHandler);
@@ -104,7 +105,7 @@ uint16_t KeyboardController::ParseKeyCode(uint8_t keycode) {
   if (is_break)
     keyid |= kMaskBreak;
 
-  switch (keyid) {
+  switch (WithoutAttr(keyid)) {
     case kShiftL:
       state_shift_ |= kStateShiftL;
       break;
@@ -117,6 +118,26 @@ uint16_t KeyboardController::ParseKeyCode(uint8_t keycode) {
     case kShiftR | kMaskBreak:
       state_shift_ &= kStateShiftR;
       break;
+  }
+  if (state_shift_) {
+    keyid |= kAttrShift;
+  }
+  switch (WithoutAttr(keyid)) {
+    case kCtrlL:
+      state_ctrl_ |= kStateCtrlL;
+      break;
+    case kCtrlR:
+      state_ctrl_ |= kStateCtrlR;
+      break;
+    case kCtrlL | kMaskBreak:
+      state_ctrl_ &= ~kStateCtrlL;
+      break;
+    case kCtrlR | kMaskBreak:
+      state_ctrl_ &= ~kStateCtrlR;
+      break;
+  }
+  if (state_ctrl_) {
+    keyid |= kAttrCtrl;
   }
   return keyid;
 }

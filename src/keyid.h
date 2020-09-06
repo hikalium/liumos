@@ -1,8 +1,20 @@
 #pragma once
 
+// KeyID:
+// BX..'..CS'cccc'cccc
+//           ^^^^ ^^^^ : char code (if X=0) or key code(X=1)
+//         ^           : Shift is pressed or not
+//        ^            : Ctrl is pressed or not
+//  ^                  : Extended(1) or char(0)
+// ^                   : Make(0) or Break(1)
+
 namespace KeyID {
-constexpr uint16_t kMaskBreak = 0x80;
-constexpr uint16_t kMaskExtended = 0x8000;
+constexpr uint16_t kMaskBreak = 0b1000'0000'0000'0000;
+constexpr uint16_t kMaskExtended = 0b0100'0000'0000'0000;
+constexpr uint16_t kMaskCode = 0b0000'0000'1111'1111;
+constexpr uint16_t kMaskAttr = 0b0000'0011'0000'0000;
+constexpr uint16_t kAttrShift = 0b0000'0001'0000'0000;
+constexpr uint16_t kAttrCtrl = 0b0000'0010'0000'0000;
 constexpr uint16_t kEsc = KeyID::kMaskExtended | 0x0000;
 constexpr uint16_t kF1 = KeyID::kMaskExtended | 0x0001;
 constexpr uint16_t kF2 = KeyID::kMaskExtended | 0x0002;
@@ -54,4 +66,16 @@ constexpr uint16_t kEnter = KeyID::kMaskExtended | 0x0042;
 constexpr uint16_t kError = KeyID::kMaskExtended | 0x007e;
 constexpr uint16_t kUnknown = KeyID::kMaskExtended | 0x007f;
 constexpr uint16_t kNoInput = KeyID::kMaskExtended | 0x00ff;
+constexpr bool IsWithShift(uint16_t k) {
+  return k & kAttrShift;
+}
+constexpr bool IsWithCtrl(uint16_t k) {
+  return k & kAttrCtrl;
+}
+constexpr bool IsChar(uint16_t k, char c) {
+  return !(k & kMaskExtended) && ((k & kMaskCode) == c);
+}
+constexpr uint16_t WithoutAttr(uint16_t k) {
+  return k & ~kMaskAttr;
+}
 }  // namespace KeyID
