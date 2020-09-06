@@ -50,7 +50,8 @@ APPS=\
 	 app/pi/pi.bin \
 	 app/fizzbuzz/fizzbuzz.bin \
 	 app/rawsocksend/rawsocksend.bin \
-	 app/readtest/readtest.bin
+	 app/readtest/readtest.bin \
+	 app/browser/browser.bin
 
 ifdef SSH_CONNECTION
 QEMU_ARGS+= -vnc :5,password
