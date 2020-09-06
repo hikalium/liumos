@@ -26,6 +26,9 @@ class KeyboardController {
   uint8_t state_shift_;
   static constexpr uint8_t kStateShiftL = 0b01;
   static constexpr uint8_t kStateShiftR = 0b10;
+  uint8_t state_ctrl_;
+  static constexpr uint8_t kStateCtrlL = 0b01;
+  static constexpr uint8_t kStateCtrlR = 0b10;
 };
 
 uint16_t ParseKeyCode(uint8_t keycode);

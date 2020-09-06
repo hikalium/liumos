@@ -35,6 +35,8 @@ Process* Scheduler::SwitchProcess() {
     if (proc->GetStatus() == Status::kSleeping) {
       if (current_->GetStatus() == Status::kRunning)
         current_->SetStatus(Status::kSleeping);
+      else if (current_->GetStatus() == Status::kStopping)
+        current_->SetStatus(Status::kStopped);
       proc->SetStatus(Status::kRunning);
       current_ = proc;
       return proc;
@@ -44,6 +46,5 @@ Process* Scheduler::SwitchProcess() {
 }
 
 void Scheduler::KillCurrentProcess() {
-  using Status = Process::Status;
-  current_->SetStatus(Status::kKilled);
+  current_->Kill();
 }
