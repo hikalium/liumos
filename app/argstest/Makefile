@@ -21,3 +21,6 @@ run_on_linux: $(TARGET)
 clean :
 	-rm *.o
 	-rm *.bin
+
+test : ${TARGET}
+	./test.sh
