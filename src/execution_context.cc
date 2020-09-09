@@ -38,6 +38,20 @@ void ProcessMappingInfo::Print() {
   stack.Print();
 }
 
+void ExecutionContext::PushDataToStack(const void* data, size_t byte_size) {
+  cpu_context_.int_ctx.rsp -= byte_size;
+  void* phys_rsp =
+      reinterpret_cast<void*>(GetCR3().v2p(cpu_context_.int_ctx.rsp));
+  memcpy(phys_rsp, data, byte_size);
+}
+void ExecutionContext::AlignStack(int align) {
+  if (align == 8) {
+    cpu_context_.int_ctx.rsp &= ~3ULL;
+    return;
+  }
+  assert(false);
+}
+
 void ExecutionContext::ExpandHeap(int64_t diff) {
   uint64_t diff_abs = diff < 0 ? -diff : diff;
   if (diff_abs > map_info_.heap.GetMapSize()) {

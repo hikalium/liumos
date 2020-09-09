@@ -50,6 +50,7 @@ APPS=\
 	 app/pi/pi.bin \
 	 app/fizzbuzz/fizzbuzz.bin \
 	 app/rawsocksend/rawsocksend.bin \
+	 app/argstest/argstest.bin \
 	 app/readtest/readtest.bin
 
 ifdef SSH_CONNECTION

@@ -893,9 +893,10 @@ void Run(TextBox& tbox) {
       PutChar('\n');
     }
   } else {
+    const char* arg0 = args.GetArg(0);
     EFIFile* file = nullptr;
     for (int i = 0; i < GetLoaderInfo().root_files_used; i++) {
-      if (IsEqualString(GetLoaderInfo().root_files[i].GetFileName(), line)) {
+      if (IsEqualString(GetLoaderInfo().root_files[i].GetFileName(), arg0)) {
         file = &GetLoaderInfo().root_files[i];
         break;
       }
@@ -906,7 +907,26 @@ void Run(TextBox& tbox) {
       tbox.putc('\n');
       return;
     }
+    int argc = args.GetNumOfArgs();
+    constexpr int kMaxArgvSize = 8;
+    uint64_t argv[kMaxArgvSize];
+    if (argc > kMaxArgvSize) {
+      PutString("Too many args");
+      tbox.putc('\n');
+      return;
+    }
     Process& proc = LoadELFAndCreateEphemeralProcess(*file);
+    for (int i = 0; i < argc; i++) {
+      const char* arg = args.GetArg(i);
+      proc.GetExecutionContext().PushDataToStack(arg, strlen(arg) + 1);
+      argv[i] = proc.GetExecutionContext().GetRSP();
+    }
+    proc.GetExecutionContext().AlignStack(8);
+    for (int i = argc - 1; i >= 0; i--) {
+      proc.GetExecutionContext().PushDataToStack(&argv[i], sizeof(argv[0]));
+    }
+    uint64_t argc64 = argc;
+    proc.GetExecutionContext().PushDataToStack(&argc64, sizeof(argc64));
     liumos->scheduler->RegisterProcess(proc);
     while (proc.GetStatus() != Process::Status::kStopped) {
       uint16_t keyid = liumos->main_console->GetCharWithoutBlocking();

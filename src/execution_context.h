@@ -74,6 +74,9 @@ class ExecutionContext {
  public:
   CPUContext& GetCPUContext() { return cpu_context_; }
   ProcessMappingInfo& GetProcessMappingInfo() { return map_info_; };
+  void PushDataToStack(const void* data, size_t byte_size);
+  void AlignStack(int align);
+  uint64_t GetRSP() { return cpu_context_.int_ctx.rsp; }
   uint64_t GetKernelRSP() { return kernel_rsp_; }
   void SetKernelRSP(uint64_t kernel_rsp) { kernel_rsp_ = kernel_rsp; }
   void ExpandHeap(int64_t diff);
