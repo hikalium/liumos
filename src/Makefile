@@ -17,9 +17,6 @@ CLEAN_TARGETS= \
 	*.bin \
 	githash.cc
 
-run:
-	make $(MAKE_ARGS) run
-
 clean :
 	rm $(CLEAN_TARGETS) >/dev/null 2>&1 ; true
 
@@ -33,9 +30,6 @@ unittest:
 
 format :
 	clang-format -i *.cc *.h
-
-commit :
-	make -C .. commit
 
 newlib:
 	CC=$(LLVM_CC) AR=$(LLVM_AR) RANLIB=$(LLVM_RANLIB) ./build_newlib.sh
