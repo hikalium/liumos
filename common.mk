@@ -20,3 +20,6 @@ dump_config :
 
 commit :
 	make -C $(THIS_DIR) commit_root
+
+run :
+	make -C $(THIS_DIR) run_root

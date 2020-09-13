@@ -94,7 +94,7 @@ LLDB_ARGS = -o 'settings set interpreter.prompt-on-quit false' \
 run_xhci_gdb : files .FORCE
 	lldb $(LLDB_ARGS) -- $(QEMU) $(QEMU_ARGS_XHCI) $(QEMU_ARGS)
 	
-run : files pmem.img .FORCE
+run_root : files pmem.img .FORCE
 	$(QEMU) $(QEMU_ARGS_PMEM)
 
 run_gdb : files pmem.img .FORCE

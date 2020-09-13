@@ -14,3 +14,6 @@ $(TARGET) : $(OBJS) Makefile
 clean :
 	-rm *.o
 	-rm *.bin
+
+format :
+	-clang-format -i *.c

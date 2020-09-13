@@ -181,9 +181,6 @@ LIUMOS.ELF : $(KERNEL_OBJS) kernel.ld Makefile
 	$(LLVM_LD_LLD) $(LDFLAGS_KERNEL) \
 		-o LIUMOS.ELF -e KernelEntry -T kernel.ld $(KERNEL_OBJS)
 
-run:
-	make -C .. run
-
 unittest: \
 	test_virtio_net \
 	test_libfunc \
