@@ -3,6 +3,7 @@
 #include <optional>
 
 #include "generic.h"
+#include "network.h"
 #include "pci.h"
 
 namespace Virtio {
@@ -20,28 +21,12 @@ class Net {
     static constexpr uint8_t kFlagNeedsChecksum = 1;
     static constexpr uint8_t kGSOTypeNone = 0;
   };
-  packed_struct IPv4Addr {
-    uint8_t addr[4];
-    bool IsEqualTo(IPv4Addr to) const {
-      return *reinterpret_cast<const uint32_t*>(addr) ==
-             *reinterpret_cast<const uint32_t*>(to.addr);
-    }
-  };
-  static void PutIPv4Addr(Net::IPv4Addr addr);
-  static constexpr IPv4Addr kBroadcastIPv4Addr = {0xFF, 0xFF, 0xFF, 0xFF};
-  static constexpr IPv4Addr kWildcardIPv4Addr = {0x00, 0x00, 0x00, 0x00};
-  packed_struct EtherAddr {
-    uint8_t mac[6];
-    bool IsEqualTo(EtherAddr to) const {
-      return *reinterpret_cast<const uint32_t*>(mac) ==
-                 *reinterpret_cast<const uint32_t*>(to.mac) &&
-             *reinterpret_cast<const uint16_t*>(&mac[4]) ==
-                 *reinterpret_cast<const uint16_t*>(&to.mac[4]);
-    }
-  };
-  static constexpr EtherAddr kBroadcastEtherAddr = {0xFF, 0xFF, 0xFF,
-                                                    0xFF, 0xFF, 0xFF};
-  static void PutEtherAddr(Net::EtherAddr addr);
+  static constexpr Network::IPv4Addr kBroadcastIPv4Addr = {0xFF, 0xFF, 0xFF,
+                                                           0xFF};
+  static constexpr Network::IPv4Addr kWildcardIPv4Addr = {0x00, 0x00, 0x00,
+                                                          0x00};
+  static constexpr Network::EtherAddr kBroadcastEtherAddr = {0xFF, 0xFF, 0xFF,
+                                                             0xFF, 0xFF, 0xFF};
   packed_struct InternetChecksum {
     // https://tools.ietf.org/html/rfc1071
     uint8_t csum[2];
@@ -70,8 +55,8 @@ class Net {
             static_cast<uint8_t>(sum & 0xFF)};
   }
   packed_struct EtherFrame {
-    EtherAddr dst;
-    EtherAddr src;
+    Network::EtherAddr dst;
+    Network::EtherAddr src;
     uint8_t eth_type[2];
     static constexpr uint8_t kTypeARP[2] = {0x08, 0x06};
     static constexpr uint8_t kTypeIPv4[2] = {0x08, 0x00};
@@ -90,10 +75,10 @@ class Net {
     uint8_t hw_addr_len;
     uint8_t proto_addr_len;
     uint8_t op[2];
-    EtherAddr sender_eth_addr;
-    IPv4Addr sender_proto_addr;
-    EtherAddr target_eth_addr;
-    IPv4Addr target_proto_addr;
+    Network::EtherAddr sender_eth_addr;
+    Network::IPv4Addr sender_proto_addr;
+    Network::EtherAddr target_eth_addr;
+    Network::IPv4Addr target_proto_addr;
     /*
       ARP example : who has 10.10.10.135? Tell 10.10.10.90
       ff ff ff ff ff ff  // dst
@@ -123,8 +108,9 @@ class Net {
         return Operation::kReply;
       return Operation::kUnknown;
     }
-    void SetupRequest(const IPv4Addr target_ip, const IPv4Addr src_ip,
-                      const EtherAddr src_mac) {
+    void SetupRequest(const Network::IPv4Addr target_ip,
+                      const Network::IPv4Addr src_ip,
+                      const Network::EtherAddr src_mac) {
       for (int i = 0; i < 6; i++) {
         eth.dst.mac[i] = 0xff;
         target_eth_addr.mac[i] = 0x00;
@@ -143,8 +129,9 @@ class Net {
       op[0] = 0x00;
       op[1] = 0x01;  // Request
     }
-    void SetupReply(const IPv4Addr target_ip, const IPv4Addr src_ip,
-                    const EtherAddr target_mac, const EtherAddr src_mac) {
+    void SetupReply(
+        const Network::IPv4Addr target_ip, const Network::IPv4Addr src_ip,
+        const Network::EtherAddr target_mac, const Network::EtherAddr src_mac) {
       eth.dst = target_mac;
       eth.src = src_mac;
       target_eth_addr = target_mac;
@@ -178,8 +165,8 @@ class Net {
     uint8_t ttl;
     Protocol protocol;
     InternetChecksum csum;  // for this header
-    IPv4Addr src_ip;
-    IPv4Addr dst_ip;
+    Network::IPv4Addr src_ip;
+    Network::IPv4Addr dst_ip;
 
     void SetDataLength(uint16_t size) {
       size += sizeof(IPv4Packet) - sizeof(EtherFrame);  // IP header size
@@ -235,8 +222,8 @@ class Net {
   static InternetChecksum CalcUDPChecksum(void* buf,
                                           size_t start,
                                           size_t end,
-                                          Net::IPv4Addr src_addr,
-                                          Net::IPv4Addr dst_addr,
+                                          Network::IPv4Addr src_addr,
+                                          Network::IPv4Addr dst_addr,
                                           uint8_t (&udp_length)[2]) {
     // https://tools.ietf.org/html/rfc1071
     uint8_t* p = reinterpret_cast<uint8_t*>(buf);
@@ -267,15 +254,15 @@ class Net {
     uint32_t xid;
     uint16_t secs;
     uint16_t flags;
-    IPv4Addr ciaddr;
-    IPv4Addr yiaddr;
-    IPv4Addr siaddr;
-    IPv4Addr giaddr;
-    EtherAddr chaddr;
+    Network::IPv4Addr ciaddr;
+    Network::IPv4Addr yiaddr;
+    Network::IPv4Addr siaddr;
+    Network::IPv4Addr giaddr;
+    Network::EtherAddr chaddr;
     uint8_t chaddr_padding[10];
     uint8_t sname[64];
     uint8_t file[128];
-    void SetupRequest(const EtherAddr& src_eth_addr) {
+    void SetupRequest(const Network::EtherAddr& src_eth_addr) {
       // ip.eth
       udp.ip.eth.dst = kBroadcastEtherAddr;
       udp.ip.eth.src = src_eth_addr;
@@ -390,9 +377,14 @@ class Net {
     return reinterpret_cast<T>(txq.GetDescriptorBuf(idx) +
                                sizeof(PacketBufHeader));
   }
-  const IPv4Addr GetSelfIPv4Addr() { return self_ip_; }
-  void SetSelfIPv4Addr(IPv4Addr addr) { self_ip_ = addr; }
-  const EtherAddr GetSelfEtherAddr() { return {mac_addr_}; }
+  const Network::IPv4Addr GetSelfIPv4Addr() { return self_ip_; }
+  void SetSelfIPv4Addr(Network::IPv4Addr addr) {
+    self_ip_ = addr;
+    if (self_ip_.IsEqualTo(kWildcardIPv4Addr))
+      return;
+    Network::GetInstance().RegisterARPResolution(self_ip_, mac_addr_);
+  }
+  const Network::EtherAddr GetSelfEtherAddr() { return {mac_addr_}; }
   void SendPacket() {
     const int idx =
         vq_cursor_[kIndexOfTXVirtqueue] % vq_size_[kIndexOfTXVirtqueue];
@@ -420,12 +412,12 @@ class Net {
 
   static Net* net_;
   PCI::DeviceLocation dev_;
-  EtherAddr mac_addr_;
+  Network::EtherAddr mac_addr_;
   uint16_t config_io_addr_base_;
   Virtqueue vq_[kNumOfVirtqueues];
   uint16_t vq_size_[kNumOfVirtqueues];
   uint16_t vq_cursor_[kNumOfVirtqueues];
-  IPv4Addr self_ip_;
+  Network::IPv4Addr self_ip_;
 
   void ProcessPacket(uint8_t* buf, size_t buf_size);
 

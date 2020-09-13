@@ -122,37 +122,21 @@ Net::Virtqueue::UsedRingEntry& Net::Virtqueue::GetUsedRingEntry(int idx) {
   return used_ring[idx];
 }
 
-void Virtio::Net::PutIPv4Addr(Net::IPv4Addr addr) {
-  for (int i = 0; i < 4; i++) {
-    PutDecimal64(addr.addr[i]);
-    if (i != 3)
-      PutChar('.');
-  }
-}
-
-void Virtio::Net::PutEtherAddr(Net::EtherAddr addr) {
-  for (int i = 0; i < 6; i++) {
-    PutHex8ZeroFilled(addr.mac[i]);
-    if (i != 5)
-      PutChar(':');
-  }
-}
-
 void PrintARPPacket(Net::ARPPacket& arp) {
   switch (arp.GetOperation()) {
     case Net::ARPPacket::Operation::kRequest:
       PutString("Who has ");
-      Net::PutIPv4Addr(arp.target_proto_addr);
+      arp.target_proto_addr.Print();
       PutString("? Tell ");
-      Net::PutIPv4Addr(arp.sender_proto_addr);
+      arp.sender_proto_addr.Print();
       PutString(" at ");
-      Net::PutEtherAddr(arp.sender_eth_addr);
+      arp.sender_eth_addr.Print();
       PutChar('\n');
       return;
     case Net::ARPPacket::Operation::kReply:
-      Net::PutIPv4Addr(arp.sender_proto_addr);
+      arp.sender_proto_addr.Print();
       PutString(" is at ");
-      Net::PutEtherAddr(arp.sender_eth_addr);
+      arp.sender_eth_addr.Print();
       PutChar('\n');
       return;
     default:
@@ -291,9 +275,9 @@ static bool UDPPacketHandler(IPv4Packet& p, size_t frame_size) {
     Net::DHCPPacket& dhcp = *reinterpret_cast<Net::DHCPPacket*>(&p);
     PutStringAndHex("op", dhcp.op);
     PutString("client MAC Addr: ");
-    Net::PutEtherAddr(dhcp.chaddr);
+    dhcp.chaddr.Print();
     PutString("\nassigned IP Addr: ");
-    Net::PutIPv4Addr(dhcp.yiaddr);
+    dhcp.yiaddr.Print();
     PutString("\n");
     Net& net = Net::GetInstance();
     if (dhcp.op == 2 && dhcp.chaddr.IsEqualTo(net.GetSelfEtherAddr())) {
@@ -316,9 +300,9 @@ static bool IPv4PacketHandler(uint8_t* frame_data, size_t frame_size) {
   }
   PutString("IPv4: ");
   IPv4Packet& p = *reinterpret_cast<Net::IPv4Packet*>(frame_data);
-  Net::PutIPv4Addr(p.src_ip);
+  p.src_ip.Print();
   PutString(" -> ");
-  Net::PutIPv4Addr(p.dst_ip);
+  p.dst_ip.Print();
   PutStringAndHex(" protocol", static_cast<uint8_t>(p.protocol));
   if (ICMPPacketHandler(p, frame_size)) {
     return true;
@@ -443,7 +427,7 @@ void Net::Init() {
   for (int i = 0; i < 6; i++) {
     mac_addr_.mac[i] = ReadConfigReg8(0x14 + i);
   }
-  PutEtherAddr(mac_addr_);
+  mac_addr_.Print();
   PutChar('\n');
 
   // Populate RX Buffer

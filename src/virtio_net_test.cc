@@ -9,7 +9,8 @@
 int main() {
   using Virtio::Net;
 
-  constexpr Net::EtherAddr test_eth_addr = {0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC};
+  constexpr Network::EtherAddr test_eth_addr = {0x12, 0x34, 0x56,
+                                                0x78, 0x9A, 0xBC};
   assert(test_eth_addr.IsEqualTo(test_eth_addr));
   assert(Net::kBroadcastEtherAddr.IsEqualTo(Net::kBroadcastEtherAddr));
   assert(!test_eth_addr.IsEqualTo(Net::kBroadcastEtherAddr));

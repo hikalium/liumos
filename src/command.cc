@@ -8,6 +8,7 @@
 #include "command_line_args.h"
 #include "kernel.h"
 #include "liumos.h"
+#include "network.h"
 #include "pci.h"
 #include "pmem.h"
 #include "virtio_net.h"
@@ -609,14 +610,28 @@ void Run(TextBox& tbox) {
     PutString("Failed to parse command line\n");
     return;
   }
-  if (IsEqualString(line, "ip")) {
+  if (IsEqualString(args.GetArg(0), "ip")) {
     Virtio::Net& net = Virtio::Net::GetInstance();
     auto ip_addr = net.GetSelfIPv4Addr();
     auto mac_addr = net.GetSelfEtherAddr();
-    Virtio::Net::PutIPv4Addr(ip_addr);
+    ip_addr.Print();
     PutString(" eth ");
-    Virtio::Net::PutEtherAddr(mac_addr);
+    mac_addr.Print();
     PutString("\n");
+    return;
+  }
+  if (IsEqualString(args.GetArg(0), "arp")) {
+    PutString("arp\n");
+    auto& net = Network::GetInstance();
+    PutStringAndHex("network", &net);
+    PutStringAndHex("Num of ARP resolution", net.GetARPTable().size());
+    for (const auto& e : net.GetARPTable()) {
+      e.first.Print();
+      PutString(" -> ");
+      e.second.Print();
+
+      PutString("\n");
+    }
     return;
   }
   if (IsEqualString(line, "hello")) {

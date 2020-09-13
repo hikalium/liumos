@@ -25,7 +25,7 @@ KERNEL_SRCS= $(COMMON_SRCS) \
 			 hpet.cc \
 			 kernel.cc keyboard.cc \
 			 libcxx_support.cc \
-			 newlib_support.cc \
+			 network.cc newlib_support.cc \
 			 pci.cc \
 			 ps2_mouse.cc \
 			 scheduler.cc subtask.cc \
