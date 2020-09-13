@@ -17,3 +17,6 @@ LIUM_NCPU?=1
 dump_config : 
 	@ cat $(THIS_DIR)cc_cache.gen.mk
 	@ echo CLANG_SYSTEM_INC_PATH=$(CLANG_SYSTEM_INC_PATH)
+
+commit :
+	make -C $(THIS_DIR) commit_root
