@@ -86,21 +86,21 @@ void InitializeVRAMForKernel() {
   liumos->screen_sheet = &virtual_screen_;
 }
 
-void SubTask();  // @subtask.cc
-
-void LaunchSubTask(KernelVirtualHeapAllocator& kernel_heap_allocator) {
+void CreateAndLaunchKernelTask(void (*entry_point)()) {
   const int kNumOfStackPages = 3;
-  void* sub_context_stack_base = kernel_heap_allocator.AllocPages<void*>(
-      kNumOfStackPages, kPageAttrPresent | kPageAttrWritable);
+  void* sub_context_stack_base =
+      liumos->kernel_heap_allocator->AllocPages<void*>(
+          kNumOfStackPages, kPageAttrPresent | kPageAttrWritable);
   void* sub_context_rsp = reinterpret_cast<void*>(
       reinterpret_cast<uint64_t>(sub_context_stack_base) +
       (kNumOfStackPages << kPageSizeExponent));
 
   ExecutionContext& sub_context =
       *liumos->kernel_heap_allocator->Alloc<ExecutionContext>();
-  sub_context.SetRegisters(
-      SubTask, GDT::kKernelCSSelector, sub_context_rsp, GDT::kKernelDSSelector,
-      reinterpret_cast<uint64_t>(&GetKernelPML4()), kRFlagsInterruptEnable, 0);
+  sub_context.SetRegisters(entry_point, GDT::kKernelCSSelector, sub_context_rsp,
+                           GDT::kKernelDSSelector,
+                           reinterpret_cast<uint64_t>(&GetKernelPML4()),
+                           kRFlagsInterruptEnable, 0);
 
   Process& proc = liumos->proc_ctrl->Create();
   proc.InitAsEphemeralProcess(sub_context);
@@ -183,6 +183,8 @@ LoaderInfo& GetLoaderInfo() {
   assert(loader_info_);
   return *loader_info_;
 }
+
+void SubTask();  // @subtask.cc
 
 extern "C" void KernelEntry(LiumOS* liumos_passed, LoaderInfo& loader_info) {
   loader_info_ = &loader_info;
@@ -300,7 +302,8 @@ extern "C" void KernelEntry(LiumOS* liumos_passed, LoaderInfo& loader_info) {
 
   StoreIntFlag();
 
-  LaunchSubTask(kernel_heap_allocator);
+  CreateAndLaunchKernelTask(SubTask);
+  CreateAndLaunchKernelTask(NetworkManager);
 
   EnableSyscall();
 

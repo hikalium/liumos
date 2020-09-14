@@ -455,22 +455,5 @@ void Net::Init() {
     request.SetupRequest(GetSelfEtherAddr());
     SendPacket();
   }
-
-  PutStringAndHex("Device Features(R) ", ReadConfigReg32(0));
-  PutStringAndHex("Device Features(RW)", ReadConfigReg32(4));
-  PutStringAndHex("Device Status(RW)  ", ReadConfigReg8(18));
-  PutStringAndHex("ISR Status(R)      ", ReadConfigReg8(19));
-
-  uint8_t last_status = ReadConfigReg8(18);
-  PutStringAndHex("Device Status(RW)  ", last_status);
-
-  PutString("Waiting DHCP...");
-  SetSelfIPv4Addr(kWildcardIPv4Addr);
-  while (true) {
-    PollRXQueue();
-    if (!GetSelfIPv4Addr().IsEqualTo(kWildcardIPv4Addr))
-      break;
-  }
-  PutString("done\n");
 }
 }  // namespace Virtio

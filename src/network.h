@@ -47,3 +47,5 @@ class Network {
 
   Network(){};
 };
+
+void NetworkManager();

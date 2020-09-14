@@ -240,6 +240,9 @@ __attribute__((ms_abi)) void RepeatStore8Bytes(size_t count,
                                                const void* dst,
                                                uint64_t data);
 __attribute__((ms_abi)) void CLFlushOptimized(const void*);
+__attribute__((ms_abi)) void CompareAndExchange64(uint64_t* dst,
+                                                  uint64_t expected,
+                                                  uint64_t value);
 __attribute__((ms_abi)) void JumpToKernel(void* kernel_entry_point,
                                           void* vram_sheet,
                                           uint64_t kernel_stack_pointer,

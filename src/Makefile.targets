@@ -9,7 +9,8 @@ COMMON_SRCS= \
 			 efi_file_manager.cc \
 			 gdt.cc generic.cc githash.cc graphics.cc guid.cc \
 			 interrupt.cc \
-			 paging.cc phys_page_allocator.cc pmem.cc process.cc \
+			 paging.cc phys_page_allocator.cc pmem.cc \
+			 process.cc process_lock.cc \
 			 serial.cc sheet.cc sheet_painter.cc \
 			 sys_constant.cc \
 			 text_box.cc \

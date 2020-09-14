@@ -20,6 +20,7 @@ void Console::PutChar(char c) {
     CoreFunc::GetEFI().PutWChar(c);
     return;
   }
+  lock_.Lock();
   if (c == '\n') {
     cursor_y_ += 16;
     cursor_x_ = 0;
@@ -47,6 +48,7 @@ void Console::PutChar(char c) {
                            0x000000, true);
     cursor_y_ -= 16;
   }
+  lock_.Unlock();
 }
 
 #ifndef LIUMOS_LOADER

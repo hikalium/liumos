@@ -1,5 +1,6 @@
 #pragma once
 #include "generic.h"
+#include "process_lock.h"
 
 class Sheet;
 class SerialPort;
@@ -41,6 +42,7 @@ class Console {
   int cursor_x_, cursor_y_;
   Sheet* sheet_;
   SerialPort* serial_port_;
+  ProcessLock lock_;
 };
 
 void PutChar(char c);

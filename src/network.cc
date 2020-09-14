@@ -1,5 +1,6 @@
 #include "network.h"
 #include "liumos.h"
+#include "virtio_net.h"
 
 void Network::IPv4Addr::Print() const {
   for (int i = 0; i < 4; i++) {
@@ -27,4 +28,11 @@ Network& Network::GetInstance() {
   }
   assert(network_);
   return *network_;
+}
+
+void NetworkManager() {
+  auto& virtio_net = Virtio::Net::GetInstance();
+  while (true) {
+    virtio_net.PollRXQueue();
+  }
 }
