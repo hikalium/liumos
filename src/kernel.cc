@@ -27,6 +27,20 @@ SerialPort com2_;
 HPET hpet_;
 LoaderInfo* loader_info_;
 
+void kprintf(const char* fmt, ...) {
+  constexpr int kSizeOfBuffer = 4096;
+  static char buf[kSizeOfBuffer];
+  va_list args;
+  va_start(args, fmt);
+  int len = vsnprintf(buf, sizeof(buf), fmt, args);
+  if (len < 0 || kSizeOfBuffer <= len) {
+    PutStringAndHex("kprintf: warning: vsnprintf returned", len);
+    buf[kSizeOfBuffer - 1] = 0;
+  }
+  PutString(buf);
+  va_end(args);
+}
+
 void InitPMEMManagement() {
   using namespace ACPI;
   if (!liumos->acpi.nfit) {
@@ -268,7 +282,7 @@ extern "C" void KernelEntry(LiumOS* liumos_passed, LoaderInfo& loader_info) {
     }
   }
 
-  PutString("Hello from kernel!\n");
+  kprintf("Hello from kernel!\n");
   ConsoleCommand::Version();
 
   ClearIntFlag();

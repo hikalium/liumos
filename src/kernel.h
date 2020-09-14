@@ -20,3 +20,5 @@ T MapMemoryForIO(uint64_t phys_addr, uint64_t byte_size) {
   return liumos->kernel_heap_allocator->MapPages<T>(
       phys_addr, ByteSizeToPageSize(byte_size), kPageAttrMemMappedIO);
 }
+
+void kprintf(const char* fmt, ...);

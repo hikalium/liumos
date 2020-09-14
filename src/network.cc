@@ -43,6 +43,7 @@ void SendARPRequest(const char* ip_addr_str) {
     PutString("Invalid IP Addr format: ");
     PutString(ip_addr_str);
     PutString("\n");
+    return;
   }
   PutString("Sending ARP request to: ");
   ip_addr->Print();
