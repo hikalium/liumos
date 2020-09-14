@@ -1,6 +1,8 @@
 #pragma once
 
+#include <optional>
 #include <unordered_map>
+
 #include "generic.h"
 
 class Network {
@@ -13,6 +15,20 @@ class Network {
     }
     bool operator==(const IPv4Addr& rhs) const { return IsEqualTo(rhs); }
     void Print() const;
+    static std::optional<IPv4Addr> CreateFromString(const char* s) {
+      IPv4Addr ip_addr;
+      for (int i = 0;; i++) {
+        ip_addr.addr[i] = StrToByte(s, &s);
+        if (i == 3)
+          break;
+        if (*s != '.')
+          return std::nullopt;
+        s++;
+      }
+      if (*s != 0)
+        return std::nullopt;
+      return ip_addr;
+    }
   };
   struct IPv4AddrHash {
     std::size_t operator()(const IPv4Addr& v) const {
@@ -49,3 +65,4 @@ class Network {
 };
 
 void NetworkManager();
+void SendARPRequest(const char* ip_addr_str);

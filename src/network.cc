@@ -36,3 +36,15 @@ void NetworkManager() {
     virtio_net.PollRXQueue();
   }
 }
+
+void SendARPRequest(const char* ip_addr_str) {
+  auto ip_addr = Network::IPv4Addr::CreateFromString(ip_addr_str);
+  if (!ip_addr.has_value()) {
+    PutString("Invalid IP Addr format: ");
+    PutString(ip_addr_str);
+    PutString("\n");
+  }
+  PutString("Sending ARP request to: ");
+  ip_addr->Print();
+  PutString("\n");
+}

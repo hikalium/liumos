@@ -622,6 +622,10 @@ void Run(TextBox& tbox) {
   }
   if (IsEqualString(args.GetArg(0), "arp")) {
     PutString("arp\n");
+    if (args.GetNumOfArgs() == 2) {
+      SendARPRequest(args.GetArg(1));
+      return;
+    }
     auto& net = Network::GetInstance();
     PutStringAndHex("network", &net);
     PutStringAndHex("Num of ARP resolution", net.GetARPTable().size());

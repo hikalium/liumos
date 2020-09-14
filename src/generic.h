@@ -26,6 +26,18 @@ inline uint64_t ByteSizeToPageSize(uint64_t byte_size) {
   return (byte_size + kPageSize - 1) >> kPageSizeExponent;
 }
 
+inline uint8_t StrToByte(const char* s, const char** next) {
+  uint32_t v = 0;
+  while ('0' <= *s && *s <= '9') {
+    v = v * 10 + *s - '0';
+    s++;
+  }
+  if (next) {
+    *next = s;
+  }
+  return v;
+}
+
 bool IsEqualString(const char* a, const char* b);
 
 #ifdef LIUMOS_LOADER
