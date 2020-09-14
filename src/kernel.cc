@@ -105,7 +105,6 @@ void LaunchSubTask(KernelVirtualHeapAllocator& kernel_heap_allocator) {
   Process& proc = liumos->proc_ctrl->Create();
   proc.InitAsEphemeralProcess(sub_context);
   liumos->scheduler->RegisterProcess(proc);
-  liumos->sub_process = &proc;
 }
 
 static void EnsureAddrIs16ByteAligned(Process& from,
