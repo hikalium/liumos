@@ -1,4 +1,5 @@
 #include "liumos.h"
+#include "panic_printer.h"
 #include "scheduler.h"
 
 IDT* IDT::idt_;
@@ -8,49 +9,55 @@ __attribute__((ms_abi)) extern "C" void IntHandler(uint64_t intcode,
   IDT::GetInstance().IntHandler(intcode, info);
 }
 
-static void PrintInterruptInfo(uint64_t intcode, const InterruptInfo* info) {
-  PutStringAndHex("Int#  ", intcode);
-  PutStringAndHex("CS    ", info->int_ctx.cs);
-  PutStringAndHex("at CPL", info->int_ctx.cs & 3);
-  PutStringAndHex("SS    ", info->int_ctx.ss);
-  PutStringAndHex("RFLAGS", info->int_ctx.rflags);
-  PutStringAndHex("RIP   ", info->int_ctx.rip);
-  PutStringAndHex("RSP   ", info->int_ctx.rsp);
-  PutStringAndHex("RBP   ", info->greg.rbp);
-  PutStringAndHex("Error Code", info->error_code);
-  PutChar('\n');
+static void PrintInterruptInfo(PanicPrinter& pp,
+                               uint64_t intcode,
+                               const InterruptInfo* info) {
+  pp.PrintLineWithHex("Int#  ", intcode);
+  pp.PrintLineWithHex("CS    ", info->int_ctx.cs);
+  pp.PrintLineWithHex("at CPL", info->int_ctx.cs & 3);
+  pp.PrintLineWithHex("SS    ", info->int_ctx.ss);
+  pp.PrintLineWithHex("RFLAGS", info->int_ctx.rflags);
+  pp.PrintLineWithHex("RIP   ", info->int_ctx.rip);
+  pp.PrintLineWithHex("RSP   ", info->int_ctx.rsp);
+  pp.PrintLineWithHex("RBP   ", info->greg.rbp);
+  pp.PrintLineWithHex("Error Code", info->error_code);
+  pp.PrintLine("");
 }
 
 void IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
   if (liumos->is_multi_task_enabled && ReadRSP() < kKernelBaseAddr) {
-    PrintInterruptInfo(intcode, info);
+    auto& pp = PanicPrinter::BeginPanic();
+    PrintInterruptInfo(pp, intcode, info);
     Process& proc = liumos->scheduler->GetCurrentProcess();
-    PutStringAndHex("Context#", proc.GetID());
-    Panic("Handling exception in user mode stack");
+    pp.PrintLineWithHex("Context#", proc.GetID());
+    pp.EndPanicAndDie("Handling exception in user mode stack");
   }
   if (intcode <= 0xFF && handler_list_[intcode]) {
     handler_list_[intcode](intcode, info);
     return;
   }
-  PrintInterruptInfo(intcode, info);
+  auto& pp = PanicPrinter::BeginPanic();
+  PrintInterruptInfo(pp, intcode, info);
   if (liumos->is_multi_task_enabled) {
     Process& proc = liumos->scheduler->GetCurrentProcess();
-    PutStringAndHex("Context#", proc.GetID());
+    pp.PrintLineWithHex("Context#", proc.GetID());
   }
   if (intcode == 0x08) {
-    Panic("Double Fault");
+    pp.EndPanicAndDie("Double Fault");
   }
   if (intcode != 0x0E || ReadCR2() != info->int_ctx.rip) {
-    PutStringAndHex("Memory dump at", info->int_ctx.rip);
+    pp.PrintLineWithHex("Memory dump at", info->int_ctx.rip);
+    StringBuffer<128> line;
     for (int i = 0; i < 16; i++) {
-      PutChar(' ');
-      PutHex8ZeroFilled(reinterpret_cast<uint8_t*>(info->int_ctx.rip)[i]);
+      line.WriteChar(' ');
+      line.WriteHex8ZeroFilled(
+          reinterpret_cast<uint8_t*>(info->int_ctx.rip)[i]);
     }
-    PutChar('\n');
+    pp.PrintLine(line.GetString());
   }
   if (intcode == 0x0E) {
-    PutStringAndHex("CR3", ReadCR3());
-    PutStringAndHex("CR2", ReadCR2());
+    pp.PrintLineWithHex("CR3", ReadCR3());
+    pp.PrintLineWithHex("CR2", ReadCR2());
     if (info->error_code & 1) {
       // present but not ok. print entries.
       reinterpret_cast<IA_PML4*>(ReadCR3())->DebugPrintEntryForAddr(ReadCR2());
@@ -58,24 +65,25 @@ void IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
     Panic("Page Fault");
   }
   for (int i = 0; i < 4; i++) {
-    PutHex64ZeroFilled(info->int_ctx.rsp + i * 8);
-    PutString(": ");
-    PutHex64ZeroFilled(*reinterpret_cast<uint64_t*>(info->int_ctx.rsp + i * 8));
-    PutString("\n");
+    StringBuffer<128> line;
+    line.WriteHex64ZeroFilled(info->int_ctx.rsp + i * 8);
+    line.WriteString(": ");
+    line.WriteHex64ZeroFilled(
+        *reinterpret_cast<uint64_t*>(info->int_ctx.rsp + i * 8));
+    pp.PrintLine(line.GetString());
   }
 
   if (intcode == 0x03) {
-    PutStringAndHex("Handler current RSP", ReadRSP());
-    PutString("Int3\n");
-    return;
+    pp.PrintLineWithHex("Handler current RSP", ReadRSP());
+    pp.EndPanicAndDie("Trap");
   }
   if (intcode == 0x06) {
-    Panic("Invalid Opcode");
+    pp.EndPanicAndDie("Invalid Opcode");
   }
   if (intcode == 0x0D) {
-    Panic("General Protection Fault");
+    pp.EndPanicAndDie("General Protection Fault");
   }
-  Panic("INTHandler not implemented");
+  pp.EndPanicAndDie("INTHandler not implemented");
 }
 
 void IDT::SetIntHandler(uint64_t intcode, InterruptHandler handler) {

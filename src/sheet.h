@@ -31,6 +31,8 @@ class Sheet {
   }
   uint32_t* GetBuf() { return buf_; }
   void BlockTransfer(int to_x, int to_y, int from_x, int from_y, int w, int h);
+  // Flush fluhes the contents of sheet buf_ to its parent sheet.
+  // This function is not recursive.
   void Flush(int px, int py, int w, int h);
 
  private:

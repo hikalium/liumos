@@ -7,6 +7,7 @@
 
 #include "corefunc.h"
 #include "liumos.h"
+#include "panic_printer.h"
 #include "pci.h"
 #include "ps2_mouse.h"
 #include "virtio_net.h"
@@ -239,6 +240,9 @@ extern "C" void KernelEntry(LiumOS* liumos_passed, LoaderInfo& loader_info) {
   com2_.Init(kPortCOM2);
 
   liumos->main_console->SetSerial(&com2_);
+
+  PanicPrinter::Init(liumos->kernel_heap_allocator->Alloc<PanicPrinter>(),
+                     *liumos->vram_sheet, com2_);
 
   bsp_local_apic_.Init();
 

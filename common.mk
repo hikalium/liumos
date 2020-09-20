@@ -23,3 +23,9 @@ commit :
 
 run :
 	make -C $(THIS_DIR) run_root
+
+run_gdb :
+	make -C $(THIS_DIR) run_gdb
+
+gdb :
+	make -C $(THIS_DIR) gdb

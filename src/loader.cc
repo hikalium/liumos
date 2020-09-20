@@ -4,6 +4,7 @@
 #include "hpet.h"
 #include "liumos.h"
 #include "loader_info.h"
+#include "panic_printer.h"
 #include "util.h"
 
 LiumOS* liumos;
@@ -15,6 +16,8 @@ SerialPort com1;
 LiumOS liumos_;
 Console main_console_;
 EFI efi_;
+
+uint8_t panic_printer_work[sizeof(PanicPrinter)];
 
 LoaderInfo* loader_info_;
 LoaderInfo& GetLoaderInfo() {
@@ -146,6 +149,8 @@ void MainForBootProcessor(EFI::Handle image_handle,
 
   com1.Init(kPortCOM1);
   main_console_.SetSerial(&com1);
+
+  PanicPrinter::Init(&panic_printer_work, *liumos->vram_sheet, com1);
 
   PutString("\nliumOS version: ");
   PutString(GetVersionStr());

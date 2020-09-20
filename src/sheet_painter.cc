@@ -25,6 +25,28 @@ void SheetPainter::DrawCharacter(Sheet& s,
     s.Flush(px, py, 8, 16);
 }
 
+void SheetPainter::DrawCharacterForeground(Sheet& s,
+                                           char c,
+                                           int px,
+                                           int py,
+                                           uint32_t col,
+                                           bool do_flush) {
+  if (!s.buf_)
+    return;
+  uint32_t* b32 = reinterpret_cast<uint32_t*>(s.buf_);
+  for (int dy = 0; dy < 16; dy++) {
+    for (int dx = 0; dx < 8; dx++) {
+      if (!((font[(uint8_t)c][dy] >> (7 - dx)) & 1))
+        continue;
+      int x = px + dx;
+      int y = py + dy;
+      b32[y * s.pixels_per_scan_line_ + x] = col;
+    }
+  }
+  if (do_flush)
+    s.Flush(px, py, 8, 16);
+}
+
 void SheetPainter::DrawRect(Sheet& s,
                             int px,
                             int py,
