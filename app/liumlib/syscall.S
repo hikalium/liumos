@@ -41,7 +41,24 @@ sendto:
 	// arg[3]: rdx = rdx
 	mov r10, rcx
 	// arg[5]: r8 = r8
-	// arg[5]: r9 = r9
+	// arg[6]: r9 = r9
+	syscall
+	ret
+
+// ssize_t recvfrom(
+//     int sockfd, void *buf,
+//     size_t len, int flags,
+//     struct sockaddr *src_addr,
+//     socklen_t addrlen);
+.global recvfrom
+recvfrom:
+	mov rax, 45
+	// arg[1]: rdi = rdi
+	// arg[2]: rsi = rsi
+	// arg[3]: rdx = rdx
+	mov r10, rcx
+	// arg[5]: r8 = r8
+	// arg[6]: r9 = r9
 	syscall
 	ret
 

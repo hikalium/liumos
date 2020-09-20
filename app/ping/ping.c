@@ -7,6 +7,7 @@ typedef size_t socklen_t;
 
 #define NULL (0)
 #define EXIT_FAILURE 1
+// https://elixir.bootlin.com/linux/v4.15/source/include/uapi/linux/in.h#L31
 #define kIPTypeICMP 1
 // c.f.
 // https://elixir.bootlin.com/linux/v4.15/source/include/linux/socket.h#L164
@@ -21,6 +22,7 @@ struct in_addr {
 };
 // c.f.
 // https://elixir.bootlin.com/linux/v4.15/source/include/uapi/linux/in.h#L232
+// sockaddr_in means sockaddr for InterNet protocol(IP)
 struct sockaddr_in {
   uint16_t sin_family;
   uint16_t sin_port;
@@ -29,7 +31,11 @@ struct sockaddr_in {
   // c.f.
   // https://elixir.bootlin.com/linux/v4.15/source/include/uapi/linux/in.h#L231
 };
+// See https://elixir.bootlin.com/linux/v4.15/source/include/linux/socket.h#L30
 struct sockaddr;
+
+// Error Numbers:
+// https://elixir.bootlin.com/linux/v4.15/source/include/uapi/asm-generic/errno-base.h#L26
 
 int socket(int domain, int type, int protocol);
 ssize_t sendto(int sockfd,
@@ -38,6 +44,12 @@ ssize_t sendto(int sockfd,
                int flags,
                const struct sockaddr* dest_addr,
                socklen_t addrlen);
+ssize_t recvfrom(int sockfd,
+                 void* buf,
+                 size_t len,
+                 int flags,
+                 struct sockaddr* dest_addr,
+                 socklen_t* addrlen);
 int close(int fd);
 int write(int fd, const void*, size_t);
 void exit(int);
@@ -80,6 +92,10 @@ void Print(const char* s) {
 void PrintNum(int v) {
   char s[16];
   int i;
+  if (v < 0) {
+    write(1, "-", 1);
+    v = -v;
+  }
   for (i = sizeof(s) - 1; i > 0; i--) {
     s[i] = v % 10 + '0';
     v /= 10;
@@ -87,6 +103,19 @@ void PrintNum(int v) {
       break;
   }
   write(1, &s[i], sizeof(s) - i);
+}
+char NumToHexChar(char v) {
+  if (v < 10)
+    return v + '0';
+  if (v < 16)
+    return v - 10 + 'A';
+  return '?';
+}
+void PrintHex8ZeroFilled(uint8_t v) {
+  char s[2];
+  s[0] = NumToHexChar((v >> 4) & 0xF);
+  s[1] = NumToHexChar(v & 0xF);
+  write(1, s, 2);
 }
 
 void __assert(const char* expr_str, const char* file, int line) {
@@ -141,6 +170,18 @@ struct __attribute__((packed)) ICMPMessage {
   uint16_t sequence;
 };
 
+struct __attribute__((packed)) IPHeader {
+  uint16_t version;
+  uint16_t total_length;
+  uint16_t ident;
+  uint16_t flags;
+  uint8_t ttl;
+  uint8_t protocol;
+  uint16_t csum;
+  in_addr_t src_ip_addr;
+  in_addr_t dst_ip_addr;
+};
+
 uint16_t CalcChecksum(void* buf, size_t start, size_t end) {
   // https://tools.ietf.org/html/rfc1071
   uint8_t* p = buf;
@@ -173,13 +214,18 @@ int main(int argc, char** argv) {
   PrintIPv4Addr(ping_target_ip_addr);
   Print("...\n");
 
+  // Create sockaddr_in
   addr.sin_family = AF_INET;
   addr.sin_addr.s_addr = ping_target_ip_addr;
+
+  // Create socket
   int soc = socket(AF_INET, SOCK_RAW, kIPTypeICMP);
   if (soc < 0) {
     Print("socket() failed\n");
     exit(EXIT_FAILURE);
   }
+
+  // Send ICMP
   struct ICMPMessage icmp;
   icmp.type = ICMP_TYPE_ECHO_REQUEST;
   icmp.code = 0;
@@ -187,11 +233,41 @@ int main(int argc, char** argv) {
   icmp.identifier = 0;
   icmp.sequence = 0;
   icmp.checksum = CalcChecksum(&icmp, 0, sizeof(icmp));
-  int n =
-      sendto(soc, &icmp, sizeof(icmp), 0, (struct sockaddr*)&addr, sizeof(addr));
+  int n = sendto(soc, &icmp, sizeof(icmp), 0, (struct sockaddr*)&addr,
+                 sizeof(addr));
   if (n < 1) {
-    Print("snedto() failed\n");
+    Print("sendto() failed\n");
     exit(EXIT_FAILURE);
   }
+
+  // Recieve reply
+  uint8_t recv_buf[256];
+  int recv_len = recvfrom(soc, &recv_buf, sizeof(recv_buf), 0, NULL, NULL);
+  Print("recvfrom returns: ");
+  PrintNum(recv_len);
+  Print("\n");
+
+  if (recv_len < 1) {
+    Print("recvfrom() failed\n");
+    exit(EXIT_FAILURE);
+  }
+
+  // Recieved data contains IP header
+  for (int i = 0; i < recv_len; i++) {
+    PrintHex8ZeroFilled(recv_buf[i]);
+    Print((i & 0xF) == 0xF ? "\n" : " ");
+  }
+  Print("\n");
+
+  struct IPHeader *ip = (struct IPHeader *)recv_buf;
+  struct ICMPMessage *recv_icmp = (struct ICMPMessage *)(recv_buf + sizeof(struct IPHeader));
+  Print("from ");
+  PrintIPv4Addr(ip->src_ip_addr);
+  Print(" to ");
+  PrintIPv4Addr(ip->dst_ip_addr);
+  Print(" ICMP Type = ");
+  PrintNum(recv_icmp->type);
+  Print("\n");
+
   close(soc);
 }
