@@ -5,7 +5,7 @@
 #include "xhci.h"
 #endif
 
-void Console::PutChar(char c) {
+void Console::PutCharWithoutLocking(char c) {
   if (serial_port_) {
     if (c == '\n')
       serial_port_->SendChar('\r');
@@ -20,7 +20,6 @@ void Console::PutChar(char c) {
     CoreFunc::GetEFI().PutWChar(c);
     return;
   }
-  lock_.Lock();
   if (c == '\n') {
     cursor_y_ += 16;
     cursor_x_ = 0;
@@ -47,6 +46,19 @@ void Console::PutChar(char c) {
     SheetPainter::DrawRect(*sheet_, 0, cursor_y_ - 16, sheet_->GetXSize(), 16,
                            0x000000, true);
     cursor_y_ -= 16;
+  }
+}
+
+void Console::PutChar(char c) {
+  lock_.Lock();
+  PutCharWithoutLocking(c);
+  lock_.Unlock();
+}
+
+void Console::PutString(const char* s) {
+  lock_.Lock();
+  while (*s) {
+    PutCharWithoutLocking(*(s++));
   }
   lock_.Unlock();
 }
@@ -90,12 +102,6 @@ void PutChar(char c) {
 
 void PutString(const char* s) {
   while (*s) {
-    PutChar(*(s++));
-  }
-}
-
-void Console::PutChars(const char* s, int n) {
-  for (int i = 0; i < n; i++) {
     PutChar(*(s++));
   }
 }

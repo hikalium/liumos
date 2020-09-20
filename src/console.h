@@ -24,15 +24,6 @@ class Console {
   void SetSerial(SerialPort* serial_port) { serial_port_ = serial_port; }
   void PutChar(char c);
   void PutString(const char* s);
-  void PutChars(const char* s, int n);
-  void PutHex64(uint64_t value);
-  void PutHex64ZeroFilled(uint64_t value);
-  void PutHex8ZeroFilled(uint8_t value);
-  void PutStringAndHex(const char* s, uint64_t value);
-  void PutStringAndHex(const char* s, const void* value);
-  void PutStringAndBool(const char* s, bool cond);
-  void PutAddressRange(uint64_t addr, uint64_t size);
-  void PutAddressRange(void* addr, uint64_t size);
 
 #ifndef LIUMOS_LOADER
   uint16_t GetCharWithoutBlocking();
@@ -43,6 +34,8 @@ class Console {
   Sheet* sheet_;
   SerialPort* serial_port_;
   ProcessLock lock_;
+
+  void PutCharWithoutLocking(char c);
 };
 
 void PutChar(char c);
