@@ -1,4 +1,4 @@
-NAME=rawsocksend
+NAME=ping
 TARGET=$(NAME).bin
 TARGET_OBJS=$(NAME).o
 

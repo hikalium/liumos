@@ -49,7 +49,7 @@ APPS=\
 	 app/hello/hello.bin \
 	 app/pi/pi.bin \
 	 app/fizzbuzz/fizzbuzz.bin \
-	 app/rawsocksend/rawsocksend.bin \
+	 app/ping/ping.bin \
 	 app/argstest/argstest.bin \
 	 app/readtest/readtest.bin
 

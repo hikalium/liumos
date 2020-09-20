@@ -133,6 +133,31 @@ void Test() {
   assert(MakeIPv4AddrFromString("12.34.56.78") == MakeIPv4Addr(12, 34, 56, 78));
 }
 
+struct __attribute__((packed)) ICMPMessage {
+  uint8_t type;
+  uint8_t code;
+  uint16_t checksum;
+  uint16_t identifier;
+  uint16_t sequence;
+};
+
+uint16_t CalcChecksum(void* buf, size_t start, size_t end) {
+  // https://tools.ietf.org/html/rfc1071
+  uint8_t* p = buf;
+  uint32_t sum = 0;
+  for (size_t i = start; i < end; i += 2) {
+    sum += ((uint16_t)p[i + 0]) << 8 | p[i + 1];
+  }
+  while (sum >> 16) {
+    sum = (sum & 0xffff) + (sum >> 16);
+  }
+  sum = ~sum;
+  return ((sum >> 8) & 0xFF) | ((sum & 0xFF) << 8);
+}
+
+#define ICMP_TYPE_ECHO_REQUEST 8
+#define ICMP_TYPE_ECHO_REPLY 0
+
 int main(int argc, char** argv) {
   Test();
   if (argc != 2) {
@@ -141,7 +166,6 @@ int main(int argc, char** argv) {
     Print(" <ip addr>\n");
     exit(EXIT_FAILURE);
   }
-  int n;
   struct sockaddr_in addr;
   const char* str = "Hello, raw socket!";
   in_addr_t ping_target_ip_addr = MakeIPv4AddrFromString(argv[1]);
@@ -156,7 +180,15 @@ int main(int argc, char** argv) {
     Print("socket() failed\n");
     exit(EXIT_FAILURE);
   }
-  n = sendto(soc, str, strlen(str), 0, (struct sockaddr*)&addr, sizeof(addr));
+  struct ICMPMessage icmp;
+  icmp.type = ICMP_TYPE_ECHO_REQUEST;
+  icmp.code = 0;
+  icmp.checksum = 0;
+  icmp.identifier = 0;
+  icmp.sequence = 0;
+  icmp.checksum = CalcChecksum(&icmp, 0, sizeof(icmp));
+  int n =
+      sendto(soc, &icmp, sizeof(icmp), 0, (struct sockaddr*)&addr, sizeof(addr));
   if (n < 1) {
     Print("snedto() failed\n");
     exit(EXIT_FAILURE);
