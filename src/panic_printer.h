@@ -34,7 +34,8 @@ class PanicPrinter {
     PrintLine(s);
     pp_->PrintLine("----  End  Panic ----");
     Die();
-  } void PrintLineWithHex(const char* s, uint64_t v) {
+  }
+  void PrintLineWithHex(const char* s, uint64_t v) {
     StringBuffer<128> line;
     line.WriteString(s);
     line.WriteString(": 0x");

@@ -18,6 +18,18 @@ constexpr uint64_t kArchSetFS = 0x1002;
 // constexpr uint64_t kArchGetFS = 0x1003;
 // constexpr uint64_t kArchGetGS = 0x1004;
 
+// c.f.
+// https://elixir.bootlin.com/linux/v4.15/source/include/uapi/linux/in.h#L232
+// sockaddr_in means sockaddr for InterNet protocol(IP)
+struct sockaddr_in {
+  uint16_t sin_family;
+  uint16_t sin_port;
+  Network::IPv4Addr sin_addr;
+  uint8_t padding[8];
+  // c.f.
+  // https://elixir.bootlin.com/linux/v4.15/source/include/uapi/linux/in.h#L231
+};
+
 extern "C" uint64_t GetCurrentKernelStack(void) {
   ExecutionContext& ctx =
       liumos->scheduler->GetCurrentProcess().GetExecutionContext();
@@ -109,14 +121,20 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     return;
   }
   if (idx == kSyscallIndex_sys_sendto) {
-    kprintf("sendto()!\n");
     using Net = Virtio::Net;
     using IPv4Packet = Virtio::Net::IPv4Packet;
     using ICMPPacket = Virtio::Net::ICMPPacket;
     using IPv4Addr = Network::IPv4Addr;
+
+    kprintf("sendto()!\n");
+
+    IPv4Addr target_ip_addr = reinterpret_cast<sockaddr_in*>(args[5])->sin_addr;
+    kprintf("target_ip_addr: ");
+    target_ip_addr.Print();
+    kprintf("\n");
+
     Net& virtio_net = Net::GetInstance();
     Network& network = Network::GetInstance();
-    IPv4Addr target_ip_addr = {10, 10, 10, 90};
     auto target_eth_container = network.ResolveIPv4(target_ip_addr);
     if (target_eth_container.has_value()) {
       kprintf("resolve found!\n");
