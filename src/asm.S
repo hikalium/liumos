@@ -294,16 +294,6 @@ CLFlushOptimized:
 	clflushopt [rcx]
 	ret
 
-.global CompareAndExchange64
-CompareAndExchange64:
-	// rcx: dst addr
-	// rdx: expected
-	// r8: value
-	mov rax, rdx
-  cmpxchg [rcx], r8
-	jne CompareAndExchange64
-	ret
-
 // Microsoft x64 calling convention:
 //   args: rcx, rdx, r8, r9
 //   callee-saved: RBX, RBP, RDI, RSI, RSP, R12, R13, R14, R15

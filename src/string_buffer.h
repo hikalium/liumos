@@ -56,6 +56,7 @@ class StringBuffer {
     buf_[write_index_] = 0;
     return buf_;
   }
+  void Clear() { write_index_ = 0; }
 
  private:
   int write_index_ = 0;

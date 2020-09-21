@@ -54,3 +54,28 @@ SleepSub:
 
 	jmp RestoreRegistersAndIRETQ
 
+.global CompareAndExchange64
+CompareAndExchange64:
+  // returns 0 if success
+  // returns 1 if timeout
+  //
+	// rcx: dst addr
+	// rdx: expected
+	// r8: value
+  mov rsi, 0
+CompareAndExchange64_try:
+  inc rsi
+  cmp rsi, 0x100
+  jae CompareAndExchange64_timeout
+	mov rax, rdx
+  cmpxchg [rcx], r8
+	jne CompareAndExchange64_sleep
+  mov rax, 0
+	ret
+CompareAndExchange64_sleep:
+  call Sleep
+  jmp CompareAndExchange64_try
+CompareAndExchange64_timeout:
+  mov rax, 1
+  ret
+

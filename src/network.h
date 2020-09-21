@@ -36,8 +36,14 @@ class Network {
       return std::hash<uint32_t>{}(*reinterpret_cast<const uint32_t*>(v.addr));
     }
   };
+  static constexpr Network::IPv4Addr kBroadcastIPv4Addr = {0xFF, 0xFF, 0xFF,
+                                                           0xFF};
+  static constexpr Network::IPv4Addr kWildcardIPv4Addr = {0x00, 0x00, 0x00,
+                                                          0x00};
+
   packed_struct EtherAddr {
     uint8_t mac[6];
+    //
     bool IsEqualTo(EtherAddr to) const {
       return *reinterpret_cast<const uint32_t*>(mac) ==
                  *reinterpret_cast<const uint32_t*>(to.mac) &&
@@ -47,6 +53,9 @@ class Network {
     bool operator==(const EtherAddr& rhs) const { return IsEqualTo(rhs); }
     void Print() const;
   };
+  static constexpr EtherAddr kBroadcastEtherAddr = {0xFF, 0xFF, 0xFF,
+                                                    0xFF, 0xFF, 0xFF};
+
   packed_struct InternetChecksum {
     // https://tools.ietf.org/html/rfc1071
     uint8_t csum[2];

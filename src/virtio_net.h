@@ -22,16 +22,11 @@ class Net {
     static constexpr uint8_t kGSOTypeNone = 0;
   };
   using InternetChecksum = Network::InternetChecksum;
-  static constexpr Network::IPv4Addr kBroadcastIPv4Addr = {0xFF, 0xFF, 0xFF,
-                                                           0xFF};
-  static constexpr Network::IPv4Addr kWildcardIPv4Addr = {0x00, 0x00, 0x00,
-                                                          0x00};
-  static constexpr Network::EtherAddr kBroadcastEtherAddr = {0xFF, 0xFF, 0xFF,
-                                                             0xFF, 0xFF, 0xFF};
   packed_struct EtherFrame {
     Network::EtherAddr dst;
     Network::EtherAddr src;
     uint8_t eth_type[2];
+    //
     static constexpr uint8_t kTypeARP[2] = {0x08, 0x06};
     static constexpr uint8_t kTypeIPv4[2] = {0x08, 0x00};
     void SetEthType(const uint8_t(&etype)[2]) {
@@ -240,7 +235,7 @@ class Net {
     uint8_t file[128];
     void SetupRequest(const Network::EtherAddr& src_eth_addr) {
       // ip.eth
-      udp.ip.eth.dst = kBroadcastEtherAddr;
+      udp.ip.eth.dst = Network::kBroadcastEtherAddr;
       udp.ip.eth.src = src_eth_addr;
       udp.ip.eth.SetEthType(EtherFrame::kTypeIPv4);
       // ip
@@ -252,8 +247,8 @@ class Net {
       udp.ip.flags = 0;
       udp.ip.ttl = 0xFF;
       udp.ip.protocol = Net::IPv4Packet::Protocol::kUDP;
-      udp.ip.src_ip = Net::kWildcardIPv4Addr;
-      udp.ip.dst_ip = Net::kBroadcastIPv4Addr;
+      udp.ip.src_ip = Network::kWildcardIPv4Addr;
+      udp.ip.dst_ip = Network::kBroadcastIPv4Addr;
       udp.ip.CalcAndSetChecksum();
       // udp
       udp.SetSourcePort(68);
@@ -268,10 +263,10 @@ class Net {
       xid = 0x1234;
       secs = 0;
       flags = 0;
-      ciaddr = Net::kWildcardIPv4Addr;
-      yiaddr = Net::kWildcardIPv4Addr;
-      siaddr = Net::kWildcardIPv4Addr;
-      giaddr = Net::kWildcardIPv4Addr;
+      ciaddr = Network::kWildcardIPv4Addr;
+      yiaddr = Network::kWildcardIPv4Addr;
+      siaddr = Network::kWildcardIPv4Addr;
+      giaddr = Network::kWildcardIPv4Addr;
       chaddr = src_eth_addr;
       for (int i = 0; i < 10; i++) {
         chaddr_padding[i] = 0;
@@ -284,8 +279,8 @@ class Net {
       }
       //
       udp.csum = CalcUDPChecksum(this, offsetof(DHCPPacket, udp.src_port),
-                                 sizeof(DHCPPacket), Net::kWildcardIPv4Addr,
-                                 Net::kBroadcastIPv4Addr, udp.length);
+                                 sizeof(DHCPPacket), Network::kWildcardIPv4Addr,
+                                 Network::kBroadcastIPv4Addr, udp.length);
     }
   };
   class Virtqueue {
@@ -356,7 +351,7 @@ class Net {
   const Network::IPv4Addr GetSelfIPv4Addr() { return self_ip_; }
   void SetSelfIPv4Addr(Network::IPv4Addr addr) {
     self_ip_ = addr;
-    if (self_ip_.IsEqualTo(kWildcardIPv4Addr))
+    if (self_ip_.IsEqualTo(Network::kWildcardIPv4Addr))
       return;
     Network::GetInstance().RegisterARPResolution(self_ip_, mac_addr_);
   }

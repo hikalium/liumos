@@ -12,13 +12,13 @@ int main() {
   constexpr Network::EtherAddr test_eth_addr = {0x12, 0x34, 0x56,
                                                 0x78, 0x9A, 0xBC};
   assert(test_eth_addr.IsEqualTo(test_eth_addr));
-  assert(Net::kBroadcastEtherAddr.IsEqualTo(Net::kBroadcastEtherAddr));
-  assert(!test_eth_addr.IsEqualTo(Net::kBroadcastEtherAddr));
+  assert(Network::kBroadcastEtherAddr.IsEqualTo(Network::kBroadcastEtherAddr));
+  assert(!test_eth_addr.IsEqualTo(Network::kBroadcastEtherAddr));
 
-  assert(Net::kBroadcastIPv4Addr.IsEqualTo(Net::kBroadcastIPv4Addr));
-  assert(!Net::kBroadcastIPv4Addr.IsEqualTo(Net::kWildcardIPv4Addr));
-  assert(!Net::kWildcardIPv4Addr.IsEqualTo(Net::kBroadcastIPv4Addr));
-  assert(Net::kWildcardIPv4Addr.IsEqualTo(Net::kWildcardIPv4Addr));
+  assert(Network::kBroadcastIPv4Addr.IsEqualTo(Network::kBroadcastIPv4Addr));
+  assert(!Network::kBroadcastIPv4Addr.IsEqualTo(Network::kWildcardIPv4Addr));
+  assert(!Network::kWildcardIPv4Addr.IsEqualTo(Network::kBroadcastIPv4Addr));
+  assert(Network::kWildcardIPv4Addr.IsEqualTo(Network::kWildcardIPv4Addr));
 
   Net::DHCPPacket request;
   uint8_t* request_raw = reinterpret_cast<uint8_t*>(&request);
