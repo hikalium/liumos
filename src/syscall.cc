@@ -11,6 +11,7 @@ constexpr uint64_t kSyscallIndex_sys_write = 1;
 constexpr uint64_t kSyscallIndex_sys_close = 3;
 constexpr uint64_t kSyscallIndex_sys_socket = 41;
 constexpr uint64_t kSyscallIndex_sys_sendto = 44;
+constexpr uint64_t kSyscallIndex_sys_recvfrom = 45;
 constexpr uint64_t kSyscallIndex_sys_exit = 60;
 constexpr uint64_t kSyscallIndex_arch_prctl = 158;
 // constexpr uint64_t kArchSetGS = 0x1001;
@@ -125,6 +126,7 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     using IPv4Packet = Virtio::Net::IPv4Packet;
     using ICMPPacket = Virtio::Net::ICMPPacket;
     using IPv4Addr = Network::IPv4Addr;
+    using EtherAddr = Network::EtherAddr;
 
     kprintf("sendto()!\n");
 
@@ -135,19 +137,24 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
 
     Net& virtio_net = Net::GetInstance();
     Network& network = Network::GetInstance();
-    auto target_eth_container = network.ResolveIPv4(target_ip_addr);
-    if (target_eth_container.has_value()) {
-      kprintf("resolve found!\n");
-    } else {
-      kprintf("resolve NOT found!\n");
+    EtherAddr target_eth_addr;
+    for (;;) {
+      auto target_eth_container = network.ResolveIPv4(target_ip_addr);
+      if (target_eth_container.has_value()) {
+        target_eth_addr = *target_eth_container;
+        break;
+      }
       SendARPRequest(target_ip_addr);
+      liumos->hpet->BusyWait(100);
     }
-
+    kprintf("target_eth_addr: ");
+    target_eth_addr.Print();
+    kprintf("\n");
     {
       ICMPPacket& icmp =
           *virtio_net.GetNextTXPacketBuf<ICMPPacket*>(sizeof(ICMPPacket));
       // ip.eth
-      icmp.ip.eth.dst = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+      icmp.ip.eth.dst = target_eth_addr;
       icmp.ip.eth.src = virtio_net.GetSelfEtherAddr();
       icmp.ip.eth.SetEthType(Net::EtherFrame::kTypeIPv4);
       // ip
@@ -174,6 +181,13 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
       virtio_net.SendPacket();
     }
     return;
+  }
+  if (idx == kSyscallIndex_sys_recvfrom) {
+    Network& network = Network::GetInstance();
+    while (network.HasPacketInRXBuffer()) {
+      auto packet = network.PopFromRXBuffer();
+      kprintbuf("recvfrom reading packet", packet.data, 0, packet.size);
+    }
   }
   char s[64];
   snprintf(s, sizeof(s), "Unhandled syscall. rax = %lu\n", idx);

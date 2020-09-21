@@ -5,7 +5,7 @@ class RingBuffer {
   RingBuffer() : readp_(0), writep_(0) {}
   T Pop(void) {
     if (IsEmpty())
-      return 0;
+      return {};
     T v = elements_[readp_];
     readp_ = (readp_ + 1) % n;
     return v;

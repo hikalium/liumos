@@ -314,6 +314,7 @@ void Net::ProcessPacket(uint8_t* buf, size_t buf_size) {
   uint8_t* frame_data = buf + sizeof(Net::PacketBufHeader);
   ARPPacketHandler(frame_data, frame_size) ||
       IPv4PacketHandler(frame_data, frame_size);
+  Network::GetInstance().PushToRXBuffer(frame_data, 0, frame_size);
 }
 
 void Net::PollRXQueue() {
@@ -339,12 +340,7 @@ void Net::SendPacket() {
   auto& txq = vq_[kIndexOfTXVirtqueue];
   uint8_t* data = txq.GetDescriptorBuf(idx);
   uint32_t data_size = txq.GetDescriptorSize(idx);
-  int cnt = 0;
-  for (uint32_t i = sizeof(PacketBufHeader); i < data_size; i++) {
-    kprintf("%02X%c", data[i], (cnt & 0xF) == 0xF ? '\n' : ' ');
-    cnt++;
-  }
-  kprintf("\n");
+  kprintbuf("SendPacket data", data, sizeof(PacketBufHeader), data_size);
   PacketBufHeader& hdr = *txq.GetDescriptorBuf<PacketBufHeader*>(idx);
   hdr.flags = 0;
   hdr.gso_type = PacketBufHeader::kGSOTypeNone;

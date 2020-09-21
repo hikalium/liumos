@@ -4,6 +4,7 @@
 #include <unordered_map>
 
 #include "generic.h"
+#include "ring_buffer.h"
 
 class Network {
  public:
@@ -59,12 +60,30 @@ class Network {
     return arp_table_[ip_addr];
   }
 
+  static constexpr int kPacketContainerSize = 2048;
+  static constexpr int kRXBufferSize = 32;
+  packed_struct PacketContainer {
+    size_t size;
+    uint8_t data[kPacketContainerSize];
+  };
+  void PushToRXBuffer(const void* data, size_t begin, size_t end) {
+    assert(begin < end);
+    PacketContainer buf;
+    buf.size = end - begin;
+    assert(buf.size <= kPacketContainerSize);
+    memcpy(buf.data, reinterpret_cast<const uint8_t*>(data) + begin, buf.size);
+    rx_buffer_.Push(buf);
+  }
+  PacketContainer PopFromRXBuffer() { return rx_buffer_.Pop(); }
+  bool HasPacketInRXBuffer() { return !rx_buffer_.IsEmpty(); }
+
   static Network& GetInstance();
 
  private:
   static Network* network_;
 
   ARPTable arp_table_;
+  RingBuffer<PacketContainer, kRXBufferSize> rx_buffer_;
 
   Network(){};
 };

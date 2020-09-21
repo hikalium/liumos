@@ -42,6 +42,17 @@ void kprintf(const char* fmt, ...) {
   va_end(args);
 }
 
+void kprintbuf(const char* desc, const void* data, size_t start, size_t end) {
+  kprintf("%s [ +%llu - +%llu ):\n", desc, start, end);
+  int cnt = 0;
+  for (size_t i = start; i < end; i++) {
+    kprintf("%02X%c", reinterpret_cast<const uint8_t*>(data)[i],
+            (cnt & 0xF) == 0xF ? '\n' : ' ');
+    cnt++;
+  }
+  kprintf("\n");
+}
+
 void InitPMEMManagement() {
   using namespace ACPI;
   if (!liumos->acpi.nfit) {
@@ -102,7 +113,7 @@ void InitializeVRAMForKernel() {
 }
 
 void CreateAndLaunchKernelTask(void (*entry_point)()) {
-  const int kNumOfStackPages = 3;
+  const int kNumOfStackPages = 8;
   void* sub_context_stack_base =
       liumos->kernel_heap_allocator->AllocPages<void*>(
           kNumOfStackPages, kPageAttrPresent | kPageAttrWritable);

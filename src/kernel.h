@@ -23,3 +23,4 @@ T MapMemoryForIO(uint64_t phys_addr, uint64_t byte_size) {
 }
 
 void kprintf(const char* fmt, ...);
+void kprintbuf(const char* desc, const void* data, size_t start, size_t end);
