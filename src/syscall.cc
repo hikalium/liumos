@@ -112,11 +112,35 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     kprintf("sendto()!\n");
     {
       using Net = Virtio::Net;
-      using ARPPacket = Virtio::Net::ARPPacket;
+      using IPv4Packet = Virtio::Net::IPv4Packet;
+      using ICMPPacket = Virtio::Net::ICMPPacket;
       Net& net = Net::GetInstance();
-      ARPPacket& arp = *net.GetNextTXPacketBuf<ARPPacket*>(sizeof(ARPPacket));
-      arp.SetupRequest({10, 10, 10, 90}, net.GetSelfIPv4Addr(),
-                       net.GetSelfEtherAddr());
+      ICMPPacket& icmp =
+          *net.GetNextTXPacketBuf<ICMPPacket*>(sizeof(ICMPPacket));
+      // ip.eth
+      icmp.ip.eth.dst = {0xf8, 0xff, 0xc2, 0x01, 0xdf, 0x39};
+      icmp.ip.eth.src = net.GetSelfEtherAddr();
+      icmp.ip.eth.SetEthType(Net::EtherFrame::kTypeIPv4);
+      // ip
+      icmp.ip.version_and_ihl =
+          0x45;  // IPv4, header len = 5 * sizeof(uint32_t) = 20 bytes
+      icmp.ip.dscp_and_ecn = 0;
+      icmp.ip.SetDataLength(sizeof(ICMPPacket) - sizeof(IPv4Packet));
+      icmp.ip.ident = 0;
+      icmp.ip.flags = 0;
+      icmp.ip.ttl = 0xFF;
+      icmp.ip.protocol = Net::IPv4Packet::Protocol::kICMP;
+      icmp.ip.src_ip = net.GetSelfIPv4Addr();
+      icmp.ip.dst_ip = {10, 10, 10, 90};
+      icmp.ip.CalcAndSetChecksum();
+      // icmp
+      icmp.type = ICMPPacket::Type::kEchoReply;
+      icmp.code = 0;
+      icmp.identifier = 0;
+      icmp.sequence = 0;
+      icmp.csum.Clear();
+      icmp.csum = Net::CalcChecksum(&icmp, offsetof(ICMPPacket, type),
+                                    sizeof(ICMPPacket));
       // send
       net.SendPacket();
     }
