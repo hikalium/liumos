@@ -97,10 +97,10 @@ run_xhci_gdb : files .FORCE
 run_root : files pmem.img .FORCE
 	$(QEMU) $(QEMU_ARGS_PMEM)
 
-run_gdb : files pmem.img .FORCE
+run_gdb_root : files pmem.img .FORCE
 	$(QEMU) $(QEMU_ARGS_PMEM) -gdb tcp::1192 -S || reset
 
-run_gdb_nogui : files pmem.img .FORCE
+run_gdb_nogui_root : files pmem.img .FORCE
 	( echo 'change vnc password $(VNC_PASSWORD)' | while ! nc localhost 1240 ; do sleep 1 ; done ) &
 	$(QEMU) $(QEMU_ARGS_PMEM) -gdb tcp::1192 -S -vnc :0,password || reset
 
@@ -108,7 +108,7 @@ run_vnc : files pmem.img .FORCE
 	( echo 'change vnc password $(VNC_PASSWORD)' | while ! nc localhost 1240 ; do sleep 1 ; done ) &
 	$(QEMU) $(QEMU_ARGS_PMEM) -vnc :0,password || reset
 
-gdb : .FORCE
+gdb_root : .FORCE
 	gdb -ex 'target remote localhost:1192' src/LIUMOS.ELF
 
 

@@ -25,7 +25,7 @@ run :
 	make -C $(THIS_DIR) run_root
 
 run_gdb :
-	make -C $(THIS_DIR) run_gdb
+	make -C $(THIS_DIR) run_gdb_root
 
 gdb :
-	make -C $(THIS_DIR) gdb
+	make -C $(THIS_DIR) gdb_root
