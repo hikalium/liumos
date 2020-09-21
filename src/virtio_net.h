@@ -21,39 +21,13 @@ class Net {
     static constexpr uint8_t kFlagNeedsChecksum = 1;
     static constexpr uint8_t kGSOTypeNone = 0;
   };
+  using InternetChecksum = Network::InternetChecksum;
   static constexpr Network::IPv4Addr kBroadcastIPv4Addr = {0xFF, 0xFF, 0xFF,
                                                            0xFF};
   static constexpr Network::IPv4Addr kWildcardIPv4Addr = {0x00, 0x00, 0x00,
                                                           0x00};
   static constexpr Network::EtherAddr kBroadcastEtherAddr = {0xFF, 0xFF, 0xFF,
                                                              0xFF, 0xFF, 0xFF};
-  packed_struct InternetChecksum {
-    // https://tools.ietf.org/html/rfc1071
-    uint8_t csum[2];
-
-    void Clear() {
-      csum[0] = 0;
-      csum[1] = 0;
-    }
-    bool IsEqualTo(InternetChecksum to) const {
-      return *reinterpret_cast<const uint16_t*>(csum) ==
-             *reinterpret_cast<const uint16_t*>(to.csum);
-    }
-  };
-  static InternetChecksum CalcChecksum(void* buf, size_t start, size_t end) {
-    // https://tools.ietf.org/html/rfc1071
-    uint8_t* p = reinterpret_cast<uint8_t*>(buf);
-    uint32_t sum = 0;
-    for (size_t i = start; i < end; i += 2) {
-      sum += (static_cast<uint16_t>(p[i + 0])) << 8 | p[i + 1];
-    }
-    while (sum >> 16) {
-      sum = (sum & 0xffff) + (sum >> 16);
-    }
-    sum = ~sum;
-    return {static_cast<uint8_t>((sum >> 8) & 0xFF),
-            static_cast<uint8_t>(sum & 0xFF)};
-  }
   packed_struct EtherFrame {
     Network::EtherAddr dst;
     Network::EtherAddr src;
@@ -176,8 +150,8 @@ class Net {
     }
     void CalcAndSetChecksum() {
       csum.Clear();
-      csum = CalcChecksum(this, offsetof(IPv4Packet, version_and_ihl),
-                          sizeof(IPv4Packet));
+      csum = Network::InternetChecksum::Calc(
+          this, offsetof(IPv4Packet, version_and_ihl), sizeof(IPv4Packet));
     }
   };
   packed_struct ICMPPacket {

@@ -47,10 +47,39 @@ class Network {
     bool operator==(const EtherAddr& rhs) const { return IsEqualTo(rhs); }
     void Print() const;
   };
+  packed_struct InternetChecksum {
+    // https://tools.ietf.org/html/rfc1071
+    uint8_t csum[2];
+
+    void Clear() {
+      csum[0] = 0;
+      csum[1] = 0;
+    }
+    bool IsEqualTo(InternetChecksum to) const {
+      return *reinterpret_cast<const uint16_t*>(csum) ==
+             *reinterpret_cast<const uint16_t*>(to.csum);
+    }
+    static InternetChecksum Calc(void* buf, size_t start, size_t end) {
+      // https://tools.ietf.org/html/rfc1071
+      uint8_t* p = reinterpret_cast<uint8_t*>(buf);
+      uint32_t sum = 0;
+      for (size_t i = start; i < end; i += 2) {
+        sum += (static_cast<uint16_t>(p[i + 0])) << 8 | p[i + 1];
+      }
+      while (sum >> 16) {
+        sum = (sum & 0xffff) + (sum >> 16);
+      }
+      sum = ~sum;
+      return {static_cast<uint8_t>((sum >> 8) & 0xFF),
+              static_cast<uint8_t>(sum & 0xFF)};
+    }
+  };
+
+  //
+  // ARP
+  //
   using ARPTable = std::unordered_map<IPv4Addr, EtherAddr, IPv4AddrHash>;
-
   const ARPTable& GetARPTable() { return arp_table_; }
-
   void RegisterARPResolution(IPv4Addr ip_addr, EtherAddr eth_addr) {
     arp_table_[ip_addr] = eth_addr;
   }
@@ -60,6 +89,9 @@ class Network {
     return arp_table_[ip_addr];
   }
 
+  //
+  // RX buffer
+  //
   static constexpr int kPacketContainerSize = 2048;
   static constexpr int kRXBufferSize = 32;
   packed_struct PacketContainer {

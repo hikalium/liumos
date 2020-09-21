@@ -194,13 +194,13 @@ static void SendICMPEchoReply(const ICMPPacket& req, size_t req_frame_size) {
   // Setup ICMP
   reply.type = ICMPPacket::Type::kEchoReply;
   reply.csum.Clear();
-  reply.csum =
-      Net::CalcChecksum(&reply, offsetof(ICMPPacket, type), req_frame_size);
+  reply.csum = Network::InternetChecksum::Calc(
+      &reply, offsetof(ICMPPacket, type), req_frame_size);
   // Setup IP
   reply.ip.dst_ip = req.ip.src_ip;
   reply.ip.src_ip = req.ip.dst_ip;
   reply.ip.csum.Clear();
-  reply.ip.csum = Net::CalcChecksum(
+  reply.ip.csum = Network::InternetChecksum::Calc(
       &reply, offsetof(IPv4Packet, version_and_ihl), req_frame_size);
   // Setup Eth
   reply.ip.eth.dst = req.ip.eth.src;
@@ -233,8 +233,8 @@ static void SendICMPEchoReply(const ICMPPacket& req, size_t req_frame_size) {
   p.ip.dst_ip = req.ip.src_ip;
   p.ip.src_ip = req.ip.dst_ip;
   p.ip.csum.Clear();
-  p.ip.csum = Net::CalcChecksum(&p, offsetof(IPv4Packet, version_and_ihl),
-                                sizeof(IPv4Packet));
+  p.ip.csum = Network::InternetChecksum::Calc(
+      &p, offsetof(IPv4Packet, version_and_ihl), sizeof(IPv4Packet));
   // Setup Eth
   p.ip.eth.dst = req.ip.eth.src;
   p.ip.eth.src = net.GetSelfEtherAddr();

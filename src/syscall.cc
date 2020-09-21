@@ -175,8 +175,8 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
       icmp.identifier = 0;
       icmp.sequence = 0;
       icmp.csum.Clear();
-      icmp.csum = Net::CalcChecksum(&icmp, offsetof(ICMPPacket, type),
-                                    sizeof(ICMPPacket));
+      icmp.csum = Network::InternetChecksum::Calc(
+          &icmp, offsetof(ICMPPacket, type), sizeof(ICMPPacket));
       // send
       virtio_net.SendPacket();
     }
