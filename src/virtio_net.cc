@@ -161,7 +161,6 @@ static bool ARPPacketHandler(uint8_t* frame_data, size_t frame_size) {
     return false;
   }
   ARPPacket& arp = *reinterpret_cast<ARPPacket*>(frame_data);
-  PrintARPPacket(arp);
   Net& net = Net::GetInstance();
   if (arp.GetOperation() != ARPPacket::Operation::kRequest ||
       !arp.target_proto_addr.IsEqualTo(net.GetSelfIPv4Addr())) {
@@ -173,8 +172,6 @@ static bool ARPPacketHandler(uint8_t* frame_data, size_t frame_size) {
   reply.SetupReply(arp.sender_proto_addr, net.GetSelfIPv4Addr(),
                    arp.sender_eth_addr, net.GetSelfEtherAddr());
   net.SendPacket();
-  PutString("Reply sent!: ");
-  PrintARPPacket(reply);
   return true;
 }
 
@@ -266,10 +263,7 @@ static bool UDPPacketHandler(IPv4Packet& p, size_t frame_size) {
   if (frame_size < sizeof(IPv4UDPPacket)) {
     return false;
   }
-  PutString("UDP: ");
   Net::IPv4UDPPacket& udp = *reinterpret_cast<Net::IPv4UDPPacket*>(&p);
-  PutStringAndHex("src port", udp.GetSourcePort());
-  PutStringAndHex("dst port", udp.GetDestinationPort());
   if (udp.GetDestinationPort() == 68) {
     PutString("DHCP: ");
     Net::DHCPPacket& dhcp = *reinterpret_cast<Net::DHCPPacket*>(&p);
@@ -298,22 +292,12 @@ static bool IPv4PacketHandler(uint8_t* frame_data, size_t frame_size) {
   if (!eth.HasEthType(Net::EtherFrame::kTypeIPv4)) {
     return false;
   }
-  PutString("IPv4: ");
   IPv4Packet& p = *reinterpret_cast<Net::IPv4Packet*>(frame_data);
-  p.src_ip.Print();
-  PutString(" -> ");
-  p.dst_ip.Print();
-  PutStringAndHex(" protocol", static_cast<uint8_t>(p.protocol));
   if (ICMPPacketHandler(p, frame_size)) {
     return true;
   }
   if (UDPPacketHandler(p, frame_size)) {
     return true;
-  }
-  if (p.protocol == Net::IPv4Packet::Protocol::kTCP) {
-    PutString("TCP: \n");
-  } else if (p.protocol == Net::IPv4Packet::Protocol::kUDP) {
-    PutString("UDP: \n");
   }
   return true;
 }
@@ -321,15 +305,8 @@ static bool IPv4PacketHandler(uint8_t* frame_data, size_t frame_size) {
 void Net::ProcessPacket(uint8_t* buf, size_t buf_size) {
   size_t frame_size = buf_size - sizeof(Net::PacketBufHeader);
   uint8_t* frame_data = buf + sizeof(Net::PacketBufHeader);
-  if (!ARPPacketHandler(frame_data, frame_size) &&
-      !IPv4PacketHandler(frame_data, frame_size)) {
-    PutStringAndDecimal("frame size", frame_size);
-    for (size_t i = 0; i < frame_size; i++) {
-      PutHex8ZeroFilled(frame_data[i]);
-      PutChar((i & 0xF) == 0xF ? '\n' : ' ');
-    }
-    PutChar('\n');
-  }
+  ARPPacketHandler(frame_data, frame_size) ||
+      IPv4PacketHandler(frame_data, frame_size);
 }
 
 void Net::PollRXQueue() {
@@ -339,7 +316,6 @@ void Net::PollRXQueue() {
     return;
   }
   while (rxq.GetUsedRingIndex() != rxq_cursor_) {
-    PutStringAndHex("rxq_cursor_", rxq_cursor_);
     int idx = rxq_cursor_ % vq_size_[kIndexOfRXVirtqueue];
     Net::ProcessPacket(rxq.GetDescriptorBuf(idx),
                        rxq.GetUsedRingEntry(idx).len);
@@ -348,6 +324,31 @@ void Net::PollRXQueue() {
   }
   rxq.SetAvailableRingIndex(rxq_cursor_ - 1);
   WriteConfigReg16(16 /* Queue Notify */, kIndexOfRXVirtqueue);
+}
+
+void Net::SendPacket() {
+  const int idx =
+      vq_cursor_[kIndexOfTXVirtqueue] % vq_size_[kIndexOfTXVirtqueue];
+  auto& txq = vq_[kIndexOfTXVirtqueue];
+  uint8_t* data = txq.GetDescriptorBuf(idx);
+  uint32_t data_size = txq.GetDescriptorSize(idx);
+  int cnt = 0;
+  for (uint32_t i = sizeof(PacketBufHeader); i < data_size; i++) {
+    kprintf("%02X%c", data[i], (cnt & 0xF) == 0xF ? '\n' : ' ');
+    cnt++;
+  }
+  kprintf("\n");
+  PacketBufHeader& hdr = *txq.GetDescriptorBuf<PacketBufHeader*>(idx);
+  hdr.flags = 0;
+  hdr.gso_type = PacketBufHeader::kGSOTypeNone;
+  hdr.header_length = 0x00;
+  hdr.gso_size = 0;
+  hdr.csum_start = 0;
+  hdr.csum_offset = 0;
+  txq.SetAvailableRingEntry(idx, idx);
+  vq_cursor_[kIndexOfTXVirtqueue]++;
+  txq.SetAvailableRingIndex(idx + 1);
+  WriteConfigReg16(16 /* Queue Notify */, kIndexOfTXVirtqueue);
 }
 
 Net& Net::GetInstance() {

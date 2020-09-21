@@ -109,6 +109,16 @@ struct PageTableStruct {
       return (e.GetPageBaseAddr()) | (vaddr & kOffsetMask);
     return e.v2pWithTable(vaddr);
   }
+  uint64_t v2pWithOffset(uint64_t vaddr, uint64_t offset) {
+    // This function is intended to be called on `this`
+    // in the kernel direct memory mapping
+    EntryType& e = GetEntryForAddr(vaddr);
+    if (!e.IsPresent())
+      return kAddrCannotTranslate;
+    if (e.IsPage())
+      return (e.GetPageBaseAddr()) | (vaddr & kOffsetMask);
+    return e.v2pWithTableWithOffset(vaddr, offset);
+  }
 };
 
 template <int TIndexShift, class TPageStrategy>
@@ -120,12 +130,23 @@ packed_struct PageTableEntryStruct {
   uint64_t data;
   bool IsPresent() { return data & kPageAttrPresent; }
   template <class S = TPageStrategy>
+
   typename S::NextTableType* GetTableAddr() {
     if (IsPage())
       return nullptr;
     return reinterpret_cast<typename S::NextTableType*>(
         data & GetPhysAddrMask() & ~kPageAddrMask);
   }
+
+  template <class S = TPageStrategy>
+  typename S::NextTableType* GetTableAddrWithOffset(uint64_t offset) {
+    typename S::NextTableType* t = GetTableAddr();
+    if (!t)
+      return nullptr;
+    return reinterpret_cast<typename S::NextTableType*>(
+        reinterpret_cast<uint64_t>(t) + offset);
+  }
+
   template <class S = TPageStrategy>
   void SetTableAddr(typename S::NextTableType * table, uint64_t attr) {
     const uint64_t addr_mask = (GetPhysAddrMask() & ~kPageAddrMask);
@@ -133,6 +154,7 @@ packed_struct PageTableEntryStruct {
     data = reinterpret_cast<uint64_t>(table) | attr;
     SetAttrAsTable();
   }
+
   uint64_t GetPageBaseAddr(void) {
     const uint64_t addr_mask = (GetPhysAddrMask() & ~kOffsetMask);
     return data & addr_mask;
@@ -148,6 +170,7 @@ packed_struct PageTableEntryStruct {
     data &= ~kPageAttrMask;
     data |= kPageAttrMask & attr;
   }
+
   template <class S = Strategy>
   auto v2pWithTable(uint64_t vaddr)
       ->std::enable_if_t<is_table_allowed_v<S>, uint64_t> {
@@ -155,29 +178,41 @@ packed_struct PageTableEntryStruct {
   }
   uint64_t v2pWithTable(...) { return kAddrCannotTranslate; }
 
+  template <class S = Strategy>
+  auto v2pWithTableWithOffset(uint64_t vaddr, uint64_t offset)
+      ->std::enable_if_t<is_table_allowed_v<S>, uint64_t> {
+    return GetTableAddrWithOffset(offset)->v2pWithOffset(vaddr, offset);
+  }
+  uint64_t v2pWithTableWithOffset(...) { return kAddrCannotTranslate; }
+
   template <typename S = Strategy>
   auto IsPage()
       ->std::enable_if_t<is_page_allowed_v<S> && is_table_allowed_v<S>, bool> {
     return data & (1 << 7);
   }
+
   template <class S = Strategy>
   auto IsPage()
       ->std::enable_if_t<is_page_allowed_v<S> ^ is_table_allowed_v<S>, bool> {
     return is_page_allowed_v<S>;
   }
+
   template <typename S = Strategy>
   auto SetAttrAsPage()
       ->std::enable_if_t<is_page_allowed_v<S> && is_table_allowed_v<S>> {
     data |= (1ULL << 7);
   }
+
   template <typename S = Strategy>
   auto SetAttrAsPage()
       ->std::enable_if_t<is_page_allowed_v<S> ^ is_table_allowed_v<S>> {}
+
   template <typename S = Strategy>
   auto SetAttrAsTable()
       ->std::enable_if_t<is_page_allowed_v<S> && is_table_allowed_v<S>> {
     data &= ~(1ULL << 7);
   }
+
   template <typename S = Strategy>
   auto SetAttrAsTable()
       ->std::enable_if_t<is_page_allowed_v<S> ^ is_table_allowed_v<S>> {}
@@ -337,7 +372,7 @@ void CLFlushMappingStructures(IA_PML4& pml4,
 
 template <typename TableType>
 uint64_t v2p(TableType& table, uint64_t vaddr) {
-  return v2p(&table, vaddr);
+  return table.v2p(vaddr);
 }
 template <typename TableType>
 uint64_t v2p(TableType* table, uint64_t vaddr) {

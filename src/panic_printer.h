@@ -2,6 +2,7 @@
 
 #include "asm.h"
 #include "console.h"
+#include "serial.h"
 #include "sheet.h"
 #include "sheet_painter.h"
 #include "string_buffer.h"
@@ -15,9 +16,17 @@ class PanicPrinter {
   }
   static PanicPrinter& BeginPanic() {
     ClearIntFlag();
-    if (!pp_->sheet_ || !pp_->serial_) {
+    if (!pp_ || !pp_->sheet_ || !pp_->serial_) {
       Die();
     }
+    if (pp_->in_progress_) {
+      pp_->PrintLine(
+          "BeginPanic() called during panic printing. Double fault?");
+      for (;;) {
+        asm volatile("pause");
+      };
+    }
+    pp_->in_progress_ = true;
     pp_->PrintLine("---- Begin Panic ----");
     return *pp_;
   }
@@ -33,6 +42,12 @@ class PanicPrinter {
     PrintLine(line.GetString());
   }
   void PrintLine(const char* s) {
+    if (serial_) {
+      for (int i = 0; s[i]; i++) {
+        serial_->SendChar(s[i]);
+      }
+      serial_->SendChar('\n');
+    }
     if (!sheet_) {
       Die();
     }
@@ -56,6 +71,7 @@ class PanicPrinter {
   Sheet* sheet_;
   SerialPort* serial_;
   int cursor_y_;
+  bool in_progress_;
 
   PanicPrinter(){};
 };

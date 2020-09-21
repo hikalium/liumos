@@ -5,8 +5,9 @@
 
 template <typename PhysType = uint64_t, typename VirtType>
 PhysType v2p(VirtType v) {
-  return reinterpret_cast<PhysType>(
-      liumos->kernel_pml4->v2p(reinterpret_cast<uint64_t>(v)));
+  return reinterpret_cast<PhysType>(liumos->kernel_pml4->v2pWithOffset(
+      reinterpret_cast<uint64_t>(v),
+      liumos->cpu_features->kernel_phys_page_map_begin));
 }
 
 template <typename T>

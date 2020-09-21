@@ -113,8 +113,7 @@ void CreateAndLaunchKernelTask(void (*entry_point)()) {
   ExecutionContext& sub_context =
       *liumos->kernel_heap_allocator->Alloc<ExecutionContext>();
   sub_context.SetRegisters(entry_point, GDT::kKernelCSSelector, sub_context_rsp,
-                           GDT::kKernelDSSelector,
-                           reinterpret_cast<uint64_t>(&GetKernelPML4()),
+                           GDT::kKernelDSSelector, ReadCR3(),
                            kRFlagsInterruptEnable, 0);
 
   Process& proc = liumos->proc_ctrl->Create();
@@ -242,7 +241,7 @@ extern "C" void KernelEntry(LiumOS* liumos_passed, LoaderInfo& loader_info) {
   liumos->main_console->SetSerial(&com2_);
 
   PanicPrinter::Init(liumos->kernel_heap_allocator->Alloc<PanicPrinter>(),
-                     *liumos->vram_sheet, com2_);
+                     virtual_vram_, com2_);
 
   bsp_local_apic_.Init();
 

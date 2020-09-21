@@ -1,3 +1,4 @@
+#pragma once
 #include "generic.h"
 
 constexpr uint16_t kPortCOM1 = 0x3f8;

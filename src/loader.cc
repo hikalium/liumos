@@ -11,7 +11,7 @@ LiumOS* liumos;
 EFI::MemoryMap efi_memory_map;
 PhysicalPageAllocator* pmem_allocator;
 CPUFeatureSet cpu_features;
-SerialPort com1;
+SerialPort com2;
 
 LiumOS liumos_;
 Console main_console_;
@@ -147,10 +147,10 @@ void MainForBootProcessor(EFI::Handle image_handle,
   efi_.GetMemoryMapAndExitBootServices(image_handle, efi_memory_map);
   liumos->efi_memory_map = &efi_memory_map;
 
-  com1.Init(kPortCOM1);
-  main_console_.SetSerial(&com1);
+  com2.Init(kPortCOM2);
+  main_console_.SetSerial(&com2);
 
-  PanicPrinter::Init(&panic_printer_work, *liumos->vram_sheet, com1);
+  PanicPrinter::Init(&panic_printer_work, *liumos->vram_sheet, com2);
 
   PutString("\nliumOS version: ");
   PutString(GetVersionStr());

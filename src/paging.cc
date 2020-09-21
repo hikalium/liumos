@@ -174,7 +174,11 @@ void InitPaging() {
 
   WriteCR3(reinterpret_cast<uint64_t>(kernel_pml4));
   PutStringAndHex("Paging enabled. Kernel CR3", ReadCR3());
-  liumos->kernel_pml4 = kernel_pml4;
+  PutStringAndHex("kernel_pml4", kernel_pml4);
+  liumos->kernel_pml4 = reinterpret_cast<IA_PML4*>(
+      reinterpret_cast<uint64_t>(kernel_pml4) +
+      liumos->cpu_features->kernel_phys_page_map_begin);
+  PutStringAndHex("liumos->kernel_pml4", liumos->kernel_pml4);
 }
 
 IA_PML4& GetKernelPML4(void) {

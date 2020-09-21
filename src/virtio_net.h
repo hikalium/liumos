@@ -190,6 +190,8 @@ class Net {
     Type type;
     uint8_t code;
     InternetChecksum csum;
+    uint16_t identifier;
+    uint16_t sequence;
   };
   packed_struct IPv4UDPPacket {
     IPv4Packet ip;
@@ -385,22 +387,7 @@ class Net {
     Network::GetInstance().RegisterARPResolution(self_ip_, mac_addr_);
   }
   const Network::EtherAddr GetSelfEtherAddr() { return {mac_addr_}; }
-  void SendPacket() {
-    const int idx =
-        vq_cursor_[kIndexOfTXVirtqueue] % vq_size_[kIndexOfTXVirtqueue];
-    auto& txq = vq_[kIndexOfTXVirtqueue];
-    PacketBufHeader& hdr = *txq.GetDescriptorBuf<PacketBufHeader*>(idx);
-    hdr.flags = 0;
-    hdr.gso_type = PacketBufHeader::kGSOTypeNone;
-    hdr.header_length = 0x00;
-    hdr.gso_size = 0;
-    hdr.csum_start = 0;
-    hdr.csum_offset = 0;
-    txq.SetAvailableRingEntry(idx, idx);
-    vq_cursor_[kIndexOfTXVirtqueue]++;
-    txq.SetAvailableRingIndex(idx + 1);
-    WriteConfigReg16(16 /* Queue Notify */, kIndexOfTXVirtqueue);
-  }
+  void SendPacket();
 
   static Net& GetInstance();
 

@@ -2,6 +2,10 @@
 
 #include "liumos.h"
 
+#include "virtio_net.h"
+
+#include "kernel.h"
+
 constexpr uint64_t kSyscallIndex_sys_read = 0;
 constexpr uint64_t kSyscallIndex_sys_write = 1;
 constexpr uint64_t kSyscallIndex_sys_close = 3;
@@ -105,7 +109,17 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     return;
   }
   if (idx == kSyscallIndex_sys_sendto) {
-    PutString("sendto()!\n");
+    kprintf("sendto()!\n");
+    {
+      using Net = Virtio::Net;
+      using ARPPacket = Virtio::Net::ARPPacket;
+      Net& net = Net::GetInstance();
+      ARPPacket& arp = *net.GetNextTXPacketBuf<ARPPacket*>(sizeof(ARPPacket));
+      arp.SetupRequest({10, 10, 10, 90}, net.GetSelfIPv4Addr(),
+                       net.GetSelfEtherAddr());
+      // send
+      net.SendPacket();
+    }
     return;
   }
   char s[64];
