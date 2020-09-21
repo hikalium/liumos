@@ -110,16 +110,27 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
   }
   if (idx == kSyscallIndex_sys_sendto) {
     kprintf("sendto()!\n");
+    using Net = Virtio::Net;
+    using IPv4Packet = Virtio::Net::IPv4Packet;
+    using ICMPPacket = Virtio::Net::ICMPPacket;
+    using IPv4Addr = Network::IPv4Addr;
+    Net& virtio_net = Net::GetInstance();
+    Network& network = Network::GetInstance();
+    IPv4Addr target_ip_addr = {10, 10, 10, 90};
+    auto target_eth_container = network.ResolveIPv4(target_ip_addr);
+    if (target_eth_container.has_value()) {
+      kprintf("resolve found!\n");
+    } else {
+      kprintf("resolve NOT found!\n");
+      SendARPRequest(target_ip_addr);
+    }
+
     {
-      using Net = Virtio::Net;
-      using IPv4Packet = Virtio::Net::IPv4Packet;
-      using ICMPPacket = Virtio::Net::ICMPPacket;
-      Net& net = Net::GetInstance();
       ICMPPacket& icmp =
-          *net.GetNextTXPacketBuf<ICMPPacket*>(sizeof(ICMPPacket));
+          *virtio_net.GetNextTXPacketBuf<ICMPPacket*>(sizeof(ICMPPacket));
       // ip.eth
-      icmp.ip.eth.dst = {0xf8, 0xff, 0xc2, 0x01, 0xdf, 0x39};
-      icmp.ip.eth.src = net.GetSelfEtherAddr();
+      icmp.ip.eth.dst = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+      icmp.ip.eth.src = virtio_net.GetSelfEtherAddr();
       icmp.ip.eth.SetEthType(Net::EtherFrame::kTypeIPv4);
       // ip
       icmp.ip.version_and_ihl =
@@ -130,8 +141,8 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
       icmp.ip.flags = 0;
       icmp.ip.ttl = 0xFF;
       icmp.ip.protocol = Net::IPv4Packet::Protocol::kICMP;
-      icmp.ip.src_ip = net.GetSelfIPv4Addr();
-      icmp.ip.dst_ip = {10, 10, 10, 90};
+      icmp.ip.src_ip = virtio_net.GetSelfIPv4Addr();
+      icmp.ip.dst_ip = target_ip_addr;
       icmp.ip.CalcAndSetChecksum();
       // icmp
       icmp.type = ICMPPacket::Type::kEchoReply;
@@ -142,7 +153,7 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
       icmp.csum = Net::CalcChecksum(&icmp, offsetof(ICMPPacket, type),
                                     sizeof(ICMPPacket));
       // send
-      net.SendPacket();
+      virtio_net.SendPacket();
     }
     return;
   }

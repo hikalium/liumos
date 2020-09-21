@@ -1,4 +1,5 @@
 #include "network.h"
+#include "kernel.h"
 #include "liumos.h"
 #include "virtio_net.h"
 
@@ -33,8 +34,27 @@ Network& Network::GetInstance() {
 void NetworkManager() {
   auto& virtio_net = Virtio::Net::GetInstance();
   while (true) {
+    ClearIntFlag();
     virtio_net.PollRXQueue();
+    StoreIntFlag();
+    Sleep();
   }
+}
+
+void SendARPRequest(Network::IPv4Addr ip_addr) {
+  kprintf("Sending ARP request to: ");
+  ip_addr.Print();
+  kprintf("\n");
+
+  using Net = Virtio::Net;
+  using ARPPacket = Virtio::Net::ARPPacket;
+  Net& virtio_net = Net::GetInstance();
+  ARPPacket& arp =
+      *virtio_net.GetNextTXPacketBuf<ARPPacket*>(sizeof(ARPPacket));
+  arp.SetupRequest(ip_addr, virtio_net.GetSelfIPv4Addr(),
+                   virtio_net.GetSelfEtherAddr());
+  // send
+  virtio_net.SendPacket();
 }
 
 void SendARPRequest(const char* ip_addr_str) {
@@ -45,7 +65,5 @@ void SendARPRequest(const char* ip_addr_str) {
     PutString("\n");
     return;
   }
-  PutString("Sending ARP request to: ");
-  ip_addr->Print();
-  PutString("\n");
+  SendARPRequest(*ip_addr);
 }

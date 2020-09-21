@@ -53,6 +53,11 @@ class Network {
   void RegisterARPResolution(IPv4Addr ip_addr, EtherAddr eth_addr) {
     arp_table_[ip_addr] = eth_addr;
   }
+  std::optional<EtherAddr> ResolveIPv4(IPv4Addr ip_addr) {
+    if (arp_table_.find(ip_addr) == arp_table_.end())
+      return std::nullopt;
+    return arp_table_[ip_addr];
+  }
 
   static Network& GetInstance();
 
@@ -65,4 +70,5 @@ class Network {
 };
 
 void NetworkManager();
-void SendARPRequest(const char* ip_addr_str);
+void SendARPRequest(Network::IPv4Addr);
+void SendARPRequest(const char*);

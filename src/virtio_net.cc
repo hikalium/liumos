@@ -162,9 +162,16 @@ static bool ARPPacketHandler(uint8_t* frame_data, size_t frame_size) {
   }
   ARPPacket& arp = *reinterpret_cast<ARPPacket*>(frame_data);
   Net& net = Net::GetInstance();
+  if (arp.GetOperation() == ARPPacket::Operation::kReply) {
+    Network::GetInstance().RegisterARPResolution(arp.sender_proto_addr,
+                                                 arp.sender_eth_addr);
+    PrintARPPacket(arp);
+    return true;
+  }
   if (arp.GetOperation() != ARPPacket::Operation::kRequest ||
       !arp.target_proto_addr.IsEqualTo(net.GetSelfIPv4Addr())) {
     // This is ARP, but not a request to me
+    PrintARPPacket(arp);
     return true;
   }
   // Reply to ARP
