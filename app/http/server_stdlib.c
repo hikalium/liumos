@@ -43,7 +43,7 @@ void start() {
   }
 
   while (1) {
-    //write(1, "LOG: wait a message from client\n", 32);
+    write(1, "LOG: wait a message from client\n", 32);
     if ((accepted_socket = accept(socket_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) == -1) {
       write(1, "error: fail to accept socket\n", 29);
       close(socket_fd);
