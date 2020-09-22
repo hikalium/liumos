@@ -261,7 +261,7 @@ int main(int argc, char** argv) {
 
   struct IPHeader *ip = (struct IPHeader *)recv_buf;
   struct ICMPMessage *recv_icmp = (struct ICMPMessage *)(recv_buf + sizeof(struct IPHeader));
-  Print("from ");
+  Print("ICMP packet recieved from ");
   PrintIPv4Addr(ip->src_ip_addr);
   Print(" to ");
   PrintIPv4Addr(ip->dst_ip_addr);

@@ -39,16 +39,44 @@ extern "C" uint64_t GetCurrentKernelStack(void) {
   return ctx.GetKernelRSP();
 }
 
+static bool IsICMPPacket(void* frame_data, size_t frame_size) {
+  using EtherFrame = Network::EtherFrame;
+  using IPv4Packet = Network::IPv4Packet;
+  if (frame_size < sizeof(IPv4Packet)) {
+    return false;
+  }
+  EtherFrame& eth = *reinterpret_cast<EtherFrame*>(frame_data);
+  if (!eth.HasEthType(EtherFrame::kTypeIPv4)) {
+    return false;
+  }
+  IPv4Packet& p = *reinterpret_cast<IPv4Packet*>(frame_data);
+  if (p.protocol != IPv4Packet::Protocol::kICMP) {
+    return false;
+  }
+  return true;
+}
+
 static ssize_t sys_recvfrom(int64_t,
-                            void*,
-                            size_t,
+                            void* buf,
+                            size_t buf_size,
                             int64_t,
                             struct sockaddr_in*,
                             size_t*) {
+  using EtherFrame = Network::EtherFrame;
   Network& network = Network::GetInstance();
-  while (network.HasPacketInRXBuffer()) {
-    auto packet = network.PopFromRXBuffer();
-    kprintbuf("recvfrom reading packet", packet.data, 0, packet.size);
+  for (;;) {
+    while (network.HasPacketInRXBuffer()) {
+      auto packet = network.PopFromRXBuffer();
+      if (!IsICMPPacket(packet.data, packet.size)) {
+        continue;
+      }
+      kprintbuf("recvfrom reading packet", packet.data, 0, packet.size);
+      size_t ip_data_size = packet.size - sizeof(EtherFrame);
+      size_t copy_size = std::min(ip_data_size, buf_size);
+      memcpy(buf, &packet.data[sizeof(EtherFrame)], copy_size);
+      return packet.size;
+    }
+    Sleep();
   }
   return 0;
 }
@@ -168,8 +196,8 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     target_eth_addr.Print();
     kprintf("\n");
     {
-      ICMPPacket& icmp =
-          *virtio_net.GetNextTXPacketBuf<ICMPPacket*>(sizeof(ICMPPacket));
+      ICMPPacket& icmp = *virtio_net.GetNextTXPacketBuf<ICMPPacket*>(
+          sizeof(IPv4Packet) + args[3]);
       // ip.eth
       icmp.ip.eth.dst = target_eth_addr;
       icmp.ip.eth.src = virtio_net.GetSelfEtherAddr();
@@ -187,13 +215,8 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
       icmp.ip.dst_ip = target_ip_addr;
       icmp.ip.CalcAndSetChecksum();
       // icmp
-      icmp.type = ICMPPacket::Type::kEchoReply;
-      icmp.code = 0;
-      icmp.identifier = 0;
-      icmp.sequence = 0;
-      icmp.csum.Clear();
-      icmp.csum = Network::InternetChecksum::Calc(
-          &icmp, offsetof(ICMPPacket, type), sizeof(ICMPPacket));
+      memcpy(&icmp.type /*first member of ICMP*/,
+             reinterpret_cast<void*>(args[2]), args[3]);
       // send
       virtio_net.SendPacket();
     }
@@ -203,6 +226,7 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     args[0] = sys_recvfrom(args[1], reinterpret_cast<void*>(args[2]), args[3],
                            args[4], reinterpret_cast<sockaddr_in*>(args[5]),
                            reinterpret_cast<size_t*>(args[6]));
+    return;
   }
   char s[64];
   snprintf(s, sizeof(s), "Unhandled syscall. rax = %lu\n", idx);
