@@ -34,6 +34,8 @@ struct sockaddr_in {
 extern "C" uint64_t GetCurrentKernelStack(void) {
   ExecutionContext& ctx =
       liumos->scheduler->GetCurrentProcess().GetExecutionContext();
+  if (int a = 0; a) {
+  }
   return ctx.GetKernelRSP();
 }
 

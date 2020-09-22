@@ -55,6 +55,21 @@ class Network {
   };
   static constexpr EtherAddr kBroadcastEtherAddr = {0xFF, 0xFF, 0xFF,
                                                     0xFF, 0xFF, 0xFF};
+  packed_struct EtherFrame {
+    Network::EtherAddr dst;
+    Network::EtherAddr src;
+    uint8_t eth_type[2];
+    //
+    static constexpr uint8_t kTypeARP[2] = {0x08, 0x06};
+    static constexpr uint8_t kTypeIPv4[2] = {0x08, 0x00};
+    void SetEthType(const uint8_t(&etype)[2]) {
+      eth_type[0] = etype[0];
+      eth_type[1] = etype[1];
+    }
+    bool HasEthType(const uint8_t(&etype)[2]) {
+      return eth_type[0] == etype[0] && eth_type[1] == etype[1];
+    }
+  };
 
   packed_struct InternetChecksum {
     // https://tools.ietf.org/html/rfc1071
