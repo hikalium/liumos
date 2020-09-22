@@ -36,6 +36,21 @@ extern "C" uint64_t GetCurrentKernelStack(void) {
       liumos->scheduler->GetCurrentProcess().GetExecutionContext();
   return ctx.GetKernelRSP();
 }
+
+static ssize_t sys_recvfrom(int64_t,
+                            void*,
+                            size_t,
+                            int64_t,
+                            struct sockaddr_in*,
+                            size_t*) {
+  Network& network = Network::GetInstance();
+  while (network.HasPacketInRXBuffer()) {
+    auto packet = network.PopFromRXBuffer();
+    kprintbuf("recvfrom reading packet", packet.data, 0, packet.size);
+  }
+  return 0;
+}
+
 __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
   // This function will be called under exceptions are masked
   // with Kernel Stack
@@ -183,11 +198,9 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     return;
   }
   if (idx == kSyscallIndex_sys_recvfrom) {
-    Network& network = Network::GetInstance();
-    while (network.HasPacketInRXBuffer()) {
-      auto packet = network.PopFromRXBuffer();
-      kprintbuf("recvfrom reading packet", packet.data, 0, packet.size);
-    }
+    args[0] = sys_recvfrom(args[1], reinterpret_cast<void*>(args[2]), args[3],
+                           args[4], reinterpret_cast<sockaddr_in*>(args[5]),
+                           reinterpret_cast<size_t*>(args[6]));
   }
   char s[64];
   snprintf(s, sizeof(s), "Unhandled syscall. rax = %lu\n", idx);
