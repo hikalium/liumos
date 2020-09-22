@@ -42,10 +42,6 @@ void NetworkManager() {
 }
 
 void SendARPRequest(Network::IPv4Addr ip_addr) {
-  kprintf("Sending ARP request to: ");
-  ip_addr.Print();
-  kprintf("\n");
-
   using Net = Virtio::Net;
   using ARPPacket = Virtio::Net::ARPPacket;
   Net& virtio_net = Net::GetInstance();

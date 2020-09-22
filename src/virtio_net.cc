@@ -165,13 +165,13 @@ static bool ARPPacketHandler(uint8_t* frame_data, size_t frame_size) {
   if (arp.GetOperation() == ARPPacket::Operation::kReply) {
     Network::GetInstance().RegisterARPResolution(arp.sender_proto_addr,
                                                  arp.sender_eth_addr);
-    PrintARPPacket(arp);
     return true;
   }
-  if (arp.GetOperation() != ARPPacket::Operation::kRequest ||
-      !arp.target_proto_addr.IsEqualTo(net.GetSelfIPv4Addr())) {
-    // This is ARP, but not a request to me
-    PrintARPPacket(arp);
+  if (arp.GetOperation() != ARPPacket::Operation::kRequest) {
+    return false;
+  }
+  if (!arp.target_proto_addr.IsEqualTo(net.GetSelfIPv4Addr())) {
+    // This is ARP Request, but not a request to me
     return true;
   }
   // Reply to ARP
@@ -250,15 +250,9 @@ static bool ICMPPacketHandler(IPv4Packet& p, size_t frame_size) {
   if (frame_size < sizeof(ICMPPacket)) {
     return false;
   }
-  PutString("ICMP: ");
   ICMPPacket& icmp = *reinterpret_cast<Net::ICMPPacket*>(&p);
   if (icmp.type == ICMPPacket::Type::kEchoRequest) {
-    PutString("Echo Request\n");
     SendICMPEchoReply(icmp, frame_size);
-  } else if (icmp.type == ICMPPacket::Type::kEchoReply) {
-    PutString("Echo Reply\n");
-  } else {
-    PutString("Unknown type\n");
   }
   return true;
 }
@@ -340,7 +334,9 @@ void Net::SendPacket() {
   auto& txq = vq_[kIndexOfTXVirtqueue];
   uint8_t* data = txq.GetDescriptorBuf(idx);
   uint32_t data_size = txq.GetDescriptorSize(idx);
-  kprintbuf("SendPacket data", data, sizeof(PacketBufHeader), data_size);
+  if (debug_mode_enabled_) {
+    kprintbuf("SendPacket data", data, sizeof(PacketBufHeader), data_size);
+  }
   PacketBufHeader& hdr = *txq.GetDescriptorBuf<PacketBufHeader*>(idx);
   hdr.flags = 0;
   hdr.gso_type = PacketBufHeader::kGSOTypeNone;

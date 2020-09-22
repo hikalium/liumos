@@ -86,6 +86,7 @@ packed_struct LiumOS {
   Process* root_process;
   uint64_t time_slice_count;
   bool is_multi_task_enabled;
+  bool debug_mode_enabled;
 };
 extern LiumOS* liumos;
 

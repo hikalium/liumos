@@ -120,6 +120,7 @@ class Net {
   uint16_t vq_size_[kNumOfVirtqueues];
   uint16_t vq_cursor_[kNumOfVirtqueues];
   Network::IPv4Addr self_ip_;
+  bool debug_mode_enabled_;
 
   void ProcessPacket(uint8_t* buf, size_t buf_size);
 

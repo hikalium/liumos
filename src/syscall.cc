@@ -70,7 +70,6 @@ static ssize_t sys_recvfrom(int64_t,
       if (!IsICMPPacket(packet.data, packet.size)) {
         continue;
       }
-      kprintbuf("recvfrom reading packet", packet.data, 0, packet.size);
       size_t ip_data_size = packet.size - sizeof(EtherFrame);
       size_t copy_size = std::min(ip_data_size, buf_size);
       memcpy(buf, &packet.data[sizeof(EtherFrame)], copy_size);
@@ -128,8 +127,10 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     return;
   }
   if (idx == kSyscallIndex_sys_exit) {
-    const uint64_t exit_code = args[1];
-    PutStringAndHex("exit: exit_code", exit_code);
+    if (liumos->debug_mode_enabled) {
+      const uint64_t exit_code = args[1];
+      PutStringAndHex("exit: exit_code", exit_code);
+    }
     liumos->scheduler->KillCurrentProcess();
     for (;;) {
       StoreIntFlagAndHalt();
@@ -162,7 +163,7 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     if (protocol != kProtocolICMP) {
       Panic("protocol != kProtocolICMP");
     }
-    PutString("socket(IPv4, Raw, ICMP)\n");
+    // PutString("socket(IPv4, Raw, ICMP)\n");
     args[1] = 3;
     return;
   }
@@ -173,15 +174,10 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     using IPv4Addr = Network::IPv4Addr;
     using EtherAddr = Network::EtherAddr;
 
-    kprintf("sendto()!\n");
-
-    IPv4Addr target_ip_addr = reinterpret_cast<sockaddr_in*>(args[5])->sin_addr;
-    kprintf("target_ip_addr: ");
-    target_ip_addr.Print();
-    kprintf("\n");
-
     Net& virtio_net = Net::GetInstance();
     Network& network = Network::GetInstance();
+
+    IPv4Addr target_ip_addr = reinterpret_cast<sockaddr_in*>(args[5])->sin_addr;
     EtherAddr target_eth_addr;
     for (;;) {
       auto target_eth_container = network.ResolveIPv4(target_ip_addr);
@@ -192,34 +188,29 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
       SendARPRequest(target_ip_addr);
       liumos->hpet->BusyWait(100);
     }
-    kprintf("target_eth_addr: ");
-    target_eth_addr.Print();
-    kprintf("\n");
-    {
-      ICMPPacket& icmp = *virtio_net.GetNextTXPacketBuf<ICMPPacket*>(
-          sizeof(IPv4Packet) + args[3]);
-      // ip.eth
-      icmp.ip.eth.dst = target_eth_addr;
-      icmp.ip.eth.src = virtio_net.GetSelfEtherAddr();
-      icmp.ip.eth.SetEthType(Net::EtherFrame::kTypeIPv4);
-      // ip
-      icmp.ip.version_and_ihl =
-          0x45;  // IPv4, header len = 5 * sizeof(uint32_t) = 20 bytes
-      icmp.ip.dscp_and_ecn = 0;
-      icmp.ip.SetDataLength(sizeof(ICMPPacket) - sizeof(IPv4Packet));
-      icmp.ip.ident = 0;
-      icmp.ip.flags = 0;
-      icmp.ip.ttl = 0xFF;
-      icmp.ip.protocol = Net::IPv4Packet::Protocol::kICMP;
-      icmp.ip.src_ip = virtio_net.GetSelfIPv4Addr();
-      icmp.ip.dst_ip = target_ip_addr;
-      icmp.ip.CalcAndSetChecksum();
-      // icmp
-      memcpy(&icmp.type /*first member of ICMP*/,
-             reinterpret_cast<void*>(args[2]), args[3]);
-      // send
-      virtio_net.SendPacket();
-    }
+    ICMPPacket& icmp = *virtio_net.GetNextTXPacketBuf<ICMPPacket*>(
+        sizeof(IPv4Packet) + args[3]);
+    // ip.eth
+    icmp.ip.eth.dst = target_eth_addr;
+    icmp.ip.eth.src = virtio_net.GetSelfEtherAddr();
+    icmp.ip.eth.SetEthType(Net::EtherFrame::kTypeIPv4);
+    // ip
+    icmp.ip.version_and_ihl =
+        0x45;  // IPv4, header len = 5 * sizeof(uint32_t) = 20 bytes
+    icmp.ip.dscp_and_ecn = 0;
+    icmp.ip.SetDataLength(sizeof(ICMPPacket) - sizeof(IPv4Packet));
+    icmp.ip.ident = 0;
+    icmp.ip.flags = 0;
+    icmp.ip.ttl = 0xFF;
+    icmp.ip.protocol = Net::IPv4Packet::Protocol::kICMP;
+    icmp.ip.src_ip = virtio_net.GetSelfIPv4Addr();
+    icmp.ip.dst_ip = target_ip_addr;
+    icmp.ip.CalcAndSetChecksum();
+    // icmp
+    memcpy(&icmp.type /*first member of ICMP*/,
+           reinterpret_cast<void*>(args[2]), args[3]);
+    // send
+    virtio_net.SendPacket();
     return;
   }
   if (idx == kSyscallIndex_sys_recvfrom) {

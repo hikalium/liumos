@@ -172,7 +172,9 @@ Process& LoadELFAndCreateEphemeralProcess(EFIFile& file) {
       GetSystemDRAMAllocator().AllocPages<uint64_t>(kNumOfStackPages),
       kNumOfStackPages << kPageSizeExponent);
 
-  map_info.Print();
+  if (liumos->debug_mode_enabled) {
+    map_info.Print();
+  }
   LoadAndMap(GetSystemDRAMAllocator(), user_page_table, map_info, phdr_map_info,
              kPageAttrUser, false);
 
@@ -187,7 +189,9 @@ Process& LoadELFAndCreateEphemeralProcess(EFIFile& file) {
           kPageAttrPresent | kPageAttrWritable) +
       kPageSize * kKernelStackPagesForEachProcess;
 
-  PutStringAndHex("Kernel stack pointer", kernel_stack_pointer);
+  if (liumos->debug_mode_enabled) {
+    PutStringAndHex("Kernel stack pointer", kernel_stack_pointer);
+  }
 
   ctx.SetRegisters(reinterpret_cast<void (*)(void)>(entry_point),
                    GDT::kUserCS64Selector, stack_pointer, GDT::kUserDSSelector,
