@@ -74,7 +74,7 @@ static ssize_t sys_recvfrom(int64_t,
       size_t ip_data_size = packet.size - sizeof(EtherFrame);
       size_t copy_size = std::min(ip_data_size, buf_size);
       memcpy(buf, &packet.data[sizeof(EtherFrame)], copy_size);
-      return packet.size;
+      return ip_data_size;
     }
     Sleep();
   }
