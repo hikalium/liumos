@@ -8,6 +8,42 @@
 
 class Network {
  public:
+  //
+  // Ethernet
+  //
+  packed_struct EtherAddr {
+    uint8_t mac[6];
+    //
+    bool IsEqualTo(EtherAddr to) const {
+      return *reinterpret_cast<const uint32_t*>(mac) ==
+                 *reinterpret_cast<const uint32_t*>(to.mac) &&
+             *reinterpret_cast<const uint16_t*>(&mac[4]) ==
+                 *reinterpret_cast<const uint16_t*>(&to.mac[4]);
+    }
+    bool operator==(const EtherAddr& rhs) const { return IsEqualTo(rhs); }
+    void Print() const;
+  };
+  static constexpr EtherAddr kBroadcastEtherAddr = {0xFF, 0xFF, 0xFF,
+                                                    0xFF, 0xFF, 0xFF};
+  packed_struct EtherFrame {
+    EtherAddr dst;
+    EtherAddr src;
+    uint8_t eth_type[2];
+    //
+    static constexpr uint8_t kTypeARP[2] = {0x08, 0x06};
+    static constexpr uint8_t kTypeIPv4[2] = {0x08, 0x00};
+    void SetEthType(const uint8_t(&etype)[2]) {
+      eth_type[0] = etype[0];
+      eth_type[1] = etype[1];
+    }
+    bool HasEthType(const uint8_t(&etype)[2]) {
+      return eth_type[0] == etype[0] && eth_type[1] == etype[1];
+    }
+  };
+
+  //
+  // IPv4
+  //
   packed_struct IPv4Addr {
     uint8_t addr[4];
     bool IsEqualTo(IPv4Addr to) const {
@@ -36,41 +72,12 @@ class Network {
       return std::hash<uint32_t>{}(*reinterpret_cast<const uint32_t*>(v.addr));
     }
   };
-  static constexpr Network::IPv4Addr kBroadcastIPv4Addr = {0xFF, 0xFF, 0xFF,
-                                                           0xFF};
-  static constexpr Network::IPv4Addr kWildcardIPv4Addr = {0x00, 0x00, 0x00,
-                                                          0x00};
+  static constexpr IPv4Addr kBroadcastIPv4Addr = {0xFF, 0xFF, 0xFF, 0xFF};
+  static constexpr IPv4Addr kWildcardIPv4Addr = {0x00, 0x00, 0x00, 0x00};
 
-  packed_struct EtherAddr {
-    uint8_t mac[6];
-    //
-    bool IsEqualTo(EtherAddr to) const {
-      return *reinterpret_cast<const uint32_t*>(mac) ==
-                 *reinterpret_cast<const uint32_t*>(to.mac) &&
-             *reinterpret_cast<const uint16_t*>(&mac[4]) ==
-                 *reinterpret_cast<const uint16_t*>(&to.mac[4]);
-    }
-    bool operator==(const EtherAddr& rhs) const { return IsEqualTo(rhs); }
-    void Print() const;
-  };
-  static constexpr EtherAddr kBroadcastEtherAddr = {0xFF, 0xFF, 0xFF,
-                                                    0xFF, 0xFF, 0xFF};
-  packed_struct EtherFrame {
-    Network::EtherAddr dst;
-    Network::EtherAddr src;
-    uint8_t eth_type[2];
-    //
-    static constexpr uint8_t kTypeARP[2] = {0x08, 0x06};
-    static constexpr uint8_t kTypeIPv4[2] = {0x08, 0x00};
-    void SetEthType(const uint8_t(&etype)[2]) {
-      eth_type[0] = etype[0];
-      eth_type[1] = etype[1];
-    }
-    bool HasEthType(const uint8_t(&etype)[2]) {
-      return eth_type[0] == etype[0] && eth_type[1] == etype[1];
-    }
-  };
-
+  //
+  // Checksum
+  //
   packed_struct InternetChecksum {
     // https://tools.ietf.org/html/rfc1071
     uint8_t csum[2];
