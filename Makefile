@@ -51,7 +51,9 @@ APPS=\
 	 app/fizzbuzz/fizzbuzz.bin \
 	 app/ping/ping.bin \
 	 app/argstest/argstest.bin \
-	 app/readtest/readtest.bin
+	 app/readtest/readtest.bin \
+	 app/http/http_server.bin \
+	 app/http/http_client.bin
 
 ifdef SSH_CONNECTION
 QEMU_ARGS+= -vnc :5,password

@@ -18,7 +18,7 @@ void start() {
   address.sin_addr.s_addr = INADDR_ANY;
   address.sin_port = htons(PORT);
 
-  if (bind(socket_fd, (struct sockaddr_in *) &address, addrlen) == -1) {
+  if (bind(socket_fd, (struct sockaddr *) &address, addrlen) == -1) {
     write(1, "error: fail to bind socket\n", 27);
     close(socket_fd);
     exit(1);
@@ -34,7 +34,7 @@ void start() {
 
   while (1) {
     write(1, "LOG: wait a message from client\n", 32);
-    if ((accepted_socket = accept(socket_fd, (struct sockaddr_in *)&address, (socklen_t*)&addrlen)) == -1) {
+    if ((accepted_socket = accept(socket_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) == -1) {
       write(1, "error: fail to accept socket\n", 29);
       close(socket_fd);
       close(accepted_socket);
@@ -42,17 +42,14 @@ void start() {
       return;
     }
 
-    char request[1024];
-    int size = read(accepted_socket, request, 1024);
-    request[size] = '\n';
-    write(1, request, size+1);
+    char request[1024]; int size = read(accepted_socket, request, 1024);
+    write(1, request, size);
 
     char* response = "HTTP/1.1 200 OK";
-    sendto(accepted_socket, response, my_strlen(response), 0, (struct sockaddr_in *) &address, addrlen);
+    sendto(accepted_socket, response, my_strlen(response), 0, (struct sockaddr *) &address, addrlen);
 
     close(accepted_socket);
   }
-
 }
 
 int main(int argc, char *argv[]) {

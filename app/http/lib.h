@@ -5,6 +5,9 @@
 
 #define AF_INET 2 // Internet IP protocol
 #define SOCK_STREAM 1 // Stream (connection) socket
+#define SO_RCVTIMEO 20
+#define SO_SNDTIMEO 21
+#define SOL_SOCKET  1
 
 #define INADDR_ANY ((unsigned long int) 0x00000000)
 
@@ -31,6 +34,13 @@ struct in_addr {
 };
 
 // c.f.
+// https://elixir.bootlin.com/linux/v5.4.66/source/include/uapi/linux/time.h#L16
+struct timeval {
+  long tv_sec;
+  long tv_usec;
+};
+
+// c.f.
 // https://elixir.bootlin.com/linux/v4.15/source/include/uapi/linux/in.h#L232
 struct sockaddr_in {
   uint16_t sin_family;
@@ -41,21 +51,28 @@ struct sockaddr_in {
   // https://elixir.bootlin.com/linux/v4.15/source/include/uapi/linux/in.h#L231
 };
 
+// c.f.
+// https://elixir.bootlin.com/linux/v5.4.66/source/include/linux/socket.h#L31
+struct sockaddr {
+  unsigned short sa_family;  /* address family, AF_xxx   */
+  char sa_data[14];    /* 14 bytes of protocol address */
+};
+
 // System call functions.
 ssize_t read(int fd, void *buf, size_t count);
 ssize_t write(int fd, void *buf, size_t count);
 int close(int fd);
 int socket(int domain, int type, int protocol);
-int connect(int sockfd, struct sockaddr_in *addr,
+int connect(int sockfd, struct sockaddr *addr,
             socklen_t addrlen);
-int accept(int sockfd, struct sockaddr_in *addr, socklen_t *addrlen);
+int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
 ssize_t sendto(int sockfd,
                void *buf,
                size_t len,
                int flags,
-               struct sockaddr_in *dest_addr,
+               struct sockaddr *dest_addr,
                socklen_t addrlen);
-int bind(int sockfd, struct sockaddr_in *addr,
+int bind(int sockfd, struct sockaddr *addr,
          socklen_t addrlen);
 int listen(int sockfd, int backlog);
 int setsockopt(int sockfd, int level, int optname, const void *optval, socklen_t optlen);
