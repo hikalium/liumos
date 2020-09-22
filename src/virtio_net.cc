@@ -224,9 +224,9 @@ static void SendICMPEchoReply(const ICMPPacket& req, size_t req_frame_size) {
   p.SetSourcePort(12345);
   p.SetDataSize(strlen(s));
   p.csum.Clear();
-  p.csum =
-      Net::CalcUDPChecksum(&p, offsetof(IPv4UDPPacket, src_port), packet_size,
-                           req.ip.dst_ip, req.ip.src_ip, p.length);
+  p.csum = Network::CalcUDPChecksum(&p, offsetof(IPv4UDPPacket, src_port),
+                                    packet_size, req.ip.dst_ip, req.ip.src_ip,
+                                    p.length);
   // Setup IP
   p.ip.protocol = IPv4Packet::Protocol::kUDP;
   p.ip.SetDataLength(packet_size - sizeof(IPv4Packet));
