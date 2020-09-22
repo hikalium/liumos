@@ -23,6 +23,8 @@ class Net {
   };
   using InternetChecksum = Network::InternetChecksum;
   using EtherFrame = Network::EtherFrame;
+  using IPv4Packet = Network::IPv4Packet;
+  using ICMPPacket = Network::ICMPPacket;
   packed_struct ARPPacket {
     EtherFrame eth;
     uint8_t hw_type[2];
@@ -103,50 +105,6 @@ class Net {
       op[0] = 0x00;
       op[1] = 0x02;  // Reply
     }
-  };
-  packed_struct IPv4Packet {
-    enum class Protocol : uint8_t {
-      kICMP = 1,
-      kTCP = 6,
-      kUDP = 17,
-    };
-
-    EtherFrame eth;
-    uint8_t version_and_ihl;
-    uint8_t dscp_and_ecn;
-    uint8_t length[2];
-    uint16_t ident;
-    uint16_t flags;
-    uint8_t ttl;
-    Protocol protocol;
-    InternetChecksum csum;  // for this header
-    Network::IPv4Addr src_ip;
-    Network::IPv4Addr dst_ip;
-
-    void SetDataLength(uint16_t size) {
-      size += sizeof(IPv4Packet) - sizeof(EtherFrame);  // IP header size
-      size = (size + 1) & ~1;                           // make size odd
-      length[0] = size >> 8;
-      length[1] = size & 0xFF;
-    }
-    void CalcAndSetChecksum() {
-      csum.Clear();
-      csum = Network::InternetChecksum::Calc(
-          this, offsetof(IPv4Packet, version_and_ihl), sizeof(IPv4Packet));
-    }
-  };
-  packed_struct ICMPPacket {
-    enum class Type : uint8_t {
-      kEchoReply = 0,
-      kEchoRequest = 8,
-    };
-
-    IPv4Packet ip;
-    Type type;
-    uint8_t code;
-    InternetChecksum csum;
-    uint16_t identifier;
-    uint16_t sequence;
   };
   packed_struct IPv4UDPPacket {
     IPv4Packet ip;
@@ -232,7 +190,7 @@ class Net {
       udp.ip.ident = 0x426b;
       udp.ip.flags = 0;
       udp.ip.ttl = 0xFF;
-      udp.ip.protocol = Net::IPv4Packet::Protocol::kUDP;
+      udp.ip.protocol = IPv4Packet::Protocol::kUDP;
       udp.ip.src_ip = Network::kWildcardIPv4Addr;
       udp.ip.dst_ip = Network::kBroadcastIPv4Addr;
       udp.ip.CalcAndSetChecksum();

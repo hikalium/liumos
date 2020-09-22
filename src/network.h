@@ -42,6 +42,37 @@ class Network {
   };
 
   //
+  // Checksum
+  //
+  packed_struct InternetChecksum {
+    // https://tools.ietf.org/html/rfc1071
+    uint8_t csum[2];
+
+    void Clear() {
+      csum[0] = 0;
+      csum[1] = 0;
+    }
+    bool IsEqualTo(InternetChecksum to) const {
+      return *reinterpret_cast<const uint16_t*>(csum) ==
+             *reinterpret_cast<const uint16_t*>(to.csum);
+    }
+    static InternetChecksum Calc(void* buf, size_t start, size_t end) {
+      // https://tools.ietf.org/html/rfc1071
+      uint8_t* p = reinterpret_cast<uint8_t*>(buf);
+      uint32_t sum = 0;
+      for (size_t i = start; i < end; i += 2) {
+        sum += (static_cast<uint16_t>(p[i + 0])) << 8 | p[i + 1];
+      }
+      while (sum >> 16) {
+        sum = (sum & 0xffff) + (sum >> 16);
+      }
+      sum = ~sum;
+      return {static_cast<uint8_t>((sum >> 8) & 0xFF),
+              static_cast<uint8_t>(sum & 0xFF)};
+    }
+  };
+
+  //
   // IPv4
   //
   packed_struct IPv4Addr {
@@ -75,35 +106,53 @@ class Network {
   static constexpr IPv4Addr kBroadcastIPv4Addr = {0xFF, 0xFF, 0xFF, 0xFF};
   static constexpr IPv4Addr kWildcardIPv4Addr = {0x00, 0x00, 0x00, 0x00};
 
-  //
-  // Checksum
-  //
-  packed_struct InternetChecksum {
-    // https://tools.ietf.org/html/rfc1071
-    uint8_t csum[2];
+  packed_struct IPv4Packet {
+    enum class Protocol : uint8_t {
+      kICMP = 1,
+      kTCP = 6,
+      kUDP = 17,
+    };
 
-    void Clear() {
-      csum[0] = 0;
-      csum[1] = 0;
+    EtherFrame eth;
+    uint8_t version_and_ihl;
+    uint8_t dscp_and_ecn;
+    uint8_t length[2];
+    uint16_t ident;
+    uint16_t flags;
+    uint8_t ttl;
+    Protocol protocol;
+    InternetChecksum csum;  // for this header
+    IPv4Addr src_ip;
+    IPv4Addr dst_ip;
+
+    void SetDataLength(uint16_t size) {
+      size += sizeof(IPv4Packet) - sizeof(EtherFrame);  // IP header size
+      size = (size + 1) & ~1;                           // make size odd
+      length[0] = size >> 8;
+      length[1] = size & 0xFF;
     }
-    bool IsEqualTo(InternetChecksum to) const {
-      return *reinterpret_cast<const uint16_t*>(csum) ==
-             *reinterpret_cast<const uint16_t*>(to.csum);
+    void CalcAndSetChecksum() {
+      csum.Clear();
+      csum = InternetChecksum::Calc(this, offsetof(IPv4Packet, version_and_ihl),
+                                    sizeof(IPv4Packet));
     }
-    static InternetChecksum Calc(void* buf, size_t start, size_t end) {
-      // https://tools.ietf.org/html/rfc1071
-      uint8_t* p = reinterpret_cast<uint8_t*>(buf);
-      uint32_t sum = 0;
-      for (size_t i = start; i < end; i += 2) {
-        sum += (static_cast<uint16_t>(p[i + 0])) << 8 | p[i + 1];
-      }
-      while (sum >> 16) {
-        sum = (sum & 0xffff) + (sum >> 16);
-      }
-      sum = ~sum;
-      return {static_cast<uint8_t>((sum >> 8) & 0xFF),
-              static_cast<uint8_t>(sum & 0xFF)};
-    }
+  };
+
+  //
+  // ICMP
+  //
+  packed_struct ICMPPacket {
+    enum class Type : uint8_t {
+      kEchoReply = 0,
+      kEchoRequest = 8,
+    };
+
+    IPv4Packet ip;
+    Type type;
+    uint8_t code;
+    InternetChecksum csum;
+    uint16_t identifier;
+    uint16_t sequence;
   };
 
   //
