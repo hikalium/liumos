@@ -332,6 +332,7 @@ extern "C" void KernelEntry(LiumOS* liumos_passed, LoaderInfo& loader_info) {
 
   CreateAndLaunchKernelTask(SubTask);
   CreateAndLaunchKernelTask(NetworkManager);
+  CreateAndLaunchKernelTask(MouseManager);
 
   EnableSyscall();
 
