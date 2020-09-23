@@ -9,6 +9,14 @@
 
 #define PORT 8888
 
+char *method;
+char *uri;
+char *protocol;
+
+void route(char *path, char *response) {
+  strcpy(response, "HTTP/1.1 200 OK\n");
+}
+
 void start() {
   int socket_fd, accepted_socket;
   struct sockaddr_in address;
@@ -56,15 +64,21 @@ void start() {
     int size = read(accepted_socket, request, 1024);
     write(1, request, size);
 
-    char* response = "HTTP/1.1 200 OK";
+    char *method = strtok(request, " ");
+    char *uri = strtok(NULL, " ");
+    char *protocol = strtok(NULL, " ");
+
+    char *host = strtok(uri, "/");
+    char *path = strtok(NULL, "/");
+
+    char* response = (char *) malloc(10000);
+
+    route(path, response);
+
     sendto(accepted_socket, response, strlen(response), 0, (struct sockaddr *) &address, addrlen);
 
     close(accepted_socket);
   }
-}
-
-void route() {
-
 }
 
 int main(int argc, char *argv[]) {
