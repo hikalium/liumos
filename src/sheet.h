@@ -13,7 +13,8 @@ class Sheet {
             int x = 0,
             int y = 0) {
     parent_ = nullptr;
-    front_ = nullptr;
+    below_ = nullptr;
+    children_ = nullptr;
     buf_ = buf;
     rect_.xsize = xsize;
     rect_.ysize = ysize;
@@ -21,8 +22,12 @@ class Sheet {
     rect_.x = x;
     rect_.y = y;
   }
-  void SetParent(Sheet* parent) { parent_ = parent; }
-  void SetFront(Sheet* front) { front_ = front; }
+  void SetParent(Sheet* parent) {
+    // Insert at front
+    below_ = parent->children_;
+    parent_ = parent;
+    parent->children_ = this;
+  }
   int GetXSize() { return rect_.xsize; }
   int GetYSize() { return rect_.ysize; }
   int GetPixelsPerScanLine() { return pixels_per_scan_line_; }
@@ -44,7 +49,8 @@ class Sheet {
     return rect_.y <= y && y < rect_.y + rect_.ysize && rect_.x <= x &&
            x < rect_.x + rect_.xsize;
   }
-  Sheet *parent_, *front_;
+  void TransferLineFrom(Sheet& src, int py, int px, int w);
+  Sheet *parent_, *below_, *children_;
   uint32_t* buf_;
   Rect rect_;
   int pixels_per_scan_line_;

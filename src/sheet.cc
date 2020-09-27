@@ -26,64 +26,70 @@ void Sheet::BlockTransfer(int to_x,
   Flush(to_x, to_y, w, h);
 }
 
-void Sheet::Flush(int tx, int ty, int tw, int th) {
-  // Transfer (ax, ay)(aw * ah) area to parent
-  if (!parent_)
+void Sheet::TransferLineFrom(Sheet& src, int py, int px, int w) {
+  // Transfer line range [px, px + w) at row py from src.
+  // px, py is coordinates on this sheet.
+  // Given range shold be in src sheet.
+  if (w <= 0)
     return;
-  auto [ax, ay, aw, ah] = GetClientRect().GetIntersectionWith({tx, ty, tw, th});
-  if (aw <= 0 || ah <= 0) {
-    // the area cannot be negative
-    return;
-  }
-  assert(0 <= ax && 0 <= ay && (ax + aw) <= rect_.xsize &&
-         (ay + ah) <= rect_.ysize);
-  const int px = ax + rect_.x;
-  const int py = ay + rect_.y;
-  if (px >= parent_->rect_.xsize || py >= parent_->rect_.ysize ||
-      (px + aw) < 0 || (py + ah) < 0) {
-    // This sheet has no intersections with its parent.
-    return;
-  }
-  for (int y = py; y < py + ah; y++) {
-    if (!parent_->IsInRectY(y))
-      continue;
-    const int begin = (0 < px) ? px : 0;
-    const int end =
-        (px + aw < parent_->rect_.xsize) ? (px + aw) : parent_->rect_.xsize;
-    const int tw = end - begin;
-    assert(tw > 0);
-    int tbegin = begin;
-    for (int x = begin; x < end; x++) {
-      bool is_overlapped = false;
-      for (Sheet* s = front_; s && !is_overlapped; s = s->front_) {
-        is_overlapped = s->IsInRectOnParent(x, y);
-      }
-      if (is_overlapped) {
-        int tend = x;
-        if (tend - tbegin) {
-          RepeatMove4Bytes(
-              tend - tbegin,
-              &parent_->buf_[y * parent_->pixels_per_scan_line_ + tbegin],
-              &buf_[(y - rect_.y) * pixels_per_scan_line_ +
-                    (tbegin - rect_.x)]);
-        }
-        tbegin = x + 1;
-        continue;
-      }
-    }
-    int tend = end;
-    if (tend - tbegin) {
-      if ((tend - tbegin) & 1) {
-        RepeatMove4Bytes(
-            tend - tbegin,
-            &parent_->buf_[y * parent_->pixels_per_scan_line_ + tbegin],
-            &buf_[(y - rect_.y) * pixels_per_scan_line_ + (tbegin - rect_.x)]);
-      } else {
-        RepeatMove8Bytes(
-            (tend - tbegin) >> 1,
-            &parent_->buf_[y * parent_->pixels_per_scan_line_ + tbegin],
-            &buf_[(y - rect_.y) * pixels_per_scan_line_ + (tbegin - rect_.x)]);
-      }
-    }
+  if (w & 1) {
+    RepeatMove4Bytes(w, &buf_[py * pixels_per_scan_line_ + px],
+                     &src.buf_[(py - src.rect_.y) * src.pixels_per_scan_line_ +
+                               (px - src.rect_.x)]);
+  } else {
+    RepeatMove8Bytes(w >> 1, &buf_[py * pixels_per_scan_line_ + px],
+                     &src.buf_[(py - src.rect_.y) * src.pixels_per_scan_line_ +
+                               (px - src.rect_.x)]);
   }
 }
+
+void Sheet::Flush(int rx, int ry, int rw, int rh) {
+  // Transfer (ax, ay)(aw * ah) area in this sheet to parent
+  if (!parent_)
+    return;
+  auto local_area = GetClientRect().GetIntersectionWith({rx, ry, rw, rh});
+  // calc area rect in parent
+  auto [tx, ty, tw, th] = parent_->GetClientRect().GetIntersectionWith(
+      {local_area.x + rect_.x, local_area.y + rect_.y, local_area.xsize,
+       local_area.ysize});
+  if (tw <= 0 || th <= 0) {
+    // No need to flush when the given area is empty
+    return;
+  }
+  assert(0 <= tx && 0 <= ty && (tx + tw) <= parent_->rect_.xsize &&
+         (ty + th) <= parent_->rect_.ysize);
+  for (int y = ty; y < ty + th; y++) {
+    int tbegin = tx;
+    for (int x = tx; x < tx + tw; x++) {
+      bool is_covered = false;
+      for (Sheet* s = parent_->children_; s && s != this; s = s->below_) {
+        if (s->IsInRectOnParent(x, y)) {
+          is_covered = true;
+          break;
+        }
+      }
+      if (!is_covered)
+        continue;
+      parent_->TransferLineFrom(*this, y, tbegin, x - tbegin);
+      tbegin = x + 1;
+    }
+    if (tx != tbegin) {
+      // this line is overwrapped with other sheets and already transfered in
+      // the loop above.
+      // Transfer last segment of line.
+      parent_->TransferLineFrom(*this, y, tbegin, (tx + tw) - tbegin);
+      continue;
+    }
+    parent_->TransferLineFrom(*this, y, tx, tw);
+  }
+}
+
+/*
+void Sheet::FlushRecursive(int rx, int ry, int rw, int rh) {
+  if (!parent_)
+    return;
+  Flush(rx, ry, rw, rh);
+  parent_.FlushRecursive(rx + ry, )
+
+}
+*/
