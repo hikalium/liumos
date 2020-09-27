@@ -9,12 +9,56 @@
 
 #define PORT 8888
 
-char *method;
-char *uri;
-char *protocol;
+void start_line(char *response, int status) {
+  switch (status) {
+    case 200:
+      strcpy(response, "HTTP/1.1 200 OK\n");
+      break;
+    case 404:
+      strcpy(response, "HTTP/1.1 404 Not Found\n");
+      break;
+    case 500:
+      strcpy(response, "HTTP/1.1 500 Internal Server Error\n");
+      break;
+    case 501:
+      strcpy(response, "HTTP/1.1 501 Not Implemented\n");
+      break;
+    default:
+      strcpy(response, "HTTP/1.1 404 Not Found\n");
+  }
+}
 
-void route(char *path, char *response) {
-  strcpy(response, "HTTP/1.1 200 OK\n");
+void headers(char *response) {
+  strcat(response, "Content-Type: text/html; charset=UTF-8\n");
+}
+
+void crlf(char *response) {
+  strcat(response, "\n");
+}
+
+void body(char *response, char *message) {
+  strcat(response, message);
+}
+
+void build_response(char *response, int status, char *message) {
+  // c.f.
+  // https://tools.ietf.org/html/rfc7230#section-3
+  // HTTP-message = start-line
+  //                *( header-field CRLF )
+  //                CRLF
+  //                [ message-body ]
+  start_line(response, status);
+  headers(response);
+  crlf(response);
+  body(response, message);
+}
+
+void route(char *response, char *path) {
+  if (strcmp(path, "/") == 0 || strcmp(path, "/index.html") == 0) {
+    build_response(response, 200, "<body><h1>Hello world!</h1></body>");
+    return;
+  }
+  build_response(response, 404, "<body><p>Page is not found.</p></body>");
 }
 
 void start() {
@@ -65,15 +109,16 @@ void start() {
     write(1, request, size);
 
     char *method = strtok(request, " ");
-    char *uri = strtok(NULL, " ");
+    char *path = strtok(NULL, " ");
     char *protocol = strtok(NULL, " ");
-
-    char *host = strtok(uri, "/");
-    char *path = strtok(NULL, "/");
 
     char* response = (char *) malloc(10000);
 
-    route(path, response);
+    if (strcmp(method, "GET") == 0) {
+      route(response, path);
+    } else {
+      build_response(response, 501, "Methods not GET are not supported.");
+    }
 
     sendto(accepted_socket, response, strlen(response), 0, (struct sockaddr *) &address, addrlen);
 
