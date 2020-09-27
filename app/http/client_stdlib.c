@@ -14,6 +14,33 @@ char *host = NULL;
 char *path = NULL;
 char *ip = NULL;
 
+void start_line(char *request) {
+  if (path) {
+    strcpy(request, "GET /");
+    strcat(request, path);
+    strcat(request, " HTTP/1.1\n");
+    return;
+  }
+  strcpy(request, "GET / HTTP/1.1\n");
+}
+
+void headers(char *request) {
+  if (host) {
+    strcat(request, "Host: ");
+    strcat(request, host);
+    strcat(request, "\n");
+    return;
+  }
+  strcat(request, "Host: localhost:8888\n");
+}
+
+void crlf(char *request) {
+  strcat(request, "\n");
+}
+
+void body(char *request) {
+}
+
 void send_request(char *request) {
   int socket_fd = 0;
   struct sockaddr_in address;
@@ -52,33 +79,6 @@ void send_request(char *request) {
   close(socket_fd);
 }
 
-void start_line(char *request) {
-  if (path) {
-    strcpy(request, "GET /");
-    strcat(request, path);
-    strcat(request, " HTTP/1.1\n");
-    return;
-  }
-  strcpy(request, "GET / HTTP/1.1\n");
-}
-
-void headers(char *request) {
-  if (host) {
-    strcat(request, "Host: ");
-    strcat(request, host);
-    strcat(request, "\n");
-    return;
-  }
-  strcat(request, "Host: localhost:8888\n");
-}
-
-void crlf(char *request) {
-  strcat(request, "\n");
-}
-
-void body(char *request) {
-}
-
 int main(int argc, char *argv[]) {
   if (argc != 1 && argc != 3) {
     write(1, "usage: client.bin [hostname] [ip]\n", 34);
@@ -88,8 +88,8 @@ int main(int argc, char *argv[]) {
   }
 
   if (argc == 3) {
-    char *uri = argv[1];
-    host = strtok(uri, "/");
+    char *url = argv[1];
+    host = strtok(url, "/");
     path = strtok(NULL, "/");
     ip = argv[2];
   }
@@ -109,9 +109,10 @@ int main(int argc, char *argv[]) {
 
   write(1, "----- request -----\n", 20);
   write(1, request, strlen(request));
-  write(1, "----- request -----\n", 20);
+  write(1, "----- response -----\n", 21);
 
   send_request(request);
+
   exit(0);
   return 0;
 }
