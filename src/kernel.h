@@ -11,6 +11,13 @@ PhysType v2p(VirtType v) {
 }
 
 template <typename T>
+T AllocKernelMemory(uint64_t byte_size) {
+  constexpr uint64_t kPageAttrKernelData = kPageAttrPresent | kPageAttrWritable;
+  return liumos->kernel_heap_allocator->AllocPages<T>(
+      ByteSizeToPageSize(byte_size), kPageAttrKernelData);
+}
+
+template <typename T>
 T AllocMemoryForMappedIO(uint64_t byte_size) {
   return liumos->kernel_heap_allocator->AllocPages<T>(
       ByteSizeToPageSize(byte_size), kPageAttrMemMappedIO);

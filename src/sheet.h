@@ -1,5 +1,6 @@
 #pragma once
 #include <stdint.h>
+#include "rect.h"
 
 class Sheet {
   friend class SheetPainter;
@@ -14,35 +15,37 @@ class Sheet {
     parent_ = nullptr;
     front_ = nullptr;
     buf_ = buf;
-    xsize_ = xsize;
-    ysize_ = ysize;
+    rect_.xsize = xsize;
+    rect_.ysize = ysize;
     pixels_per_scan_line_ = pixels_per_scan_line;
-    x_ = x;
-    y_ = y;
+    rect_.x = x;
+    rect_.y = y;
   }
   void SetParent(Sheet* parent) { parent_ = parent; }
   void SetFront(Sheet* front) { front_ = front; }
-  int GetXSize() { return xsize_; }
-  int GetYSize() { return ysize_; }
+  int GetXSize() { return rect_.xsize; }
+  int GetYSize() { return rect_.ysize; }
   int GetPixelsPerScanLine() { return pixels_per_scan_line_; }
   int GetBufSize() {
     // Assume bytes per pixel == 4
-    return ysize_ * pixels_per_scan_line_ * 4;
+    return rect_.ysize * pixels_per_scan_line_ * 4;
   }
   uint32_t* GetBuf() { return buf_; }
+  Rect GetRect() { return rect_; }
+  Rect GetClientRect() { return {0, 0, rect_.xsize, rect_.ysize}; }
   void BlockTransfer(int to_x, int to_y, int from_x, int from_y, int w, int h);
   // Flush fluhes the contents of sheet buf_ to its parent sheet.
   // This function is not recursive.
   void Flush(int px, int py, int w, int h);
 
  private:
-  bool IsInRectY(int y) { return 0 <= y && y < ysize_; }
+  bool IsInRectY(int y) { return 0 <= y && y < rect_.ysize; }
   bool IsInRectOnParent(int x, int y) {
-    return y_ <= y && y < y_ + ysize_ && x_ <= x && x < x_ + xsize_;
+    return rect_.y <= y && y < rect_.y + rect_.ysize && rect_.x <= x &&
+           x < rect_.x + rect_.xsize;
   }
   Sheet *parent_, *front_;
   uint32_t* buf_;
-  int xsize_, ysize_;
-  int x_, y_;
+  Rect rect_;
   int pixels_per_scan_line_;
 };

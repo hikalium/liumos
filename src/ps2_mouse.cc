@@ -106,15 +106,54 @@ void PS2MouseController::IntHandler(uint64_t, InterruptInfo*) {
   liumos->bsp_local_apic->SendEndOfInterrupt();
 }
 
+static void FixPositionInVRAM(int& px, int& py) {
+  assert(liumos->vram_sheet);
+  Sheet vram = *liumos->vram_sheet;
+  if (px < 0)
+    px = 0;
+  if (py < 0)
+    py = 0;
+  if (px >= vram.GetXSize())
+    px = vram.GetXSize() - 1;
+  if (py >= vram.GetYSize())
+    py = vram.GetYSize() - 1;
+}
+
+constexpr int kMouseCursorSize = 10;
+
+static void DrawMouseCursor(int& px, int& py) {
+  FixPositionInVRAM(px, py);
+  assert(liumos->vram_sheet);
+  Sheet vram = *liumos->vram_sheet;
+  Rect mrect = vram.GetRect().GetIntersectionWith(
+      {px, py, kMouseCursorSize, kMouseCursorSize});
+  for (int x = 0; x < mrect.xsize; x++) {
+    SheetPainter::DrawPoint(vram, px + x, py, 0x00FF00, false);
+  }
+  for (int y = 0; y < mrect.ysize; y++) {
+    SheetPainter::DrawPoint(vram, px, py + y, 0x00FF00, false);
+  }
+}
+
+static void MoveMouseCursor(int& px, int& py, int dx, int dy) {
+  // Erase cursor
+  liumos->screen_sheet->Flush(px, py, kMouseCursorSize, kMouseCursorSize);
+  // Move and redraw
+  px += dx;
+  py += dy;
+  DrawMouseCursor(px, py);
+}
+
 void MouseManager() {
   auto& mctrl = PS2MouseController::GetInstance();
+  int mx = 50, my = 50;
+  DrawMouseCursor(mx, my);
   for (;;) {
     if (mctrl.buffer.IsEmpty()) {
       Sleep();
       continue;
     }
     auto me = mctrl.buffer.Pop();
-    kprintf("Mouse %c%c%c %3d %3d\n", me.buttonL ? 'L' : 'l',
-            me.buttonC ? 'C' : 'c', me.buttonR ? 'R' : 'r', me.dx, me.dy);
+    MoveMouseCursor(mx, my, me.dx, me.dy);
   }
 }

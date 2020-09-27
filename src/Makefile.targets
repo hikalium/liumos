@@ -183,6 +183,7 @@ LIUMOS.ELF : $(KERNEL_OBJS) kernel.ld Makefile
 		-o LIUMOS.ELF -e KernelEntry -T kernel.ld $(KERNEL_OBJS)
 
 unittest: \
+	test_rect \
 	test_network \
 	test_virtio_net \
 	test_libfunc \

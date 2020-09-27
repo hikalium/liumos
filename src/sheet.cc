@@ -26,23 +26,30 @@ void Sheet::BlockTransfer(int to_x,
   Flush(to_x, to_y, w, h);
 }
 
-void Sheet::Flush(int fx, int fy, int w, int h) {
-  // Transfer (px, py)(w * h) area to parent
+void Sheet::Flush(int tx, int ty, int tw, int th) {
+  // Transfer (ax, ay)(aw * ah) area to parent
   if (!parent_)
     return;
-  assert(0 <= fx && 0 <= fy && (fx + w) <= xsize_ && (fy + h) <= ysize_);
-  const int px = fx + x_;
-  const int py = fy + y_;
-  if (px >= parent_->xsize_ || py >= parent_->ysize_ || (px + w) < 0 ||
-      (py + h) < 0) {
+  auto [ax, ay, aw, ah] = GetClientRect().GetIntersectionWith({tx, ty, tw, th});
+  if (aw <= 0 || ah <= 0) {
+    // the area cannot be negative
+    return;
+  }
+  assert(0 <= ax && 0 <= ay && (ax + aw) <= rect_.xsize &&
+         (ay + ah) <= rect_.ysize);
+  const int px = ax + rect_.x;
+  const int py = ay + rect_.y;
+  if (px >= parent_->rect_.xsize || py >= parent_->rect_.ysize ||
+      (px + aw) < 0 || (py + ah) < 0) {
     // This sheet has no intersections with its parent.
     return;
   }
-  for (int y = py; y < py + h; y++) {
+  for (int y = py; y < py + ah; y++) {
     if (!parent_->IsInRectY(y))
       continue;
     const int begin = (0 < px) ? px : 0;
-    const int end = (px + w < parent_->xsize_) ? (px + w) : parent_->xsize_;
+    const int end =
+        (px + aw < parent_->rect_.xsize) ? (px + aw) : parent_->rect_.xsize;
     const int tw = end - begin;
     assert(tw > 0);
     int tbegin = begin;
@@ -57,7 +64,8 @@ void Sheet::Flush(int fx, int fy, int w, int h) {
           RepeatMove4Bytes(
               tend - tbegin,
               &parent_->buf_[y * parent_->pixels_per_scan_line_ + tbegin],
-              &buf_[(y - y_) * pixels_per_scan_line_ + (tbegin - x_)]);
+              &buf_[(y - rect_.y) * pixels_per_scan_line_ +
+                    (tbegin - rect_.x)]);
         }
         tbegin = x + 1;
         continue;
@@ -69,12 +77,12 @@ void Sheet::Flush(int fx, int fy, int w, int h) {
         RepeatMove4Bytes(
             tend - tbegin,
             &parent_->buf_[y * parent_->pixels_per_scan_line_ + tbegin],
-            &buf_[(y - y_) * pixels_per_scan_line_ + (tbegin - x_)]);
+            &buf_[(y - rect_.y) * pixels_per_scan_line_ + (tbegin - rect_.x)]);
       } else {
         RepeatMove8Bytes(
             (tend - tbegin) >> 1,
             &parent_->buf_[y * parent_->pixels_per_scan_line_ + tbegin],
-            &buf_[(y - y_) * pixels_per_scan_line_ + (tbegin - x_)]);
+            &buf_[(y - rect_.y) * pixels_per_scan_line_ + (tbegin - rect_.x)]);
       }
     }
   }
