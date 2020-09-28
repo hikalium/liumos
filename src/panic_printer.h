@@ -11,6 +11,7 @@ class PanicPrinter {
  public:
   static void Init(void* buf, Sheet& sheet, SerialPort& serial) {
     pp_ = reinterpret_cast<PanicPrinter*>(buf);
+    new (pp_) PanicPrinter();
     pp_->sheet_ = &sheet;
     pp_->serial_ = &serial;
   }
@@ -22,8 +23,9 @@ class PanicPrinter {
     if (pp_->in_progress_) {
       pp_->PrintLine(
           "BeginPanic() called during panic printing. Double fault?");
+      pp_->Flush();
       for (;;) {
-        asm volatile("pause");
+        asm volatile("hlt; pause;");
       };
     }
     pp_->in_progress_ = true;
@@ -33,6 +35,7 @@ class PanicPrinter {
   [[noreturn]] void EndPanicAndDie(const char* s) {
     PrintLine(s);
     pp_->PrintLine("----  End  Panic ----");
+    pp_->Flush();
     Die();
   }
   void PrintLineWithHex(const char* s, uint64_t v) {
@@ -43,36 +46,49 @@ class PanicPrinter {
     PrintLine(line.GetString());
   }
   void PrintLine(const char* s) {
+    str_buf_.WriteString(s);
+    str_buf_.WriteString("\n");
+  }
+
+ private:
+  void Flush() {
+    const char* s = str_buf_.GetString();
     if (serial_) {
       for (int i = 0; s[i]; i++) {
         serial_->SendChar(s[i]);
       }
-      serial_->SendChar('\n');
     }
     if (!sheet_) {
       Die();
     }
-    SheetPainter::DrawRect(*sheet_, 0, cursor_y_, sheet_->GetXSize(), 16,
-                           0x800000, false);
-    for (int x = 0; x < sheet_->GetXSize() / 8; x++) {
-      if (!s[x])
-        break;
-      SheetPainter::DrawCharacterForeground(*sheet_, s[x], x * 8, cursor_y_,
-                                            0xFFFFFF, false);
-    }
+    int cursor_y = 0;
+    while (*s) {
+      SheetPainter::DrawRect(*sheet_, 0, cursor_y, sheet_->GetXSize(), 16,
+                             0x800000, false);
+      for (int x = 0; x < sheet_->GetXSize() / 8; x++) {
+        if (!*s)
+          break;
+        if (*s == '\n') {
+          s++;
+          break;
+        }
+        SheetPainter::DrawCharacterForeground(*sheet_, *s, x * 8, cursor_y,
+                                              0xFFFFFF, false);
+        s++;
+      }
 
-    cursor_y_ += 16;
-    if (cursor_y_ + 16 > sheet_->GetYSize()) {
-      cursor_y_ -= 16;
+      cursor_y += 16;
+      if (cursor_y + 16 > sheet_->GetYSize()) {
+        break;
+      }
     }
   }
-
- private:
   static PanicPrinter* pp_;
   Sheet* sheet_;
   SerialPort* serial_;
-  int cursor_y_;
   bool in_progress_;
+  static constexpr int kBufSize = 1024;
+  StringBuffer<kBufSize> str_buf_;
 
   PanicPrinter(){};
 };

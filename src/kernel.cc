@@ -119,7 +119,8 @@ void CreateAndLaunchKernelTask(void (*entry_point)()) {
           kNumOfStackPages, kPageAttrPresent | kPageAttrWritable);
   void* sub_context_rsp = reinterpret_cast<void*>(
       reinterpret_cast<uint64_t>(sub_context_stack_base) +
-      (kNumOfStackPages << kPageSizeExponent));
+      (kNumOfStackPages << kPageSizeExponent) - 8);
+  // -8 here for alignment (which is usually used to store return pointer)
 
   ExecutionContext& sub_context =
       *liumos->kernel_heap_allocator->Alloc<ExecutionContext>();
@@ -338,6 +339,9 @@ extern "C" void KernelEntry(LiumOS* liumos_passed, LoaderInfo& loader_info) {
 
   // XHCI::Controller::GetInstance().Init();
   Virtio::Net::GetInstance().Init();
+
+  Sheet vram = *liumos->vram_sheet;
+  kprintf("vram = %p\n", &vram);
 
   TextBox console_text_box;
   while (1) {
