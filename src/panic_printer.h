@@ -45,6 +45,13 @@ class PanicPrinter {
     line.WriteHex64(v);
     PrintLine(line.GetString());
   }
+  void PrintLineWithDecimal(const char* s, uint64_t v) {
+    StringBuffer<128> line;
+    line.WriteString(s);
+    line.WriteString(": ");
+    line.WriteDecimal64(v);
+    PrintLine(line.GetString());
+  }
   void PrintLine(const char* s) {
     str_buf_.WriteString(s);
     str_buf_.WriteString("\n");

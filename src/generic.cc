@@ -1,4 +1,5 @@
 #include "liumos.h"
+#include "panic_printer.h"
 
 [[noreturn]] void Panic(const char* s) {
   PutString("!!!! PANIC !!!!\n");
@@ -7,14 +8,13 @@
 }
 
 void __assert(const char* expr_str, const char* file, int line) {
-  PutString("Assertion failed: ");
-  PutString(expr_str);
-  PutString(" at ");
-  PutString(file);
-  PutString(":0x");
-  PutHex64(line);
-  PutString("\n");
-  Panic("halt...");
+  auto& pp = PanicPrinter::BeginPanic();
+
+  pp.PrintLine("Assertion failed:");
+  pp.PrintLine(expr_str);
+  pp.PrintLine(file);
+  pp.PrintLineWithDecimal("line", line);
+  pp.EndPanicAndDie("halt...");
 }
 
 bool IsEqualString(const char* a, const char* b) {

@@ -39,6 +39,19 @@ class StringBuffer {
       WriteChar(c);
     }
   }
+  void WriteDecimal64(uint64_t value) {
+    char s[20];
+    int i = 0;
+    for (; i < 20; i++) {
+      s[i] = value % 10;
+      value /= 10;
+      if (!value)
+        break;
+    }
+    for (; i >= 0; i--) {
+      WriteChar('0' + s[i]);
+    }
+  }
   void WriteHex64ZeroFilled(const uint64_t v) {
     int i;
     for (i = 15; i >= 0; i--) {
