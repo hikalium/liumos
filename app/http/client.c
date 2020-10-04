@@ -2,10 +2,41 @@
 
 #include "lib.h"
 
+char *host = NULL;
+char *path = NULL;
+char *ip = NULL;
+
+void request_line(char *request) {
+  if (path) {
+    my_strcpy(request, "GET /");
+    my_strcat(request, path);
+    my_strcat(request, " HTTP/1.1\n");
+    return;
+  }
+  my_strcpy(request, "GET / HTTP/1.1\n");
+}
+
+void headers(char *request) {
+  if (host) {
+    my_strcat(request, "Host: ");
+    my_strcat(request, host);
+    my_strcat(request, "\n");
+    return;
+  }
+  my_strcat(request, "Host: localhost:8888\n");
+}
+
+void crlf(char *request) {
+  my_strcat(request, "\n");
+}
+
+void body(char *request) {
+}
+
 void send_request(char *request) {
   int socket_fd = 0;
   struct sockaddr_in address;
-  char response[1024];
+  char response[10000];
 
   if ((socket_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
     write(1, "error: fail to create socket\n", 29);
@@ -23,8 +54,13 @@ void send_request(char *request) {
   */
 
   address.sin_family = AF_INET;
-  address.sin_addr.s_addr = INADDR_ANY;
-  address.sin_port = htons(PORT);
+  if (ip) {
+    address.sin_addr.s_addr = inet_addr(ip);
+    address.sin_port = htons(80);
+  } else {
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons(PORT);
+  }
 
   if (connect(socket_fd, (struct sockaddr *) &address, sizeof(address)) == -1) {
     write(1, "error: fail to connect socket\n", 30);
@@ -34,21 +70,47 @@ void send_request(char *request) {
   }
   sendto(socket_fd, request, my_strlen(request), 0, (struct sockaddr *) &address, sizeof(address));
 
-  int size = read(socket_fd, response, 1024);
+  int size = read(socket_fd, response, 10000);
   write(1, response, size);
   write(1, "\n", 1);
 
   close(socket_fd);
 }
 
-void start_line(char *request) {
-  my_strcpy(request, "GET /index.html HTTP/1.1\n");
-}
+int main(int argc, char** argv) {
+  if (argc != 1 && argc != 3) {
+    write(1, "usage: client.bin [hostname] [ip]\n", 34);
+    write(1, "       [hostname] and [ip] are optional and default value is localhost:8888\n", 76);
+    exit(1);
+    return 1;
+  }
 
-int main(int argc, char *argv[]) {
+  if (argc == 3) {
+    char *url = argv[1];
+    host = my_strtok(url, "/");
+    path = my_strtok(NULL, "/");
+    ip = argv[2];
+  }
+
   char *request = (char *) my_malloc(1000);
-  start_line(request);
+
+  // c.f.
+  // https://tools.ietf.org/html/rfc7230#section-3
+  // HTTP-message = start-line
+  //                *( header-field CRLF )
+  //                CRLF
+  //                [ message-body ]
+  request_line(request);
+  headers(request);
+  crlf(request);
+  body(request);
+
+  write(1, "----- request -----\n", 20);
+  write(1, request, my_strlen(request));
+  write(1, "----- response -----\n", 21);
+
   send_request(request);
+
   exit(0);
   return 0;
 }

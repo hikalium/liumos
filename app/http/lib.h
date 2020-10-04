@@ -3,6 +3,8 @@
 
 #include "stdint.h"
 
+#define NULL 0
+
 #define AF_INET 2 // Internet IP protocol
 #define SOCK_STREAM 1 // Stream (connection) socket
 #define SO_RCVTIMEO 20
@@ -15,6 +17,10 @@
 
 #define __bswap_16(x) \
   ((__uint16_t) ((((x) >> 8) & 0xff) | (((x) & 0xff) << 8)))
+
+#define __bswap_32(x) \
+  ((((x) & 0xff000000) >> 24) | (((x) & 0x00ff0000) >> 8) | \
+  (((x) & 0x0000ff00) << 8) | (((x) & 0x000000ff) << 24))
 
 #define MALLOC_MAX_SIZE 100000
 
@@ -76,14 +82,18 @@ int bind(int sockfd, struct sockaddr *addr,
          socklen_t addrlen);
 int listen(int sockfd, int backlog);
 int setsockopt(int sockfd, int level, int optname, const void *optval, socklen_t optlen);
-//ssize_t send(int sockfd, void* buf, size_t len, int flags);
 void exit(int);
 
 // Standard library functions.
 size_t my_strlen(char *s);
 char *my_strcpy(char *dest, char *src);
-// host to network short.
-uint16_t htons(uint16_t hostshort);
+char *my_strcat(char *dest, const char *src);
+char *my_strtok(char *str, char *delim);
 void *my_malloc(int n);
+// convert values between host and network byte order.
+uint16_t htons(uint16_t hostshort);
+uint32_t htonl(uint32_t hostlong);
+// Converts the Internet host address cp from IPv4 numbers-and-dots notation into binary data in network byte order.
+uint32_t inet_addr(const char *cp);
 
 #endif /* GRANDPARENT_H */

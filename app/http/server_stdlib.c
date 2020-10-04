@@ -9,7 +9,7 @@
 
 #define PORT 8888
 
-void start_line(char *response, int status) {
+void status_line(char *response, int status) {
   switch (status) {
     case 200:
       strcpy(response, "HTTP/1.1 200 OK\n");
@@ -47,7 +47,7 @@ void build_response(char *response, int status, char *message) {
   //                *( header-field CRLF )
   //                CRLF
   //                [ message-body ]
-  start_line(response, status);
+  status_line(response, status);
   headers(response);
   crlf(response);
   body(response, message);

@@ -19,31 +19,6 @@ read:
     syscall
     ret
 
-// ssize_t write(int fd, const void *buf, size_t count);
-.global write
-write:
-	mov rax, 0x1
-	syscall
-	ret
-
-// int close(int fd);
-.global close
-close:
-	mov rax, 0x3
-	// arg[1]: rdi = rdi
-	syscall
-	ret
-
-// int socket(int domain, int type, int protocol);
-.global socket
-socket:
-	// arg[1]: rdi = rdi
-	// arg[2]: rsi = rsi
-	// arg[3]: rdx = rdx
-	mov rax, 0x29
-	syscall
-	ret
-
 // int connect(int sockfd, const struct sockaddr *addr,
 //             socklen_t addrlen);
 .global connect
@@ -58,23 +33,6 @@ accept:
 	mov rax, 0x2b
     syscall
     ret
-
-// ssize_t sendto(
-//     int sockfd, const void *buf,
-//     size_t len, int flags,
-//     const struct sockaddr *dest_addr,
-//     socklen_t addrlen);
-.global sendto
-sendto:
-	mov rax, 0x2c
-	// arg[1]: rdi = rdi
-	// arg[2]: rsi = rsi
-	// arg[3]: rdx = rdx
-	mov r10, rcx
-	// arg[5]: r8 = r8
-	// arg[6]: r9 = r9
-	syscall
-	ret
 
 // int bind(int sockfd, const struct sockaddr *addr,
 //          socklen_t addrlen);
@@ -99,8 +57,3 @@ setsockopt:
 	mov r10, rcx
     syscall
     ret
-
-.global exit
-exit:
-	mov rax, 60
-	syscall

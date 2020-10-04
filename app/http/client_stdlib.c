@@ -14,7 +14,7 @@ char *host = NULL;
 char *path = NULL;
 char *ip = NULL;
 
-void start_line(char *request) {
+void request_line(char *request) {
   if (path) {
     strcpy(request, "GET /");
     strcat(request, path);
@@ -102,7 +102,7 @@ int main(int argc, char *argv[]) {
   //                *( header-field CRLF )
   //                CRLF
   //                [ message-body ]
-  start_line(request);
+  request_line(request);
   headers(request);
   crlf(request);
   body(request);
