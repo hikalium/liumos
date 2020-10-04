@@ -8,26 +8,26 @@ char *ip = NULL;
 
 void request_line(char *request) {
   if (path) {
-    my_strcpy(request, "GET /");
-    my_strcat(request, path);
-    my_strcat(request, " HTTP/1.1\n");
+    strcpy(request, "GET /");
+    strcat(request, path);
+    strcat(request, " HTTP/1.1\n");
     return;
   }
-  my_strcpy(request, "GET / HTTP/1.1\n");
+  strcpy(request, "GET / HTTP/1.1\n");
 }
 
 void headers(char *request) {
   if (host) {
-    my_strcat(request, "Host: ");
-    my_strcat(request, host);
-    my_strcat(request, "\n");
+    strcat(request, "Host: ");
+    strcat(request, host);
+    strcat(request, "\n");
     return;
   }
-  my_strcat(request, "Host: localhost:8888\n");
+  strcat(request, "Host: localhost:8888\n");
 }
 
 void crlf(char *request) {
-  my_strcat(request, "\n");
+  strcat(request, "\n");
 }
 
 void body(char *request) {
@@ -68,7 +68,7 @@ void send_request(char *request) {
     exit(1);
     return;
   }
-  sendto(socket_fd, request, my_strlen(request), 0, (struct sockaddr *) &address, sizeof(address));
+  sendto(socket_fd, request, strlen(request), 0, (struct sockaddr *) &address, sizeof(address));
 
   int size = read(socket_fd, response, 10000);
   write(1, response, size);
@@ -87,12 +87,12 @@ int main(int argc, char** argv) {
 
   if (argc == 3) {
     char *url = argv[1];
-    host = my_strtok(url, "/");
-    path = my_strtok(NULL, "/");
+    host = strtok(url, "/");
+    path = strtok(NULL, "/");
     ip = argv[2];
   }
 
-  char *request = (char *) my_malloc(1000);
+  char *request = (char *) malloc(1000);
 
   // c.f.
   // https://tools.ietf.org/html/rfc7230#section-3
@@ -106,7 +106,7 @@ int main(int argc, char** argv) {
   body(request);
 
   write(1, "----- request -----\n", 20);
-  write(1, request, my_strlen(request));
+  write(1, request, strlen(request));
   write(1, "----- response -----\n", 21);
 
   send_request(request);

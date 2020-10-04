@@ -46,7 +46,7 @@ void start() {
     write(1, request, size);
 
     char* response = "HTTP/1.1 200 OK";
-    sendto(accepted_socket, response, my_strlen(response), 0, (struct sockaddr *) &address, addrlen);
+    sendto(accepted_socket, response, strlen(response), 0, (struct sockaddr *) &address, addrlen);
 
     close(accepted_socket);
   }

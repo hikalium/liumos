@@ -1,6 +1,6 @@
 #include "lib.h"
 
-size_t my_strlen(char *s) {
+size_t strlen(const char *s) {
   size_t len = 0;
   while (*s) {
     len++;
@@ -9,7 +9,7 @@ size_t my_strlen(char *s) {
   return len;
 }
 
-char *my_strcpy(char *dest, char *src) {
+char *strcpy(char *dest, const char *src) {
   char *start = dest;
   while (*src) {
     *dest = *src;
@@ -19,15 +19,15 @@ char *my_strcpy(char *dest, char *src) {
   return start;
 }
 
-char *my_strcat(char *dest, const char *src) {
-  char* ptr = dest + my_strlen(dest);
+char *strcat(char *dest, const char *src) {
+  char* ptr = dest + strlen(dest);
   while (*src != '\0')
     *ptr++ = *src++;
   *ptr = '\0';
   return dest;
 }
 
-char *my_strtok(char *str, char *delim) {
+char *strtok(char *str, const char *delim) {
   static char *save_ptr;
 
   if (str == NULL)
@@ -36,7 +36,7 @@ char *my_strtok(char *str, char *delim) {
   char *start = str;
 
   while (*str) {
-    for (int i=0; i<my_strlen(delim); i++) {
+    for (int i=0; i<strlen(delim); i++) {
       if (*str == delim[i]) {
         *str = '\0';
         str++;
@@ -51,7 +51,7 @@ char *my_strtok(char *str, char *delim) {
   return start;
 }
 
-void *my_malloc(int n) {
+void *malloc(unsigned long n) {
   if (sizeof(malloc_array) < (malloc_size + n)) {
     write(1, "fail: malloc\n", 13);
     exit(1);

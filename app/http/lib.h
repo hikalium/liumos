@@ -85,11 +85,11 @@ int setsockopt(int sockfd, int level, int optname, const void *optval, socklen_t
 void exit(int);
 
 // Standard library functions.
-size_t my_strlen(char *s);
-char *my_strcpy(char *dest, char *src);
-char *my_strcat(char *dest, const char *src);
-char *my_strtok(char *str, char *delim);
-void *my_malloc(int n);
+size_t strlen(const char *s);
+char *strcpy(char *dest, const char *src);
+char *strcat(char *dest, const char *src);
+char *strtok(char *str, const char *delim);
+void *malloc(unsigned long n);
 // convert values between host and network byte order.
 uint16_t htons(uint16_t hostshort);
 uint32_t htonl(uint32_t hostlong);
