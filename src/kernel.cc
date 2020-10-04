@@ -177,7 +177,10 @@ void SwitchContext(InterruptInfo& int_info,
   if (from.cr3 == to.cr3)
     return;
   WriteCR3(to.cr3);
-  proc_last_time_count = liumos->hpet->ReadMainCounterValue();
+  // TODO: Investigate why this line causes #GP on pi.bin
+  // maybe ReadMainCounterValue accesses physical addr with
+  // user pagetable?
+  // proc_last_time_count = liumos->hpet->ReadMainCounterValue();
 }
 
 __attribute__((ms_abi)) extern "C" void SleepHandler(uint64_t,
@@ -339,9 +342,6 @@ extern "C" void KernelEntry(LiumOS* liumos_passed, LoaderInfo& loader_info) {
 
   // XHCI::Controller::GetInstance().Init();
   Virtio::Net::GetInstance().Init();
-
-  Sheet vram = *liumos->vram_sheet;
-  kprintf("vram = %p\n", &vram);
 
   TextBox console_text_box;
   while (1) {

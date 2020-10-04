@@ -165,6 +165,7 @@ void InitPaging() {
   CreatePageMapping(GetSystemDRAMAllocator(), *kernel_pml4,
                     liumos->cpu_features->kernel_phys_page_map_begin, 0,
                     direct_mapping_end, kPageAttrPresent | kPageAttrWritable);
+  liumos->direct_mapping_end_phys = direct_mapping_end;
 
   CreatePageMapping(GetSystemDRAMAllocator(), *kernel_pml4,
                     kLAPICRegisterAreaVirtBase, kLAPICRegisterAreaPhysBase,

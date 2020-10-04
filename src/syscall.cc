@@ -132,6 +132,7 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
       PutStringAndHex("exit: exit_code", exit_code);
     }
     liumos->scheduler->KillCurrentProcess();
+    Sleep();
     for (;;) {
       StoreIntFlagAndHalt();
     };

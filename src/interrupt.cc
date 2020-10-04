@@ -20,6 +20,15 @@ static void PrintInterruptInfo(PanicPrinter& pp,
   pp.PrintLineWithHex("RIP   ", info->int_ctx.rip);
   pp.PrintLineWithHex("RSP   ", info->int_ctx.rsp);
   pp.PrintLineWithHex("RBP   ", info->greg.rbp);
+  pp.PrintLineWithHex("CR3   ", ReadCR3());
+  uint64_t rbp = info->greg.rbp;
+  for (int i = 0; i < 5; i++) {
+    if (rbp < liumos->cpu_features->kernel_phys_page_map_begin) {
+      break;
+    }
+    pp.PrintLineWithHex("ret to", *reinterpret_cast<uint64_t*>(rbp + 8));
+    rbp = *reinterpret_cast<uint64_t*>(rbp);
+  }
   pp.PrintLineWithHex("Error Code", info->error_code);
   pp.PrintLine("");
 }
@@ -62,9 +71,9 @@ void IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
       // present but not ok. print entries.
       reinterpret_cast<IA_PML4*>(ReadCR3())->DebugPrintEntryForAddr(ReadCR2());
     }
-    Panic("Page Fault");
+    pp.PrintLine("Page Fault");
   }
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < 16; i++) {
     StringBuffer<128> line;
     line.WriteHex64ZeroFilled(info->int_ctx.rsp + i * 8);
     line.WriteString(": ");

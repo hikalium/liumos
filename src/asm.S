@@ -2,8 +2,8 @@
 
 // Microsoft x64 calling convention:
 //   args: rcx, rdx, r8, r9
-//   callee-saved: RBX, RBP, RDI, RSI, RSP, R12, R13, R14, R15
-//   caller-saved: RAX, RCX, RDX, R8, R9, R10, R11
+//   callee-saved(should be kept on return): RBX, RBP, RDI, RSI, RSP, R12, R13, R14, R15
+//   caller-saved(can be destroyed): RAX, RCX, RDX, R8, R9, R10, R11
 // System V AMD64 ABI:
 //   args: RDI, RSI, RDX, RCX, R8, R9
 //   callee-saved: RBX, RBP, R12, R13, R14, R15

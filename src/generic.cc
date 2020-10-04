@@ -2,14 +2,14 @@
 #include "panic_printer.h"
 
 [[noreturn]] void Panic(const char* s) {
-  PutString("!!!! PANIC !!!!\n");
-  PutString(s);
+  auto& pp = PanicPrinter::BeginPanic();
+  pp.PrintLine(s);
+  pp.EndPanicAndDie("halt...");
   Die();
 }
 
 void __assert(const char* expr_str, const char* file, int line) {
   auto& pp = PanicPrinter::BeginPanic();
-
   pp.PrintLine("Assertion failed:");
   pp.PrintLine(expr_str);
   pp.PrintLine(file);
