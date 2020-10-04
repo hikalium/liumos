@@ -24,6 +24,9 @@
 
 #define MALLOC_MAX_SIZE 100000
 
+#define SIZE_REQUEST 1000
+#define SIZE_RESPONSE 10000
+
 typedef long ssize_t;
 typedef unsigned long size_t;
 typedef _Bool bool;
@@ -88,6 +91,7 @@ void exit(int);
 size_t strlen(const char *s);
 char *strcpy(char *dest, const char *src);
 char *strcat(char *dest, const char *src);
+int strcmp(const char *s1, const char *s2);
 char *strtok(char *str, const char *delim);
 void *malloc(unsigned long n);
 // convert values between host and network byte order.

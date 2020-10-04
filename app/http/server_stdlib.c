@@ -8,6 +8,8 @@
 #include <unistd.h> 
 
 #define PORT 8888
+#define SIZE_REQUEST 1000
+#define SIZE_RESPONSE 10000
 
 void status_line(char *response, int status) {
   switch (status) {
@@ -104,15 +106,15 @@ void start() {
       return;
     }
 
-    char request[1024];
-    int size = read(accepted_socket, request, 1024);
+    char request[SIZE_REQUEST];
+    int size = read(accepted_socket, request, SIZE_REQUEST);
     write(1, request, size);
 
     char *method = strtok(request, " ");
     char *path = strtok(NULL, " ");
     char *protocol = strtok(NULL, " ");
 
-    char* response = (char *) malloc(10000);
+    char* response = (char *) malloc(SIZE_RESPONSE);
 
     if (strcmp(method, "GET") == 0) {
       route(response, path);

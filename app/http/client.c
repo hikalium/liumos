@@ -36,7 +36,7 @@ void body(char *request) {
 void send_request(char *request) {
   int socket_fd = 0;
   struct sockaddr_in address;
-  char response[10000];
+  char response[SIZE_RESPONSE];
 
   if ((socket_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
     write(1, "error: fail to create socket\n", 29);
@@ -70,7 +70,7 @@ void send_request(char *request) {
   }
   sendto(socket_fd, request, strlen(request), 0, (struct sockaddr *) &address, sizeof(address));
 
-  int size = read(socket_fd, response, 10000);
+  int size = read(socket_fd, response, SIZE_RESPONSE);
   write(1, response, size);
   write(1, "\n", 1);
 
@@ -92,7 +92,7 @@ int main(int argc, char** argv) {
     ip = argv[2];
   }
 
-  char *request = (char *) malloc(1000);
+  char *request = (char *) malloc(SIZE_REQUEST);
 
   // c.f.
   // https://tools.ietf.org/html/rfc7230#section-3
