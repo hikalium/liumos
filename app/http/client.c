@@ -1,6 +1,6 @@
 // HTTP client.
 
-#include "lib.h"
+#include "../liumlib/liumlib.h"
 
 char *host = NULL;
 char *path = NULL;

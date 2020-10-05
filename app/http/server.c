@@ -1,6 +1,6 @@
 // HTTP server.
 
-#include "lib.h"
+#include "../liumlib/liumlib.h"
 
 void status_line(char *response, int status) {
   switch (status) {

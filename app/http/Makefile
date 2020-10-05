@@ -2,10 +2,11 @@ TARGET_SERVER=http_server.bin
 TARGET_CLIENT=http_client.bin
 TARGET_SERVER_STDLIB=http_server_stdlib.bin
 TARGET_CLIENT_STDLIB=http_client_stdlib.bin
-OBJS_SERVER=server.o lib.o syscall.o ../liumlib/syscall.o ../liumlib/entry.o
-OBJS_CLIENT=client.o lib.o syscall.o ../liumlib/syscall.o ../liumlib/entry.o
+OBJS_SERVER=server.o syscall.o ../liumlib/liumlib.o ../liumlib/syscall.o ../liumlib/entry.o
+OBJS_CLIENT=client.o syscall.o ../liumlib/liumlib.o ../liumlib/syscall.o ../liumlib/entry.o
 SERVER_STDLIB=server_stdlib.c
 CLIENT_STDLIB=client_stdlib.c
+HEADERS=../liumlib/liumlib.h
 
 default: all
 
@@ -17,10 +18,10 @@ include ../liumlib/common.mk
 %.o : %.S Makefile
 	$(LLVM_CC) -target x86_64-unknown-none-elf -static -nostdlib -fPIE -B/usr/local/opt/llvm/bin/ -c -o $@ $*.S
 
-$(TARGET_SERVER): $(OBJS_SERVER) Makefile lib.h
+$(TARGET_SERVER): $(OBJS_SERVER) Makefile ${HEADERS}
 	$(LLVM_LD_LLD) -static --no-rosegment -e entry -o $@ $(OBJS_SERVER)
 
-$(TARGET_CLIENT): $(OBJS_CLIENT) Makefile lib.h
+$(TARGET_CLIENT): $(OBJS_CLIENT) Makefile ${HEADERS}
 	$(LLVM_LD_LLD) -static --no-rosegment -e entry -o $@ $(OBJS_CLIENT)
 
 $(TARGET_SERVER_STDLIB): $(SERVER_STDLIB)
