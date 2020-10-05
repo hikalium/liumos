@@ -636,6 +636,11 @@ void Run(TextBox& tbox) {
     }
     return;
   }
+  if (IsEqualString(args.GetArg(0), "dhcp")) {
+    SendDHCPRequest();
+    kprintf("DHCP request sent.\n");
+    return;
+  }
   if (IsEqualString(line, "hello")) {
     PutString("Hello, world!\n");
   } else if (IsEqualString(line, "reset")) {

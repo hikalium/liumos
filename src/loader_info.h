@@ -4,7 +4,7 @@
 
 class PhysicalPageAllocator;
 
-constexpr int kNumOfRootFiles = 16;
+constexpr int kNumOfRootFiles = 32;
 packed_struct LoaderInfo {
   PhysicalPageAllocator* dram_allocator;
   EFIFile root_files[kNumOfRootFiles];

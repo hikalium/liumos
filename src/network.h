@@ -417,3 +417,4 @@ class Network {
 void NetworkManager();
 void SendARPRequest(Network::IPv4Addr);
 void SendARPRequest(const char*);
+void SendDHCPRequest();

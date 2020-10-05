@@ -448,12 +448,6 @@ void Net::Init() {
     txq.SetDescriptor(i, AllocMemoryForMappedIO<void*>(kPageSize), kPageSize,
                       0 /* device read only */, 0);
   }
-
-  {
-    // Send DHCP
-    DHCPPacket& request = *GetNextTXPacketBuf<DHCPPacket*>(sizeof(DHCPPacket));
-    request.SetupRequest(GetSelfEtherAddr());
-    SendPacket();
-  }
+  SendDHCPRequest();
 }
 }  // namespace Virtio

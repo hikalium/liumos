@@ -9,4 +9,5 @@ mnt/
 *.txt
 *.o
 *.dat
+*.log
 cc_cache.gen.mk

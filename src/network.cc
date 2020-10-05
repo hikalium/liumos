@@ -63,3 +63,13 @@ void SendARPRequest(const char* ip_addr_str) {
   }
   SendARPRequest(*ip_addr);
 }
+
+void SendDHCPRequest() {
+  using DHCPPacket = Network::DHCPPacket;
+  auto& virtio_net = Virtio::Net::GetInstance();
+  // Send DHCP
+  DHCPPacket& request =
+      *virtio_net.GetNextTXPacketBuf<DHCPPacket*>(sizeof(DHCPPacket));
+  request.SetupRequest(virtio_net.GetSelfEtherAddr());
+  virtio_net.SendPacket();
+}
