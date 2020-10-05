@@ -1,7 +1,7 @@
-TARGET_SERVER=http_server.bin
-TARGET_CLIENT=http_client.bin
-TARGET_SERVER_STDLIB=http_server_stdlib.bin
-TARGET_CLIENT_STDLIB=http_client_stdlib.bin
+TARGET_SERVER=httpserver.bin
+TARGET_CLIENT=httpclient.bin
+TARGET_SERVER_STDLIB=httpserver_stdlib.bin
+TARGET_CLIENT_STDLIB=httpclient_stdlib.bin
 OBJS_SERVER=server.o syscall.o ../liumlib/liumlib.o ../liumlib/syscall.o ../liumlib/entry.o
 OBJS_CLIENT=client.o syscall.o ../liumlib/liumlib.o ../liumlib/syscall.o ../liumlib/entry.o
 SERVER_STDLIB=server_stdlib.c

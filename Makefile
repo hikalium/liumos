@@ -52,8 +52,8 @@ APPS=\
 	 app/ping/ping.bin \
 	 app/argstest/argstest.bin \
 	 app/readtest/readtest.bin \
-	 app/http/http_server.bin \
-	 app/http/http_client.bin
+	 app/http/httpserver.bin \
+	 app/http/httpclient.bin
 
 ifdef SSH_CONNECTION
 QEMU_ARGS+= -vnc :5,password

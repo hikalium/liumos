@@ -1,16 +1,16 @@
 # 簡易HTTPサーバー/クライアント
 
-1. Run the server by `./http_server.bin`.
-2. Run the client by `./http_client.bin` in another terminal.
+1. Run the server by `./httpserver.bin`.
+2. Run the client by `./httpclient.bin` in another terminal.
 3. You will see:
 
 ```
-$ ./http_server.bin
+$ ./httpserver.bin
 GET /index.html HTTP/1.1
 ```
 
 ```
-$ ./http_client.bin
+$ ./httpclient.bin
 HTTP/1.1 200 OK
 ```
 
@@ -22,7 +22,7 @@ $ dig example.com
 example.com.            5803    IN      A       93.184.216.34
 ...
 
-$ ./http_client.bin example.com 93.184.216.34
+$ ./httpclient.bin example.com 93.184.216.34
 ----- request -----
 GET / HTTP/1.1
 Host: example.com
