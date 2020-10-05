@@ -1,17 +1,4 @@
-#include <stdint.h>
-
-typedef unsigned long size_t;
-int write(int fd, const void*, size_t);
-void exit(int);
-
-size_t strlen(const char* s) {
-  size_t len = 0;
-  while (*s) {
-    len++;
-    s++;
-  }
-  return len;
-}
+#include "../liumlib/liumlib.h"
 
 void Print(const char* s) {
   write(1, s, strlen(s));

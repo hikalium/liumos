@@ -1,15 +1,9 @@
-TARGET=browser
+TARGET=browser.bin
 OBJS=browser.o rendering.o malloc.o syscall.o
 
 default: $(TARGET)
 
-#include ../../common.mk
-LLVM_CC:=/usr/local/opt/llvm/bin/clang
-LLVM_CXX:=/usr/local/opt/llvm/bin/clang++
-LLVM_LLD_LINK:=/usr/local/opt/llvm/bin/lld-link
-LLVM_LD_LLD:=/usr/local/opt/llvm/bin/ld.lld
-LLVM_AR:=/usr/local/opt/llvm/bin/llvm-ar
-LLVM_RANLIB:=/usr/local/opt/llvm/bin/llvm-ranlib
+include ../../common.mk
 
 test: make
 	./test.sh

@@ -38,6 +38,7 @@ class PanicPrinter {
     pp_->Flush();
     Die();
   }
+  // This comment avoids removing newline after EndPanicAndDie
   void PrintLineWithHex(const char* s, uint64_t v) {
     StringBuffer<128> line;
     line.WriteString(s);

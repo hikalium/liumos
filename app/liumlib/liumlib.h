@@ -5,11 +5,17 @@
 
 #define NULL 0
 
+#define EXIT_FAILURE 1
+
 #define AF_INET 2 // Internet IP protocol
 #define SOCK_STREAM 1 // Stream (connection) socket
 #define SO_RCVTIMEO 20
 #define SO_SNDTIMEO 21
 #define SOL_SOCKET  1
+// https://elixir.bootlin.com/linux/v4.15/source/include/uapi/linux/in.h#L31
+#define kIPTypeICMP 1
+// https://elixir.bootlin.com/linux/v4.15/source/include/linux/net.h#L66
+#define SOCK_RAW 3
 
 #define INADDR_ANY ((unsigned long int) 0x00000000)
 
@@ -69,7 +75,7 @@ struct sockaddr {
 
 // System call functions.
 ssize_t read(int fd, void *buf, size_t count);
-ssize_t write(int fd, void *buf, size_t count);
+ssize_t write(int fd, const void *buf, size_t count);
 int close(int fd);
 int socket(int domain, int type, int protocol);
 int connect(int sockfd, struct sockaddr *addr,
@@ -79,7 +85,7 @@ ssize_t sendto(int sockfd,
                void *buf,
                size_t len,
                int flags,
-               struct sockaddr *dest_addr,
+               const struct sockaddr *dest_addr,
                socklen_t addrlen);
 int bind(int sockfd, struct sockaddr *addr,
          socklen_t addrlen);

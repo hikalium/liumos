@@ -1,36 +1,13 @@
-#include <stdint.h>
+#include "../liumlib/liumlib.h"
 
 typedef uint32_t in_addr_t;
 typedef unsigned long size_t;
 typedef long ssize_t;
-typedef size_t socklen_t;
 
-#define NULL (0)
-#define EXIT_FAILURE 1
-// https://elixir.bootlin.com/linux/v4.15/source/include/uapi/linux/in.h#L31
-#define kIPTypeICMP 1
 // c.f.
 // https://elixir.bootlin.com/linux/v4.15/source/include/linux/socket.h#L164
 #define AF_INET 2
-// c.f. https://elixir.bootlin.com/linux/v4.15/source/include/linux/net.h#L66
-#define SOCK_RAW 3
 
-// c.f.
-// https://elixir.bootlin.com/linux/v4.15/source/include/uapi/linux/in.h#L85
-struct in_addr {
-  uint32_t s_addr;
-};
-// c.f.
-// https://elixir.bootlin.com/linux/v4.15/source/include/uapi/linux/in.h#L232
-// sockaddr_in means sockaddr for InterNet protocol(IP)
-struct sockaddr_in {
-  uint16_t sin_family;
-  uint16_t sin_port;
-  struct in_addr sin_addr;
-  uint8_t padding[8];
-  // c.f.
-  // https://elixir.bootlin.com/linux/v4.15/source/include/uapi/linux/in.h#L231
-};
 // See https://elixir.bootlin.com/linux/v4.15/source/include/linux/socket.h#L30
 struct sockaddr;
 
@@ -38,12 +15,6 @@ struct sockaddr;
 // https://elixir.bootlin.com/linux/v4.15/source/include/uapi/asm-generic/errno-base.h#L26
 
 int socket(int domain, int type, int protocol);
-ssize_t sendto(int sockfd,
-               const void* buf,
-               size_t len,
-               int flags,
-               const struct sockaddr* dest_addr,
-               socklen_t addrlen);
 ssize_t recvfrom(int sockfd,
                  void* buf,
                  size_t len,
@@ -51,17 +22,7 @@ ssize_t recvfrom(int sockfd,
                  struct sockaddr* dest_addr,
                  socklen_t* addrlen);
 int close(int fd);
-int write(int fd, const void*, size_t);
 void exit(int);
-
-size_t strlen(const char* s) {
-  size_t len = 0;
-  while (*s) {
-    len++;
-    s++;
-  }
-  return len;
-}
 
 in_addr_t MakeIPv4Addr(uint8_t a, uint8_t b, uint8_t c, uint8_t d) {
   // a.b.c.d -> in_addr_t (=uint32_t)
@@ -259,8 +220,9 @@ int main(int argc, char** argv) {
   }
   Print("\n");
 
-  struct IPHeader *ip = (struct IPHeader *)recv_buf;
-  struct ICMPMessage *recv_icmp = (struct ICMPMessage *)(recv_buf + sizeof(struct IPHeader));
+  struct IPHeader* ip = (struct IPHeader*)recv_buf;
+  struct ICMPMessage* recv_icmp =
+      (struct ICMPMessage*)(recv_buf + sizeof(struct IPHeader));
   Print("ICMP packet recieved from ");
   PrintIPv4Addr(ip->src_ip_addr);
   Print(" to ");
