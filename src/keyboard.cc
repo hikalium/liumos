@@ -116,7 +116,7 @@ uint16_t KeyboardController::ParseKeyCode(uint8_t keycode) {
       state_shift_ &= ~kStateShiftL;
       break;
     case kShiftR | kMaskBreak:
-      state_shift_ &= kStateShiftR;
+      state_shift_ &= ~kStateShiftR;
       break;
   }
   if (state_shift_) {
