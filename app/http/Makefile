@@ -37,7 +37,3 @@ all_on_linux: $(TARGET_SERVER) $(TARGET_CLIENT) $(TARGET_CLIENT_STDLIB) $(TARGET
 run_on_linux: all
 	sudo strace ./$(TARGET_SERVER_STDLIB)
 	sudo strace ./$(TARGET_CLIENT_STDLIB)
-
-clean:
-	rm *.o
-	rm *.bin

@@ -13,3 +13,6 @@ include ../../common.mk
 
 $(TARGET) : $(OBJS) Makefile
 	$(LLVM_LD_LLD) -static --no-rosegment -e main -o $@ $(OBJS)
+
+clean:
+	rm *.o *.bin ; true

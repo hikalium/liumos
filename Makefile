@@ -45,18 +45,6 @@ QEMU_ARGS_PMEM=\
 VNC_PASSWORD=a
 PORT_MONITOR=1240
 
-APPS=\
-	 app/argstest/argstest.bin \
-	 app/fizzbuzz/fizzbuzz.bin \
-	 app/hello/hello.bin \
-	 app/http/httpclient.bin \
-	 app/http/httpserver.bin \
-	 app/http/httpserver.bin \
-	 app/pi/pi.bin \
-	 app/ping/ping.bin \
-	 app/readtest/readtest.bin \
-	 app/udpserver/udpserver.bin
-
 ifdef SSH_CONNECTION
 QEMU_ARGS+= -vnc :5,password
 endif
@@ -78,13 +66,16 @@ pmem.img :
 app/% : .FORCE
 	make -C $(dir $@)
 
-files : src/BOOTX64.EFI $(APPS) src/LIUMOS.ELF .FORCE
+deploy_apps : .FORCE
+	make -C app/ deploy
+
+files : src/BOOTX64.EFI src/LIUMOS.ELF .FORCE
 	mkdir -p mnt/
 	-rm -rf mnt/*
 	mkdir -p mnt/EFI/BOOT
 	cp src/BOOTX64.EFI mnt/EFI/BOOT/
 	cp dist/* mnt/
-	cp $(APPS) mnt/
+	make deploy_apps
 	cp src/LIUMOS.ELF mnt/LIUMOS.ELF
 	make -C app/rusttest install
 	mkdir -p mnt/EFI/EFI/
@@ -147,20 +138,22 @@ serial :
 vnc :
 	open vnc://localhost:5900
 
-unittest :
-	make -C src unittest
+test :
+	make -C src test
+	make -C app test
 
 ci :
 	circleci config validate
 	circleci local execute
 
 clean :
-	make -C src clean
+	make -C src/ clean
+	make -C app/ clean
 
 format :
 	make -C src format
 
-commit_root : format unittest
+commit_root : format test
 	git add .
 	./scripts/ensure_objs_are_not_under_git_control.sh
 	git diff HEAD --color=always | less -R

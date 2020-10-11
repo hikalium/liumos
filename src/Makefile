@@ -25,7 +25,7 @@ clean_third_party :
 	-rm -rf third_party_build
 	-rm -rf third_party_root
 
-unittest:
+test:
 	make $(MAKE_ARGS) unittest
 
 format :

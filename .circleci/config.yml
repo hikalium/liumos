@@ -11,4 +11,4 @@ jobs:
                     apt update && apt install -y git build-essential wget clang-8 lld-8 libc++-8-dev libc++abi-8-dev
             - run:
                 name: Run unit test
-                command: make unittest
+                command: make test
