@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <unordered_map>
+#include <vector>
 
 #include "generic.h"
 #include "ring_buffer.h"
@@ -405,11 +406,33 @@ class Network {
 
   static Network& GetInstance();
 
+  //
+  // sockets
+  //
+  struct Socket {
+    uint64_t pid;
+    int fd;
+    enum class Type {
+      kICMP,
+      kUDP,
+    } type;
+  };
+
+  std::optional<Socket> FindSocket(uint64_t pid, int fd) {
+    for (auto& it : sockets_) {
+      if (it.pid == pid && it.fd == fd) {
+        return it;
+      }
+    }
+    return std::nullopt;
+  }
+
  private:
   static Network* network_;
 
   ARPTable arp_table_;
   RingBuffer<PacketContainer, kRXBufferSize> rx_buffer_;
+  std::vector<Socket> sockets_;
 
   Network(){};
 };

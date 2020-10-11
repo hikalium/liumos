@@ -12,12 +12,19 @@ constexpr uint64_t kSyscallIndex_sys_close = 3;
 constexpr uint64_t kSyscallIndex_sys_socket = 41;
 constexpr uint64_t kSyscallIndex_sys_sendto = 44;
 constexpr uint64_t kSyscallIndex_sys_recvfrom = 45;
+constexpr uint64_t kSyscallIndex_sys_bind = 49;
 constexpr uint64_t kSyscallIndex_sys_exit = 60;
 constexpr uint64_t kSyscallIndex_arch_prctl = 158;
 // constexpr uint64_t kArchSetGS = 0x1001;
 constexpr uint64_t kArchSetFS = 0x1002;
 // constexpr uint64_t kArchGetFS = 0x1003;
 // constexpr uint64_t kArchGetGS = 0x1004;
+
+// https://elixir.bootlin.com/linux/v4.15/source/include/uapi/asm-generic/errno-base.h#L6
+enum ErrorNumber {
+  kBadFileDescriptor = -9,
+  kInvalid = -22,
+};
 
 // c.f.
 // https://elixir.bootlin.com/linux/v4.15/source/include/uapi/linux/in.h#L232
@@ -30,6 +37,7 @@ struct sockaddr_in {
   // c.f.
   // https://elixir.bootlin.com/linux/v4.15/source/include/uapi/linux/in.h#L231
 };
+typedef uint32_t socklen_t;
 
 extern "C" uint64_t GetCurrentKernelStack(void) {
   ExecutionContext& ctx =
@@ -56,12 +64,16 @@ static bool IsICMPPacket(void* frame_data, size_t frame_size) {
   return true;
 }
 
-static ssize_t sys_recvfrom(int64_t,
+static ssize_t sys_recvfrom(int64_t sockfd,
                             void* buf,
                             size_t buf_size,
                             int64_t,
                             struct sockaddr_in*,
                             size_t*) {
+  if (sockfd != 3) {
+    kprintf("%s: sockfd = %d is not supported yet.\n", __func__, sockfd);
+    return -1;
+  }
   using EtherFrame = Network::EtherFrame;
   Network& network = Network::GetInstance();
   for (;;) {
@@ -78,6 +90,32 @@ static ssize_t sys_recvfrom(int64_t,
     Sleep();
   }
   return 0;
+}
+
+static int sys_socket(int domain, int type, int protocol) {
+  constexpr int kDomainIPv4 = 2;
+  constexpr int kTypeRawSocket = 3;
+  constexpr int kProtocolICMP = 1;
+  if (domain == kDomainIPv4 && type == kTypeRawSocket &&
+      protocol == kProtocolICMP) {
+    kprintf("%s: socket created (IPv4, Raw, ICMP)\n", __func__);
+    return 3 /* Always returns 3 for now */;
+  }
+  kprintf("%s: socket(%d, %d, %d) is not supported yet\n", __func__, domain,
+          type, protocol);
+  return ErrorNumber::kInvalid;
+}
+
+int sys_bind(int sockfd, sockaddr_in* addr, socklen_t addrlen) {
+  Network& network = Network::GetInstance();
+  auto pid = liumos->scheduler->GetCurrentProcess().GetID();
+  auto sock_holder = network.FindSocket(pid, sockfd);
+  if (!sock_holder.has_value()) {
+    kprintf("%s: fd %d is not a socket\n", __func__, sockfd);
+    return ErrorNumber::kInvalid;
+  }
+  kprintf("%s: bind(%d, %p, %d)\n", __func__, sockfd, addr, addrlen);
+  return ErrorNumber::kInvalid;
 }
 
 __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
@@ -106,20 +144,22 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     return;
   }
   if (idx == kSyscallIndex_sys_write) {
-    uint64_t t0 = liumos->hpet->ReadMainCounterValue();
     const uint64_t fildes = args[1];
     const uint8_t* buf = reinterpret_cast<uint8_t*>(args[2]);
     uint64_t nbyte = args[3];
     if (fildes != 1) {
-      PutStringAndHex("fildes", fildes);
-      Panic("Only stdout is supported for now.");
+      kprintf("%s: fd = %d is not supported yet\n", __func__, fildes);
+      args[0] = ErrorNumber::kBadFileDescriptor;
+      return;
+    }
+    if ((nbyte >> 63)) {
+      kprintf("%s: fd = %llu is too big. May be negative?\n", __func__, nbyte);
+      args[0] = ErrorNumber::kInvalid;
+      return;
     }
     while (nbyte--) {
       PutChar(*(buf++));
     }
-    uint64_t t1 = liumos->hpet->ReadMainCounterValue();
-    liumos->scheduler->GetCurrentProcess().AddSysTimeFemtoSec(
-        (t1 - t0) * liumos->hpet->GetFemtosecondPerCount());
     return;
   }
   if (idx == kSyscallIndex_sys_close) {
@@ -149,23 +189,8 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     PutStringAndHex("arg3", args[3]);
   }
   if (idx == kSyscallIndex_sys_socket) {
-    int domain = static_cast<int>(args[1]);
-    int type = static_cast<int>(args[2]);
-    int protocol = static_cast<int>(args[3]);
-    constexpr int kDomainIPv4 = 2;
-    if (domain != kDomainIPv4) {
-      Panic("domain != IPv4");
-    }
-    constexpr int kTypeRawSocket = 3;
-    if (type != kTypeRawSocket) {
-      Panic("type != kTypeRawSocket");
-    }
-    constexpr int kProtocolICMP = 1;
-    if (protocol != kProtocolICMP) {
-      Panic("protocol != kProtocolICMP");
-    }
-    // PutString("socket(IPv4, Raw, ICMP)\n");
-    args[1] = 3;
+    args[0] = sys_socket(static_cast<int>(args[1]), static_cast<int>(args[2]),
+                         static_cast<int>(args[3]));
     return;
   }
   if (idx == kSyscallIndex_sys_sendto) {
@@ -218,6 +243,12 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     args[0] = sys_recvfrom(args[1], reinterpret_cast<void*>(args[2]), args[3],
                            args[4], reinterpret_cast<sockaddr_in*>(args[5]),
                            reinterpret_cast<size_t*>(args[6]));
+    return;
+  }
+  if (idx == kSyscallIndex_sys_bind) {
+    args[0] = sys_bind(static_cast<int>(args[1]),
+                       reinterpret_cast<struct sockaddr_in*>(args[2]),
+                       static_cast<socklen_t>(args[3]));
     return;
   }
   char s[64];
