@@ -8,7 +8,8 @@
 #define EXIT_FAILURE 1
 
 #define AF_INET 2 // Internet IP protocol
-#define SOCK_STREAM 1 // Stream (connection) socket
+#define SOCK_STREAM 1 // for TCP
+#define SOCK_DGRAM 2 // for UDP
 #define SO_RCVTIMEO 20
 #define SO_SNDTIMEO 21
 #define SOL_SOCKET  1
@@ -34,6 +35,7 @@
 #define SIZE_RESPONSE 10000
 
 typedef long ssize_t;
+typedef uint32_t in_addr_t;
 typedef unsigned long size_t;
 typedef _Bool bool;
 
@@ -87,6 +89,12 @@ ssize_t sendto(int sockfd,
                int flags,
                const struct sockaddr *dest_addr,
                socklen_t addrlen);
+ssize_t recvfrom(int sockfd,
+               void *buf,
+               size_t len,
+               int flags,
+               struct sockaddr *src_addr,
+               socklen_t *addrlen);
 int bind(int sockfd, struct sockaddr *addr,
          socklen_t addrlen);
 int listen(int sockfd, int backlog);

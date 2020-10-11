@@ -46,14 +46,16 @@ VNC_PASSWORD=a
 PORT_MONITOR=1240
 
 APPS=\
-	 app/hello/hello.bin \
-	 app/pi/pi.bin \
-	 app/fizzbuzz/fizzbuzz.bin \
-	 app/ping/ping.bin \
 	 app/argstest/argstest.bin \
-	 app/readtest/readtest.bin \
+	 app/fizzbuzz/fizzbuzz.bin \
+	 app/hello/hello.bin \
+	 app/http/httpclient.bin \
 	 app/http/httpserver.bin \
-	 app/http/httpclient.bin
+	 app/http/httpserver.bin \
+	 app/pi/pi.bin \
+	 app/ping/ping.bin \
+	 app/readtest/readtest.bin \
+	 app/udpserver/udpserver.bin
 
 ifdef SSH_CONNECTION
 QEMU_ARGS+= -vnc :5,password
