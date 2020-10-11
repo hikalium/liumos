@@ -140,7 +140,6 @@ vnc :
 
 test :
 	make -C src test
-	make -C app test
 
 ci :
 	circleci config validate
