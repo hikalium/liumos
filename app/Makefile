@@ -2,13 +2,14 @@ APPS=\
 	 argstest/argstest.bin \
 	 fizzbuzz/fizzbuzz.bin \
 	 hello/hello.bin \
-	 http/httpclient.bin \
-	 http/httpserver.bin \
+	 httpclient/httpclient.bin \
+	 httpserver/httpserver.bin \
 	 pi/pi.bin \
 	 ping/ping.bin \
 	 readtest/readtest.bin \
 	 udpserver/udpserver.bin \
 	 udpclient/udpclient.bin \
+	 browser/browser.bin \
 	 # dummy line
 
 default: $(APPS)
