@@ -5,7 +5,7 @@
 int nodei;
 struct Node nodes[100];
 
-void write_text(char* text) {
+void println(char *text) {
   char output[100000];
   int i = 0;
   while (text[i] != '\0') {
@@ -41,7 +41,7 @@ void generate() {
         write(1, "- ", 2);
         break;
       case TEXT:
-        write_text(nodes[i].text);
+        println(nodes[i].text);
         break;
       case HTML:
       case BODY:
@@ -50,10 +50,9 @@ void generate() {
         break;
     }
   }
-  write(1, "\n", 1);
 }
 
-Node create_node(char* tag_text, char* text) {
+Node create_node(char *tag_text, char *text) {
   Tag tag;
   if (strncmp(tag_text, "html", 4) == 0) {
     tag = HTML;
@@ -82,8 +81,8 @@ Node create_node(char* tag_text, char* text) {
   return node;
 }
 
-int parse_text(char* html, int i) {
-  char* text = (char *) malloc(1000);
+int parse_text(char *html, int i) {
+  char *text = (char *) malloc(1000);
   int j = 0;
   while (html[i] != '<' && html[i] != '/' && html[i] != '\0') {
     text[j] = html[i];
@@ -95,7 +94,7 @@ int parse_text(char* html, int i) {
   return i;
 }
 
-int skip_closing_tag(char* html, int i) {
+int skip_closing_tag(char *html, int i) {
   while (html[i] != '>') {
     i++;
   }
@@ -103,7 +102,7 @@ int skip_closing_tag(char* html, int i) {
   return ++i;
 }
 
-int parse_element(char* html, int i) {
+int parse_element(char *html, int i) {
   char tag[10];
   int j = 0;
   while (html[i] != '>') {
@@ -116,7 +115,7 @@ int parse_element(char* html, int i) {
   return ++i;
 }
 
-void parse(char* html) {
+void parse(char *html) {
   int i = 0;
   while (html[i] != '\0') {
     if ((html[i] == '<' && html[i+1] == '/') || html[i] == '/') {

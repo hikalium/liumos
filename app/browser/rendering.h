@@ -17,11 +17,13 @@ typedef enum Tag {
 
 typedef struct Node {
   enum Tag tag;
-  char* text;
+  char *text;
 } Node;
 
 void generate();
-void parse(char* html);
-void render(char* html);
+void parse(char *html);
+void render(char *html);
+
+void println(char *text);
 
 #endif // RENDERING_H

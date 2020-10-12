@@ -77,10 +77,21 @@ void send_request(char *request) {
   close(socket_fd);
 }
 
+void println(char *text) {
+  char output[100000];
+  int i = 0;
+  while (text[i] != '\0') {
+    output[i] = text[i];
+    i++;
+  }
+  write(1, output, i+1);
+  write(1, "\n", 1);
+}
+
 int main(int argc, char** argv) {
   if (argc != 1 && argc != 3) {
-    write(1, "usage: client.bin [hostname] [ip]\n", 34);
-    write(1, "       [hostname] and [ip] are optional and default value is localhost:8888\n", 76);
+    println("Usage: httpclient.bin HOSTNAME IP");
+    println("       HOSTNAME and IP are optional and default value is localhost:8888");
     exit(1);
     return 1;
   }
