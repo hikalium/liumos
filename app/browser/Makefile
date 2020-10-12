@@ -1,18 +1,10 @@
-TARGET=browser.bin
-OBJS=browser.o rendering.o malloc.o syscall.o
+NAME=browser
+TARGET=$(NAME).bin
+TARGET_OBJS=browser.o rendering.o
 
 default: $(TARGET)
 
-include ../../common.mk
+include ../liumlib/common.mk
 
 test: make
 	./test.sh
-
-%.o : %.c Makefile
-	$(LLVM_CC) -target x86_64-unknown-none-elf -static -nostdlib -fPIE -B/usr/local/opt/llvm/bin/ -c -o $@ $*.c
-
-%.o : %.S Makefile
-	$(LLVM_CC) -target x86_64-unknown-none-elf -static -nostdlib -fPIE -B/usr/local/opt/llvm/bin/ -c -o $@ $*.S
-
-$(TARGET) : $(OBJS) Makefile
-	$(LLVM_LD_LLD) -static --no-rosegment -e main -o $@ $(OBJS)

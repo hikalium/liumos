@@ -94,7 +94,7 @@ Node create_node(char* tag_text, char* text) {
 }
 
 int parse_text(char* html, int i) {
-  char* text = (char *) my_malloc(1000);
+  char* text = (char *) malloc(1000);
   int j = 0;
   while (html[i] != '<' && html[i] != '/' && html[i] != '\0') {
     text[j] = html[i];

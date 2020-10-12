@@ -4,7 +4,7 @@ assert() {
   expected="$1"
   input="$2"
 
-  actual=$(./browser "$input" 2>&1)
+  actual=$(./browser.bin "$input" 2>&1)
 
   echo $input
   echo $expected
@@ -17,7 +17,8 @@ assert() {
   fi
 }
 
-gcc browser.c rendering.c malloc.c -o browser
+make clean
+make
 
 assert "bar" "bar"
 assert "bar" "<html>bar</html>"
