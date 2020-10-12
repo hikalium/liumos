@@ -26,15 +26,17 @@ static char NumToHexChar(char v) {
     return v - 10 + 'A';
   return '?';
 }
+static void panic(const char* s) {
+  write(1, s, strlen(s));
+  exit(EXIT_FAILURE);
+}
 
 int main(int argc, char** argv) {
   int socket_fd;
 
   // Create a stream socket
   if ((socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
-    write(1, "error: fail to create socket\n", 29);
-    exit(1);
-    return EXIT_FAILURE;
+    panic("error: fail to create socket\n");
   }
 
   struct sockaddr_in server_address;
@@ -42,14 +44,14 @@ int main(int argc, char** argv) {
   server_address.sin_addr.s_addr = INADDR_ANY;
   server_address.sin_port = htons(12345);
 
+  // Bind address to the socket
   if (bind(socket_fd, (struct sockaddr*)&server_address,
            sizeof(server_address)) == -1) {
-    write(1, "error: fail to bind socket\n", 27);
     close(socket_fd);
-    exit(1);
-    return EXIT_FAILURE;
+    panic("error: fail to bind socket\n");
   }
 
+  // Recieve loop
   struct sockaddr_in client_address;
   socklen_t client_addr_len = sizeof(client_address);
   char buf[4096];
@@ -58,6 +60,9 @@ int main(int argc, char** argv) {
     recieved_size =
         recvfrom(socket_fd, (char*)buf, sizeof(buf), 0,
                  (struct sockaddr*)&client_address, &client_addr_len);
+    if (recieved_size == -1) {
+      panic("error: recvfrom returned -1\n");
+    }
     Print("Recieved size: ");
     PrintNum(recieved_size);
     Print("\n");
