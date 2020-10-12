@@ -106,7 +106,7 @@ static int sys_socket(int domain, int type, int protocol) {
   return ErrorNumber::kInvalid;
 }
 
-int sys_bind(int sockfd, sockaddr_in* addr, socklen_t addrlen) {
+static int sys_bind(int sockfd, sockaddr_in* addr, socklen_t addrlen) {
   Network& network = Network::GetInstance();
   auto pid = liumos->scheduler->GetCurrentProcess().GetID();
   auto sock_holder = network.FindSocket(pid, sockfd);
@@ -118,29 +118,31 @@ int sys_bind(int sockfd, sockaddr_in* addr, socklen_t addrlen) {
   return ErrorNumber::kInvalid;
 }
 
+static ssize_t sys_read(int fd, void* buf, size_t count) {
+  if (fd != 0) {
+    kprintf("%s: fd %d is not supported yet: only stdin is supported now.\n",
+            __func__, fd);
+    return ErrorNumber::kInvalid;
+  }
+  if (count < 1)
+    return ErrorNumber::kInvalid;
+  uint16_t keyid;
+  while ((keyid = liumos->main_console->GetCharWithoutBlocking()) ==
+             KeyID::kNoInput ||
+         (keyid & KeyID::kMaskBreak)) {
+    StoreIntFlagAndHalt();
+  }
+  reinterpret_cast<uint8_t*>(buf)[0] = keyid;
+  return 1;
+}
+
 __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
   // This function will be called under exceptions are masked
   // with Kernel Stack
   uint64_t idx = args[0];
   if (idx == kSyscallIndex_sys_read) {
-    const uint64_t fildes = args[1];
-    uint8_t* buf = reinterpret_cast<uint8_t*>(args[2]);
-    uint64_t nbyte = args[3];
-    if (fildes != 0) {
-      PutStringAndHex("fildes", fildes);
-      Panic("Only stdin is supported for now.");
-    }
-    if (nbyte < 1)
-      return;
-
-    uint16_t keyid;
-    while ((keyid = liumos->main_console->GetCharWithoutBlocking()) ==
-               KeyID::kNoInput ||
-           (keyid & KeyID::kMaskBreak)) {
-      StoreIntFlagAndHalt();
-    }
-
-    buf[0] = keyid;
+    args[0] = sys_read(static_cast<int>(args[1]),
+                       reinterpret_cast<void*>(args[2]), args[3]);
     return;
   }
   if (idx == kSyscallIndex_sys_write) {
