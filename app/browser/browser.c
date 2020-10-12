@@ -105,8 +105,8 @@ int main(int argc, char *argv[]) {
   char *html = (char *) malloc(SIZE_RESPONSE);
 
   if (argc == 3) {
-    if (strcmp("-r", argv[1]) == 0) {
-      html = argv[1];
+    if (strcmp("-rawtext", argv[1]) == 0) {
+      html = argv[2];
     } else {
       char *url = argv[1];
       host = strtok(url, "/");
@@ -121,13 +121,13 @@ int main(int argc, char *argv[]) {
     }
   } else {
     println("Usage: browser.bin HOSTNAME IP");
-    println("       browser.bin -r RAW_TEXT");
+    println("       browser.bin -rawtext RAW_TEXT");
     exit(1);
     return 1;
   }
 
-  println(html);
-  println("=========");
+  //println(html);
+  //println("=========");
   render(html);
 
   exit(0);

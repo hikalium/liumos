@@ -4,7 +4,7 @@ assert() {
   expected="$1"
   input="$2"
 
-  actual=$(./browser.bin "$input" 2>&1)
+  actual=$(./browser.bin -rawtext "$input" 2>&1)
 
   echo $input
   echo $expected
