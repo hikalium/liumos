@@ -69,7 +69,7 @@ static ssize_t sys_recvfrom(int64_t sockfd,
                             size_t buf_size,
                             int64_t,
                             struct sockaddr_in*,
-                            size_t*) {
+                            socklen_t*) {
   if (sockfd != 3) {
     kprintf("%s: sockfd = %d is not supported yet.\n", __func__, sockfd);
     return -1;
@@ -136,6 +136,57 @@ static ssize_t sys_read(int fd, void* buf, size_t count) {
   return 1;
 }
 
+static ssize_t sys_sendto(int /*sockfd*/,
+                          const void* buf,
+                          size_t len,
+                          int /*flags*/,
+                          const struct sockaddr_in* dest_addr,
+                          socklen_t /*addrlen*/) {
+  using Net = Virtio::Net;
+  using IPv4Packet = Virtio::Net::IPv4Packet;
+  using ICMPPacket = Virtio::Net::ICMPPacket;
+  using IPv4Addr = Network::IPv4Addr;
+  using EtherAddr = Network::EtherAddr;
+
+  Net& virtio_net = Net::GetInstance();
+  Network& network = Network::GetInstance();
+
+  IPv4Addr target_ip_addr = dest_addr->sin_addr;
+  EtherAddr target_eth_addr;
+  for (;;) {
+    auto target_eth_container = network.ResolveIPv4(target_ip_addr);
+    if (target_eth_container.has_value()) {
+      target_eth_addr = *target_eth_container;
+      break;
+    }
+    SendARPRequest(target_ip_addr);
+    liumos->hpet->BusyWait(100);
+  }
+  ICMPPacket& icmp =
+      *virtio_net.GetNextTXPacketBuf<ICMPPacket*>(sizeof(IPv4Packet) + len);
+  // ip.eth
+  icmp.ip.eth.dst = target_eth_addr;
+  icmp.ip.eth.src = virtio_net.GetSelfEtherAddr();
+  icmp.ip.eth.SetEthType(Net::EtherFrame::kTypeIPv4);
+  // ip
+  icmp.ip.version_and_ihl =
+      0x45;  // IPv4, header len = 5 * sizeof(uint32_t) = 20 bytes
+  icmp.ip.dscp_and_ecn = 0;
+  icmp.ip.SetDataLength(sizeof(ICMPPacket) - sizeof(IPv4Packet));
+  icmp.ip.ident = 0;
+  icmp.ip.flags = 0;
+  icmp.ip.ttl = 0xFF;
+  icmp.ip.protocol = Net::IPv4Packet::Protocol::kICMP;
+  icmp.ip.src_ip = virtio_net.GetSelfIPv4Addr();
+  icmp.ip.dst_ip = target_ip_addr;
+  icmp.ip.CalcAndSetChecksum();
+  // icmp
+  memcpy(&icmp.type /*first member of ICMP*/, buf, len);
+  // send
+  virtio_net.SendPacket();
+  return len;
+}
+
 __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
   // This function will be called under exceptions are masked
   // with Kernel Stack
@@ -196,55 +247,18 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     return;
   }
   if (idx == kSyscallIndex_sys_sendto) {
-    using Net = Virtio::Net;
-    using IPv4Packet = Virtio::Net::IPv4Packet;
-    using ICMPPacket = Virtio::Net::ICMPPacket;
-    using IPv4Addr = Network::IPv4Addr;
-    using EtherAddr = Network::EtherAddr;
-
-    Net& virtio_net = Net::GetInstance();
-    Network& network = Network::GetInstance();
-
-    IPv4Addr target_ip_addr = reinterpret_cast<sockaddr_in*>(args[5])->sin_addr;
-    EtherAddr target_eth_addr;
-    for (;;) {
-      auto target_eth_container = network.ResolveIPv4(target_ip_addr);
-      if (target_eth_container.has_value()) {
-        target_eth_addr = *target_eth_container;
-        break;
-      }
-      SendARPRequest(target_ip_addr);
-      liumos->hpet->BusyWait(100);
-    }
-    ICMPPacket& icmp = *virtio_net.GetNextTXPacketBuf<ICMPPacket*>(
-        sizeof(IPv4Packet) + args[3]);
-    // ip.eth
-    icmp.ip.eth.dst = target_eth_addr;
-    icmp.ip.eth.src = virtio_net.GetSelfEtherAddr();
-    icmp.ip.eth.SetEthType(Net::EtherFrame::kTypeIPv4);
-    // ip
-    icmp.ip.version_and_ihl =
-        0x45;  // IPv4, header len = 5 * sizeof(uint32_t) = 20 bytes
-    icmp.ip.dscp_and_ecn = 0;
-    icmp.ip.SetDataLength(sizeof(ICMPPacket) - sizeof(IPv4Packet));
-    icmp.ip.ident = 0;
-    icmp.ip.flags = 0;
-    icmp.ip.ttl = 0xFF;
-    icmp.ip.protocol = Net::IPv4Packet::Protocol::kICMP;
-    icmp.ip.src_ip = virtio_net.GetSelfIPv4Addr();
-    icmp.ip.dst_ip = target_ip_addr;
-    icmp.ip.CalcAndSetChecksum();
-    // icmp
-    memcpy(&icmp.type /*first member of ICMP*/,
-           reinterpret_cast<void*>(args[2]), args[3]);
-    // send
-    virtio_net.SendPacket();
+    args[0] =
+        sys_sendto(static_cast<int>(args[1]), reinterpret_cast<void*>(args[2]),
+                   static_cast<size_t>(args[3]), static_cast<int>(args[4]),
+                   reinterpret_cast<const sockaddr_in*>(args[5]),
+                   static_cast<socklen_t>(args[6]));
     return;
   }
   if (idx == kSyscallIndex_sys_recvfrom) {
-    args[0] = sys_recvfrom(args[1], reinterpret_cast<void*>(args[2]), args[3],
-                           args[4], reinterpret_cast<sockaddr_in*>(args[5]),
-                           reinterpret_cast<size_t*>(args[6]));
+    args[0] = sys_recvfrom(
+        static_cast<int>(args[1]), reinterpret_cast<void*>(args[2]), args[3],
+        static_cast<int>(args[4]), reinterpret_cast<sockaddr_in*>(args[5]),
+        reinterpret_cast<socklen_t*>(args[6]));
     return;
   }
   if (idx == kSyscallIndex_sys_bind) {
