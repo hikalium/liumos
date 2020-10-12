@@ -64,6 +64,30 @@ static bool IsICMPPacket(void* frame_data, size_t frame_size) {
   return true;
 }
 
+static bool IsUDPPacketToPort(void* frame_data,
+                              size_t frame_size,
+                              uint16_t port) {
+  using EtherFrame = Network::EtherFrame;
+  using IPv4Packet = Network::IPv4Packet;
+  using IPv4UDPPacket = Network::IPv4UDPPacket;
+  if (frame_size < sizeof(IPv4UDPPacket)) {
+    return false;
+  }
+  EtherFrame& eth = *reinterpret_cast<EtherFrame*>(frame_data);
+  if (!eth.HasEthType(EtherFrame::kTypeIPv4)) {
+    return false;
+  }
+  IPv4Packet& p = *reinterpret_cast<IPv4Packet*>(frame_data);
+  if (p.protocol != IPv4Packet::Protocol::kUDP) {
+    return false;
+  }
+  IPv4UDPPacket& udp = *reinterpret_cast<IPv4UDPPacket*>(frame_data);
+  if (udp.GetDestinationPort() != port) {
+    return false;
+  }
+  return true;
+}
+
 static ssize_t sys_recvfrom(int sockfd,
                             void* buf,
                             size_t buf_size,
@@ -71,6 +95,7 @@ static ssize_t sys_recvfrom(int sockfd,
                             struct sockaddr_in*,
                             socklen_t*) {
   /* returns -1 on failure */
+  using IPv4UDPPacket = Network::IPv4UDPPacket;
   using EtherFrame = Network::EtherFrame;
   using Socket = Network::Socket;
   Network& network = Network::GetInstance();
@@ -98,18 +123,16 @@ static ssize_t sys_recvfrom(int sockfd,
     return 0;
   }
   if (socket_type == Socket::Type::kUDP) {
-    kprintf("%s: fd %d is UDP but not yet supported\n", __func__, sockfd);
-    return -1;
     for (;;) {
       while (network.HasPacketInRXBuffer()) {
         auto packet = network.PopFromRXBuffer();
-        if (!IsICMPPacket(packet.data, packet.size)) {
+        if (!IsUDPPacketToPort(packet.data, packet.size, 12345)) {
           continue;
         }
-        size_t ip_data_size = packet.size - sizeof(EtherFrame);
-        size_t copy_size = std::min(ip_data_size, buf_size);
-        memcpy(buf, &packet.data[sizeof(EtherFrame)], copy_size);
-        return ip_data_size;
+        size_t udp_data_size = packet.size - sizeof(IPv4UDPPacket);
+        size_t copy_size = std::min(udp_data_size, buf_size);
+        memcpy(buf, &packet.data[sizeof(IPv4UDPPacket)], copy_size);
+        return udp_data_size;
       }
       Sleep();
     }
@@ -162,6 +185,12 @@ static int sys_bind(int sockfd, sockaddr_in* addr, socklen_t addrlen) {
   auto sock_holder = network.FindSocket(pid, sockfd);
   if (!sock_holder.has_value()) {
     kprintf("%s: fd %d is not a socket\n", __func__, sockfd);
+    return -1;
+  }
+  if (network.BindToPort(
+          pid, sockfd,
+          ((addr->sin_port >> 8) & 0xFF) | (addr->sin_port << 8))) {
+    kprintf("%s: BindToPort failed\n", __func__, sockfd);
     return -1;
   }
   kprintf("%s: bind(%d, %p, %d)\n", __func__, sockfd, addr, addrlen);
