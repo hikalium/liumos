@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
 
   // Create a stream socket
   if ((socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
-    panic("error: fail to create socket\n");
+    panic("error: failed to create socket\n");
   }
 
   struct sockaddr_in server_address;
@@ -48,7 +48,7 @@ int main(int argc, char** argv) {
   if (bind(socket_fd, (struct sockaddr*)&server_address,
            sizeof(server_address)) == -1) {
     close(socket_fd);
-    panic("error: fail to bind socket\n");
+    panic("error: failed to bind socket\n");
   }
 
   // Recieve loop

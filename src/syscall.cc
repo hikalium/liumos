@@ -103,7 +103,7 @@ static int sys_socket(int domain, int type, int protocol) {
   }
   kprintf("%s: socket(%d, %d, %d) is not supported yet\n", __func__, domain,
           type, protocol);
-  return ErrorNumber::kInvalid;
+  return -1 /* Return -1 on error */;
 }
 
 static int sys_bind(int sockfd, sockaddr_in* addr, socklen_t addrlen) {
