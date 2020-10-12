@@ -418,6 +418,14 @@ class Network {
     } type;
   };
 
+  bool RegisterSocket(uint64_t pid, int fd, Socket::Type type) {
+    // returns true on failure
+    if (FindSocket(pid, fd).has_value()) {
+      return true;
+    }
+    sockets_.push_back({pid, fd, type});
+    return false;
+  }
   std::optional<Socket> FindSocket(uint64_t pid, int fd) {
     for (auto& it : sockets_) {
       if (it.pid == pid && it.fd == fd) {

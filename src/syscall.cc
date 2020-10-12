@@ -64,42 +64,91 @@ static bool IsICMPPacket(void* frame_data, size_t frame_size) {
   return true;
 }
 
-static ssize_t sys_recvfrom(int64_t sockfd,
+static ssize_t sys_recvfrom(int sockfd,
                             void* buf,
                             size_t buf_size,
                             int64_t,
                             struct sockaddr_in*,
                             socklen_t*) {
-  if (sockfd != 3) {
-    kprintf("%s: sockfd = %d is not supported yet.\n", __func__, sockfd);
+  /* returns -1 on failure */
+  using EtherFrame = Network::EtherFrame;
+  using Socket = Network::Socket;
+  Network& network = Network::GetInstance();
+  auto pid = liumos->scheduler->GetCurrentProcess().GetID();
+  auto sock_holder = network.FindSocket(pid, sockfd);
+  if (!sock_holder.has_value()) {
+    kprintf("%s: fd %d is not a socket\n", __func__, sockfd);
     return -1;
   }
-  using EtherFrame = Network::EtherFrame;
-  Network& network = Network::GetInstance();
-  for (;;) {
-    while (network.HasPacketInRXBuffer()) {
-      auto packet = network.PopFromRXBuffer();
-      if (!IsICMPPacket(packet.data, packet.size)) {
-        continue;
+  Socket::Type socket_type = (*sock_holder).type;
+  if (socket_type == Socket::Type::kICMP) {
+    for (;;) {
+      while (network.HasPacketInRXBuffer()) {
+        auto packet = network.PopFromRXBuffer();
+        if (!IsICMPPacket(packet.data, packet.size)) {
+          continue;
+        }
+        size_t ip_data_size = packet.size - sizeof(EtherFrame);
+        size_t copy_size = std::min(ip_data_size, buf_size);
+        memcpy(buf, &packet.data[sizeof(EtherFrame)], copy_size);
+        return ip_data_size;
       }
-      size_t ip_data_size = packet.size - sizeof(EtherFrame);
-      size_t copy_size = std::min(ip_data_size, buf_size);
-      memcpy(buf, &packet.data[sizeof(EtherFrame)], copy_size);
-      return ip_data_size;
+      Sleep();
     }
-    Sleep();
+    return 0;
   }
+  if (socket_type == Socket::Type::kUDP) {
+    kprintf("%s: fd %d is UDP but not yet supported\n", __func__, sockfd);
+    return -1;
+    for (;;) {
+      while (network.HasPacketInRXBuffer()) {
+        auto packet = network.PopFromRXBuffer();
+        if (!IsICMPPacket(packet.data, packet.size)) {
+          continue;
+        }
+        size_t ip_data_size = packet.size - sizeof(EtherFrame);
+        size_t copy_size = std::min(ip_data_size, buf_size);
+        memcpy(buf, &packet.data[sizeof(EtherFrame)], copy_size);
+        return ip_data_size;
+      }
+      Sleep();
+    }
+    return 0;
+  }
+  kprintf("%s: socket_type = %d is not a supported yet\n", __func__,
+          socket_type);
   return 0;
 }
 
 static int sys_socket(int domain, int type, int protocol) {
+  /* returns -1 on failure */
   constexpr int kDomainIPv4 = 2;
+  constexpr int kTypeDatagram = 2; /* UDP under kDomainIPv4 */
   constexpr int kTypeRawSocket = 3;
   constexpr int kProtocolICMP = 1;
-  if (domain == kDomainIPv4 && type == kTypeRawSocket &&
-      protocol == kProtocolICMP) {
-    kprintf("%s: socket created (IPv4, Raw, ICMP)\n", __func__);
-    return 3 /* Always returns 3 for now */;
+  Network& network = Network::GetInstance();
+  auto pid = liumos->scheduler->GetCurrentProcess().GetID();
+  const int sockfd = 3; /* Always assign 3 for now */
+  if (domain == kDomainIPv4) {
+    if (type == kTypeRawSocket && protocol == kProtocolICMP) {
+      if (network.RegisterSocket(pid, sockfd, Network::Socket::Type::kICMP)) {
+        kprintf("%s: failed to register socket.\n", __func__);
+        return -1 /* Return -1 on error */;
+      }
+      kprintf("%s: socket (fd=%d) created (IPv4, Raw, ICMP)\n", __func__,
+              sockfd);
+      return sockfd /* Always returns 3 for now */;
+    }
+    if (type == kTypeDatagram && protocol == 0) {
+      /* UDP */
+      if (network.RegisterSocket(pid, sockfd, Network::Socket::Type::kUDP)) {
+        kprintf("%s: failed to register socket.\n", __func__);
+        return -1 /* Return -1 on error */;
+      }
+      kprintf("%s: socket (fd=%d) created (IPv4, DGRAM, 0)(UDP)\n", __func__,
+              sockfd);
+      return sockfd;
+    }
   }
   kprintf("%s: socket(%d, %d, %d) is not supported yet\n", __func__, domain,
           type, protocol);
@@ -107,15 +156,16 @@ static int sys_socket(int domain, int type, int protocol) {
 }
 
 static int sys_bind(int sockfd, sockaddr_in* addr, socklen_t addrlen) {
+  /* returns -1 on failure */
   Network& network = Network::GetInstance();
   auto pid = liumos->scheduler->GetCurrentProcess().GetID();
   auto sock_holder = network.FindSocket(pid, sockfd);
   if (!sock_holder.has_value()) {
     kprintf("%s: fd %d is not a socket\n", __func__, sockfd);
-    return ErrorNumber::kInvalid;
+    return -1;
   }
   kprintf("%s: bind(%d, %p, %d)\n", __func__, sockfd, addr, addrlen);
-  return ErrorNumber::kInvalid;
+  return 0;
 }
 
 static ssize_t sys_read(int fd, void* buf, size_t count) {
