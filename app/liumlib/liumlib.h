@@ -106,6 +106,7 @@ size_t strlen(const char *s);
 char *strcpy(char *dest, const char *src);
 char *strcat(char *dest, const char *src);
 int strcmp(const char *s1, const char *s2);
+int strncmp(const char *s1, const char *s2, unsigned long n);
 char *strtok(char *str, const char *delim);
 void *malloc(unsigned long n);
 // convert values between host and network byte order.

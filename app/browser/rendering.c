@@ -1,6 +1,6 @@
-#include "browser.h"
 #include "rendering.h"
-#include "malloc.h"
+
+#include "../liumlib/liumlib.h"
 
 int nodei;
 struct Node nodes[100];
@@ -53,40 +53,29 @@ void generate() {
   write(1, "\n", 1);
 }
 
-// Return 0 if two strings are identical.
-int my_strncmp(char* str1, char* str2, unsigned int n) {
-  for (int i=0; i<n; i++) {
-    if (str1[i] == '\0' || str2[i] == '\0')
-      return 0;
-    if (str1[i] != str2[i])
-      return 1;
-  }
-  return 0;
-}
-
 Node create_node(char* tag_text, char* text) {
   Tag tag;
-  if (my_strncmp(tag_text, "html", 4) == 0) {
+  if (strncmp(tag_text, "html", 4) == 0) {
     tag = HTML;
-  } else if (my_strncmp(tag_text, "body", 4) == 0) {
+  } else if (strncmp(tag_text, "body", 4) == 0) {
     tag = BODY;
-  } else if (my_strncmp(tag_text, "h1", 2) == 0) {
+  } else if (strncmp(tag_text, "h1", 2) == 0) {
     tag = H1;
-  } else if (my_strncmp(tag_text, "h2", 2) == 0) {
+  } else if (strncmp(tag_text, "h2", 2) == 0) {
     tag = H2;
-  } else if (my_strncmp(tag_text, "h3", 2) == 0) {
+  } else if (strncmp(tag_text, "h3", 2) == 0) {
     tag = H3;
-  } else if (my_strncmp(tag_text, "h4", 2) == 0) {
+  } else if (strncmp(tag_text, "h4", 2) == 0) {
     tag = H4;
-  } else if (my_strncmp(tag_text, "h5", 2) == 0) {
+  } else if (strncmp(tag_text, "h5", 2) == 0) {
     tag = H5;
-  } else if (my_strncmp(tag_text, "h6", 2) == 0) {
+  } else if (strncmp(tag_text, "h6", 2) == 0) {
     tag = H6;
-  } else if (my_strncmp(tag_text, "ul", 2) == 0) {
+  } else if (strncmp(tag_text, "ul", 2) == 0) {
     tag = UL;
-  } else if (my_strncmp(tag_text, "li", 2) == 0) {
+  } else if (strncmp(tag_text, "li", 2) == 0) {
     tag = LI;
-  } else if (my_strncmp(tag_text, "text", 4) == 0) {
+  } else if (strncmp(tag_text, "text", 4) == 0) {
     tag = TEXT;
   }
   Node node = {tag, text};

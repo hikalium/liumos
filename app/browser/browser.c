@@ -1,7 +1,5 @@
-#include "browser.h"
+#include "../liumlib/liumlib.h"
 #include "rendering.h"
-
-//#include <stdio.h>
 
 int main(int argc, char *argv[]) {
   if (argc != 2) {

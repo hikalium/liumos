@@ -38,6 +38,17 @@ int strcmp(const char *s1, const char *s2) {
   return *(const unsigned char*) s1 - *(const unsigned char*) s2;
 }
 
+// Return 0 if two strings are identical.
+int strncmp(const char* s1, const char* s2, unsigned long n) {
+  for (int i=0; i<n; i++) {
+    if (s1[i] == '\0' || s2[i] == '\0')
+      return 0;
+    if (s1[i] != s2[i])
+      return 1;
+  }
+  return 0;
+}
+
 char *strtok(char *str, const char *delim) {
   static char *save_ptr;
 
