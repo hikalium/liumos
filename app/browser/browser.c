@@ -134,8 +134,6 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  //tokenize(html);
-  //print_tokens();
   render(html);
 
   exit(0);
