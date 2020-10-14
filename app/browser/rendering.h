@@ -57,9 +57,9 @@ void render(char *html);
 
 void println(char *text);
 
-void append_doctype(char *html);
-void append_end_tag(char *html);
-void append_start_tag(char *html);
+char *append_doctype(char *html);
+char *append_end_tag(char *html);
+char *append_start_tag(char *html);
 void tokenize(char *html);
 void print_tokens(); // for debug
 
