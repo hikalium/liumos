@@ -12,7 +12,7 @@ void println(char *text) {
     output[i] = text[i];
     i++;
   }
-  write(1, output, i+1);
+  write(1, output, i);
   write(1, "\n", 1);
 }
 
@@ -129,6 +129,96 @@ void parse(char *html) {
       i = parse_text(html, i);
       nodei++;
     }
+  }
+}
+
+Token tokens[100];
+int t_index = 0;
+
+void append_doctype(char *html) {
+  while (*html) {
+    if (*html == '>') {
+      Token token = { .type = DOCTYPE };
+      tokens[t_index] = token;
+      t_index++;
+      html++;
+      return;
+    }
+    html++;
+  }
+}
+
+void append_end_tag(char *html) {
+  char tmp_tag[100];
+  int i = 0;
+  while (*html) {
+    if (*html == '>') {
+      char *tag = (char *) malloc(i+1);
+      tmp_tag[i] = '\0';
+      strcpy(tag, tmp_tag);
+      Token token = { .type = END_TAG, .tag_name = tag };
+      tokens[t_index] = token;
+      t_index++;
+      html++;
+      return;
+    }
+    tmp_tag[i] = *html;
+    i++;
+    html++;
+  }
+}
+
+void append_start_tag(char *html) {
+  char tmp_tag[100];
+  int i = 0;
+  while (*html) {
+    if (*html == '>') {
+      char *tag = (char *) malloc(i+1);
+      tmp_tag[i] = '\0';
+      strcpy(tag, tmp_tag);
+      Token token = { .type = START_TAG, .tag_name = tag };
+      tokens[t_index] = token;
+      t_index++;
+      html++;
+      return;
+    }
+    tmp_tag[i] = *html;
+    i++;
+    html++;
+  }
+}
+
+// https://html.spec.whatwg.org/multipage/parsing.html#tokenization
+// "The output of the tokenization step is a series of zero or more of the following tokens:
+// DOCTYPE, start tag, end tag, comment, character, end-of-file"
+void tokenize(char *html) {
+  println(html);
+  while (*html) {
+    switch (*html) {
+      case '<':
+        html++;
+        if (*html == '!') {
+          html++;
+          append_doctype(html);
+        } else if (*html == '/') {
+          html++;
+          append_end_tag(html);
+        } else {
+          append_start_tag(html);
+        }
+        break;
+      default:
+        break;
+    }
+    html++;
+  }
+}
+
+// for debug.
+void print_tokens() {
+  for (int i=0; i<t_index; i++) {
+    println("token:");
+    println(tokens[i].tag_name);
   }
 }
 

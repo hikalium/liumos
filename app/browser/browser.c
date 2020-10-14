@@ -104,7 +104,13 @@ void parse_response(char *response, char *body) {
 int main(int argc, char *argv[]) {
   char *html = (char *) malloc(SIZE_RESPONSE);
 
-  if (argc == 3) {
+  if (argc == 1) {
+    char *request = (char *) malloc(SIZE_REQUEST);
+    char *response = (char *) malloc(SIZE_RESPONSE);
+    build_request(request);
+    get_response(request, response);
+    get_response_body(response, html);
+  } else if (argc == 3) {
     if (strcmp("-rawtext", argv[1]) == 0) {
       html = argv[2];
     } else {
@@ -120,14 +126,16 @@ int main(int argc, char *argv[]) {
       get_response_body(response, html);
     }
   } else {
-    println("Usage: browser.bin HOSTNAME IP");
+    println("Usage: browser.bin");
+    println("       browser.bin HOSTNAME IP");
     println("       browser.bin -rawtext RAW_TEXT");
+    println("       * The default value of HOSTNAME and IP is localhost:8888");
     exit(1);
     return 1;
   }
 
-  //println(html);
-  //println("=========");
+  //tokenize(html);
+  //print_tokens();
   render(html);
 
   exit(0);
