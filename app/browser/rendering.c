@@ -3,7 +3,7 @@
 #include "dom.h"
 #include "tokenize.h"
 
-int nodei = 0;
+int n_index = 0;
 struct Node nodes[100];
 
 void println(char *text) {
@@ -18,7 +18,7 @@ void println(char *text) {
 }
 
 void generate() {
-  for (int i=0; i<nodei; i++) {
+  for (int i=0; i<n_index; i++) {
     switch (nodes[i].tag) {
       case H1:
         write(1, "# ", 2);
@@ -91,7 +91,7 @@ int parse_text(char *html, int i) {
     j++;
   }
   text[j] = '\0';
-  nodes[nodei] = create_node("text", text);
+  nodes[n_index] = create_node("text", text);
   return i;
 }
 
@@ -111,7 +111,7 @@ int parse_element(char *html, int i) {
     i++;
     j++;
   }
-  nodes[nodei] = create_node(tag, "");
+  nodes[n_index] = create_node(tag, "");
   // skip '>' and return the next index.
   return ++i;
 }
@@ -125,10 +125,10 @@ void parse(char *html) {
     } else if (html[i] == '<') {
       i++;
       i = parse_element(html, i);
-      nodei++;
+      n_index++;
     } else {
       i = parse_text(html, i);
-      nodei++;
+      n_index++;
     }
   }
 }
