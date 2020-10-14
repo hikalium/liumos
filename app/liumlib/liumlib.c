@@ -84,6 +84,25 @@ void *malloc(unsigned long n) {
   return ptr;
 }
 
+void *memset(void *s, int c, size_t n) {
+  char *dest = (char *) s;
+  while (n > 0) {
+    *dest = (char) c;
+    dest++;
+    n--;
+  }
+  return s;
+}
+
+void *memcpy(void *dest, const void *src, size_t n) {
+  char *src_char = (char *) src;
+  char *dest_char = (char *) dest;
+  for (int i=0; i<n; i++) {
+    dest_char[i] = src_char[i];
+  }
+  return dest;
+}
+
 bool is_big_endian(void) {
   union {
     uint32_t i;
