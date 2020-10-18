@@ -111,6 +111,11 @@ void tokenize(char *html) {
     }
     html++;
   }
+  if (i > 0) {
+    // If character buffer is not empty, append a char token.
+    append_char(tmp_char, i);
+    i = 0;
+  }
   Token token = { .type = EOF };
   tokens[t_index] = token;
   t_index++;

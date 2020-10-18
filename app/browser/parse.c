@@ -63,10 +63,12 @@ void construct_tree() {
 
     switch (mode) {
       case INITIAL:
+      //println("1 initial");
         // https://html.spec.whatwg.org/multipage/parsing.html#the-initial-insertion-mode
         mode = BEFORE_HTML;
         break;
       case BEFORE_HTML:
+      //println("2 before html");
         // https://html.spec.whatwg.org/multipage/parsing.html#the-before-html-insertion-mode
         if (token.type == DOCTYPE) {
           // Parse error. Ignore the token.
@@ -99,6 +101,7 @@ void construct_tree() {
         // Reprocess the token.
         break;
       case BEFORE_HEAD:
+      //println("3 before head");
         // https://html.spec.whatwg.org/multipage/parsing.html#the-before-head-insertion-mode
         if (token.type == DOCTYPE) {
           // A DOCTYPE token
@@ -131,6 +134,7 @@ void construct_tree() {
         mode = IN_HEAD;
         break;
       case IN_HEAD:
+      //println("4 in head");
         // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inhead
         if (token.type == DOCTYPE) {
           // A DOCTYPE token
@@ -170,6 +174,7 @@ void construct_tree() {
         // Reprocess the token.
         break;
       case AFTER_HEAD:
+      //println("5 after head");
         // https://html.spec.whatwg.org/multipage/parsing.html#the-after-head-insertion-mode
         if (token.type == DOCTYPE) {
           // A DOCTYPE token
@@ -215,12 +220,18 @@ void construct_tree() {
         // Reprocess the token.
         break;
       case IN_BODY:
+      //println("6 in body");
         // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inbody
         if (token.type == CHAR) {
           Node *element = create_element_from_token(TEXT, &token);
           insert_child(element);
           i++;
           break;
+        }
+        if (token.type == EOF) {
+          // An end-of-file token
+          // Stop parsing.
+          return;
         }
         if (token.type == START_TAG &&
             (strcmp(token.tag_name, "h1") == 0 ||
@@ -256,6 +267,7 @@ void construct_tree() {
         }
         break;
       case AFTER_BODY:
+      //println("7 after body");
         // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-afterbody
         if (token.type == DOCTYPE) {
           // A DOCTYPE token
@@ -278,6 +290,7 @@ void construct_tree() {
         mode = IN_BODY;
         break;
       case AFTER_AFTER_BODY:
+      //println("8 after after body");
         // https://html.spec.whatwg.org/multipage/parsing.html#the-after-after-body-insertion-mode
         if (token.type == EOF) {
           // An end-of-file token
