@@ -1,5 +1,6 @@
 #include "../liumlib/liumlib.h"
 #include "rendering.h"
+#include "lib.h"
 
 char *host = NULL;
 char *path = NULL;

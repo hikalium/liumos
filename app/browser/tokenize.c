@@ -1,6 +1,10 @@
+// This is a part of "13.2.5 Tokenization" in the HTML spec.
+// https://html.spec.whatwg.org/multipage/parsing.html#tokenization
+
 #include "tokenize.h"
 
 #include "rendering.h"
+#include "lib.h"
 
 Token tokens[100];
 int t_index = 0;

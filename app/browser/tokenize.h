@@ -1,9 +1,11 @@
-#ifndef TOKENIZE_H
-#define TOKENIZE_H
+// This is a part of "13.2.5 Tokenization" in the HTML spec.
+// https://html.spec.whatwg.org/multipage/parsing.html#tokenization
+
+#ifndef APP_BROWSER_TOKENIZE_H
+#define APP_BROWSER_TOKENIZE_H
 
 #include "../liumlib/liumlib.h"
 
-// https://html.spec.whatwg.org/multipage/parsing.html#tokenization
 typedef enum TokenType {
   // "DOCTYPE tokens have a name, a public identifier, a system identifier, and a force-quirks flag."
   DOCTYPE,
@@ -35,4 +37,7 @@ char *append_start_tag(char *html);
 void tokenize(char *html);
 void print_tokens(); // for debug
 
-#endif // TOKENIZE_H
+extern Token tokens[100];
+extern int t_index;
+
+#endif // APP_BROWSER_TOKENIZE_H

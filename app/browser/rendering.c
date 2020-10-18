@@ -1,22 +1,10 @@
 #include "rendering.h"
 
-#include "dom.h"
 #include "tokenize.h"
+#include "parse.h"
+#include "lib.h"
 
-int n_index = 0;
-struct Node nodes[100];
-
-void println(char *text) {
-  char output[100000];
-  int i = 0;
-  while (text[i] != '\0') {
-    output[i] = text[i];
-    i++;
-  }
-  write(1, output, i);
-  write(1, "\n", 1);
-}
-
+/*
 void generate() {
   for (int i=0; i<n_index; i++) {
     switch (nodes[i].tag) {
@@ -132,6 +120,7 @@ void parse(char *html) {
     }
   }
 }
+*/
 
 void render(char* html) {
   tokenize(html);
