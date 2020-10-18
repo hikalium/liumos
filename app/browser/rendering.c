@@ -159,9 +159,8 @@ void generate() {
       next = next->next;
     }
 
-    node = node->child;
+    node = node->first_child;
   }
-
 }
 
 void render(char* html) {

@@ -27,8 +27,8 @@ typedef enum ElementType {
   HEAD,
   BODY, // HTMLBodyElement
   HEADING, // HTMLHeadingElement
-  UL,
-  LI,
+  UL, // HTMLUListElement
+  LI, // HTMLLIElement
 } ElementType;
 
 typedef struct Node {
@@ -37,7 +37,8 @@ typedef struct Node {
   Attribute *attributes;
   char *data;
   struct Node *parent;
-  struct Node *child;
+  struct Node *first_child;
+  struct Node *last_child;
   struct Node *previous;
   struct Node *next;
 } Node;

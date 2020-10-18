@@ -7,13 +7,22 @@
 #include "lib.h"
 #include "tokenize.h"
 
-// https://html.spec.whatwg.org/multipage/parsing.html#appropriate-place-for-inserting-a-node
-void adjust_insertion_location() {
-}
-
 void insert_child(Node *child) {
   child->parent = current_node;
-  current_node->child = child;
+
+  if (current_node->first_child == NULL) {
+    current_node->first_child = child;
+    current_node->last_child = child;
+
+    current_node = child;
+    return;
+  }
+
+  Node *previous_last_child = current_node->last_child;
+  previous_last_child->next = child;
+  child->previous = previous_last_child;
+
+  current_node->last_child = child;
   current_node = child;
 
   push_stack(child);
@@ -26,7 +35,8 @@ Node *create_document() {
   node->local_name = NULL;
   node->attributes = NULL;
   node->data = NULL;
-  node->child = NULL;
+  node->first_child = NULL;
+  node->last_child = NULL;
   node->previous = NULL;
   node->next = NULL;
   return node;
@@ -39,7 +49,8 @@ Node *create_element(ElementType element_type, char *local_name) {
     node->local_name = local_name;
   node->attributes = NULL;
   node->data = NULL;
-  node->child = NULL;
+  node->first_child = NULL;
+  node->last_child = NULL;
   node->previous = NULL;
   node->next = NULL;
   return node;
@@ -56,7 +67,8 @@ Node *create_element_from_token(ElementType element_type, Token *token) {
     node->attributes = token->attributes;
   if (token->data)
     node->data = token->data;
-  node->child = NULL;
+  node->first_child = NULL;
+  node->last_child = NULL;
   node->previous = NULL;
   node->next = NULL;
   return node;
@@ -275,10 +287,11 @@ void construct_tree() {
           // Reprocess the token.
           break;
         }
-        if (token->type == START_TAG && strcmp(token->tag_name, "ul")) {
-          Node *element = create_element_from_token(HEADING, token);
+        if (token->type == START_TAG && strcmp(token->tag_name, "ul") == 0) {
+          Node *element = create_element_from_token(UL, token);
           insert_child(element);
           token = token->next;
+          break;
         }
         if (token->type == START_TAG &&
             (strcmp(token->tag_name, "h1") == 0 ||
@@ -293,8 +306,10 @@ void construct_tree() {
           token = token->next;
           break;
         }
-        if (token->type == START_TAG && strcmp(token->tag_name, "li")) {
+        if (token->type == START_TAG && strcmp(token->tag_name, "li") == 0) {
           // A start tag whose tag name is "li"
+          Node *element = create_element_from_token(LI, token);
+          insert_child(element);
           token = token->next;
         }
         if (token->type == END_TAG) {
@@ -377,6 +392,6 @@ void print_nodes() {
       next = next->next;
     }
 
-    node = node->child;
+    node = node->first_child;
   }
 }
