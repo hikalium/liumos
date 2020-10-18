@@ -239,16 +239,64 @@ void construct_tree() {
           i++;
           break;
         }
+        if (token.type == END_TAG && strcmp(token.tag_name, "body") == 0) {
+          // An end tag whose tag name is "body"
+          mode = AFTER_BODY;
+          i++;
+          break;
+        }
+        if (token.type == END_TAG && strcmp(token.tag_name, "html") == 0) {
+          // An end tag whose tag name is "html"
+          mode = AFTER_BODY;
+          // Reprocess the token.
+          break;
+        }
         if (token.type == END_TAG) {
           // Any other end tag
+          // TODO: how to keep track of current node.
           current_node = current_node->parent;
+          print_node(current_node);
           i++;
           break;
         }
       case TEXT:
-      case AFTER_BODY:
-      case AFTER_AFTER_BODY:
+        println("77777777777777 in text mode");
         i++;
+        break;
+      case AFTER_BODY:
+        // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-afterbody
+        println("88888888888888 in after body mode");
+        if (token.type == DOCTYPE) {
+          // A DOCTYPE token
+          // Parse error. Ignore the token.
+          break;
+        }
+        if (token.type == END_TAG && strcmp(token.tag_name, "html") == 0) {
+          // An end tag whose tag name is "html"
+          i++;
+          mode = AFTER_AFTER_BODY;
+          break;
+        }
+        if (token.type == EOF) {
+          // An end-of-file token
+          // Stop parsing.
+          return;
+        }
+        // Anything else
+        // Parse error. Switch the insertion mode to "in body" and reprocess the token.
+        mode = IN_BODY;
+        break;
+      case AFTER_AFTER_BODY:
+        // https://html.spec.whatwg.org/multipage/parsing.html#the-after-after-body-insertion-mode
+        println("99999999999999 in after after body mode");
+        if (token.type == EOF) {
+          // An end-of-file token
+          // Stop parsing.
+          return;
+        }
+        // Anything else
+        // Parse error. Switch the insertion mode to "in body" and reprocess the token.
+        mode = IN_BODY;
         break;
     }
   }
