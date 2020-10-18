@@ -6,19 +6,15 @@
 #include "../liumlib/liumlib.h"
 #include "lib.h"
 
-void append_child(Node *child) {
+void insert_child(Node *child) {
   child->parent = current_node;
   current_node->child = child;
   current_node = child;
 }
 
-void append_next() {
-
-}
-
+// https://html.spec.whatwg.org/multipage/dom.html#document
 Node *create_document() {
   Node *node = (Node *) malloc(sizeof(Node));
-  // Document is not an element, but for the sake of simplicity.
   node->element_type = DOCUMENT;
   node->local_name = NULL;
   node->attributes = NULL;
@@ -68,12 +64,10 @@ void construct_tree() {
     switch (mode) {
       case INITIAL:
         // https://html.spec.whatwg.org/multipage/parsing.html#the-initial-insertion-mode
-        println("1111111111 initial mode");
         mode = BEFORE_HTML;
         break;
       case BEFORE_HTML:
         // https://html.spec.whatwg.org/multipage/parsing.html#the-before-html-insertion-mode
-        println("2222222222 before html mode");
         if (token.type == DOCTYPE) {
           // Parse error. Ignore the token.
           i++;
@@ -81,7 +75,7 @@ void construct_tree() {
         }
         if (token.type == START_TAG && strcmp(token.tag_name, "html") == 0) {
           Node *element = create_element_from_token(HTML, &token);
-          append_child(element);
+          insert_child(element);
           mode = BEFORE_HEAD;
           i++; // Go to the next token.
           break;
@@ -99,14 +93,13 @@ void construct_tree() {
         // Anything else
         {
           Node *element = create_element(HTML, "html");
-          append_child(element);
+          insert_child(element);
         }
         mode = BEFORE_HEAD;
         // Reprocess the token.
         break;
       case BEFORE_HEAD:
         // https://html.spec.whatwg.org/multipage/parsing.html#the-before-head-insertion-mode
-        println("3333333333 before head mode");
         if (token.type == DOCTYPE) {
           // A DOCTYPE token
           // Parse error. Ignore the token.
@@ -115,7 +108,7 @@ void construct_tree() {
         if (token.type == START_TAG && strcmp(token.tag_name, "head") == 0) {
           // A start tag whose tag name is "head"
           Node *element = create_element_from_token(HEAD, &token);
-          append_child(element);
+          insert_child(element);
           mode = IN_HEAD;
           i++;
           break;
@@ -133,13 +126,12 @@ void construct_tree() {
         // Anything else
         {
           Node *element = create_element(HEAD, "head");
-          append_child(element);
+          insert_child(element);
         }
         mode = IN_HEAD;
         break;
       case IN_HEAD:
         // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inhead
-        println("44444444444 in head mode");
         if (token.type == DOCTYPE) {
           // A DOCTYPE token
           // Parse error. Ignore the token.
@@ -179,7 +171,6 @@ void construct_tree() {
         break;
       case AFTER_HEAD:
         // https://html.spec.whatwg.org/multipage/parsing.html#the-after-head-insertion-mode
-        println("5555555555 after head mode");
         if (token.type == DOCTYPE) {
           // A DOCTYPE token
           // Parse error. Ignore the token.
@@ -195,7 +186,7 @@ void construct_tree() {
         if (token.type == START_TAG && strcmp(token.tag_name, "body") == 0) {
           // A start tag whose tag name is "body"
           Node *element = create_element_from_token(BODY, &token);
-          append_child(element);
+          insert_child(element);
           mode = IN_BODY;
           i++;
           break;
@@ -218,14 +209,19 @@ void construct_tree() {
         // Anything else
         {
           Node *element = create_element(BODY, "body");
-          append_child(element);
+          insert_child(element);
         }
         mode = IN_BODY;
         // Reprocess the token.
         break;
       case IN_BODY:
         // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inbody
-        println("6666666666666 in body mode");
+        if (token.type == CHAR) {
+          Node *element = create_element_from_token(TEXT, &token);
+          insert_child(element);
+          i++;
+          break;
+        }
         if (token.type == START_TAG &&
             (strcmp(token.tag_name, "h1") == 0 ||
             strcmp(token.tag_name, "h2") == 0 ||
@@ -235,7 +231,7 @@ void construct_tree() {
             strcmp(token.tag_name, "h6") == 0)) {
           // A start tag whose tag name is one of: "h1", "h2", "h3", "h4", "h5", "h6"
           Node *element = create_element_from_token(HEADING, &token);
-          append_child(element);
+          insert_child(element);
           i++;
           break;
         }
@@ -255,17 +251,12 @@ void construct_tree() {
           // Any other end tag
           // TODO: how to keep track of current node.
           current_node = current_node->parent;
-          print_node(current_node);
           i++;
           break;
         }
-      case TEXT:
-        println("77777777777777 in text mode");
-        i++;
         break;
       case AFTER_BODY:
         // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-afterbody
-        println("88888888888888 in after body mode");
         if (token.type == DOCTYPE) {
           // A DOCTYPE token
           // Parse error. Ignore the token.
@@ -288,7 +279,6 @@ void construct_tree() {
         break;
       case AFTER_AFTER_BODY:
         // https://html.spec.whatwg.org/multipage/parsing.html#the-after-after-body-insertion-mode
-        println("99999999999999 in after after body mode");
         if (token.type == EOF) {
           // An end-of-file token
           // Stop parsing.
@@ -315,6 +305,9 @@ void print_node(Node *node) {
       break;
     case BODY:
       println("BODY");
+      break;
+    case TEXT:
+      println(node->data);
       break;
     default:
       println(node->local_name);

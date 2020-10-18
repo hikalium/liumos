@@ -34,6 +34,8 @@ assert "- bar
 - foo" "<ul><li>bar</li><li>foo</li></ul>"
 
 assert "bar" "<html><body>bar</body></html>"
+assert "# bar" "<html><h1>bar</h1></html>"
+assert "# bar" "<body><h1>bar</h1></body>"
 assert "# bar" "<html><body><h1>bar</h1></body></html>"
 
 echo "----------------"

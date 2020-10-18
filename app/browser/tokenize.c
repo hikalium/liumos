@@ -81,7 +81,6 @@ void append_char(char *tmp_char, int i) {
 // "The output of the tokenization step is a series of zero or more of the following tokens:
 // DOCTYPE, start tag, end tag, comment, character, end-of-file"
 void tokenize(char *html) {
-  println(html);
   char tmp_char[10000];
   int i = 0;
   while (*html) {

@@ -14,13 +14,15 @@ typedef enum Mode {
   IN_HEAD,
   AFTER_HEAD,
   IN_BODY,
-  TEXT,
   AFTER_BODY,
   AFTER_AFTER_BODY,
 } Mode;
 
 typedef enum ElementType {
-  DOCUMENT, // Document is no an element, but for the sake of simplicity.
+  // https://html.spec.whatwg.org/multipage/dom.html#document
+  DOCUMENT,
+  // https://dom.spec.whatwg.org/#interface-text
+  TEXT,
   HTML,
   HEAD,
   BODY, // HTMLBodyElement
