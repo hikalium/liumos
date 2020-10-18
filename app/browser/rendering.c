@@ -171,6 +171,7 @@ void render(char* html) {
   println("================");
 
   construct_tree();
+  println("================");
   print_nodes();
 
   println("================");

@@ -7,10 +7,16 @@
 #include "lib.h"
 #include "tokenize.h"
 
+// https://html.spec.whatwg.org/multipage/parsing.html#appropriate-place-for-inserting-a-node
+void adjust_insertion_location() {
+}
+
 void insert_child(Node *child) {
   child->parent = current_node;
   current_node->child = child;
   current_node = child;
+
+  push_stack(child);
 }
 
 // https://html.spec.whatwg.org/multipage/dom.html#document
@@ -56,12 +62,23 @@ Node *create_element_from_token(ElementType element_type, Token *token) {
   return node;
 }
 
+void push_stack(Node *node) {
+  stack_of_open_elements[stack_index] = node;
+  stack_index++;
+}
+
+Node *pop_stack() {
+  return stack_of_open_elements[--stack_index];
+}
+
 void construct_tree() {
   Mode mode = INITIAL;
 
   Node *document = create_document();
   root_node = document;
   current_node = document;
+
+  stack_index = 0;
 
   Token *token = first_token;
 
@@ -233,10 +250,35 @@ void construct_tree() {
           token = token->next;
           break;
         }
+        if (token->type == DOCTYPE) {
+          // A DOCTYPE token
+          // Parse error. Ignore the token.
+          break;
+        }
         if (token->type == EOF) {
           // An end-of-file token
           // Stop parsing.
           return;
+        }
+        if (token->type == END_TAG && strcmp(token->tag_name, "body") == 0) {
+          // An end tag whose tag name is "body"
+          if (pop_stack()->element_type != BODY) {
+            // Parse error.
+          }
+          mode = AFTER_BODY;
+          token = token->next;
+          break;
+        }
+        if (token->type == END_TAG && strcmp(token->tag_name, "html") == 0) {
+          // An end tag whose tag name is "html"
+          mode = AFTER_BODY;
+          // Reprocess the token.
+          break;
+        }
+        if (token->type == START_TAG && strcmp(token->tag_name, "ul")) {
+          Node *element = create_element_from_token(HEADING, token);
+          insert_child(element);
+          token = token->next;
         }
         if (token->type == START_TAG &&
             (strcmp(token->tag_name, "h1") == 0 ||
@@ -251,22 +293,12 @@ void construct_tree() {
           token = token->next;
           break;
         }
-        if (token->type == END_TAG && strcmp(token->tag_name, "body") == 0) {
-          // An end tag whose tag name is "body"
-          mode = AFTER_BODY;
+        if (token->type == START_TAG && strcmp(token->tag_name, "li")) {
+          // A start tag whose tag name is "li"
           token = token->next;
-          break;
-        }
-        if (token->type == END_TAG && strcmp(token->tag_name, "html") == 0) {
-          // An end tag whose tag name is "html"
-          mode = AFTER_BODY;
-          // Reprocess the token.
-          break;
         }
         if (token->type == END_TAG) {
           // Any other end tag
-          // TODO: how to keep track of current node.
-          current_node = current_node->parent;
           token = token->next;
           break;
         }
