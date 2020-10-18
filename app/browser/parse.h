@@ -34,7 +34,7 @@ typedef enum ElementType {
 typedef struct Node {
   ElementType element_type;
   char *local_name;
-  Dict *attributes;
+  Attribute *attributes;
   char *data;
   struct Node *parent;
   struct Node *child;

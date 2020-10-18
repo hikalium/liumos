@@ -166,17 +166,17 @@ void generate() {
 
 void render(char* html) {
   tokenize(html);
-  //print_tokens();
+  print_tokens();
 
-  //println("================");
+  println("================");
 
   construct_tree();
-  //print_nodes();
+  print_nodes();
 
-  //println("================");
+  println("================");
 
   generate();
-  //write(1, "\n", 1);
+  write(1, "\n", 1);
 
   //parse(html);
   //generate();

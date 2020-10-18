@@ -6,15 +6,35 @@
 #include "rendering.h"
 #include "lib.h"
 
-Token tokens[100];
-int t_index = 0;
+Token *first_token = NULL;
+Token *current_token = NULL;
+
+void append_token(Token *token) {
+  if (first_token == NULL) {
+    first_token = token;
+  } else {
+    current_token->next = token;
+  }
+  current_token = token;
+}
+
+Token *create_token(TokenType type, char *tag, bool self_closing, char *data) {
+  Token *token = (Token *) malloc(sizeof(Token));
+  token->type = type;
+  if (tag)
+    token->tag_name = tag;
+  token->self_closing = self_closing;
+  token->attributes = NULL;
+  if (data)
+    token->data = data;
+  token->next = NULL;
+  return token;
+}
 
 char *append_doctype(char *html) {
   while (*html) {
     if (*html == '>') {
-      Token token = { .type = DOCTYPE };
-      tokens[t_index] = token;
-      t_index++;
+      append_token(create_token(DOCTYPE, NULL, 0, NULL));
       return html;
     }
     html++;
@@ -30,9 +50,7 @@ char *append_end_tag(char *html) {
       char *tag = (char *) malloc(i+1);
       tmp_tag[i] = '\0';
       strcpy(tag, tmp_tag);
-      Token token = { .type = END_TAG, .tag_name = tag };
-      tokens[t_index] = token;
-      t_index++;
+      append_token(create_token(END_TAG, tag, 0, NULL));
       return html;
     }
     tmp_tag[i] = *html;
@@ -56,9 +74,7 @@ char *append_start_tag(char *html) {
       char *tag = (char *) malloc(i+1);
       tmp_tag[i] = '\0';
       strcpy(tag, tmp_tag);
-      Token token = { .type = START_TAG, .tag_name = tag, .self_closing = self_closing };
-      tokens[t_index] = token;
-      t_index++;
+      append_token(create_token(START_TAG, tag, self_closing, NULL));
       return html;
     }
     tmp_tag[i] = *html;
@@ -69,12 +85,10 @@ char *append_start_tag(char *html) {
 }
 
 void append_char(char *tmp_char, int i) {
-  char *c = (char *) malloc(i+1);
+  char *data = (char *) malloc(i+1);
   tmp_char[i] = '\0';
-  strcpy(c, tmp_char);
-  Token token = { .type = CHAR, .data = c };
-  tokens[t_index] = token;
-  t_index++;
+  strcpy(data, tmp_char);
+  append_token(create_token(CHAR, NULL, 0, data));
 }
 
 // https://html.spec.whatwg.org/multipage/parsing.html#tokenization
@@ -116,22 +130,20 @@ void tokenize(char *html) {
     append_char(tmp_char, i);
     i = 0;
   }
-  Token token = { .type = EOF };
-  tokens[t_index] = token;
-  t_index++;
+  append_token(create_token(EOF, NULL, 0, NULL));
 }
 
 // for debug.
 void print_tokens() {
-  for (int i=0; i<t_index; i++) {
+  for (Token *token = first_token; token; token = token->next) {
     println("token:");
-    switch (tokens[i].type) {
+    switch (token->type) {
       case START_TAG:
       case END_TAG:
-        println(tokens[i].tag_name);
+        println(token->tag_name);
         break;
       case CHAR:
-        println(tokens[i].data);
+        println(token->data);
         break;
       case EOF:
         println("EOF: End of file");

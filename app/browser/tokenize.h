@@ -18,17 +18,19 @@ typedef enum TokenType {
   EOF,
 } TokenType;
 
-typedef struct Dict {
+typedef struct Attribute {
   char *key;
   char *value;
-} Dict;
+  struct Attribute *next;
+} Attribute;
 
 typedef struct Token {
   TokenType type;
   char *tag_name; // for start/end tag.
   bool self_closing; // for start/end tag.
-  Dict attributes[10]; // for start/end tag.
+  Attribute *attributes; // for start/end tag.
   char *data; // for comment and character.
+  struct Token *next;
 } Token;
 
 char *append_doctype(char *html);
@@ -37,7 +39,7 @@ char *append_start_tag(char *html);
 void tokenize(char *html);
 void print_tokens(); // for debug.
 
-extern Token tokens[100];
-extern int t_index;
+extern Token *first_token;
+extern Token *current_token;
 
 #endif // APP_BROWSER_TOKENIZE_H
