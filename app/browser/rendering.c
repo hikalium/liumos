@@ -122,6 +122,9 @@ void parse(char *html) {
 }
 */
 
+// TODO: improve this hacky way.
+bool in_list = 0;
+
 void markdown(Node *node) {
   switch (node->element_type) {
     case TEXT:
@@ -142,6 +145,11 @@ void markdown(Node *node) {
         write(1, "###### ", 7);
       }
       break;
+    case LI:
+      if (in_list)
+        write(1, "\n", 1);
+      write(1, "- ", 2);
+      in_list = 1;
     default:
       break;
   }
@@ -165,18 +173,18 @@ void generate() {
 
 void render(char* html) {
   tokenize(html);
-  print_tokens();
+  //print_tokens();
 
-  println("================");
+  //println("================");
 
   construct_tree();
-  println("================");
-  print_nodes();
+  //println("================");
+  //print_nodes();
 
-  println("================");
+  //println("================");
 
   generate();
-  write(1, "\n", 1);
+  //write(1, "\n", 1);
 
   //parse(html);
   //generate();

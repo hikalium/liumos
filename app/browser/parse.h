@@ -47,16 +47,11 @@ void insert_child(Node *child);
 Node *create_document();
 Node *create_element(ElementType element_type, char *local_name);
 Node *create_element_from_token(ElementType element_type, Token *token);
-void push_stack(Node *node);
-Node *pop_stack();
 void construct_tree();
 void print_node(Node *node); // for debug.
 void print_nodes(); // for debug.
 
 Node *root_node;
 Node *current_node;
-// https://html.spec.whatwg.org/multipage/parsing.html#the-stack-of-open-elements
-Node *stack_of_open_elements[100];
-int stack_index;
 
 #endif // APP_BROWSER_PARSE_H

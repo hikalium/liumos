@@ -24,8 +24,6 @@ void insert_child(Node *child) {
 
   current_node->last_child = child;
   current_node = child;
-
-  push_stack(child);
 }
 
 // https://html.spec.whatwg.org/multipage/dom.html#document
@@ -74,15 +72,6 @@ Node *create_element_from_token(ElementType element_type, Token *token) {
   return node;
 }
 
-void push_stack(Node *node) {
-  stack_of_open_elements[stack_index] = node;
-  stack_index++;
-}
-
-Node *pop_stack() {
-  return stack_of_open_elements[--stack_index];
-}
-
 void construct_tree() {
   Mode mode = INITIAL;
 
@@ -90,19 +79,17 @@ void construct_tree() {
   root_node = document;
   current_node = document;
 
-  stack_index = 0;
-
   Token *token = first_token;
 
   while (token) {
     switch (mode) {
       case INITIAL:
-      println("1 initial");
+      //println("1 initial");
         // https://html.spec.whatwg.org/multipage/parsing.html#the-initial-insertion-mode
         mode = BEFORE_HTML;
         break;
       case BEFORE_HTML:
-      println("2 before html");
+      //println("2 before html");
         // https://html.spec.whatwg.org/multipage/parsing.html#the-before-html-insertion-mode
         if (token->type == DOCTYPE) {
           // Parse error. Ignore the token.
@@ -135,11 +122,12 @@ void construct_tree() {
         // Reprocess the token.
         break;
       case BEFORE_HEAD:
-      println("3 before head");
+      //println("3 before head");
         // https://html.spec.whatwg.org/multipage/parsing.html#the-before-head-insertion-mode
         if (token->type == DOCTYPE) {
           // A DOCTYPE token
           // Parse error. Ignore the token.
+          token = token->next;
           break;
         }
         if (token->type == START_TAG && strcmp(token->tag_name, "head") == 0) {
@@ -168,11 +156,12 @@ void construct_tree() {
         mode = IN_HEAD;
         break;
       case IN_HEAD:
-      println("4 in head");
+      //println("4 in head");
         // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inhead
         if (token->type == DOCTYPE) {
           // A DOCTYPE token
           // Parse error. Ignore the token.
+          token = token->next;
           break;
         }
         if (token->type == START_TAG && strcmp(token->tag_name, "html") == 0) {
@@ -208,11 +197,12 @@ void construct_tree() {
         // Reprocess the token.
         break;
       case AFTER_HEAD:
-      println("5 after head");
+      //println("5 after head");
         // https://html.spec.whatwg.org/multipage/parsing.html#the-after-head-insertion-mode
         if (token->type == DOCTYPE) {
           // A DOCTYPE token
           // Parse error. Ignore the token.
+          token = token->next;
           break;
         }
         if (token->type == START_TAG && strcmp(token->tag_name, "html") == 0) {
@@ -254,7 +244,7 @@ void construct_tree() {
         // Reprocess the token.
         break;
       case IN_BODY:
-      println("6 in body");
+      //println("6 in body");
         // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inbody
         if (token->type == CHAR) {
           Node *element = create_element_from_token(TEXT, token);
@@ -265,6 +255,7 @@ void construct_tree() {
         if (token->type == DOCTYPE) {
           // A DOCTYPE token
           // Parse error. Ignore the token.
+          token = token->next;
           break;
         }
         if (token->type == EOF) {
@@ -274,9 +265,6 @@ void construct_tree() {
         }
         if (token->type == END_TAG && strcmp(token->tag_name, "body") == 0) {
           // An end tag whose tag name is "body"
-          if (pop_stack()->element_type != BODY) {
-            // Parse error.
-          }
           mode = AFTER_BODY;
           token = token->next;
           break;
@@ -319,11 +307,12 @@ void construct_tree() {
         }
         break;
       case AFTER_BODY:
-      println("7 after body");
+      //println("7 after body");
         // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-afterbody
         if (token->type == DOCTYPE) {
           // A DOCTYPE token
           // Parse error. Ignore the token.
+          token = token->next;
           break;
         }
         if (token->type == END_TAG && strcmp(token->tag_name, "html") == 0) {
@@ -342,7 +331,7 @@ void construct_tree() {
         mode = IN_BODY;
         break;
       case AFTER_AFTER_BODY:
-      println("8 after after body");
+      //println("8 after after body");
         // https://html.spec.whatwg.org/multipage/parsing.html#the-after-after-body-insertion-mode
         if (token->type == EOF) {
           // An end-of-file token

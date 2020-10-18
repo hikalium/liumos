@@ -6,6 +6,7 @@ assert() {
 
   actual=$(./browser.bin -rawtext "$input" 2>&1)
 
+  echo "input, expected, actual:"
   echo $input
   echo $expected
   echo $actual
@@ -15,6 +16,7 @@ assert() {
     echo "$input => $expected expected, but got $actual"
     exit 1
   fi
+  echo "------------------------"
 }
 
 make clean
