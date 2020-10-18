@@ -12,7 +12,6 @@ typedef enum Mode {
   BEFORE_HTML,
   BEFORE_HEAD,
   IN_HEAD,
-  IN_HEAD_NOSCRIPT,
   AFTER_HEAD,
   IN_BODY,
   TEXT,
@@ -20,17 +19,37 @@ typedef enum Mode {
   AFTER_AFTER_BODY,
 } Mode;
 
+typedef enum ElementType {
+  DOCUMENT, // Document is no an element, but for the sake of simplicity.
+  HTML,
+  HEAD,
+  BODY, // HTMLBodyElement
+  HEADING, // HTMLHeadingElement
+  UL,
+  LI,
+} ElementType;
+
 typedef struct Node {
+  ElementType element_type;
   char *local_name;
-  Dict attributes[10];
+  Dict *attributes;
   char *data;
+  struct Node *parent;
+  struct Node *child;
   struct Node *previous;
   struct Node *next;
 } Node;
 
-Node create_element(Token token);
+Node *create_document();
+Node *create_element(ElementType element_type, char *local_name);
+Node *create_element_from_token(ElementType element_type, Token *token);
 void construct_tree();
+void print_node(Node *node); // for debug.
+void print_nodes(); // for debug.
 
-Node *nodes;
+Node *root_node;
+Node *current_node;
+// https://html.spec.whatwg.org/multipage/parsing.html#the-stack-of-open-elements
+Node *stack_of_open_elements;
 
 #endif // APP_BROWSER_PARSE_H

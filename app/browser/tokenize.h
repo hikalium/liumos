@@ -35,7 +35,7 @@ char *append_doctype(char *html);
 char *append_end_tag(char *html);
 char *append_start_tag(char *html);
 void tokenize(char *html);
-void print_tokens(); // for debug
+void print_tokens(); // for debug.
 
 extern Token tokens[100];
 extern int t_index;

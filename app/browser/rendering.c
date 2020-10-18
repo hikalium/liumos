@@ -126,7 +126,10 @@ void render(char* html) {
   tokenize(html);
   print_tokens();
 
+  println("================");
+
   construct_tree();
+  print_nodes();
 
   //parse(html);
   //generate();
