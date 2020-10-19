@@ -241,8 +241,8 @@ void PlayMIDI(EFIFile& file) {
       has_next_event = true;
     }
     if (min_delta != 0) {
-      liumos->hpet->BusyWaitMicroSecond(state.micro_second_per_delta *
-                                        min_delta);
+      HPET::GetInstance().BusyWaitMicroSecond(state.micro_second_per_delta *
+                                              min_delta);
     }
     for (int i = 0; i < num_of_tracks; i++) {
       delta_used[i] += min_delta;
@@ -257,35 +257,35 @@ void TestAdlib() {
   }
 
   Adlib::NoteOn(60);
-  liumos->hpet->BusyWait(500);
+  HPET::GetInstance().BusyWait(500);
   Adlib::NoteOff(60);
 
   Adlib::NoteOn(64);
-  liumos->hpet->BusyWait(500);
+  HPET::GetInstance().BusyWait(500);
   Adlib::NoteOff(64);
 
   Adlib::NoteOn(67);
-  liumos->hpet->BusyWait(500);
+  HPET::GetInstance().BusyWait(500);
   Adlib::NoteOff(67);
 
-  liumos->hpet->BusyWait(500);
+  HPET::GetInstance().BusyWait(500);
 
   Adlib::NoteOn(60);
   Adlib::NoteOn(64);
   Adlib::NoteOn(67);
-  liumos->hpet->BusyWait(500);
+  HPET::GetInstance().BusyWait(500);
   Adlib::NoteOff(60);
   Adlib::NoteOff(64);
   Adlib::NoteOff(67);
 
-  liumos->hpet->BusyWait(500);
+  HPET::GetInstance().BusyWait(500);
 
   for (int i = 0; i < 10; i++) {
     Adlib::NoteOn(i + 60);
-    liumos->hpet->BusyWait(200);
+    HPET::GetInstance().BusyWait(200);
   }
   for (int i = 0; i < 10; i++) {
-    liumos->hpet->BusyWait(200);
+    HPET::GetInstance().BusyWait(200);
     Adlib::NoteOff(i + 60);
   }
 

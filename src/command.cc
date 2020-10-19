@@ -375,7 +375,7 @@ void label(uint64_t i) {
 }
 
 uint64_t get_seconds() {
-  return liumos->hpet->ReadMainCounterValue();
+  return HPET::GetInstance().ReadMainCounterValue();
 }
 
 void TestMem(PhysicalPageAllocator& allocator, uint32_t proximity_domain) {
@@ -409,7 +409,7 @@ void TestMem(PhysicalPageAllocator& allocator, uint32_t proximity_domain) {
   uint64_t steps, tsteps;
   uint64_t t0, t1, tick_sum_overall, tick_sum_loop_only;
   uint64_t kDurationTick =
-      (uint64_t)(0.1 * 1e15) / liumos->hpet->GetFemtosecondPerCount();
+      (uint64_t)(0.1 * 1e15) / HPET::GetInstance().GetFemtosecondPerCount();
 
   PutString(" ,");
   for (stride = 1; stride <= kRangeMax / 2; stride = stride * 2)
@@ -465,7 +465,7 @@ void TestMem(PhysicalPageAllocator& allocator, uint32_t proximity_domain) {
       const uint64_t tick_sum_of_mem_read =
           tick_sum_overall - tick_sum_loop_only;
       const uint64_t pico_second_per_mem_read =
-          tick_sum_of_mem_read * liumos->hpet->GetFemtosecondPerCount() /
+          tick_sum_of_mem_read * HPET::GetInstance().GetFemtosecondPerCount() /
           (steps * csize) / 1000;
       PutString("0x");
       PutHex64(pico_second_per_mem_read > 0 ? pico_second_per_mem_read : 1);
@@ -507,7 +507,7 @@ void TestMemWrite(PhysicalPageAllocator allocator, uint32_t proximity_domain) {
   uint64_t steps, tsteps;
   uint64_t t0, t1;
   uint64_t kDurationTick =
-      (uint64_t)(0.1 * 1e15) / liumos->hpet->GetFemtosecondPerCount();
+      (uint64_t)(0.1 * 1e15) / HPET::GetInstance().GetFemtosecondPerCount();
 
   PutString(" ,");
   for (stride = 1; stride <= kRangeMax / 2; stride = stride * 2)
@@ -564,7 +564,7 @@ void TestMemWrite(PhysicalPageAllocator allocator, uint32_t proximity_domain) {
       const uint64_t tick_sum_access_only =
           tick_sum_overall - tick_sum_loop_only;
       const uint64_t pico_second_per_mem_read =
-          tick_sum_access_only * liumos->hpet->GetFemtosecondPerCount() /
+          tick_sum_access_only * HPET::GetInstance().GetFemtosecondPerCount() /
           (steps * csize) / 1000;
       if (pico_second_per_mem_read == 0) {
         PutString(", ");
@@ -580,7 +580,8 @@ void TestMemWrite(PhysicalPageAllocator allocator, uint32_t proximity_domain) {
 }
 
 void Time() {
-  PutStringAndHex("HPET main counter", liumos->hpet->ReadMainCounterValue());
+  PutStringAndHex("HPET main counter",
+                  HPET::GetInstance().ReadMainCounterValue());
 }
 
 void Version() {
@@ -662,7 +663,7 @@ void Run(TextBox& tbox) {
   } else if (IsEqualString(line, "show mmap")) {
     ShowEFIMemoryMap();
   } else if (IsEqualString(line, "show hpet")) {
-    liumos->hpet->Print();
+    HPET::GetInstance().Print();
   } else if (IsEqualString(line, "show cpu")) {
     PutString("APIC Mode: ");
     PutString(liumos->bsp_local_apic->Isx2APIC() ? "x2APIC" : "xAPIC");
@@ -757,7 +758,7 @@ void Run(TextBox& tbox) {
     int us = atoi(&line[5]);
     PutStringAndHex("Eval in time slice", us);
     ClearIntFlag();
-    liumos->hpet->SetTimerNs(
+    HPET::GetInstance().SetTimerNs(
         0, us,
         HPET::TimerConfig::kUsePeriodicMode | HPET::TimerConfig::kEnable);
 
@@ -823,10 +824,10 @@ void Run(TextBox& tbox) {
     PutString("free: show memory free entries\n");
     PutString("time: show HPET main counter value\n");
   } else if (IsEqualString(line, "testscroll")) {
-    uint64_t t0 = liumos->hpet->ReadMainCounterValue();
-    uint64_t t1 =
-        t0 + 3 * 1000'000'000'000'000 / liumos->hpet->GetFemtosecondPerCount();
-    for (int i = 0; liumos->hpet->ReadMainCounterValue() < t1; i++) {
+    uint64_t t0 = HPET::GetInstance().ReadMainCounterValue();
+    uint64_t t1 = t0 + 3 * 1000'000'000'000'000 /
+                           HPET::GetInstance().GetFemtosecondPerCount();
+    for (int i = 0; HPET::GetInstance().ReadMainCounterValue() < t1; i++) {
       PutStringAndHex("Line", i + 1);
     }
   } else if (IsEqualString(line, "xhci init")) {

@@ -227,7 +227,7 @@ static std::optional<Network::EtherAddr> ResolveIPv4WithTimeout(
       return eth_container;
     }
     SendARPRequest(ip_addr);
-    liumos->hpet->BusyWait(kWaitTimePerTryMs);
+    HPET::GetInstance().BusyWait(kWaitTimePerTryMs);
     time_passed_ms += kWaitTimePerTryMs;
   }
   return std::nullopt;

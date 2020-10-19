@@ -2,6 +2,8 @@
 
 using TimerConfig = HPET::TimerConfig;
 
+HPET* HPET::hpet_;
+
 packed_struct TimerRegister {
   TimerConfig configuration_and_capability;
   uint64_t comparator_value;
@@ -92,4 +94,13 @@ void HPET::Print() {
   PutStringAndBool("  main counter supports 64bit mode",
                    registers_->general_capabilities_and_id &
                        GeneralCapabilityBits::kMainCounterSupports64bit);
+}
+
+HPET& HPET::GetInstance() {
+  if (!hpet_) {
+    hpet_ = liumos->kernel_heap_allocator->Alloc<HPET>();
+  }
+  assert(hpet_);
+  new (hpet_) HPET();
+  return *hpet_;
 }
