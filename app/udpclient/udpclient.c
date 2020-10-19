@@ -76,14 +76,12 @@ static in_addr_t MakeIPv4AddrFromString(const char* s) {
 }
 
 int main(int argc, char** argv) {
-  int socket_fd;
-
   if(argc < 4) {
     Print("Usage: udpclient.bin <ip addr> <port> <message>\n");
     return EXIT_FAILURE;
   }
 
-  // Create a stream socket
+  int socket_fd;
   if ((socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
     write(1, "error: fail to create socket\n", 29);
     return EXIT_FAILURE;
