@@ -29,10 +29,10 @@
   ((((x) & 0xff000000) >> 24) | (((x) & 0x00ff0000) >> 8) | \
   (((x) & 0x0000ff00) << 8) | (((x) & 0x000000ff) << 24))
 
-#define MALLOC_MAX_SIZE 100000
+#define MALLOC_MAX_SIZE 1000000
 
 #define SIZE_REQUEST 1000
-#define SIZE_RESPONSE 10000
+#define SIZE_RESPONSE 2000
 
 typedef long ssize_t;
 typedef uint32_t in_addr_t;

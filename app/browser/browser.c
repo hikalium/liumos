@@ -103,10 +103,11 @@ void parse_response(char *response, char *body) {
 }
 
 int main(int argc, char *argv[]) {
-  char *html = (char *) malloc(SIZE_RESPONSE);
+  char *html;
 
   // For debug.
   if (argc == 3 && strcmp(argv[1], "-rawtext") == 0) {
+    html = (char *) malloc(SIZE_RESPONSE);
     html = argv[2];
     render(html);
     exit(0);
@@ -121,6 +122,10 @@ int main(int argc, char *argv[]) {
   }
 
   while (1) {
+    host = NULL;
+    path = NULL;
+    ip = NULL;
+
     char *url = (char *) malloc (2048);
     write(1, "Input URL: ", 11);
     read(1, url, 2048);
@@ -143,7 +148,9 @@ int main(int argc, char *argv[]) {
 
     char *request = (char *) malloc(SIZE_REQUEST);
     char *response = (char *) malloc(SIZE_RESPONSE);
+    html = (char *) malloc(SIZE_RESPONSE);
     build_request(request);
+
     get_response(request, response);
     get_response_body(response, html);
 
