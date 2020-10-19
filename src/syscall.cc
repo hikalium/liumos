@@ -215,6 +215,24 @@ static ssize_t sys_read(int fd, void* buf, size_t count) {
   return 1;
 }
 
+static std::optional<Network::EtherAddr> ResolveIPv4WithTimeout(
+    Network::IPv4Addr ip_addr,
+    uint64_t timeout_ms) {
+  Network& network = Network::GetInstance();
+  uint64_t time_passed_ms = 0;
+  constexpr uint64_t kWaitTimePerTryMs = 25;
+  while (time_passed_ms < timeout_ms) {
+    auto eth_container = network.ResolveIPv4(ip_addr);
+    if (eth_container.has_value()) {
+      return eth_container;
+    }
+    SendARPRequest(ip_addr);
+    liumos->hpet->BusyWait(kWaitTimePerTryMs);
+    time_passed_ms += kWaitTimePerTryMs;
+  }
+  return std::nullopt;
+}
+
 static ssize_t sys_sendto(int sockfd,
                           const void* buf,
                           size_t len,
@@ -239,21 +257,17 @@ static ssize_t sys_sendto(int sockfd,
   Socket::Type socket_type = (*sock_holder).type;
 
   IPv4Addr target_ip_addr = dest_addr->sin_addr;
-  EtherAddr target_eth_addr;
-  for (;;) {
-    auto target_eth_container = network.ResolveIPv4(target_ip_addr);
-    if (target_eth_container.has_value()) {
-      target_eth_addr = *target_eth_container;
-      break;
-    }
-    SendARPRequest(target_ip_addr);
-    liumos->hpet->BusyWait(100);
+  std::optional<EtherAddr> target_eth_addr_holder =
+      ResolveIPv4WithTimeout(target_ip_addr, 1000);
+  if (!target_eth_addr_holder.has_value()) {
+    kprintf("%s: ARP resolution failed.\n", __func__);
+    return -1;
   }
   if (socket_type == Network::Socket::Type::kICMP) {
     ICMPPacket& icmp =
         *virtio_net.GetNextTXPacketBuf<ICMPPacket*>(sizeof(IPv4Packet) + len);
     // ip.eth
-    icmp.ip.eth.dst = target_eth_addr;
+    icmp.ip.eth.dst = *target_eth_addr_holder;
     icmp.ip.eth.src = virtio_net.GetSelfEtherAddr();
     icmp.ip.eth.SetEthType(Net::EtherFrame::kTypeIPv4);
     // ip
