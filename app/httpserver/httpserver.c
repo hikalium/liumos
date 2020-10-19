@@ -51,6 +51,10 @@ void route(char *response, char *path) {
     build_response(response, 200, "<body><h1>Hello world!</h1></body>");
     return;
   }
+  if (strcmp(path, "/example.html") == 0) {
+    build_response(response, 200, "<html><body><h1>example page</h1><ul><li>abc</li><li>def</li></ul></body></html>");
+    return;
+  }
   build_response(response, 404, "<body><p>Page is not found.</p></body>");
 }
 

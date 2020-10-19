@@ -1,9 +1,10 @@
-#ifndef RENDERING_H
-#define RENDERING_H
+#ifndef APP_BROWSER_RENDERING_H
+#define APP_BROWSER_RENDERING_H
 
 // This parsing model for HTML is a subset of the parsing model in the spec.
 // https://html.spec.whatwg.org/multipage/parsing.html
 
+/*
 typedef enum Tag {
   HTML,
   BODY,
@@ -25,8 +26,12 @@ typedef struct Node {
 
 void generate();
 void parse(char *html);
+*/
 void render(char *html);
 
-void println(char *text);
+/*
+int n_index = 0;
+struct Node nodes[100];
+*/
 
-#endif // RENDERING_H
+#endif // APP_BROWSER_RENDERING_H

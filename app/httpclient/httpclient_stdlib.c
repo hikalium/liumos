@@ -1,12 +1,12 @@
 // HTTP client with standard library.
 
-#include <netinet/in.h> 
-#include <stdlib.h> 
-#include <stdio.h> 
+#include <netinet/in.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
-#include <sys/socket.h> 
+#include <sys/socket.h>
 #include <arpa/inet.h>
-#include <unistd.h> 
+#include <unistd.h>
 
 #define PORT 8888
 #define SIZE_REQUEST 1000
