@@ -150,6 +150,7 @@ void markdown(Node *node) {
         write(1, "\n", 1);
       write(1, "- ", 2);
       in_list = 1;
+      break;
     default:
       break;
   }

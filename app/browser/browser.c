@@ -105,37 +105,51 @@ void parse_response(char *response, char *body) {
 int main(int argc, char *argv[]) {
   char *html = (char *) malloc(SIZE_RESPONSE);
 
-  if (argc == 1) {
+  // For debug.
+  if (argc == 3 && strcmp(argv[1], "-rawtext") == 0) {
+    html = argv[2];
+    render(html);
+    exit(0);
+    return 0;
+  }
+
+  if (argc != 1) {
+    println("Usage: browser.bin");
+    println("       browser.bin -rawtext RAW_HTML_TEXT");
+    exit(1);
+    return 1;
+  }
+
+  while (1) {
+    char *url = (char *) malloc (2048);
+    write(1, "Input URL: ", 11);
+    read(1, url, 2048);
+
+    if (strlen(url) > 1) {
+      host = strtok(url, "/");
+      path = strtok(NULL, "/");
+      if (strlen(path) > 1 && path[strlen(path)-1] == '\n') {
+        path[strlen(path)-1] = '\0';
+      }
+    }
+
+    char *ip = (char *) malloc (2048);
+    write(1, "Input IP: ", 10);
+    read(1, ip, 2048);
+
+    if (strlen(ip) <= 1) {
+      ip = NULL;
+    }
+
     char *request = (char *) malloc(SIZE_REQUEST);
     char *response = (char *) malloc(SIZE_RESPONSE);
     build_request(request);
     get_response(request, response);
     get_response_body(response, html);
-  } else if (argc == 3) {
-    if (strcmp("-rawtext", argv[1]) == 0) {
-      html = argv[2];
-    } else {
-      char *url = argv[1];
-      host = strtok(url, "/");
-      path = strtok(NULL, "/");
-      ip = argv[2];
 
-      char *request = (char *) malloc(SIZE_REQUEST);
-      char *response = (char *) malloc(SIZE_RESPONSE);
-      build_request(request);
-      get_response(request, response);
-      get_response_body(response, html);
-    }
-  } else {
-    println("Usage: browser.bin");
-    println("       browser.bin HOSTNAME IP");
-    println("       browser.bin -rawtext RAW_TEXT");
-    println("       * The default value of HOSTNAME and IP is localhost:8888");
-    exit(1);
-    return 1;
+    render(html);
+    println("\n");
   }
-
-  render(html);
 
   exit(0);
   return 0;
