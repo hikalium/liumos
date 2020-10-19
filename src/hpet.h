@@ -24,7 +24,13 @@ class HPET {
   void BusyWaitMicroSecond(uint64_t);
   void Print(void);
 
+  static HPET& GetInstance();
+
  private:
+  HPET(){};
+
+  static HPET* hpet_;
+
   RegisterSpace* registers_;
   uint64_t femtosecond_per_count_;
 };

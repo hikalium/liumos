@@ -25,7 +25,6 @@ LocalAPIC bsp_local_apic_;
 CPUFeatureSet cpu_features_;
 SerialPort com1_;
 SerialPort com2_;
-HPET hpet_;
 LoaderInfo* loader_info_;
 
 void kprintf(const char* fmt, ...) {
@@ -149,16 +148,16 @@ void SwitchContext(InterruptInfo& int_info,
                    Process& from_proc,
                    Process& to_proc) {
   static uint64_t proc_last_time_count = 0;
-  const uint64_t now_count = liumos->hpet->ReadMainCounterValue();
+  const uint64_t now_count = HPET::GetInstance().ReadMainCounterValue();
   if ((proc_last_time_count - now_count) < liumos->time_slice_count)
     return;
 
   from_proc.AddProcTimeFemtoSec(
-      (liumos->hpet->ReadMainCounterValue() - proc_last_time_count) *
-      liumos->hpet->GetFemtosecondPerCount());
+      (HPET::GetInstance().ReadMainCounterValue() - proc_last_time_count) *
+      HPET::GetInstance().GetFemtosecondPerCount());
 
   CPUContext& from = from_proc.GetExecutionContext().GetCPUContext();
-  const uint64_t t0 = liumos->hpet->ReadMainCounterValue();
+  const uint64_t t0 = HPET::GetInstance().ReadMainCounterValue();
 
   EnsureAddrIs16ByteAligned(from_proc, to_proc, "int_info.fpu_context",
                             &int_info.fpu_context);
@@ -167,9 +166,9 @@ void SwitchContext(InterruptInfo& int_info,
   from.greg = int_info.greg;
   from.int_ctx = int_info.int_ctx;
   from_proc.NotifyContextSaving();
-  const uint64_t t1 = liumos->hpet->ReadMainCounterValue();
+  const uint64_t t1 = HPET::GetInstance().ReadMainCounterValue();
   from_proc.AddTimeConsumedInContextSavingFemtoSec(
-      (t1 - t0) * liumos->hpet->GetFemtosecondPerCount());
+      (t1 - t0) * HPET::GetInstance().GetFemtosecondPerCount());
 
   CPUContext& to = to_proc.GetExecutionContext().GetCPUContext();
   int_info.greg = to.greg;
@@ -180,7 +179,7 @@ void SwitchContext(InterruptInfo& int_info,
   // TODO: Investigate why this line causes #GP on pi.bin
   // maybe ReadMainCounterValue accesses physical addr with
   // user pagetable?
-  // proc_last_time_count = liumos->hpet->ReadMainCounterValue();
+  // proc_last_time_count = HPET::GetInstance().ReadMainCounterValue();
 }
 
 __attribute__((ms_abi)) extern "C" void SleepHandler(uint64_t,
@@ -231,13 +230,13 @@ extern "C" void KernelEntry(LiumOS* liumos_passed, LoaderInfo& loader_info) {
 
   InitIOAPIC(bsp_local_apic_.GetID());
 
-  hpet_.Init(static_cast<HPET::RegisterSpace*>(
+  HPET& hpet = HPET::GetInstance();
+  hpet.Init(static_cast<HPET::RegisterSpace*>(
       liumos->acpi.hpet->base_address.address));
-  liumos->hpet = &hpet_;
-  hpet_.SetTimerNs(
+  hpet.SetTimerNs(
       0, 1000,
       HPET::TimerConfig::kUsePeriodicMode | HPET::TimerConfig::kEnable);
-  liumos->time_slice_count = 1e12 * 100 / hpet_.GetFemtosecondPerCount();
+  liumos->time_slice_count = 1e12 * 100 / hpet.GetFemtosecondPerCount();
 
   cpu_features_ = *liumos->cpu_features;
   liumos->cpu_features = &cpu_features_;

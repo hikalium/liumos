@@ -14,15 +14,10 @@ void Scheduler::RegisterProcess(Process& proc) {
 }
 
 uint64_t Scheduler::LaunchAndWaitUntilExit(Process& proc) {
-  uint64_t t0 = liumos->hpet->ReadMainCounterValue();
   RegisterProcess(proc);
   proc.WaitUntilExit();
-  uint64_t t1 = liumos->hpet->ReadMainCounterValue();
-  uint64_t real_femto_sec = (t1 - t0) * liumos->hpet->GetFemtosecondPerCount();
-  PutStringAndDecimalWithPointPos("  realtime           (sec)", real_femto_sec,
-                                  15);
   proc.PrintStatistics();
-  return real_femto_sec / 1000'000;
+  return 0;
 }
 
 Process* Scheduler::SwitchProcess() {

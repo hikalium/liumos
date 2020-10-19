@@ -14,7 +14,7 @@ class TextBox {
   const char* GetRecordedString() { return buf_; }
 
  private:
-  constexpr static int kSizeOfBuffer = 32;
+  constexpr static int kSizeOfBuffer = 128;
   char buf_[kSizeOfBuffer + 1];
   int buf_used_;
   bool is_recording_enabled_;

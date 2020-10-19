@@ -215,6 +215,37 @@ static ssize_t sys_read(int fd, void* buf, size_t count) {
   return 1;
 }
 
+static std::optional<Network::EtherAddr> ResolveIPv4WithTimeout(
+    Network::IPv4Addr ip_addr,
+    uint64_t timeout_ms) {
+  Network& network = Network::GetInstance();
+  uint64_t time_passed_ms = 0;
+  constexpr uint64_t kWaitTimePerTryMs = 100;
+  while (time_passed_ms < timeout_ms) {
+    kprintf("Try resolving...\n");
+    auto eth_container = network.ResolveIPv4(ip_addr);
+    if (eth_container.has_value()) {
+      return eth_container;
+    }
+    kprintf("ARP sending...\n");
+    SendARPRequest(ip_addr);
+    kprintf("sleep now...\n");
+    Sleep();
+    kprintf("busy wait begin...\n");
+    for (int i = 0; i < 0xffffff; i++) {
+      asm volatile("pause;");
+    }
+    /*
+    // TODO: Use this (but not working for now)
+    HPET::GetInstance().BusyWait(kWaitTimePerTryMs);
+    */
+    kprintf("busy wait end\n");
+    time_passed_ms += kWaitTimePerTryMs;
+  }
+  kprintf("ARP resolution done.\n");
+  return std::nullopt;
+}
+
 static ssize_t sys_sendto(int sockfd,
                           const void* buf,
                           size_t len,
@@ -223,7 +254,6 @@ static ssize_t sys_sendto(int sockfd,
                           socklen_t /*addrlen*/) {
   using Net = Virtio::Net;
   using IPv4Packet = Virtio::Net::IPv4Packet;
-  using ICMPPacket = Virtio::Net::ICMPPacket;
   using IPv4Addr = Network::IPv4Addr;
   using EtherAddr = Network::EtherAddr;
   using Socket = Network::Socket;
@@ -239,21 +269,18 @@ static ssize_t sys_sendto(int sockfd,
   Socket::Type socket_type = (*sock_holder).type;
 
   IPv4Addr target_ip_addr = dest_addr->sin_addr;
-  EtherAddr target_eth_addr;
-  for (;;) {
-    auto target_eth_container = network.ResolveIPv4(target_ip_addr);
-    if (target_eth_container.has_value()) {
-      target_eth_addr = *target_eth_container;
-      break;
-    }
-    SendARPRequest(target_ip_addr);
-    liumos->hpet->BusyWait(100);
+  std::optional<EtherAddr> target_eth_addr_holder =
+      ResolveIPv4WithTimeout(target_ip_addr, 1000);
+  if (!target_eth_addr_holder.has_value()) {
+    kprintf("%s: ARP resolution failed.\n", __func__);
+    return -1;
   }
   if (socket_type == Network::Socket::Type::kICMP) {
+    using ICMPPacket = Virtio::Net::ICMPPacket;
     ICMPPacket& icmp =
         *virtio_net.GetNextTXPacketBuf<ICMPPacket*>(sizeof(IPv4Packet) + len);
     // ip.eth
-    icmp.ip.eth.dst = target_eth_addr;
+    icmp.ip.eth.dst = *target_eth_addr_holder;
     icmp.ip.eth.src = virtio_net.GetSelfEtherAddr();
     icmp.ip.eth.SetEthType(Net::EtherFrame::kTypeIPv4);
     // ip
@@ -270,6 +297,40 @@ static ssize_t sys_sendto(int sockfd,
     icmp.ip.CalcAndSetChecksum();
     // icmp
     memcpy(&icmp.type /*first member of ICMP*/, buf, len);
+    // send
+    virtio_net.SendPacket();
+    return len;
+  }
+  if (socket_type == Network::Socket::Type::kUDP) {
+    using IPv4UDPPacket = Virtio::Net::IPv4UDPPacket;
+    IPv4UDPPacket& udp = *virtio_net.GetNextTXPacketBuf<IPv4UDPPacket*>(
+        sizeof(IPv4UDPPacket) + len);
+    // ip.eth
+    udp.ip.eth.dst = *target_eth_addr_holder;
+    udp.ip.eth.src = virtio_net.GetSelfEtherAddr();
+    udp.ip.eth.SetEthType(Net::EtherFrame::kTypeIPv4);
+    // ip
+    udp.ip.version_and_ihl =
+        0x45;  // IPv4, header len = 5 * sizeof(uint32_t) = 20 bytes
+    udp.ip.dscp_and_ecn = 0;
+    udp.ip.SetDataLength(sizeof(IPv4UDPPacket) + len - sizeof(IPv4Packet));
+    udp.ip.ident = 0;
+    udp.ip.flags = 0;
+    udp.ip.ttl = 0xFF;
+    udp.ip.protocol = Net::IPv4Packet::Protocol::kUDP;
+    udp.ip.src_ip = virtio_net.GetSelfIPv4Addr();
+    udp.ip.dst_ip = target_ip_addr;
+    udp.ip.CalcAndSetChecksum();
+    // udp
+    memcpy(reinterpret_cast<uint8_t*>(&udp) +
+               sizeof(IPv4UDPPacket) /*right after the UDP header*/,
+           buf, len);
+    udp.SetSourcePort(12345);
+    udp.SetDestinationPort(12345);
+    udp.SetDataSize(len);
+    udp.csum = Network::CalcUDPChecksum(
+        &udp, offsetof(IPv4UDPPacket, src_port), sizeof(IPv4UDPPacket) + len,
+        udp.ip.src_ip, udp.ip.dst_ip, udp.length);
     // send
     virtio_net.SendPacket();
     return len;

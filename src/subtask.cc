@@ -197,7 +197,7 @@ void CellularAutomaton() {
     }
     liumos->screen_sheet->Flush(liumos->screen_sheet->GetXSize() - canvas_xsize,
                                 0, canvas_xsize, canvas_ysize);
-    liumos->hpet->BusyWait(200);
+    HPET::GetInstance().BusyWait(200);
   }
 }
 
@@ -205,6 +205,6 @@ void SubTask() {
   PolygonCube pcube;
   for (;;) {
     pcube.Draw();
-    liumos->hpet->BusyWait(10);
+    HPET::GetInstance().BusyWait(10);
   }
 }
