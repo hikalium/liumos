@@ -97,6 +97,10 @@ void append_char(char *tmp_char, int i) {
 void tokenize(char *html) {
   char tmp_char[10000];
   int i = 0;
+
+  first_token = NULL;
+  current_token = NULL;
+
   while (*html) {
     switch (*html) {
       case '<':
