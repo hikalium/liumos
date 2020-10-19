@@ -220,16 +220,27 @@ static std::optional<Network::EtherAddr> ResolveIPv4WithTimeout(
     uint64_t timeout_ms) {
   Network& network = Network::GetInstance();
   uint64_t time_passed_ms = 0;
-  constexpr uint64_t kWaitTimePerTryMs = 25;
+  constexpr uint64_t kWaitTimePerTryMs = 100;
   while (time_passed_ms < timeout_ms) {
+    kprintf("Try resolving...\n");
     auto eth_container = network.ResolveIPv4(ip_addr);
     if (eth_container.has_value()) {
       return eth_container;
     }
+    kprintf("ARP sending...\n");
     SendARPRequest(ip_addr);
+    kprintf("busy wait begin...\n");
+    for (int i = 0; i < 0xffffff; i++) {
+      asm volatile("pause;");
+    }
+    /*
+    // TODO: Use this (but not working for now)
     HPET::GetInstance().BusyWait(kWaitTimePerTryMs);
+    */
+    kprintf("busy wait end\n");
     time_passed_ms += kWaitTimePerTryMs;
   }
+  kprintf("ARP resolution done.\n");
   return std::nullopt;
 }
 
