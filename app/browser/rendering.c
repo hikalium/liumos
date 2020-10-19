@@ -4,9 +4,6 @@
 #include "parse.h"
 #include "lib.h"
 
-// TODO: improve this hacky way.
-bool in_list = 0;
-
 void markdown(Node *node) {
   switch (node->element_type) {
     case TEXT:
@@ -28,11 +25,9 @@ void markdown(Node *node) {
       }
       break;
     case LI:
-      if (in_list)
-        write(1, "\n", 1);
-      write(1, "- ", 2);
-      in_list = 1;
+      write(1, "\n- ", 3);
       break;
+    case PARAGRAPH:
     default:
       break;
   }

@@ -281,6 +281,12 @@ void construct_tree() {
           token = token->next;
           break;
         }
+        if (token->type == START_TAG && strcmp(token->tag_name, "p") == 0) {
+          Node *element = create_element_from_token(PARAGRAPH, token);
+          insert_child(element);
+          token = token->next;
+          break;
+        }
         if (token->type == START_TAG &&
             (strcmp(token->tag_name, "h1") == 0 ||
             strcmp(token->tag_name, "h2") == 0 ||
@@ -370,17 +376,25 @@ void print_node(Node *node) {
 }
 
 void print_nodes() {
+  int nest = 0;
   Node *node = root_node;
 
   while (node) {
+    for (int i=0; i<nest; i++) {
+      write(1, " ", 1);
+    }
     print_node(node);
 
     Node *next = node->next;
     while (next) {
+      for (int i=0; i<nest; i++) {
+        write(1, " ", 1);
+      }
       print_node(next);
       next = next->next;
     }
 
+    nest += 2;
     node = node->first_child;
   }
 }
