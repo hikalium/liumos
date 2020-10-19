@@ -30,11 +30,26 @@ static void panic(const char* s) {
   write(1, s, strlen(s));
   exit(EXIT_FAILURE);
 }
+static uint16_t StrToNum16(const char* s, const char** next) {
+  uint32_t v = 0;
+  while ('0' <= *s && *s <= '9') {
+    v = v * 10 + *s - '0';
+    s++;
+  }
+  if (next) {
+    *next = s;
+  }
+  return v;
+}
 
 int main(int argc, char** argv) {
-  int socket_fd;
+  if (argc < 2) {
+    Print("Usage: udpserver.bin <port>\n");
+    return EXIT_FAILURE;
+  }
+  uint16_t port = StrToNum16(argv[1], NULL);
 
-  // Create a stream socket
+  int socket_fd;
   if ((socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
     panic("error: failed to create socket\n");
   }
@@ -42,7 +57,7 @@ int main(int argc, char** argv) {
   struct sockaddr_in server_address;
   server_address.sin_family = AF_INET; /* IP */
   server_address.sin_addr.s_addr = INADDR_ANY;
-  server_address.sin_port = htons(12345);
+  server_address.sin_port = htons(port);
 
   // Bind address to the socket
   if (bind(socket_fd, (struct sockaddr*)&server_address,
@@ -50,6 +65,9 @@ int main(int argc, char** argv) {
     close(socket_fd);
     panic("error: failed to bind socket\n");
   }
+  Print("Listening port: ");
+  PrintNum(port);
+  Print("\n");
 
   // Recieve loop
   struct sockaddr_in client_address;

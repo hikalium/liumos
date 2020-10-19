@@ -215,7 +215,7 @@ static ssize_t sys_read(int fd, void* buf, size_t count) {
   return 1;
 }
 
-static ssize_t sys_sendto(int /*sockfd*/,
+static ssize_t sys_sendto(int sockfd,
                           const void* buf,
                           size_t len,
                           int /*flags*/,
@@ -226,9 +226,17 @@ static ssize_t sys_sendto(int /*sockfd*/,
   using ICMPPacket = Virtio::Net::ICMPPacket;
   using IPv4Addr = Network::IPv4Addr;
   using EtherAddr = Network::EtherAddr;
+  using Socket = Network::Socket;
 
   Net& virtio_net = Net::GetInstance();
   Network& network = Network::GetInstance();
+  auto pid = liumos->scheduler->GetCurrentProcess().GetID();
+  auto sock_holder = network.FindSocket(pid, sockfd);
+  if (!sock_holder.has_value()) {
+    kprintf("%s: fd %d is not a socket\n", __func__, sockfd);
+    return -1;
+  }
+  Socket::Type socket_type = (*sock_holder).type;
 
   IPv4Addr target_ip_addr = dest_addr->sin_addr;
   EtherAddr target_eth_addr;
@@ -241,29 +249,33 @@ static ssize_t sys_sendto(int /*sockfd*/,
     SendARPRequest(target_ip_addr);
     liumos->hpet->BusyWait(100);
   }
-  ICMPPacket& icmp =
-      *virtio_net.GetNextTXPacketBuf<ICMPPacket*>(sizeof(IPv4Packet) + len);
-  // ip.eth
-  icmp.ip.eth.dst = target_eth_addr;
-  icmp.ip.eth.src = virtio_net.GetSelfEtherAddr();
-  icmp.ip.eth.SetEthType(Net::EtherFrame::kTypeIPv4);
-  // ip
-  icmp.ip.version_and_ihl =
-      0x45;  // IPv4, header len = 5 * sizeof(uint32_t) = 20 bytes
-  icmp.ip.dscp_and_ecn = 0;
-  icmp.ip.SetDataLength(sizeof(ICMPPacket) - sizeof(IPv4Packet));
-  icmp.ip.ident = 0;
-  icmp.ip.flags = 0;
-  icmp.ip.ttl = 0xFF;
-  icmp.ip.protocol = Net::IPv4Packet::Protocol::kICMP;
-  icmp.ip.src_ip = virtio_net.GetSelfIPv4Addr();
-  icmp.ip.dst_ip = target_ip_addr;
-  icmp.ip.CalcAndSetChecksum();
-  // icmp
-  memcpy(&icmp.type /*first member of ICMP*/, buf, len);
-  // send
-  virtio_net.SendPacket();
-  return len;
+  if (socket_type == Network::Socket::Type::kICMP) {
+    ICMPPacket& icmp =
+        *virtio_net.GetNextTXPacketBuf<ICMPPacket*>(sizeof(IPv4Packet) + len);
+    // ip.eth
+    icmp.ip.eth.dst = target_eth_addr;
+    icmp.ip.eth.src = virtio_net.GetSelfEtherAddr();
+    icmp.ip.eth.SetEthType(Net::EtherFrame::kTypeIPv4);
+    // ip
+    icmp.ip.version_and_ihl =
+        0x45;  // IPv4, header len = 5 * sizeof(uint32_t) = 20 bytes
+    icmp.ip.dscp_and_ecn = 0;
+    icmp.ip.SetDataLength(sizeof(ICMPPacket) - sizeof(IPv4Packet));
+    icmp.ip.ident = 0;
+    icmp.ip.flags = 0;
+    icmp.ip.ttl = 0xFF;
+    icmp.ip.protocol = Net::IPv4Packet::Protocol::kICMP;
+    icmp.ip.src_ip = virtio_net.GetSelfIPv4Addr();
+    icmp.ip.dst_ip = target_ip_addr;
+    icmp.ip.CalcAndSetChecksum();
+    // icmp
+    memcpy(&icmp.type /*first member of ICMP*/, buf, len);
+    // send
+    virtio_net.SendPacket();
+    return len;
+  }
+  kprintf("%s: socket_type = %d is not supported\n", __func__, socket_type);
+  return -1;
 }
 
 __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {

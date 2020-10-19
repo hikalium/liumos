@@ -51,6 +51,17 @@ static uint8_t StrToByte(const char* s, const char** next) {
   }
   return v;
 }
+static uint16_t StrToNum16(const char* s, const char** next) {
+  uint32_t v = 0;
+  while ('0' <= *s && *s <= '9') {
+    v = v * 10 + *s - '0';
+    s++;
+  }
+  if (next) {
+    *next = s;
+  }
+  return v;
+}
 static in_addr_t MakeIPv4AddrFromString(const char* s) {
   // "a.b.c.d" -> in_addr_t (=uint32_t)
   uint8_t buf[4];
@@ -65,21 +76,23 @@ static in_addr_t MakeIPv4AddrFromString(const char* s) {
 }
 
 int main(int argc, char** argv) {
-  int socket_fd;
+  if(argc < 4) {
+    Print("Usage: udpclient.bin <ip addr> <port> <message>\n");
+    return EXIT_FAILURE;
+  }
 
-  // Create a stream socket
+  int socket_fd;
   if ((socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
     write(1, "error: fail to create socket\n", 29);
-    exit(1);
     return EXIT_FAILURE;
   }
 
   struct sockaddr_in dst_address;
   dst_address.sin_family = AF_INET; /* IP */
-  dst_address.sin_addr.s_addr = MakeIPv4AddrFromString("127.0.0.1");
-  dst_address.sin_port = htons(12345);
+  dst_address.sin_addr.s_addr = MakeIPv4AddrFromString(argv[1]);
+  dst_address.sin_port = htons(StrToNum16(argv[2], NULL));
 
-  char* buf = "Hello from udpclient!\n";
+  char* buf = argv[3];
   ssize_t sent_size;
 
   sent_size = sendto(socket_fd, buf, strlen(buf), 0,
