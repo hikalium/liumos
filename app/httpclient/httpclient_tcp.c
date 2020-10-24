@@ -2,8 +2,6 @@
 
 #include "../liumlib/liumlib.h"
 
-#define MSG_WAITALL 0x100
-
 char *host = NULL;
 char *path = NULL;
 char *ip = NULL;
@@ -38,10 +36,9 @@ void body(char *request) {
 void send_request(char *request) {
   int socket_fd = 0;
   struct sockaddr_in address;
-  int addrlen = sizeof(address);
   char response[SIZE_RESPONSE];
 
-  if ((socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
+  if ((socket_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
     write(1, "error: fail to create socket\n", 29);
     close(socket_fd);
     exit(1);
@@ -58,12 +55,17 @@ void send_request(char *request) {
     address.sin_port = htons(PORT);
   }
 
-  sendto(socket_fd, request, strlen(request), 0, (struct sockaddr *) &address, addrlen);
+  if (connect(socket_fd, (struct sockaddr *) &address, sizeof(address)) == -1) {
+    write(1, "error: fail to connect socket\n", 30);
+    close(socket_fd);
+    exit(1);
+    return;
+  }
 
-  unsigned int len = sizeof(address);
-  int size = recvfrom(socket_fd, response, SIZE_RESPONSE, MSG_WAITALL,
-                      (struct sockaddr*) &address, &len);
-  response[size] = '\0';
+  sendto(socket_fd, request, strlen(request), 0,
+         (struct sockaddr *) &address, sizeof(address));
+
+  int size = read(socket_fd, response, SIZE_RESPONSE);
   write(1, response, size);
   write(1, "\n", 1);
 

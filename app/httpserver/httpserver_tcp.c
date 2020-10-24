@@ -1,9 +1,6 @@
-// HTTP server.
+// HTTP server with TCP.
 
 #include "../liumlib/liumlib.h"
-
-#define MSG_WAITALL 0x100
-#define MSG_CONFIRM 0x800
 
 void status_line(char *response, int status) {
   switch (status) {
@@ -68,38 +65,18 @@ void route(char *response, char *path) {
     return;
   }
   if (strcmp(path, "/example.html") == 0) {
-    char *body =
-        "<html>"
-        "  <body>"
-        "    <h1>Example Page</h1>"
-        "    <div>"
-        "       <p>サンプルパラグラフです。</p>"
-        "       <ul>"
-        "           <li>リスト1</li>"
-        "           <li>リスト2</li>"
-        "       </ul>"
-        "   </div>"
-        " </body>"
-        "</html>";
-    build_response(response, 200, body);
     build_response(response, 200, "<html><body><h1>example page</h1><ul><li>abc</li><li>def</li></ul></body></html>");
     return;
   }
-  char *body =
-      "<html>"
-      "  <body>"
-      "    <p>Page is not found.</p>"
-      " </body>"
-      "</html>";
-  build_response(response, 404, body);
+  build_response(response, 404, "<body><p>Page is not found.</p></body>");
 }
 
 void start() {
-  int socket_fd;
+  int socket_fd, accepted_socket;
   struct sockaddr_in address;
   int addrlen = sizeof(address);
 
-  if ((socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
+  if ((socket_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
     write(1, "error: fail to create socket\n", 29);
     close(socket_fd);
     exit(1);
@@ -117,16 +94,28 @@ void start() {
     return;
   }
 
+  if (listen(socket_fd, 3) < 0) {
+    write(1, "error: fail to listen socket\n", 29);
+    close(socket_fd);
+    exit(1);
+    return;
+  }
+
+  struct sockaddr_in client_address;
+  socklen_t client_addr_len = sizeof(client_address);
   while (1) {
     write(1, "LOG: wait a message from client\n", 32);
+    if ((accepted_socket = accept(socket_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) == -1) {
+      write(1, "error: fail to accept socket\n", 29);
+      close(socket_fd);
+      close(accepted_socket);
+      exit(1);
+      return;
+    }
 
     char request[SIZE_REQUEST];
-    unsigned int len = sizeof(address);
-    int size = recvfrom(socket_fd, request, SIZE_REQUEST, MSG_WAITALL,
-                        (struct sockaddr*) &address, &len);
-    request[size] = '\0';
+    int size = read(accepted_socket, request, SIZE_REQUEST);
     write(1, request, size);
-    write(1, "\n", 1);
 
     char *method = strtok(request, " ");
     char *path = strtok(NULL, " ");
@@ -140,12 +129,10 @@ void start() {
       build_response(response, 501, "Methods not GET are not supported.");
     }
 
-    sendto(socket_fd, response, strlen(response), MSG_CONFIRM,
-          (struct sockaddr *) &address, addrlen);
+    sendto(accepted_socket, response, strlen(response), 0, (struct sockaddr *) &address, addrlen);
 
+    close(accepted_socket);
   }
-
-  close(socket_fd);
 }
 
 int main(int argc, char *argv[]) {
