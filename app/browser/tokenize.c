@@ -24,12 +24,18 @@ Token *create_token(TokenType type) {
 }
 
 Token *create_char_token(char s) {
+  Token *token = (Token *) malloc(sizeof(Token));
   char *data = (char *) malloc(2);
-  data[0] = tmp_char;
+  data[0] = s;
   data[1] = '\0';
-  Token *token = create_token(CHAR);
+
+  token->type = CHAR;
+  token->tag_name = NULL;
+  token->self_closing = 0;
+  token->attributes = NULL;
   token->data = data;
-  append_token(token);
+  token->next = NULL;
+  return token;
 }
 
 void append_token(Token *token) {

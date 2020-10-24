@@ -40,6 +40,9 @@ typedef struct Token {
   struct Token *next;
 } Token;
 
+Token *create_token(TokenType type);
+Token *create_char_token(char s);
+void append_token(Token *token);
 char *append_doctype(char *html);
 char *append_end_tag(char *html);
 char *append_start_tag(char *html);
