@@ -136,7 +136,7 @@ void tokenize(char *html) {
           // ASCII upper alpha
           // Append the lowercase version of the current input character
           // (add 0x0020 to the character's code point) to the current tag token's tag name.
-          *html = *html + ('A' - 'a');
+          *html = *html + 0x0020;
           strncat(current_token->tag_name, html, 1);
           html++;
           break;

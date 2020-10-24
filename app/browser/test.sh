@@ -42,6 +42,14 @@ assert "bar" "<html><body>bar</body></html>"
 assert "# bar" "<html><h1>bar</h1></html>"
 assert "# bar" "<body><h1>bar</h1></body>"
 assert "# bar" "<html><body><h1>bar</h1></body></html>"
+assert "# bar
+- abc
+- def" "<html><body><h1>bar</h1><ul><li>abc</li><li>def</li></ul></body></html>"
+
+assert "# bar" "<H1>bar</H1>"
+assert "
+- abc
+- def" "<HTML><BODY><UL><LI>abc</li><LI>def</li></ul></body></html>"
 
 echo "----------------"
 echo "All tests passed"

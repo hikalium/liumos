@@ -43,9 +43,6 @@ typedef struct Token {
 Token *create_token(TokenType type);
 Token *create_char_token(char s);
 void append_token(Token *token);
-char *append_doctype(char *html);
-char *append_end_tag(char *html);
-char *append_start_tag(char *html);
 void tokenize(char *html);
 void print_token(); // for debug.
 void print_tokens(); // for debug.
