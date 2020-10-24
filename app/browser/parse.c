@@ -287,6 +287,12 @@ void construct_tree() {
           token = token->next;
           break;
         }
+        if (token->type == START_TAG && strcmp(token->tag_name, "div") == 0) {
+          Node *element = create_element_from_token(DIV, token);
+          insert_child(element);
+          token = token->next;
+          break;
+        }
         if (token->type == START_TAG &&
             (strcmp(token->tag_name, "h1") == 0 ||
             strcmp(token->tag_name, "h2") == 0 ||

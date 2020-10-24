@@ -27,6 +27,8 @@ void markdown(Node *node) {
     case LI:
       write(1, "\n- ", 3);
       break;
+    case DIV:
+      write(1, "\n", 1);
     case PARAGRAPH:
     default:
       break;

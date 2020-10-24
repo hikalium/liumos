@@ -48,7 +48,20 @@ void build_response(char *response, int status, char *message) {
 
 void route(char *response, char *path) {
   if (strcmp(path, "/") == 0 || strcmp(path, "/index.html") == 0) {
-    build_response(response, 200, "<body><h1>Hello world!</h1></body>");
+    char *body =
+        "<html>"
+        "  <body>"
+        "    <h1>Hello World</h1>"
+        "    <div>"
+        "       <p>サンプルパラグラフです。</p>"
+        "       <ul>"
+        "           <li>リスト1</li>"
+        "           <li>リスト2</li>"
+        "       </ul>"
+        "   </div>"
+        " </body>"
+        "</html>";
+    build_response(response, 200, body);
     return;
   }
   if (strcmp(path, "/example.html") == 0) {

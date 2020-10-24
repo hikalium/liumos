@@ -27,9 +27,10 @@ typedef enum ElementType {
   HEAD,
   BODY, // HTMLBodyElement
   HEADING, // HTMLHeadingElement
+  DIV, // HTMLDivElement
+  PARAGRAPH, // HTMLParagraphElement
   UL, // HTMLUListElement
   LI, // HTMLLIElement
-  PARAGRAPH, // HTMLParagraphElement
 } ElementType;
 
 typedef struct Node {
