@@ -84,10 +84,10 @@ char *append_start_tag(char *html) {
   return html;
 }
 
-void append_char(char *tmp_char, int i) {
-  char *data = (char *) malloc(i+1);
-  tmp_char[i] = '\0';
-  strcpy(data, tmp_char);
+void append_char(char tmp_char) {
+  char *data = (char *) malloc(2);
+  data[0] = tmp_char;
+  data[1] = '\0';
   append_token(create_token(CHAR, NULL, 0, data));
 }
 
@@ -95,22 +95,23 @@ void append_char(char *tmp_char, int i) {
 // "The output of the tokenization step is a series of zero or more of the following tokens:
 // DOCTYPE, start tag, end tag, comment, character, end-of-file"
 void tokenize(char *html) {
-  char tmp_char[10000];
-  int i = 0;
-
   first_token = NULL;
   current_token = NULL;
 
   while (*html) {
     switch (*html) {
+      // Preprocess.
+      if (*html == 0x000D) {
+        // https://html.spec.whatwg.org/multipage/parsing.html#preprocessing-the-input-stream
+        // "Before the tokenization stage, the input stream must be preprocessed by
+        // normalizing newlines. Thus, newlines in HTML DOMs are represented by U+000A
+        // LF characters, and there are never any U+000D CR characters in the input to
+        // the tokenization stage."
+        *html = 0x000A;
+      }
+
       case '<':
         html++; // consume '<'.
-
-        if (i > 0) {
-          // If character buffer is not empty, append a char token.
-          append_char(tmp_char, i);
-          i = 0;
-        }
 
         // tag open state.
         if (*html == '!') {
@@ -124,36 +125,41 @@ void tokenize(char *html) {
         }
         break;
       default:
-        tmp_char[i] = *html;
-        i++;
+        append_char(*html);
     }
     html++;
-  }
-  if (i > 0) {
-    // If character buffer is not empty, append a char token.
-    append_char(tmp_char, i);
-    i = 0;
   }
   append_token(create_token(EOF, NULL, 0, NULL));
 }
 
 // for debug.
-void print_tokens() {
-  for (Token *token = first_token; token; token = token->next) {
-    println("token:");
-    switch (token->type) {
-      case START_TAG:
-      case END_TAG:
-        println(token->tag_name);
-        break;
-      case CHAR:
-        println(token->data);
-        break;
-      case EOF:
-        println("EOF: End of file");
-        break;
-      default:
-        break;
-    }
+void print_token(Token *token) {
+  switch (token->type) {
+    case START_TAG:
+      write(1, "start: ", 7);
+      println(token->tag_name);
+      break;
+    case END_TAG:
+      write(1, "end: ", 5);
+      println(token->tag_name);
+      break;
+    case CHAR:
+      write(1, "char: ", 6);
+      println(token->data);
+      break;
+    case EOF:
+      println("EOF: End of file");
+      break;
+    default:
+      break;
   }
+}
+
+// for debug.
+void print_tokens() {
+  println("==============");
+  for (Token *token = first_token; token; token = token->next) {
+    print_token(token);
+  }
+  println("==============");
 }

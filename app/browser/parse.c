@@ -258,6 +258,13 @@ void construct_tree() {
           token = token->next;
           break;
         }
+        if (token->type == START_TAG &&
+            (strcmp(token->tag_name, "body") == 0 ||
+            strcmp(token->tag_name, "html") == 0)) {
+          // Parse error. Ignore the token.
+          token = token->next;
+          break;
+        }
         if (token->type == EOF) {
           // An end-of-file token
           // Stop parsing.
@@ -358,6 +365,7 @@ void construct_tree() {
   }
 }
 
+// for debug.
 void print_node(Node *node) {
   switch (node->element_type) {
     case DOCUMENT:
@@ -373,18 +381,22 @@ void print_node(Node *node) {
       println("BODY");
       break;
     case TEXT:
+      write(1, "text: ", 6);
       println(node->data);
       break;
     default:
+      write(1, "node: ", 6);
       println(node->local_name);
       break;
   }
 }
 
+// for debug.
 void print_nodes() {
   int nest = 0;
   Node *node = root_node;
 
+  println("--------------");
   while (node) {
     for (int i=0; i<nest; i++) {
       write(1, " ", 1);
@@ -403,4 +415,5 @@ void print_nodes() {
     nest += 2;
     node = node->first_child;
   }
+  println("--------------");
 }

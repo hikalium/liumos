@@ -55,13 +55,8 @@ void render(char* html) {
   tokenize(html);
   //print_tokens();
 
-  //println("================");
-
   construct_tree();
-  //println("================");
   //print_nodes();
-
-  //println("================");
 
   generate();
   //write(1, "\n", 1);

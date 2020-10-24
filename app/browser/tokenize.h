@@ -13,7 +13,6 @@ typedef enum TokenType {
   START_TAG,
   END_TAG,
   // "Comment and character tokens have data."
-  COMMENT,
   CHAR,
   EOF,
 } TokenType;
@@ -29,7 +28,7 @@ typedef struct Token {
   char *tag_name; // for start/end tag.
   bool self_closing; // for start/end tag.
   Attribute *attributes; // for start/end tag.
-  char *data; // for comment and character.
+  char *data; // for character.
   struct Token *next;
 } Token;
 
@@ -37,6 +36,7 @@ char *append_doctype(char *html);
 char *append_end_tag(char *html);
 char *append_start_tag(char *html);
 void tokenize(char *html);
+void print_token(); // for debug.
 void print_tokens(); // for debug.
 
 extern Token *first_token;
