@@ -27,6 +27,14 @@ char *strcat(char *dest, const char *src) {
   return dest;
 }
 
+char *strncat(char *dest, const char *src, unsigned long n) {
+  char *ptr = dest + strlen(dest);
+  while (*src != '\0' && n--)
+    *ptr++ = *src++;
+  *ptr = '\0';
+  return dest;
+}
+
 int strcmp(const char *s1, const char *s2) {
   while (*s1) {
     if (*s1 != *s2)

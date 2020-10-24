@@ -9,6 +9,29 @@
 Token *first_token = NULL;
 Token *current_token = NULL;
 
+Token *create_token(TokenType type) {
+  Token *token = (Token *) malloc(sizeof(Token));
+  token->type = type;
+  if (type == START_TAG || type == END_TAG) {
+    char *tag_name = (char *) malloc(20);
+    token->tag_name = tag_name;
+  }
+  token->self_closing = 0;
+  token->attributes = NULL;
+  token->data = NULL;
+  token->next = NULL;
+  return token;
+}
+
+Token *create_char_token(char s) {
+  char *data = (char *) malloc(2);
+  data[0] = tmp_char;
+  data[1] = '\0';
+  Token *token = create_token(CHAR);
+  token->data = data;
+  append_token(token);
+}
+
 void append_token(Token *token) {
   if (first_token == NULL) {
     first_token = token;
@@ -18,79 +41,6 @@ void append_token(Token *token) {
   current_token = token;
 }
 
-Token *create_token(TokenType type, char *tag, bool self_closing, char *data) {
-  Token *token = (Token *) malloc(sizeof(Token));
-  token->type = type;
-  if (tag)
-    token->tag_name = tag;
-  token->self_closing = self_closing;
-  token->attributes = NULL;
-  if (data)
-    token->data = data;
-  token->next = NULL;
-  return token;
-}
-
-char *append_doctype(char *html) {
-  while (*html) {
-    if (*html == '>') {
-      append_token(create_token(DOCTYPE, NULL, 0, NULL));
-      return html;
-    }
-    html++;
-  }
-  return html;
-}
-
-char *append_end_tag(char *html) {
-  char tmp_tag[100];
-  int i = 0;
-  while (*html) {
-    if (*html == '>') {
-      char *tag = (char *) malloc(i+1);
-      tmp_tag[i] = '\0';
-      strcpy(tag, tmp_tag);
-      append_token(create_token(END_TAG, tag, 0, NULL));
-      return html;
-    }
-    tmp_tag[i] = *html;
-    i++;
-    html++;
-  }
-  return html;
-}
-
-char *append_start_tag(char *html) {
-  char tmp_tag[100];
-  int i = 0;
-  bool self_closing = 0;
-  while (*html) {
-    if (*html == '/') {
-      self_closing = 1;
-      html++;
-      continue;
-    }
-    if (*html == '>') {
-      char *tag = (char *) malloc(i+1);
-      tmp_tag[i] = '\0';
-      strcpy(tag, tmp_tag);
-      append_token(create_token(START_TAG, tag, self_closing, NULL));
-      return html;
-    }
-    tmp_tag[i] = *html;
-    i++;
-    html++;
-  }
-  return html;
-}
-
-void append_char(char tmp_char) {
-  char *data = (char *) malloc(2);
-  data[0] = tmp_char;
-  data[1] = '\0';
-  append_token(create_token(CHAR, NULL, 0, data));
-}
-
 // https://html.spec.whatwg.org/multipage/parsing.html#tokenization
 // "The output of the tokenization step is a series of zero or more of the following tokens:
 // DOCTYPE, start tag, end tag, comment, character, end-of-file"
@@ -98,38 +48,111 @@ void tokenize(char *html) {
   first_token = NULL;
   current_token = NULL;
 
+  State state = DATA;
+
   while (*html) {
-    switch (*html) {
-      // Preprocess.
-      if (*html == 0x000D) {
-        // https://html.spec.whatwg.org/multipage/parsing.html#preprocessing-the-input-stream
-        // "Before the tokenization stage, the input stream must be preprocessed by
-        // normalizing newlines. Thus, newlines in HTML DOMs are represented by U+000A
-        // LF characters, and there are never any U+000D CR characters in the input to
-        // the tokenization stage."
-        *html = 0x000A;
-      }
-
-      case '<':
-        html++; // consume '<'.
-
-        // tag open state.
-        if (*html == '!') {
-          html++; // consume '!'.
-          html = append_doctype(html);
-        } else if (*html == '/') {
-          html++; // consume '/'.
-          html = append_end_tag(html);
-        } else {
-          html = append_start_tag(html);
-        }
-        break;
-      default:
-        append_char(*html);
+    // Preprocess.
+    if (*html == 0x000D) {
+      // https://html.spec.whatwg.org/multipage/parsing.html#preprocessing-the-input-stream
+      // "Before the tokenization stage, the input stream must be preprocessed by
+      // normalizing newlines. Thus, newlines in HTML DOMs are represented by U+000A
+      // LF characters, and there are never any U+000D CR characters in the input to
+      // the tokenization stage."
+      *html = 0x000A;
     }
-    html++;
+
+    switch (state) {
+      case DATA:
+        // https://html.spec.whatwg.org/multipage/parsing.html#data-state
+        if (*html == '<') {
+          // U+003C LESS-THAN SIGN (<)
+          // Switch to the tag open state.
+          state = TAG_OPEN;
+          html++;
+          break;
+        }
+        // Anything else
+        append_token(create_char_token(*html));
+        html++;
+        break;
+      case TAG_OPEN:
+        // https://html.spec.whatwg.org/multipage/parsing.html#tag-open-state
+        if (*html == '/') {
+          // U+002F SOLIDUS (/)
+          // Switch to the end tag open state.
+          state = END_TAG_OPEN;
+          html++;
+          break;
+        }
+        if (('a' <= *html && *html <= 'z') || ('A' <= *html && *html <= 'Z')) {
+          // ASCII alpha
+          // Create a new start tag token, set its tag name to the empty string.
+          // Reconsume in the tag name state.
+          append_token(create_token(START_TAG));
+          state = TAG_NAME;
+          break;
+        }
+        // Anything else
+        // This is an invalid-first-character-of-tag-name parse error.
+        // Emit a U+003C LESS-THAN SIGN character token. Reconsume in the data state.
+        append_token(create_char_token('<'));
+        state = DATA;
+        break;
+      case END_TAG:
+        // https://html.spec.whatwg.org/multipage/parsing.html#end-tag-open-state
+        if (('a' <= *html && *html <= 'z') || ('A' <= *html && *html <= 'Z')) {
+          // ASCII alpha
+          // Create a new end tag token, set its tag name to the empty string.
+          // Reconsume in the tag name state.
+          append_token(create_token(END_TAG));
+          state = TAG_NAME;
+          break;
+        }
+        html++;
+        break;
+      case TAG_NAME:
+        // https://html.spec.whatwg.org/multipage/parsing.html#tag-name-state
+        if (*html == '/') {
+          // U+002F SOLIDUS (/)
+          // Switch to the self-closing start tag state.
+          state = SELF_CLOSING_START_TAG;
+          html++;
+          break;
+        }
+        if (*html == '>') {
+          // U+003E GREATER-THAN SIGN (>)
+          // Switch to the data state. Emit the current tag token.
+          state = DATA;
+          html++;
+          break;
+        }
+        if ('A' <= *html && *html <= 'Z') {
+          // ASCII upper alpha
+          // Append the lowercase version of the current input character
+          // (add 0x0020 to the character's code point) to the current tag token's tag name.
+          *html = *html + ('A' - 'a');
+          strncat(current_token->tag_name, html, 1);
+          html++;
+          break;
+        }
+        strncat(current_token->tag_name, html, 1);
+        html++;
+        break;
+      case SELF_CLOSING_START_TAG:
+        // https://html.spec.whatwg.org/multipage/parsing.html#self-closing-start-tag-state
+        if (*html == '>') {
+          // U+003E GREATER-THAN SIGN (>)
+          // Set the self-closing flag of the current tag token.
+          // Switch to the data state. Emit the current tag token.
+          current_token->self_closing = 1;
+          state = DATA;
+          html++;
+          break;
+        }
+        html++;
+        break;
+    }
   }
-  append_token(create_token(EOF, NULL, 0, NULL));
 }
 
 // for debug.

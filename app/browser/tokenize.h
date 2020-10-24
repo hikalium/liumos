@@ -6,6 +6,14 @@
 
 #include "../liumlib/liumlib.h"
 
+typedef enum State {
+  DATA,
+  TAG_OPEN,
+  END_TAG_OPEN,
+  TAG_NAME,
+  SELF_CLOSING_START_TAG,
+} State;
+
 typedef enum TokenType {
   // "DOCTYPE tokens have a name, a public identifier, a system identifier, and a force-quirks flag."
   DOCTYPE,
