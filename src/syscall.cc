@@ -92,7 +92,7 @@ static ssize_t sys_recvfrom(int sockfd,
                             void* buf,
                             size_t buf_size,
                             int64_t,
-                            struct sockaddr_in*,
+                            struct sockaddr_in* recv_addr,
                             socklen_t*) {
   /* returns -1 on failure */
   using IPv4UDPPacket = Network::IPv4UDPPacket;
@@ -123,15 +123,21 @@ static ssize_t sys_recvfrom(int sockfd,
     return 0;
   }
   if (socket_type == Socket::Type::kUDP) {
+    uint16_t port = (*sock_holder).listen_port;
     for (;;) {
       while (network.HasPacketInRXBuffer()) {
         auto packet = network.PopFromRXBuffer();
-        if (!IsUDPPacketToPort(packet.data, packet.size, 12345)) {
+        if (!IsUDPPacketToPort(packet.data, packet.size, port)) {
           continue;
         }
         size_t udp_data_size = packet.size - sizeof(IPv4UDPPacket);
         size_t copy_size = std::min(udp_data_size, buf_size);
         memcpy(buf, &packet.data[sizeof(IPv4UDPPacket)], copy_size);
+        IPv4UDPPacket* udp_packet =
+            reinterpret_cast<IPv4UDPPacket*>(packet.data);
+        recv_addr->sin_addr = udp_packet->ip.src_ip;
+        recv_addr->sin_port =
+            *reinterpret_cast<uint16_t*>(&udp_packet->src_port);
         return udp_data_size;
       }
       Sleep();
@@ -222,9 +228,11 @@ static std::optional<Network::EtherAddr> ResolveIPv4WithTimeout(
   uint64_t time_passed_ms = 0;
   constexpr uint64_t kWaitTimePerTryMs = 100;
   while (time_passed_ms < timeout_ms) {
-    kprintf("Try resolving...\n");
+    kprintf("Try resolving %d.%d.%d.%d...\n", ip_addr.addr[0], ip_addr.addr[1],
+            ip_addr.addr[2], ip_addr.addr[3]);
     auto eth_container = network.ResolveIPv4(ip_addr);
     if (eth_container.has_value()) {
+      kprintf("ARP entry found...\n");
       return eth_container;
     }
     kprintf("ARP sending...\n");
@@ -302,6 +310,7 @@ static ssize_t sys_sendto(int sockfd,
     return len;
   }
   if (socket_type == Network::Socket::Type::kUDP) {
+    len = (len + 1) & ~1;  // make size odd
     using IPv4UDPPacket = Virtio::Net::IPv4UDPPacket;
     IPv4UDPPacket& udp = *virtio_net.GetNextTXPacketBuf<IPv4UDPPacket*>(
         sizeof(IPv4UDPPacket) + len);
@@ -325,8 +334,8 @@ static ssize_t sys_sendto(int sockfd,
     memcpy(reinterpret_cast<uint8_t*>(&udp) +
                sizeof(IPv4UDPPacket) /*right after the UDP header*/,
            buf, len);
-    udp.SetSourcePort(12345);
-    udp.SetDestinationPort(12345);
+    udp.SetSourcePort((*sock_holder).listen_port);
+    *reinterpret_cast<uint16_t*>(&udp.dst_port) = dest_addr->sin_port;
     udp.SetDataSize(len);
     udp.csum = Network::CalcUDPChecksum(
         &udp, offsetof(IPv4UDPPacket, src_port), sizeof(IPv4UDPPacket) + len,

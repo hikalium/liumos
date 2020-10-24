@@ -424,7 +424,7 @@ class Network {
     if (FindSocket(pid, fd).has_value()) {
       return true;
     }
-    sockets_.push_back({pid, fd, 0, type});
+    sockets_.push_back({pid, fd, 12345 /* TODO: use random port */, type});
     return false;
   }
   bool BindToPort(uint64_t pid, int fd, uint16_t port) {
