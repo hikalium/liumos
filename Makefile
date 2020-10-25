@@ -12,7 +12,7 @@ QEMU_ARGS_COMMON=\
 		  -bios $(OVMF) \
 		  -machine q35,nvdimm -cpu qemu64 -smp 4 \
 		  -monitor stdio \
-		  -monitor telnet:127.0.0.1:$(PORT_MONITOR),server,nowait \
+		  -monitor telnet:0.0.0.0:$(PORT_MONITOR),server,nowait \
 		  -m 2G,slots=2,maxmem=4G \
 		  -drive format=raw,file=fat:rw:mnt -net none \
 		  -serial tcp::1234,server,nowait \
@@ -31,8 +31,8 @@ QEMU_ARGS_NET_LINUX=\
 # guest 10.0.2.1:8889 <- host 127.0.0.1:8889
 
 QEMU_ARGS_USER_NET_LINUX=\
-		-chardev udp,id=m8,host=127.0.0.1,port=8888 \
-		-nic user,id=u1,model=virtio,guestfwd=::8888-chardev:m8,hostfwd=udp::8889-:8889 \
+		-chardev udp,id=m8,host=0.0.0.0,port=8888 \
+		-nic user,id=u1,model=virtio,guestfwd=::8888-chardev:m8,hostfwd=udp:0.0.0.0:8889-0.0.0.0:8889 \
 		-object filter-dump,id=f1,netdev=u1,file=dump.dat
 
 ifeq ($(OSNAME),Darwin)
@@ -51,10 +51,12 @@ QEMU_ARGS_PMEM=\
 					 -object memory-backend-file,id=mem1,share=on,mem-path=pmem.img,size=2G \
 					 -device nvdimm,id=nvdimm1,memdev=mem1
 VNC_PASSWORD=a
-PORT_MONITOR=1240
+PORT_MONITOR=2222
+# PORT_VNC=N => port 5900 + N
+PORT_VNC=5
 
 ifdef SSH_CONNECTION
-QEMU_ARGS+= -vnc :5,password
+QEMU_ARGS+= -vnc 0.0.0.0:$(PORT_VNC),password
 endif
 	
 src/BOOTX64.EFI : .FORCE
@@ -85,7 +87,6 @@ files : src/BOOTX64.EFI src/LIUMOS.ELF .FORCE
 	cp dist/* mnt/
 	make deploy_apps
 	cp src/LIUMOS.ELF mnt/LIUMOS.ELF
-	make -C app/rusttest install
 	mkdir -p mnt/EFI/EFI/
 	echo 'FS0:\\EFI\\BOOT\\BOOTX64.EFI' > mnt/startup.nsh
 
@@ -105,15 +106,19 @@ run_root : files pmem.img .FORCE
 run_user : files pmem.img .FORCE
 	$(QEMU) $(QEMU_ARGS_COMMON) $(QEMU_ARGS_USER_NET_LINUX)
 
+run_user_headless : files pmem.img .FORCE
+	( echo 'change vnc password $(VNC_PASSWORD)' | while ! nc localhost $(PORT_MONITOR) ; do sleep 1 ; done ) &
+	$(QEMU) $(QEMU_ARGS_COMMON) $(QEMU_ARGS_USER_NET_LINUX) -vnc 0.0.0.0:$(PORT_VNC),password 
+
 run_gdb_root : files pmem.img .FORCE
 	$(QEMU) $(QEMU_ARGS_PMEM) -gdb tcp::1192 -S || reset
 
 run_gdb_nogui_root : files pmem.img .FORCE
-	( echo 'change vnc password $(VNC_PASSWORD)' | while ! nc localhost 1240 ; do sleep 1 ; done ) &
+	( echo 'change vnc password $(VNC_PASSWORD)' | while ! nc localhost $(PORT_MONITOR) ; do sleep 1 ; done ) &
 	$(QEMU) $(QEMU_ARGS_PMEM) -gdb tcp::1192 -S -vnc :0,password || reset
 
 run_vnc : files pmem.img .FORCE
-	( echo 'change vnc password $(VNC_PASSWORD)' | while ! nc localhost 1240 ; do sleep 1 ; done ) &
+	( echo 'change vnc password $(VNC_PASSWORD)' | while ! nc localhost $(PORT_MONITOR) ; do sleep 1 ; done ) &
 	$(QEMU) $(QEMU_ARGS_PMEM) -vnc :0,password || reset
 
 gdb_root : .FORCE
@@ -157,6 +162,7 @@ ci :
 	circleci local execute
 
 clean :
+	-rm cc_cache.gen.mk
 	make -C src/ clean
 	make -C app/ clean
 

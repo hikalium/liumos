@@ -21,6 +21,7 @@ clean :
 	rm $(CLEAN_TARGETS) >/dev/null 2>&1 ; true
 
 clean_third_party :
+	-rm -rf *.gen.cc
 	-rm -rf third_party
 	-rm -rf third_party_build
 	-rm -rf third_party_root
