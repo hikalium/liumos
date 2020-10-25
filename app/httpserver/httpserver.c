@@ -5,6 +5,36 @@
 #define MSG_WAITALL 0x100
 #define MSG_CONFIRM 0x800
 
+static uint16_t StrToNum16(const char* s, const char** next) {
+  uint32_t v = 0;
+  while ('0' <= *s && *s <= '9') {
+    v = v * 10 + *s - '0';
+    s++;
+  }
+  if (next) {
+    *next = s;
+  }
+  return v;
+}
+static void Print(const char* s) {
+  write(1, s, strlen(s));
+}
+static void PrintNum(int v) {
+  char s[16];
+  int i;
+  if (v < 0) {
+    write(1, "-", 1);
+    v = -v;
+  }
+  for (i = sizeof(s) - 1; i > 0; i--) {
+    s[i] = v % 10 + '0';
+    v /= 10;
+    if (!v)
+      break;
+  }
+  write(1, &s[i], sizeof(s) - i);
+}
+
 void status_line(char *response, int status) {
   switch (status) {
     case 200:
@@ -94,7 +124,7 @@ void route(char *response, char *path) {
   build_response(response, 404, body);
 }
 
-void start() {
+void start(uint16_t port) {
   int socket_fd;
   struct sockaddr_in address;
   int addrlen = sizeof(address);
@@ -108,14 +138,17 @@ void start() {
 
   address.sin_family = AF_INET;
   address.sin_addr.s_addr = INADDR_ANY;
-  address.sin_port = htons(PORT);
+  address.sin_port = htons(port);
 
-  if (bind(socket_fd, (struct sockaddr *) &address, addrlen) == -1) {
+  if (bind(socket_fd, (struct sockaddr *) &address, addrlen) != 0) {
     write(1, "error: fail to bind socket\n", 27);
     close(socket_fd);
     exit(1);
     return;
   }
+  Print("Listening port: ");
+  PrintNum(port);
+  Print("\n");
 
   while (1) {
     write(1, "LOG: wait a message from client\n", 32);
@@ -149,7 +182,11 @@ void start() {
 }
 
 int main(int argc, char *argv[]) {
-  start();
-  exit(0);
+  if (argc < 2) {
+    Print("Usage: httpserver.bin <port>\n");
+    return EXIT_FAILURE;
+  }
+  uint16_t port = StrToNum16(argv[1], NULL);
+  start(port);
   return 0;
 }

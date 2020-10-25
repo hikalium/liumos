@@ -27,6 +27,14 @@ QEMU_ARGS_NET_LINUX=\
 		-nic tap,ifname=tap0,id=u1,model=virtio,script=no \
 		-object filter-dump,id=f1,netdev=u1,file=dump.dat
 
+# guest 10.0.2.1:8888 -> host 127.0.0.1:8888
+# guest 10.0.2.1:8889 <- host 127.0.0.1:8889
+
+QEMU_ARGS_USER_NET_LINUX=\
+		-chardev udp,id=m8,host=127.0.0.1,port=8888 \
+		-nic user,id=u1,model=virtio,guestfwd=::8888-chardev:m8,hostfwd=udp::8889-:8889 \
+		-object filter-dump,id=f1,netdev=u1,file=dump.dat
+
 ifeq ($(OSNAME),Darwin)
 QEMU_ARGS=\
 					$(QEMU_ARGS_COMMON) \
@@ -93,6 +101,9 @@ run_xhci_gdb : files .FORCE
 	
 run_root : files pmem.img .FORCE
 	$(QEMU) $(QEMU_ARGS_PMEM)
+
+run_user : files pmem.img .FORCE
+	$(QEMU) $(QEMU_ARGS_COMMON) $(QEMU_ARGS_USER_NET_LINUX)
 
 run_gdb_root : files pmem.img .FORCE
 	$(QEMU) $(QEMU_ARGS_PMEM) -gdb tcp::1192 -S || reset
