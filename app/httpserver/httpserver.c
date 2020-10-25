@@ -2,24 +2,7 @@
 
 #include "../liumlib/liumlib.h"
 
-#define MSG_WAITALL 0x100
-#define MSG_CONFIRM 0x800
-
-static uint16_t StrToNum16(const char* s, const char** next) {
-  uint32_t v = 0;
-  while ('0' <= *s && *s <= '9') {
-    v = v * 10 + *s - '0';
-    s++;
-  }
-  if (next) {
-    *next = s;
-  }
-  return v;
-}
-static void Print(const char* s) {
-  write(1, s, strlen(s));
-}
-static void PrintNum(int v) {
+static void print_num(int v) {
   char s[16];
   int i;
   if (v < 0) {
@@ -33,6 +16,34 @@ static void PrintNum(int v) {
       break;
   }
   write(1, &s[i], sizeof(s) - i);
+  write(1, "\n", 1);
+}
+
+static void print(char* text) {
+  write(1, text, strlen(text));
+}
+
+static void println(char* text) {
+  char output[100000];
+  int i = 0;
+  while (text[i] != '\0') {
+    output[i] = text[i];
+    i++;
+  }
+  write(1, output, i + 1);
+  write(1, "\n", 1);
+}
+
+static uint16_t str_to_num16(const char* s, const char** next) {
+  uint32_t v = 0;
+  while ('0' <= *s && *s <= '9') {
+    v = v * 10 + *s - '0';
+    s++;
+  }
+  if (next) {
+    *next = s;
+  }
+  return v;
 }
 
 void status_line(char *response, int status) {
@@ -67,7 +78,6 @@ void body(char *response, char *message) {
 }
 
 void build_response(char *response, int status, char *message) {
-  // c.f.
   // https://tools.ietf.org/html/rfc7230#section-3
   // HTTP-message = start-line
   //                *( header-field CRLF )
@@ -141,25 +151,28 @@ void start(uint16_t port) {
   address.sin_port = htons(port);
 
   if (bind(socket_fd, (struct sockaddr *) &address, addrlen) != 0) {
-    write(1, "error: fail to bind socket\n", 27);
+    println("Error: Failed to bind socket");
     close(socket_fd);
-    exit(1);
+    exit(EXIT_FAILURE);
     return;
   }
-  Print("Listening port: ");
-  PrintNum(port);
-  Print("\n");
+  print("Listening port: ");
+  print_num(port);
+  print("\n");
 
   while (1) {
-    write(1, "LOG: wait a message from client\n", 32);
+    println("Log: Waiting for a request...\n");
 
     char request[SIZE_REQUEST];
     unsigned int len = sizeof(address);
-    int size = recvfrom(socket_fd, request, SIZE_REQUEST, MSG_WAITALL,
-                        (struct sockaddr*) &address, &len);
-    request[size] = '\0';
-    write(1, request, size);
-    write(1, "\n", 1);
+    if (recvfrom(socket_fd, request, SIZE_REQUEST, MSG_WAITALL,
+                 (struct sockaddr*) &address, &len) < 0) {
+      println("Error: Failed to receive a request.");
+      close(socket_fd);
+      exit(EXIT_FAILURE);
+      return;
+    }
+    println(request);
 
     char *method = strtok(request, " ");
     char *path = strtok(NULL, " ");
@@ -173,9 +186,13 @@ void start(uint16_t port) {
       build_response(response, 501, "Methods not GET are not supported.");
     }
 
-    sendto(socket_fd, response, strlen(response), MSG_CONFIRM,
-          (struct sockaddr *) &address, addrlen);
-
+    if (sendto(socket_fd, response, strlen(response), MSG_CONFIRM,
+               (struct sockaddr *) &address, addrlen) == -1) {
+      println("Error: Failed to send a response.");
+      close(socket_fd);
+      exit(EXIT_FAILURE);
+      return;
+    }
   }
 
   close(socket_fd);
@@ -183,10 +200,13 @@ void start(uint16_t port) {
 
 int main(int argc, char *argv[]) {
   if (argc < 2) {
-    Print("Usage: httpserver.bin <port>\n");
+    println("Usage: httpserver.bin [ PORT ]");
+    exit(EXIT_FAILURE);
     return EXIT_FAILURE;
   }
-  uint16_t port = StrToNum16(argv[1], NULL);
+
+  uint16_t port = str_to_num16(argv[1], NULL);
   start(port);
+  exit(0);
   return 0;
 }

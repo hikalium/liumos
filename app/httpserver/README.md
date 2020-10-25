@@ -1,4 +1,6 @@
-# 簡易HTTPサーバー/クライアント
+# HTTP server 
+
+## Run on localhost
 
 1. Run the server by `./httpserver.bin`.
 2. Run the client by `./httpclient.bin` in another terminal.

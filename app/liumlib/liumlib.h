@@ -18,6 +18,11 @@
 // https://elixir.bootlin.com/linux/v4.15/source/include/linux/net.h#L66
 #define SOCK_RAW 3
 
+// https://elixir.bootlin.com/linux/v4.15/source/include/linux/socket.h#L278
+#define MSG_WAITALL 0x100
+// https://elixir.bootlin.com/linux/v4.15/source/include/linux/socket.h#L281
+#define MSG_CONFIRM 0x800
+
 #define INADDR_ANY ((unsigned long int) 0x00000000)
 
 #define PORT 8888
