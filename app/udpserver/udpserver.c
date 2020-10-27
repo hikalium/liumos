@@ -1,35 +1,10 @@
 #include "../liumlib/liumlib.h"
 
-static void Print(const char* s) {
-  write(1, s, strlen(s));
-}
-
-static void PrintNum(int v) {
-  char s[16];
-  int i;
-  if (v < 0) {
-    write(1, "-", 1);
-    v = -v;
-  }
-  for (i = sizeof(s) - 1; i > 0; i--) {
-    s[i] = v % 10 + '0';
-    v /= 10;
-    if (!v)
-      break;
-  }
-  write(1, &s[i], sizeof(s) - i);
-}
-static char NumToHexChar(char v) {
-  if (v < 10)
-    return v + '0';
-  if (v < 16)
-    return v - 10 + 'A';
-  return '?';
-}
 static void panic(const char* s) {
   write(1, s, strlen(s));
   exit(EXIT_FAILURE);
 }
+
 static uint16_t StrToNum16(const char* s, const char** next) {
   uint32_t v = 0;
   while ('0' <= *s && *s <= '9') {

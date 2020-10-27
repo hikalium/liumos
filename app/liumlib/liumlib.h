@@ -10,13 +10,11 @@
 #define AF_INET 2 // Internet IP protocol
 #define SOCK_STREAM 1 // for TCP
 #define SOCK_DGRAM 2 // for UDP
+#define SOCK_RAW 3
 #define SO_RCVTIMEO 20
 #define SO_SNDTIMEO 21
 #define SOL_SOCKET  1
-// https://elixir.bootlin.com/linux/v4.15/source/include/uapi/linux/in.h#L31
-#define kIPTypeICMP 1
-// https://elixir.bootlin.com/linux/v4.15/source/include/linux/net.h#L66
-#define SOCK_RAW 3
+#define PROT_ICMP 1
 
 // https://elixir.bootlin.com/linux/v4.15/source/include/linux/socket.h#L278
 #define MSG_WAITALL 0x100
@@ -38,6 +36,10 @@
 
 #define SIZE_REQUEST 1000
 #define SIZE_RESPONSE 2000
+
+#undef assert
+#define assert(expr) \
+  ((void)((expr) || (__assert(#expr, __FILE__, __LINE__), 0)))
 
 typedef long ssize_t;
 typedef uint32_t in_addr_t;
@@ -122,5 +124,14 @@ uint16_t htons(uint16_t hostshort);
 uint32_t htonl(uint32_t hostlong);
 // Converts the Internet host address cp from IPv4 numbers-and-dots notation into binary data in network byte order.
 uint32_t inet_addr(const char *cp);
+
+// liumlib original functions
+void Print(const char* s);
+void PrintNum(int v);
+char NumToHexChar(char v);
+uint8_t StrToByte(const char* s, const char** next);
+void __assert(const char* expr_str, const char* file, int line);
+in_addr_t MakeIPv4Addr(uint8_t a, uint8_t b, uint8_t c, uint8_t d);
+in_addr_t MakeIPv4AddrFromString(const char* s);
 
 #endif /* GRANDPARENT_H */
