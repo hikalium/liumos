@@ -414,7 +414,8 @@ class Network {
     int fd;
     uint16_t listen_port;
     enum class Type {
-      kICMP,
+      kICMPRaw,
+      kICMPDatagram,
       kUDP,
     } type;
   };
@@ -450,7 +451,8 @@ class Network {
   static Network* network_;
 
   ARPTable arp_table_;
-  RingBuffer<PacketContainer, kRXBufferSize> rx_buffer_;
+  // +1ACD0
+  RingBuffer<PacketContainer, kRXBufferSize> rx_buffer_;  // (2048 + 8) * 32
   std::vector<Socket> sockets_;
 
   Network(){};

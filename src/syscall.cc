@@ -95,6 +95,7 @@ static ssize_t sys_recvfrom(int sockfd,
                             struct sockaddr_in* recv_addr,
                             socklen_t*) {
   /* returns -1 on failure */
+  using IPv4Packet = Network::IPv4Packet;
   using IPv4UDPPacket = Network::IPv4UDPPacket;
   using EtherFrame = Network::EtherFrame;
   using Socket = Network::Socket;
@@ -106,7 +107,23 @@ static ssize_t sys_recvfrom(int sockfd,
     return -1;
   }
   Socket::Type socket_type = (*sock_holder).type;
-  if (socket_type == Socket::Type::kICMP) {
+  if (socket_type == Socket::Type::kICMPDatagram) {
+    for (;;) {
+      while (network.HasPacketInRXBuffer()) {
+        auto packet = network.PopFromRXBuffer();
+        if (!IsICMPPacket(packet.data, packet.size)) {
+          continue;
+        }
+        size_t icmp_data_size = packet.size - sizeof(IPv4Packet);
+        size_t copy_size = std::min(icmp_data_size, buf_size);
+        memcpy(buf, &packet.data[sizeof(IPv4Packet)], copy_size);
+        return icmp_data_size;
+      }
+      Sleep();
+    }
+    return 0;
+  }
+  if (socket_type == Socket::Type::kICMPRaw) {
     for (;;) {
       while (network.HasPacketInRXBuffer()) {
         auto packet = network.PopFromRXBuffer();
@@ -159,12 +176,23 @@ static int sys_socket(int domain, int type, int protocol) {
   auto pid = liumos->scheduler->GetCurrentProcess().GetID();
   const int sockfd = 3; /* Always assign 3 for now */
   if (domain == kDomainIPv4) {
-    if (type == kTypeRawSocket && protocol == kProtocolICMP) {
-      if (network.RegisterSocket(pid, sockfd, Network::Socket::Type::kICMP)) {
+    if (type == kTypeDatagram && protocol == kProtocolICMP) {
+      if (network.RegisterSocket(pid, sockfd,
+                                 Network::Socket::Type::kICMPDatagram)) {
         kprintf("%s: failed to register socket.\n", __func__);
         return -1 /* Return -1 on error */;
       }
-      kprintf("%s: socket (fd=%d) created (IPv4, Raw, ICMP)\n", __func__,
+      kprintf("%s: socket (fd=%d) created (IPv4, DGRAM, ICMP)\n", __func__,
+              sockfd);
+      return sockfd /* Always returns 3 for now */;
+    }
+    if (type == kTypeRawSocket && protocol == kProtocolICMP) {
+      if (network.RegisterSocket(pid, sockfd,
+                                 Network::Socket::Type::kICMPRaw)) {
+        kprintf("%s: failed to register socket.\n", __func__);
+        return -1 /* Return -1 on error */;
+      }
+      kprintf("%s: socket (fd=%d) created (IPv4, Raw, ICMPRaw)\n", __func__,
               sockfd);
       return sockfd /* Always returns 3 for now */;
     }
@@ -240,7 +268,7 @@ static std::optional<Network::EtherAddr> ResolveIPv4WithTimeout(
     kprintf("sleep now...\n");
     Sleep();
     kprintf("busy wait begin...\n");
-    for (int i = 0; i < 0xffffff; i++) {
+    for (int i = 0; i < 0xfffff; i++) {
       asm volatile("pause;");
     }
     /*
@@ -283,7 +311,8 @@ static ssize_t sys_sendto(int sockfd,
     kprintf("%s: ARP resolution failed.\n", __func__);
     return -1;
   }
-  if (socket_type == Network::Socket::Type::kICMP) {
+  if (socket_type == Network::Socket::Type::kICMPRaw ||
+      socket_type == Network::Socket::Type::kICMPDatagram) {
     using ICMPPacket = Virtio::Net::ICMPPacket;
     ICMPPacket& icmp =
         *virtio_net.GetNextTXPacketBuf<ICMPPacket*>(sizeof(IPv4Packet) + len);

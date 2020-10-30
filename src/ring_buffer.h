@@ -18,6 +18,8 @@ class RingBuffer {
     writep_ = nextp;
   }
   bool IsEmpty() { return readp_ == writep_; }
+  int GetReaderIndex() { return readp_; }
+  int GetWriterIndex() { return writep_; }
 
  private:
   T elements_[n];

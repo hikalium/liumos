@@ -14,6 +14,7 @@ class PanicPrinter {
     new (pp_) PanicPrinter();
     pp_->sheet_ = &sheet;
     pp_->serial_ = &serial;
+    pp_->in_progress_ = false;
   }
   static PanicPrinter& BeginPanic() {
     ClearIntFlag();
