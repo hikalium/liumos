@@ -65,6 +65,7 @@ void SendRequest(char* request) {
   close(socket_fd);
 }
 
+// Return 1 when parse succeeded, otherwise return 0.
 int ParseArgs(int argc, char** argv) {
   // Set default values.
   ip = "127.0.0.1";

@@ -91,7 +91,7 @@ void Route(char *response, char *path) {
   BuildResponse(response, 404, body);
 }
 
-void Start() {
+void StartServer() {
   int socket_fd, accepted_socket;
   struct sockaddr_in address;
   int addrlen = sizeof(address);
@@ -155,8 +155,34 @@ void Start() {
   }
 }
 
+// Return 1 when parse succeeded, otherwise return 0.
+int ParseArgs(int argc, char** argv) {
+  // Set default values.
+  port = 8888;
+
+  while (argc > 0) {
+    if (strcmp("-port", argv[0]) == 0) {
+      port = StrToNum16(argv[1], NULL);
+      argc -= 2;
+      argv += 2;
+      continue;
+    }
+
+    return 0;
+  }
+  return 1;
+}
+
 int main(int argc, char *argv[]) {
-  Start();
+  if (ParseArgs(argc-1, argv+1) == 0) {
+    Println("Usage: httpserver.bin [ OPTION ]");
+    Println("       -port    Port number. Default: 8888");
+    exit(EXIT_FAILURE);
+    return EXIT_FAILURE;
+  }
+
+  StartServer();
+
   exit(0);
   return 0;
 }

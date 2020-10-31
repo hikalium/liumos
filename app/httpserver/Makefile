@@ -13,6 +13,6 @@ $(TARGET_STDLIB): $(NAME)_stdlib.c
 	$(LLVM_CC) $(NAME)_stdlib.c -o $(TARGET_STDLIB)
 
 $(TARGET_TCP): $(NAME)_tcp.c
-	$(LLVM_CC) $(NAME)_tcp.c -o $(TARGET_TCP)
+	$(LLVM_CC) $(NAME)_tcp.c ../liumlib/liumlib.c -o $(TARGET_TCP)
 
 all: $(TARGET) $(TARGET_STDLIB) $(TARGET_TCP)
