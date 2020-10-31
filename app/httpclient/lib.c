@@ -1,7 +1,7 @@
 #include "../liumlib/liumlib.h"
 #include "lib.h"
 
-void printnum(int v) {
+void PrintNum(int v) {
   char s[16];
   int i;
   if (v < 0) {
@@ -18,7 +18,7 @@ void printnum(int v) {
   write(1, "\n", 1);
 }
 
-void println(char* text) {
+void Println(char* text) {
   char output[100000];
   int i = 0;
   while (text[i] != '\0') {
@@ -29,7 +29,7 @@ void println(char* text) {
   write(1, "\n", 1);
 }
 
-uint16_t str_to_num16(const char* s, const char** next) {
+uint16_t StrToNum16(const char* s, const char** next) {
   uint32_t v = 0;
   while ('0' <= *s && *s <= '9') {
     v = v * 10 + *s - '0';

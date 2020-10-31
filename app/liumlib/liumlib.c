@@ -200,6 +200,17 @@ void Print(const char* s) {
   write(1, s, strlen(s));
 }
 
+void Println(char* text) {
+  char output[100000];
+  int i = 0;
+  while (text[i] != '\0') {
+    output[i] = text[i];
+    i++;
+  }
+  write(1, output, i + 1);
+  write(1, "\n", 1);
+}
+
 void PrintNum(int v) {
   char s[16];
   int i;
@@ -215,6 +226,7 @@ void PrintNum(int v) {
   }
   write(1, &s[i], sizeof(s) - i);
 }
+
 char NumToHexChar(char v) {
   if (v < 10)
     return v + '0';
@@ -224,6 +236,18 @@ char NumToHexChar(char v) {
 }
 
 uint8_t StrToByte(const char* s, const char** next) {
+  uint32_t v = 0;
+  while ('0' <= *s && *s <= '9') {
+    v = v * 10 + *s - '0';
+    s++;
+  }
+  if (next) {
+    *next = s;
+  }
+  return v;
+}
+
+uint16_t StrToNum16(const char* s, const char** next) {
   uint32_t v = 0;
   while ('0' <= *s && *s <= '9') {
     v = v * 10 + *s - '0';

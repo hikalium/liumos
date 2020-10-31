@@ -127,9 +127,11 @@ uint32_t inet_addr(const char *cp);
 
 // liumlib original functions
 void Print(const char* s);
+void Println(char* text);
 void PrintNum(int v);
 char NumToHexChar(char v);
 uint8_t StrToByte(const char* s, const char** next);
+uint16_t StrToNum16(const char* s, const char** next);
 void __assert(const char* expr_str, const char* file, int line);
 in_addr_t MakeIPv4Addr(uint8_t a, uint8_t b, uint8_t c, uint8_t d);
 in_addr_t MakeIPv4AddrFromString(const char* s);
