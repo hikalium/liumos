@@ -2,10 +2,10 @@
 
 #include "../liumlib/liumlib.h"
 
-char* host = NULL;
-char* path = NULL;
-char* ip = NULL;
-uint16_t port = 0;
+char* host;
+char* path;
+char* ip;
+uint16_t port;
 
 void RequestLine(char* request) {
   strcpy(request, "GET ");
@@ -65,25 +65,56 @@ void SendRequest(char* request) {
   close(socket_fd);
 }
 
+int ParseArgs(int argc, char** argv) {
+  // Set default values.
+  ip = "127.0.0.1";
+  port = 8888;
+  host = "";
+  path = "/";
+
+  while (argc > 0) {
+    if (strcmp("-ip", argv[0]) == 0) {
+      ip = argv[1];
+      argc -= 2;
+      argv += 2;
+      continue;
+    }
+
+    if (strcmp("-port", argv[0]) == 0) {
+      port = StrToNum16(argv[1], NULL);
+      argc -= 2;
+      argv += 2;
+      continue;
+    }
+
+    if (strcmp("-host", argv[0]) == 0) {
+      host = argv[1];
+      argc -= 2;
+      argv += 2;
+      continue;
+    }
+
+    if (strcmp("-path", argv[0]) == 0) {
+      path = argv[1];
+      argc -= 2;
+      argv += 2;
+      continue;
+    }
+
+    return 0;
+  }
+  return 1;
+}
+
 int main(int argc, char** argv) {
-  if (argc != 1 && argc != 5) {
-    Println("Usage: httpclient.bin [ IP PORT HOST PATH ]");
-    Println("       IP, PORT, and URL are optional.");
-    Println("       Default values are: IP=127.0.0.1, PORT=8888, HOST=Ø, PATH=/");
+  if (ParseArgs(argc-1, argv+1) == 0) {
+    Println("Usage: httpclient.bin [ OPTIONS ]");
+    Println("       -ip      IP address. Default: 127.0.0.1");
+    Println("       -port    Port number. Default: 8888");
+    Println("       -host    Host property of the URL. Default: Ø");
+    Println("       -path    Path property of the URL. Default: /");
     exit(EXIT_FAILURE);
     return EXIT_FAILURE;
-  }
-
-  if (argc == 5) {
-    ip = argv[1];
-    port = StrToNum16(argv[2], NULL);
-    host = argv[3];
-    path = argv[4];
-  } else {
-    ip = "127.0.0.1";
-    port = 8888;
-    host = "";
-    path = "/";
   }
 
   char* request = (char*) malloc(SIZE_REQUEST);
