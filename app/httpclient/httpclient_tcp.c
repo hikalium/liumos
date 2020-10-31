@@ -17,6 +17,8 @@ void Headers(char *request) {
   strcat(request, "Host: ");
   strcat(request, host);
   strcat(request, "\n");
+  strcat(request, "User-Agent: liumos/1.0.0\n");
+  strcat(request, "Accept: */*\n");
 }
 
 void Crlf(char *request) {

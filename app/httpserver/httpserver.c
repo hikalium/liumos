@@ -1,52 +1,10 @@
-// HTTP server.
+// HTTP server with UDP protocol.
 
 #include "../liumlib/liumlib.h"
 
-static void print_num(int v) {
-  char s[16];
-  int i;
-  if (v < 0) {
-    write(1, "-", 1);
-    v = -v;
-  }
-  for (i = sizeof(s) - 1; i > 0; i--) {
-    s[i] = v % 10 + '0';
-    v /= 10;
-    if (!v)
-      break;
-  }
-  write(1, &s[i], sizeof(s) - i);
-  write(1, "\n", 1);
-}
+uint16_t port;
 
-static void print(char* text) {
-  write(1, text, strlen(text));
-}
-
-static void println(char* text) {
-  char output[100000];
-  int i = 0;
-  while (text[i] != '\0') {
-    output[i] = text[i];
-    i++;
-  }
-  write(1, output, i + 1);
-  write(1, "\n", 1);
-}
-
-static uint16_t str_to_num16(const char* s, const char** next) {
-  uint32_t v = 0;
-  while ('0' <= *s && *s <= '9') {
-    v = v * 10 + *s - '0';
-    s++;
-  }
-  if (next) {
-    *next = s;
-  }
-  return v;
-}
-
-void status_line(char *response, int status) {
+void StatusLine(char *response, int status) {
   switch (status) {
     case 200:
       strcpy(response, "HTTP/1.1 200 OK\n");
@@ -65,76 +23,75 @@ void status_line(char *response, int status) {
   }
 }
 
-void headers(char *response) {
+void Headers(char *response) {
   strcat(response, "Content-Type: text/html; charset=UTF-8\n");
 }
 
-void crlf(char *response) {
+void Crlf(char *response) {
   strcat(response, "\n");
 }
 
-void body(char *response, char *message) {
+void Body(char *response, char *message) {
   strcat(response, message);
 }
 
-void build_response(char *response, int status, char *message) {
+void BuildResponse(char *response, int status, char *message) {
   // https://tools.ietf.org/html/rfc7230#section-3
   // HTTP-message = start-line
   //                *( header-field CRLF )
   //                CRLF
   //                [ message-body ]
-  status_line(response, status);
-  headers(response);
-  crlf(response);
-  body(response, message);
+  StatusLine(response, status);
+  Headers(response);
+  Crlf(response);
+  Body(response, message);
 }
 
-void route(char *response, char *path) {
+void Route(char *response, char *path) {
   if (strcmp(path, "/") == 0 || strcmp(path, "/index.html") == 0) {
     char *body =
-        "<html>"
-        "  <body>"
-        "    <h1>Hello World</h1>"
-        "    <div>"
-        "       <p>サンプルパラグラフです。</p>"
-        "       <ul>"
-        "           <li>リスト1</li>"
-        "           <li>リスト2</li>"
-        "       </ul>"
-        "   </div>"
-        " </body>"
-        "</html>";
-    build_response(response, 200, body);
+        "<html>\n"
+        "  <body>\n"
+        "    <h1>Hello World</h1>\n"
+        "    <div>\n"
+        "       <p>サンプルパラグラフです。</p>\n"
+        "       <ul>\n"
+        "           <li>リスト1</li>\n"
+        "           <li>リスト2</li>\n"
+        "       </ul>\n"
+        "   </div>\n"
+        " </body>\n"
+        "</html>\n";
+    BuildResponse(response, 200, body);
     return;
   }
   if (strcmp(path, "/example.html") == 0) {
     char *body =
-        "<html>"
-        "  <body>"
-        "    <h1>Example Page</h1>"
-        "    <div>"
-        "       <p>サンプルパラグラフです。</p>"
-        "       <ul>"
-        "           <li>リスト1</li>"
-        "           <li>リスト2</li>"
-        "       </ul>"
-        "   </div>"
-        " </body>"
-        "</html>";
-    build_response(response, 200, body);
-    build_response(response, 200, "<html><body><h1>example page</h1><ul><li>abc</li><li>def</li></ul></body></html>");
+        "<html>\n"
+        "  <body>\n"
+        "    <h1>Example Page</h1>\n"
+        "    <div>\n"
+        "       <p>サンプルパラグラフです。</p>\n"
+        "       <ul>\n"
+        "           <li>リスト1</li>\n"
+        "           <li>リスト2</li>\n"
+        "       </ul>\n"
+        "   </div>\n"
+        " </body>\n"
+        "</html>\n";
+    BuildResponse(response, 200, body);
     return;
   }
   char *body =
-      "<html>"
-      "  <body>"
-      "    <p>Page is not found.</p>"
-      " </body>"
-      "</html>";
-  build_response(response, 404, body);
+      "<html>\n"
+      "  <body>\n"
+      "    <p>Page is not found.</p>\n"
+      " </body>\n"
+      "</html>\n";
+  BuildResponse(response, 404, body);
 }
 
-void start(uint16_t port) {
+void Start(uint16_t port) {
   int socket_fd;
   struct sockaddr_in address;
   int addrlen = sizeof(address);
@@ -151,28 +108,28 @@ void start(uint16_t port) {
   address.sin_port = htons(port);
 
   if (bind(socket_fd, (struct sockaddr *) &address, addrlen) != 0) {
-    println("Error: Failed to bind socket");
+    Println("Error: Failed to bind socket");
     close(socket_fd);
     exit(EXIT_FAILURE);
     return;
   }
-  print("Listening port: ");
-  print_num(port);
-  print("\n");
+  Print("Listening port: ");
+  PrintNum(port);
+  Print("\n");
 
   while (1) {
-    println("Log: Waiting for a request...\n");
+    Println("Log: Waiting for a request...\n");
 
     char request[SIZE_REQUEST];
     unsigned int len = sizeof(address);
     if (recvfrom(socket_fd, request, SIZE_REQUEST, MSG_WAITALL,
                  (struct sockaddr*) &address, &len) < 0) {
-      println("Error: Failed to receive a request.");
+      Println("Error: Failed to receive a request.");
       close(socket_fd);
       exit(EXIT_FAILURE);
       return;
     }
-    println(request);
+    Println(request);
 
     char *method = strtok(request, " ");
     char *path = strtok(NULL, " ");
@@ -181,14 +138,14 @@ void start(uint16_t port) {
     char* response = (char *) malloc(SIZE_RESPONSE);
 
     if (strcmp(method, "GET") == 0) {
-      route(response, path);
+      Route(response, path);
     } else {
-      build_response(response, 501, "Methods not GET are not supported.");
+      BuildResponse(response, 501, "Methods not GET are not supported.");
     }
 
     if (sendto(socket_fd, response, strlen(response), MSG_CONFIRM,
                (struct sockaddr *) &address, addrlen) == -1) {
-      println("Error: Failed to send a response.");
+      Println("Error: Failed to send a response.");
       close(socket_fd);
       exit(EXIT_FAILURE);
       return;
@@ -200,13 +157,13 @@ void start(uint16_t port) {
 
 int main(int argc, char *argv[]) {
   if (argc < 2) {
-    println("Usage: httpserver.bin [ PORT ]");
+    Println("Usage: httpserver.bin [ PORT ]");
     exit(EXIT_FAILURE);
     return EXIT_FAILURE;
   }
 
-  uint16_t port = str_to_num16(argv[1], NULL);
-  start(port);
+  uint16_t port = StrToNum16(argv[1], NULL);
+  Start(port);
   exit(0);
   return 0;
 }

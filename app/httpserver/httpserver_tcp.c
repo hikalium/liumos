@@ -1,8 +1,10 @@
-// HTTP server with TCP.
+// HTTP server with TCP protocol.
 
 #include "../liumlib/liumlib.h"
 
-void status_line(char *response, int status) {
+uint16_t port;
+
+void StatusLine(char *response, int status) {
   switch (status) {
     case 200:
       strcpy(response, "HTTP/1.1 200 OK\n");
@@ -21,57 +23,75 @@ void status_line(char *response, int status) {
   }
 }
 
-void headers(char *response) {
+void Headers(char *response) {
   strcat(response, "Content-Type: text/html; charset=UTF-8\n");
 }
 
-void crlf(char *response) {
+void Crlf(char *response) {
   strcat(response, "\n");
 }
 
-void body(char *response, char *message) {
+void Body(char *response, char *message) {
   strcat(response, message);
 }
 
-void build_response(char *response, int status, char *message) {
-  // c.f.
+void BuildResponse(char *response, int status, char *message) {
   // https://tools.ietf.org/html/rfc7230#section-3
   // HTTP-message = start-line
   //                *( header-field CRLF )
   //                CRLF
   //                [ message-body ]
-  status_line(response, status);
-  headers(response);
-  crlf(response);
-  body(response, message);
+  StatusLine(response, status);
+  Headers(response);
+  Crlf(response);
+  Body(response, message);
 }
 
-void route(char *response, char *path) {
+void Route(char *response, char *path) {
   if (strcmp(path, "/") == 0 || strcmp(path, "/index.html") == 0) {
     char *body =
-        "<html>"
-        "  <body>"
-        "    <h1>Hello World</h1>"
-        "    <div>"
-        "       <p>サンプルパラグラフです。</p>"
-        "       <ul>"
-        "           <li>リスト1</li>"
-        "           <li>リスト2</li>"
-        "       </ul>"
-        "   </div>"
-        " </body>"
-        "</html>";
-    build_response(response, 200, body);
+        "<html>\n"
+        "  <body>\n"
+        "    <h1>Hello World</h1>\n"
+        "    <div>\n"
+        "       <p>サンプルパラグラフです。</p>\n"
+        "       <ul>\n"
+        "           <li>リスト1</li>\n"
+        "           <li>リスト2</li>\n"
+        "       </ul>\n"
+        "   </div>\n"
+        " </body>\n"
+        "</html>\n";
+    BuildResponse(response, 200, body);
     return;
   }
   if (strcmp(path, "/example.html") == 0) {
-    build_response(response, 200, "<html><body><h1>example page</h1><ul><li>abc</li><li>def</li></ul></body></html>");
+    char *body =
+        "<html>\n"
+        "  <body>\n"
+        "    <h1>Example Page</h1>\n"
+        "    <div>\n"
+        "       <p>サンプルパラグラフです。</p>\n"
+        "       <ul>\n"
+        "           <li>リスト1</li>\n"
+        "           <li>リスト2</li>\n"
+        "       </ul>\n"
+        "   </div>\n"
+        " </body>\n"
+        "</html>\n";
+    BuildResponse(response, 200, body);
     return;
   }
-  build_response(response, 404, "<body><p>Page is not found.</p></body>");
+  char *body =
+      "<html>\n"
+      "  <body>\n"
+      "    <p>Page is not found.</p>\n"
+      " </body>\n"
+      "</html>\n";
+  BuildResponse(response, 404, body);
 }
 
-void start() {
+void Start() {
   int socket_fd, accepted_socket;
   struct sockaddr_in address;
   int addrlen = sizeof(address);
@@ -124,9 +144,9 @@ void start() {
     char* response = (char *) malloc(SIZE_RESPONSE);
 
     if (strcmp(method, "GET") == 0) {
-      route(response, path);
+      Route(response, path);
     } else {
-      build_response(response, 501, "Methods not GET are not supported.");
+      BuildResponse(response, 501, "Methods not GET are not supported.");
     }
 
     sendto(accepted_socket, response, strlen(response), 0, (struct sockaddr *) &address, addrlen);
@@ -136,7 +156,7 @@ void start() {
 }
 
 int main(int argc, char *argv[]) {
-  start();
+  Start();
   exit(0);
   return 0;
 }
