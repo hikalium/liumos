@@ -1,106 +1,99 @@
-// HTTP client.
+// HTTP client with TCP protocol.
 
 #include "../liumlib/liumlib.h"
+#include "lib.h"
 
 char *host = NULL;
 char *path = NULL;
 char *ip = NULL;
+uint16_t port = 0;
 
 void request_line(char *request) {
-  if (path) {
-    strcpy(request, "GET /");
-    strcat(request, path);
-    strcat(request, " HTTP/1.1\n");
-    return;
-  }
-  strcpy(request, "GET / HTTP/1.1\n");
+  strcpy(request, "GET ");
+  strcat(request, path);
+  strcat(request, " HTTP/1.1\n");
 }
 
 void headers(char *request) {
-  if (host) {
-    strcat(request, "Host: ");
-    strcat(request, host);
-    strcat(request, "\n");
-    return;
-  }
-  strcat(request, "Host: localhost:8888\n");
+  strcat(request, "Host: ");
+  strcat(request, host);
+  strcat(request, "\n");
 }
 
 void crlf(char *request) {
   strcat(request, "\n");
 }
 
-void body(char *request) {
-}
+void body(char *request) {}
 
 void send_request(char *request) {
   int socket_fd = 0;
   struct sockaddr_in address;
+  int addrlen = sizeof(address);
   char response[SIZE_RESPONSE];
 
   if ((socket_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-    write(1, "error: fail to create socket\n", 29);
+    println("Error: Fail to create socket");
     close(socket_fd);
-    exit(1);
+    exit(EXIT_FAILURE);
     return;
   }
 
   struct sockaddr_in dst_address;
   address.sin_family = AF_INET;
-  if (ip) {
-    address.sin_addr.s_addr = inet_addr(ip);
-    address.sin_port = htons(80);
-  } else {
-    address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(PORT);
-  }
+  address.sin_addr.s_addr = inet_addr(ip);
+  address.sin_port = htons(port);
 
   if (connect(socket_fd, (struct sockaddr *) &address, sizeof(address)) == -1) {
-    write(1, "error: fail to connect socket\n", 30);
+    println("Error: Fail to connect socket");
     close(socket_fd);
-    exit(1);
+    exit(EXIT_FAILURE);
     return;
   }
 
-  sendto(socket_fd, request, strlen(request), 0,
-         (struct sockaddr *) &address, sizeof(address));
+  if (sendto(socket_fd, request, strlen(request), MSG_CONFIRM,
+             (struct sockaddr*)&address, addrlen) == -1) {
+    println("Error: Failed to send a request.");
+    close(socket_fd);
+    exit(EXIT_FAILURE);
+    return;
+  }
+  println("Request sent. Waiting for a response...");
 
-  int size = read(socket_fd, response, SIZE_RESPONSE);
-  write(1, response, size);
-  write(1, "\n", 1);
+  if (read(socket_fd, response, SIZE_RESPONSE)< 0) {
+    println("Error: Failed to receiver a response.");
+    close(socket_fd);
+    exit(EXIT_FAILURE);
+    return;
+  }
+  println(response);
 
   close(socket_fd);
 }
 
-void println(char *text) {
-  char output[100000];
-  int i = 0;
-  while (text[i] != '\0') {
-    output[i] = text[i];
-    i++;
-  }
-  write(1, output, i+1);
-  write(1, "\n", 1);
-}
-
-int main(int argc, char** argv) {
-  if (argc != 1 && argc != 3) {
-    println("Usage: httpclient.bin HOSTNAME IP");
-    println("       HOSTNAME and IP are optional and default value is localhost:8888");
-    exit(1);
-    return 1;
+int main(int argc, char* argv[]) {
+  if (argc != 1 && argc != 5) {
+    println("Usage: httpclient.bin [ IP PORT HOST PATH ]");
+    println("       IP, PORT, and URL are optional.");
+    println("       Default values are: IP=127.0.0.1, PORT=8888, HOST=Ø, PATH=/");
+    exit(EXIT_FAILURE);
+    return EXIT_FAILURE;
   }
 
-  if (argc == 3) {
-    char *url = argv[1];
-    host = strtok(url, "/");
-    path = strtok(NULL, "/");
-    ip = argv[2];
+  if (argc == 5) {
+    ip = argv[1];
+    port = str_to_num16(argv[2], NULL);
+    host = argv[3];
+    path = argv[4];
+  } else {
+    ip = "127.0.0.1";
+    port = 8888;
+    host = "";
+    path = "/";
   }
 
   char *request = (char *) malloc(SIZE_REQUEST);
 
-  // c.f.
   // https://tools.ietf.org/html/rfc7230#section-3
   // HTTP-message = start-line
   //                *( header-field CRLF )
@@ -111,9 +104,9 @@ int main(int argc, char** argv) {
   crlf(request);
   body(request);
 
-  write(1, "----- request -----\n", 20);
-  write(1, request, strlen(request));
-  write(1, "----- response -----\n", 21);
+  println("----- request -----");
+  println(request);
+  println("----- response -----");
 
   send_request(request);
 
