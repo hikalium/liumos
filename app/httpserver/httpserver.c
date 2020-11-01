@@ -122,13 +122,14 @@ void StartServer() {
 
     char request[SIZE_REQUEST];
     unsigned int len = sizeof(address);
-    if (recvfrom(socket_fd, request, SIZE_REQUEST, MSG_WAITALL,
+    if (recvfrom(socket_fd, request, SIZE_REQUEST, 0,
                  (struct sockaddr*) &address, &len) < 0) {
       Println("Error: Failed to receive a request.");
       close(socket_fd);
       exit(EXIT_FAILURE);
       return;
     }
+    Println("----- request -----");
     Println(request);
 
     char *method = strtok(request, " ");
@@ -143,7 +144,7 @@ void StartServer() {
       BuildResponse(response, 501, "Methods not GET are not supported.");
     }
 
-    if (sendto(socket_fd, response, strlen(response), MSG_CONFIRM,
+    if (sendto(socket_fd, response, strlen(response), 0,
                (struct sockaddr *) &address, addrlen) == -1) {
       Println("Error: Failed to send a response.");
       close(socket_fd);

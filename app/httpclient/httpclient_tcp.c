@@ -40,7 +40,6 @@ void SendRequest(char *request) {
     return;
   }
 
-  struct sockaddr_in dst_address;
   address.sin_family = AF_INET;
   address.sin_addr.s_addr = inet_addr(ip);
   address.sin_port = htons(port);
@@ -52,7 +51,7 @@ void SendRequest(char *request) {
     return;
   }
 
-  if (sendto(socket_fd, request, strlen(request), MSG_CONFIRM,
+  if (sendto(socket_fd, request, strlen(request), 0,
              (struct sockaddr*)&address, addrlen) == -1) {
     Println("Error: Failed to send a request.");
     close(socket_fd);

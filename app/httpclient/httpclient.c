@@ -38,12 +38,11 @@ void SendRequest(char* request) {
     return;
   }
 
-  struct sockaddr_in dst_address;
   address.sin_family = AF_INET;
   address.sin_addr.s_addr = inet_addr(ip);
   address.sin_port = htons(port);
 
-  if (sendto(socket_fd, request, strlen(request), MSG_CONFIRM,
+  if (sendto(socket_fd, request, strlen(request), 0,
              (struct sockaddr*)&address, addrlen) == -1) {
     Println("Error: Failed to send a request.");
     close(socket_fd);
@@ -53,7 +52,7 @@ void SendRequest(char* request) {
   Println("Request sent. Waiting for a response...");
 
   unsigned int len = sizeof(address);
-  if (recvfrom(socket_fd, response, SIZE_RESPONSE, MSG_WAITALL,
+  if (recvfrom(socket_fd, response, SIZE_RESPONSE, 0,
                (struct sockaddr*)&address, &len) < 0) {
     Println("Error: Failed to receiver a response.");
     close(socket_fd);

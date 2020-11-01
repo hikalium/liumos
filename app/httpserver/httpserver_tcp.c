@@ -124,7 +124,8 @@ void StartServer() {
   struct sockaddr_in client_address;
   socklen_t client_addr_len = sizeof(client_address);
   while (1) {
-    write(1, "LOG: wait a message from client\n", 32);
+    Println("Log: Waiting for a request...\n");
+
     if ((accepted_socket = accept(socket_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) == -1) {
       write(1, "error: fail to accept socket\n", 29);
       close(socket_fd);
@@ -135,7 +136,8 @@ void StartServer() {
 
     char request[SIZE_REQUEST];
     int size = read(accepted_socket, request, SIZE_REQUEST);
-    write(1, request, size);
+    Println("----- request -----");
+    Println(request);
 
     char *method = strtok(request, " ");
     char *path = strtok(NULL, " ");
@@ -149,7 +151,8 @@ void StartServer() {
       BuildResponse(response, 501, "Methods not GET are not supported.");
     }
 
-    sendto(accepted_socket, response, strlen(response), 0, (struct sockaddr *) &address, addrlen);
+    sendto(accepted_socket, response, strlen(response), 0,
+           (struct sockaddr *) &address, addrlen);
 
     close(accepted_socket);
   }
