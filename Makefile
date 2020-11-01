@@ -136,6 +136,9 @@ run_vb_dbg : .FORCE
 	VBoxManage storageattach liumOS --storagectl SATA --port 0 --medium liumos.vdi --type hdd
 	VirtualBoxVM --startvm liumOS --dbg
 
+run_docker : .FORCE
+	scripts/make_run_with_docker.sh
+
 img : files .FORCE
 	dd if=/dev/zero of=liumos.img bs=16384 count=1024
 	/usr/local/Cellar/dosfstools/4.1/sbin/mkfs.vfat liumos.img || /usr/local/Cellar/dosfstools/4.1/sbin/mkfs.fat liumos.img

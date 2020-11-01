@@ -1,17 +1,5 @@
 #include "../liumlib/liumlib.h"
 
-static uint16_t StrToNum16(const char* s, const char** next) {
-  uint32_t v = 0;
-  while ('0' <= *s && *s <= '9') {
-    v = v * 10 + *s - '0';
-    s++;
-  }
-  if (next) {
-    *next = s;
-  }
-  return v;
-}
-
 int main(int argc, char** argv) {
   if(argc < 4) {
     Print("Usage: udpclient.bin <ip addr> <port> <message>\n");
