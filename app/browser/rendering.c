@@ -2,7 +2,6 @@
 
 #include "tokenize.h"
 #include "parse.h"
-#include "lib.h"
 
 void markdown(Node *node) {
   switch (node->element_type) {

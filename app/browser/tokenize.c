@@ -4,7 +4,6 @@
 #include "tokenize.h"
 
 #include "rendering.h"
-#include "lib.h"
 
 Token *first_token = NULL;
 Token *current_token = NULL;
@@ -166,18 +165,18 @@ void print_token(Token *token) {
   switch (token->type) {
     case START_TAG:
       write(1, "start: ", 7);
-      println(token->tag_name);
+      Println(token->tag_name);
       break;
     case END_TAG:
       write(1, "end: ", 5);
-      println(token->tag_name);
+      Println(token->tag_name);
       break;
     case CHAR:
       write(1, "char: ", 6);
-      println(token->data);
+      Println(token->data);
       break;
     case EOF:
-      println("EOF: End of file");
+      Println("EOF: End of file");
       break;
     default:
       break;
@@ -186,9 +185,9 @@ void print_token(Token *token) {
 
 // for debug.
 void print_tokens() {
-  println("==============");
+  Println("==============");
   for (Token *token = first_token; token; token = token->next) {
     print_token(token);
   }
-  println("==============");
+  Println("==============");
 }

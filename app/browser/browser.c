@@ -1,11 +1,13 @@
 #include "../liumlib/liumlib.h"
 #include "rendering.h"
-#include "lib.h"
 
 char* host;
 char* path;
 char* ip;
 uint16_t port;
+
+char *url;
+char *html;
 
 void RequestLine(char* request) {
   strcpy(request, "GET ");
@@ -87,66 +89,75 @@ void GetResponseBody(char *response, char *html) {
   }
 }
 
-void parse_response(char *response, char *body) {
+void ParseResponse(char *response, char *body) {
 
 }
 
-int main(int argc, char *argv[]) {
-  char *html;
+void ParseUrl() {
+  host = "localhost:8888";
+  path = "/index.html";
+  ip = "127.0.0.1";
+  port = 8888;
+}
 
-  // For debug.
-  if (argc == 3 && strcmp(argv[1], "-rawtext") == 0) {
+// Return 1 when parse succeeded, return 2 when debug mode, otherwise return 0.
+int ParseArgs(int argc, char** argv) {
+  // Set default values.
+  url = "http://localhost:8888/index.html";
+
+  bool is_debug = 0;
+
+  while (argc > 0) {
+    if (strcmp("-url", argv[0]) == 0) {
+      url = argv[1];
+      argc -= 2;
+      argv += 2;
+      continue;
+    }
+
+    if (strcmp("-rawtext", argv[0]) == 0) {
+      html = argv[1];
+      is_debug = 1;
+      argc -= 2;
+      argv += 2;
+      continue;
+    }
+
+    return 0;
+  }
+
+  if (is_debug)
+    return 2;
+  return 1;
+}
+
+int main(int argc, char *argv[]) {
+  int parse_result = ParseArgs(argc-1, argv+1);
+  if (parse_result == 0) {
+    Println("Usage: browser.bin [ OPTIONS ]");
+    Println("       -url      URL. Default: http://localhost:8888/index.html");
+    Println("       -rawtext  Raw HTML text for debug.");
+    exit(EXIT_FAILURE);
+  }
+
+  if (parse_result == 2) {
     html = (char *) malloc(SIZE_RESPONSE);
     html = argv[2];
     render(html);
     exit(0);
   }
 
-  if (argc != 1) {
-    println("Usage: browser.bin");
-    println("       browser.bin -rawtext RAW_HTML_TEXT");
-    exit(EXIT_FAILURE);
-  }
+  ParseUrl();
 
-  while (1) {
-    host = NULL;
-    path = NULL;
-    ip = NULL;
-    port = 8888;
+  char *request = (char *) malloc(SIZE_REQUEST);
+  char *response = (char *) malloc(SIZE_RESPONSE);
+  html = (char *) malloc(SIZE_RESPONSE);
+  BuildRequest(request);
 
-    char *url = (char *) malloc (2048);
-    write(1, "Input URL: ", 11);
-    read(1, url, 2048);
+  GetResponse(request, response);
+  GetResponseBody(response, html);
 
-    // parse url.
-    if (strlen(url) > 1) {
-      host = strtok(url, "/");
-      path = strtok(NULL, "/");
-      if (strlen(path) > 1 && path[strlen(path)-1] == '\n') {
-        path[strlen(path)-1] = '\0';
-      }
-    }
-
-    char *ip = (char *) malloc (2048);
-    write(1, "Input IP: ", 10);
-    read(1, ip, 2048);
-
-    if (strlen(ip) <= 1) {
-      ip = NULL;
-    }
-
-    char *request = (char *) malloc(SIZE_REQUEST);
-    char *response = (char *) malloc(SIZE_RESPONSE);
-    html = (char *) malloc(SIZE_RESPONSE);
-    BuildRequest(request);
-
-    GetResponse(request, response);
-    GetResponseBody(response, html);
-
-    render(html);
-    println("\n");
-  }
+  render(html);
 
   exit(0);
-  return 0;
 }
