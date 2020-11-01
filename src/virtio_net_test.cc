@@ -30,8 +30,9 @@ int main() {
   }
   putchar('\n');
 
-  constexpr Net::InternetChecksum expected_ip_csum = {0x4F, 0xA3};
-  constexpr Net::InternetChecksum expected_udp_csum = {0xBF, 0x03};
+  constexpr Net::InternetChecksum expected_ip_csum = {0x4F, 0x9F};
+  constexpr Net::InternetChecksum expected_udp_csum = {0x08, 0x16};
+  printf("%02X %02X", request.udp.csum.csum[0], request.udp.csum.csum[1]);
   assert(request.udp.ip.csum.IsEqualTo(expected_ip_csum));
   assert(request.udp.csum.IsEqualTo(expected_udp_csum));
 

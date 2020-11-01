@@ -610,11 +610,10 @@ void Run(TextBox& tbox) {
     return;
   }
   if (IsEqualString(args.GetArg(0), "gateway")) {
-    auto& net = Network::GetInstance();
-    auto ip_addr = net.GetIPv4DefaultGateway();
-    PutString("default gateway: ");
-    ip_addr.Print();
-    PutString("\n");
+    if (args.GetNumOfArgs() != 3) {
+      PutString("Usage: gateway <ip> <netmask>");
+      return;
+    }
     return;
   }
   if (IsEqualString(args.GetArg(0), "ip")) {
@@ -624,6 +623,13 @@ void Run(TextBox& tbox) {
     ip_addr.Print();
     PutString(" eth ");
     mac_addr.Print();
+    auto& network = Network::GetInstance();
+    PutString(" mask ");
+    auto mask = network.GetIPv4NetMask();
+    mask.Print();
+    PutString(" gateway ");
+    auto gateway_ip = network.GetIPv4DefaultGateway();
+    gateway_ip.Print();
     PutString("\n");
     return;
   }
