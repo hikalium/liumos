@@ -4,7 +4,6 @@
 #include "parse.h"
 
 #include "../liumlib/liumlib.h"
-#include "lib.h"
 #include "tokenize.h"
 
 void insert_child(Node *child) {
@@ -84,12 +83,12 @@ void construct_tree() {
   while (token) {
     switch (mode) {
       case INITIAL:
-      //println("1 initial");
+      //Println("1 initial");
         // https://html.spec.whatwg.org/multipage/parsing.html#the-initial-insertion-mode
         mode = BEFORE_HTML;
         break;
       case BEFORE_HTML:
-      //println("2 before html");
+      //Println("2 before html");
         // https://html.spec.whatwg.org/multipage/parsing.html#the-before-html-insertion-mode
         if (token->type == DOCTYPE) {
           // Parse error. Ignore the token.
@@ -122,7 +121,7 @@ void construct_tree() {
         // Reprocess the token.
         break;
       case BEFORE_HEAD:
-      //println("3 before head");
+      //Println("3 before head");
         // https://html.spec.whatwg.org/multipage/parsing.html#the-before-head-insertion-mode
         if (token->type == DOCTYPE) {
           // A DOCTYPE token
@@ -156,7 +155,7 @@ void construct_tree() {
         mode = IN_HEAD;
         break;
       case IN_HEAD:
-      //println("4 in head");
+      //Println("4 in head");
         // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inhead
         if (token->type == DOCTYPE) {
           // A DOCTYPE token
@@ -197,7 +196,7 @@ void construct_tree() {
         // Reprocess the token.
         break;
       case AFTER_HEAD:
-      //println("5 after head");
+      //Println("5 after head");
         // https://html.spec.whatwg.org/multipage/parsing.html#the-after-head-insertion-mode
         if (token->type == DOCTYPE) {
           // A DOCTYPE token
@@ -244,7 +243,7 @@ void construct_tree() {
         // Reprocess the token.
         break;
       case IN_BODY:
-      //println("6 in body");
+      //Println("6 in body");
         // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inbody
         if (token->type == CHAR) {
           Node *element = create_element_from_token(TEXT, token);
@@ -326,7 +325,7 @@ void construct_tree() {
         }
         break;
       case AFTER_BODY:
-      //println("7 after body");
+      //Println("7 after body");
         // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-afterbody
         if (token->type == DOCTYPE) {
           // A DOCTYPE token
@@ -350,7 +349,7 @@ void construct_tree() {
         mode = IN_BODY;
         break;
       case AFTER_AFTER_BODY:
-      //println("8 after after body");
+      //Println("8 after after body");
         // https://html.spec.whatwg.org/multipage/parsing.html#the-after-after-body-insertion-mode
         if (token->type == EOF) {
           // An end-of-file token
@@ -369,24 +368,24 @@ void construct_tree() {
 void print_node(Node *node) {
   switch (node->element_type) {
     case DOCUMENT:
-      println("DOCUMENT");
+      Println("DOCUMENT");
       break;
     case HTML:
-      println("HTML");
+      Println("HTML");
       break;
     case HEAD:
-      println("HEAD");
+      Println("HEAD");
       break;
     case BODY:
-      println("BODY");
+      Println("BODY");
       break;
     case TEXT:
       write(1, "text: ", 6);
-      println(node->data);
+      Println(node->data);
       break;
     default:
       write(1, "node: ", 6);
-      println(node->local_name);
+      Println(node->local_name);
       break;
   }
 }
@@ -396,7 +395,7 @@ void print_nodes() {
   int nest = 0;
   Node *node = root_node;
 
-  println("--------------");
+  Println("--------------");
   while (node) {
     for (int i=0; i<nest; i++) {
       write(1, " ", 1);
@@ -415,5 +414,5 @@ void print_nodes() {
     nest += 2;
     node = node->first_child;
   }
-  println("--------------");
+  Println("--------------");
 }

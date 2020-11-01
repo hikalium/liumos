@@ -31,11 +31,9 @@ void SendRequest(char* request) {
   int addrlen = sizeof(address);
   char response[SIZE_RESPONSE];
 
-  if ((socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
-    Println("Error: Fail to create socket");
-    close(socket_fd);
+  if ((socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+    Println("Error: Fail to create a socket");
     exit(EXIT_FAILURE);
-    return;
   }
 
   address.sin_family = AF_INET;
@@ -43,11 +41,9 @@ void SendRequest(char* request) {
   address.sin_port = htons(port);
 
   if (sendto(socket_fd, request, strlen(request), 0,
-             (struct sockaddr*)&address, addrlen) == -1) {
+             (struct sockaddr*)&address, addrlen) < 0) {
     Println("Error: Failed to send a request.");
-    close(socket_fd);
     exit(EXIT_FAILURE);
-    return;
   }
   Println("Request sent. Waiting for a response...");
 
@@ -55,10 +51,9 @@ void SendRequest(char* request) {
   if (recvfrom(socket_fd, response, SIZE_RESPONSE, 0,
                (struct sockaddr*)&address, &len) < 0) {
     Println("Error: Failed to receiver a response.");
-    close(socket_fd);
     exit(EXIT_FAILURE);
-    return;
   }
+  Println("----- response -----");
   Println(response);
 
   close(socket_fd);
@@ -131,7 +126,6 @@ int main(int argc, char** argv) {
 
   Println("----- request -----");
   Println(request);
-  Println("----- response -----");
 
   SendRequest(request);
 
