@@ -159,6 +159,7 @@ vnc :
 
 test :
 	make -C src test
+	make -C app/liumlib test
 
 ci :
 	circleci config validate

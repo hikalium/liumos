@@ -1,28 +1,5 @@
 #include "../liumlib/liumlib.h"
 
-void PrintHex8ZeroFilled(uint8_t v) {
-  char s[2];
-  s[0] = NumToHexChar((v >> 4) & 0xF);
-  s[1] = NumToHexChar(v & 0xF);
-  write(1, s, 2);
-}
-
-void PrintIPv4Addr(in_addr_t addr) {
-  uint8_t buf[4];
-  *(uint32_t*)buf = addr;
-  for (int i = 0;; i++) {
-    PrintNum(buf[i]);
-    if (i == 3)
-      break;
-    Print(".");
-  }
-}
-
-void Test() {
-  assert(StrToByte("123", NULL) == 123);
-  assert(MakeIPv4AddrFromString("12.34.56.78") == MakeIPv4Addr(12, 34, 56, 78));
-}
-
 struct __attribute__((packed)) ICMPMessage {
   uint8_t type;
   uint8_t code;
@@ -49,7 +26,6 @@ uint16_t CalcChecksum(void* buf, size_t start, size_t end) {
 #define ICMP_TYPE_ECHO_REPLY 0
 
 int main(int argc, char** argv) {
-  Test();
   if (argc != 2) {
     Print("Usage: ");
     Print(argv[0]);
@@ -57,7 +33,6 @@ int main(int argc, char** argv) {
     exit(EXIT_FAILURE);
   }
   struct sockaddr_in addr;
-  const char* str = "Hello, raw socket!";
   in_addr_t ping_target_ip_addr = MakeIPv4AddrFromString(argv[1]);
   Print("Ping to ");
   PrintIPv4Addr(ping_target_ip_addr);
@@ -71,8 +46,7 @@ int main(int argc, char** argv) {
   // https://lwn.net/Articles/422330/
   int soc = socket(AF_INET, SOCK_DGRAM, PROT_ICMP);
   if (soc < 0) {
-    Print("socket() failed\n");
-    exit(EXIT_FAILURE);
+    panic("socket() failed\n");
   }
 
   // Send ICMP
@@ -86,23 +60,20 @@ int main(int argc, char** argv) {
   int n = sendto(soc, &icmp, sizeof(icmp), 0, (struct sockaddr*)&addr,
                  sizeof(addr));
   if (n < 1) {
-    Print("sendto() failed\n");
-    exit(EXIT_FAILURE);
+    panic("sendto() failed\n");
   }
 
   // Recieve reply
   uint8_t recv_buf[256];
   socklen_t addr_size;
   int recv_len = recvfrom(soc, &recv_buf, sizeof(recv_buf), 0, (struct sockaddr *)&addr, &addr_size);
-  Print("recvfrom returns: ");
-  PrintNum(recv_len);
-  Print("\n");
-
   if (recv_len < 1) {
-    Print("recvfrom() failed\n");
-    exit(EXIT_FAILURE);
+    panic("recvfrom() failed\n");
   }
 
+  Print("recvfrom returned: ");
+  PrintNum(recv_len);
+  Print("\n");
   // Show recieved ICMP packet
   for (int i = 0; i < recv_len; i++) {
     PrintHex8ZeroFilled(recv_buf[i]);
