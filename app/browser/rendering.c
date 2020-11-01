@@ -3,10 +3,25 @@
 #include "tokenize.h"
 #include "parse.h"
 
+bool Printable(char *data) {
+  bool printable = false;
+  while (*data) {
+    if (*data != 0x09 /* Tab */ &&
+       *data != 0x0a /* LF */ &&
+       *data != 0x0c /* FF */ &&
+       *data != 0x0d /* CR */ &&
+       *data != 0x20 /* Space */) {
+      return true;
+    }
+    data++;
+  }
+  return printable;
+}
+
 void Markdown(Node *node) {
   switch (node->element_type) {
-    case TEXT:
-      Print(node->data);
+    case TEXT: if (Printable(node->data))
+        Print(node->data);
       break;
     case HEADING:
       if (strcmp(node->local_name, "h1") == 0) {
@@ -23,12 +38,19 @@ void Markdown(Node *node) {
         Print("###### ");
       }
       break;
+    case UL:
+      Print("\n");
+      break;
     case LI:
-      Print("\n- ");
+      Print("\n");
+      Print("- ");
       break;
     case DIV:
       Print("\n");
+      break;
     case PARAGRAPH:
+      Print("\n");
+      break;
     default:
       break;
   }
@@ -48,6 +70,7 @@ void Generate() {
 
     node = node->first_child;
   }
+  Print("\n");
 }
 
 void Render(char* html) {
@@ -58,5 +81,4 @@ void Render(char* html) {
   //PrintNodes();
 
   Generate();
-  //Print("\n");
 }

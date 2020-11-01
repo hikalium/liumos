@@ -36,7 +36,7 @@ typedef struct Token {
   char *tag_name; // for start/end tag.
   bool self_closing; // for start/end tag.
   Attribute *attributes; // for start/end tag.
-  char *data; // for character.
+  char data; // for character.
   struct Token *next;
 } Token;
 

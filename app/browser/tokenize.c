@@ -17,22 +17,18 @@ Token *CreateToken(TokenType type) {
   }
   token->self_closing = 0;
   token->attributes = NULL;
-  token->data = NULL;
+  token->data = 0;
   token->next = NULL;
   return token;
 }
 
-Token *CreateCharToken(char s) {
+Token *CreateCharToken(char c) {
   Token *token = (Token *) malloc(sizeof(Token));
-  char *data = (char *) malloc(2);
-  data[0] = s;
-  data[1] = '\0';
-
   token->type = CHAR;
   token->tag_name = NULL;
   token->self_closing = 0;
   token->attributes = NULL;
-  token->data = data;
+  token->data = c;
   token->next = NULL;
   return token;
 }
@@ -173,7 +169,7 @@ void PrintToken(Token *token) {
       break;
     case CHAR:
       Print("char: ");
-      Println(token->data);
+      Println(&token->data);
       break;
     case EOF:
       Println("EOF: End of file");

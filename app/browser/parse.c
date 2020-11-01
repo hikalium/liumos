@@ -62,8 +62,22 @@ Node *CreateElementFromToken(ElementType element_type, Token *token) {
     node->local_name = token->tag_name;
   if (token->attributes)
     node->attributes = token->attributes;
-  if (token->data)
-    node->data = token->data;
+  node->data = NULL;
+  node->first_child = NULL;
+  node->last_child = NULL;
+  node->previous = NULL;
+  node->next = NULL;
+  return node;
+}
+
+Node *CreateText(Token *token) {
+  Node *node = (Node *) malloc(sizeof(Node));
+  node->element_type = TEXT;
+  node->attributes = NULL;
+  char *data = (char *) malloc(100);
+  data[0] = token->data;
+  data[1] = '\0';
+  node->data = data;
   node->first_child = NULL;
   node->last_child = NULL;
   node->previous = NULL;
@@ -80,6 +94,8 @@ void ConstructTree() {
 
   Token *token = first_token;
 
+  bool inserting_char = false;
+
   while (token) {
     switch (mode) {
       case INITIAL:
@@ -92,6 +108,17 @@ void ConstructTree() {
         // https://html.spec.whatwg.org/multipage/parsing.html#the-before-html-insertion-mode
         if (token->type == DOCTYPE) {
           // Parse error. Ignore the token.
+          token = token->next;
+          break;
+        }
+        if (token->type == CHAR &&
+            (token->data == 0x09 /* Tab */ ||
+            token->data == 0x0a /* LF */ ||
+            token->data == 0x0c /* FF */ ||
+            token->data == 0x0d /* CR */ ||
+            token->data == 0x20 /* Space */)) {
+          // A character token that is one of U+0009 CHARACTER TABULATION, U+000A LINE FEED (LF), U+000C FORM FEED (FF), U+000D CARRIAGE RETURN (CR), or U+0020 SPACE
+          // Ignore the token.
           token = token->next;
           break;
         }
@@ -123,6 +150,17 @@ void ConstructTree() {
       case BEFORE_HEAD:
       //Println("3 before head");
         // https://html.spec.whatwg.org/multipage/parsing.html#the-before-head-insertion-mode
+        if (token->type == CHAR &&
+            (token->data == 0x09 /* Tab */ ||
+            token->data == 0x0a /* LF */ ||
+            token->data == 0x0c /* FF */ ||
+            token->data == 0x0d /* CR */ ||
+            token->data == 0x20 /* Space */)) {
+          // A character token that is one of U+0009 CHARACTER TABULATION, U+000A LINE FEED (LF), U+000C FORM FEED (FF), U+000D CARRIAGE RETURN (CR), or U+0020 SPACE
+          // Ignore the token.
+          token = token->next;
+          break;
+        }
         if (token->type == DOCTYPE) {
           // A DOCTYPE token
           // Parse error. Ignore the token.
@@ -246,11 +284,17 @@ void ConstructTree() {
       //Println("6 in body");
         // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inbody
         if (token->type == CHAR) {
-          Node *element = CreateElementFromToken(TEXT, token);
-          InsertChild(element);
+          if (current_node->element_type == TEXT && inserting_char) {
+            strcat(current_node->data, &token->data);
+          } else {
+            Node *element = CreateText(token);
+            InsertChild(element);
+          }
           token = token->next;
+          inserting_char = true;
           break;
         }
+        inserting_char = false;
         if (token->type == DOCTYPE) {
           // A DOCTYPE token
           // Parse error. Ignore the token.
@@ -392,26 +436,18 @@ void PrintNode(Node *node) {
 
 // for debug.
 void PrintNodes() {
-  int nest = 0;
   Node *node = root_node;
 
   Println("--------------");
   while (node) {
-    for (int i=0; i<nest; i++) {
-      Print(" ");
-    }
     PrintNode(node);
 
     Node *next = node->next;
     while (next) {
-      for (int i=0; i<nest; i++) {
-        Print(" ");
-      }
       PrintNode(next);
       next = next->next;
     }
 
-    nest += 2;
     node = node->first_child;
   }
   Println("--------------");
