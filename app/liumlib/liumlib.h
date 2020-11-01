@@ -120,7 +120,7 @@ uint32_t inet_addr(const char *cp);
 
 // liumlib original functions
 void Print(const char* s);
-void Println(char* text);
+void Println(const char* s);
 void PrintNum(int v);
 char NumToHexChar(char v);
 uint8_t StrToByte(const char* s, const char** next);

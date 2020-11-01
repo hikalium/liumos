@@ -93,11 +93,88 @@ void ParseResponse(char *response, char *body) {
 
 }
 
-void ParseUrl() {
+typedef struct ParsedUrl {
+  char *scheme;
+  char *host;
+  uint16_t port;
+  char *path;
+} ParsedUrl;
+
+/*
+char *ComsumeUntil(char* s, char delim) {
+  char *comsumed = (char *) malloc(100);
+  while (*s && *s != delim) {
+    *comsumed = *s;
+  }
+}
+*/
+
+ParsedUrl *ParseUrl() {
+  //url = "http://10.0.2.2:8888/index.html";
+  ParsedUrl *parsed_url = (ParsedUrl *) malloc(sizeof(ParsedUrl));
+
+  // Only support "http" scheme.
+  if (strncmp("http://", url, 7) != 0) {
+    Println("Error: Only support 'http' scheme.");
+    exit(EXIT_FAILURE);
+  }
+  parsed_url->scheme = "http";
+
+  // Parse `host`.
+  int host_separator = 7;
+  while (url[host_separator] && url[host_separator] != '/') {
+    host_separator++;
+  }
+  int host_length = host_separator - 7;
+  char *host = (char *) malloc(host_length + 1);
+  memcpy(host, &url[7], host_length);
+  host[host_length] = '\0';
+  parsed_url->host = host;
+
+  // Parse `ip` and `host` from `host`.
+  Println("----------- HOST ------------");
+  Println(host);
+  Println("-----------");
+  for (int i=0; i<host_length; i++) {
+    if (host[i] != ':')
+      continue;
+
+    char *tmp_ip = (char *) malloc(i+1);
+    memcpy(tmp_ip, host, i);
+    tmp_ip[i] = '\0';
+    ip = tmp_ip;
+    Println("----------- IP -------------");
+    Println(ip);
+    Println("-----------");
+
+    parsed_url->port = StrToNum16(&host[i+1], NULL);
+  }
+
+  char *path = (char *) malloc(strlen(url) - host_separator + 1);
+  int url_idx = host_separator;
+  int path_idx = 0;
+  while (url[url_idx]) {
+    path[path_idx] = url[url_idx];
+    path_idx++;
+    url_idx++;
+  }
+  path[path_idx] = '\0';
+  parsed_url->path = path;
+
+  Println(parsed_url->scheme);
+  Println(parsed_url->host);
+  PrintNum(parsed_url->port);
+  Println("");
+  Println(parsed_url->path);
+
+  /*
   host = "localhost:8888";
   path = "/index.html";
   ip = "10.0.2.2";
   port = 8888;
+  */
+
+  return parsed_url;
 }
 
 // Return 1 when parse succeeded, return 2 when debug mode, otherwise return 0.
@@ -140,6 +217,7 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
+  // For debug.
   if (parse_result == 2) {
     html = (char *) malloc(SIZE_RESPONSE);
     html = argv[2];

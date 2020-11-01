@@ -89,6 +89,7 @@ void* malloc(unsigned long n) {
 
   void* ptr = malloc_array + malloc_size;
   malloc_size = malloc_size + n;
+  memset(ptr, 0, n);
   return ptr;
 }
 
@@ -200,14 +201,8 @@ void Print(const char* s) {
   write(1, s, strlen(s));
 }
 
-void Println(char* text) {
-  char output[100000];
-  int i = 0;
-  while (text[i] != '\0') {
-    output[i] = text[i];
-    i++;
-  }
-  write(1, output, i + 1);
+void Println(const char* s) {
+  write(1, s, strlen(s));
   write(1, "\n", 1);
 }
 
