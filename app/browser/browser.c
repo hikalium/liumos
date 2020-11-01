@@ -108,14 +108,14 @@ int ParseArgs(int argc, char** argv) {
   bool is_debug = 0;
 
   while (argc > 0) {
-    if (strcmp("-url", argv[0]) == 0) {
+    if (strcmp("--url", argv[0]) == 0 || strcmp("-u", argv[0]) == 0) {
       url = argv[1];
       argc -= 2;
       argv += 2;
       continue;
     }
 
-    if (strcmp("-rawtext", argv[0]) == 0) {
+    if (strcmp("--rawtext", argv[0]) == 0) {
       html = argv[1];
       is_debug = 1;
       argc -= 2;
@@ -135,8 +135,8 @@ int main(int argc, char *argv[]) {
   int parse_result = ParseArgs(argc-1, argv+1);
   if (parse_result == 0) {
     Println("Usage: browser.bin [ OPTIONS ]");
-    Println("       -url      URL. Default: http://localhost:8888/index.html");
-    Println("       -rawtext  Raw HTML text for debug.");
+    Println("       -u, --url      URL. Default: http://localhost:8888/index.html");
+    Println("           --rawtext  Raw HTML text for debug.");
     exit(EXIT_FAILURE);
   }
 
