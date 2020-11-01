@@ -18,8 +18,6 @@
 
 #define INADDR_ANY ((unsigned long int) 0x00000000)
 
-#define PORT 8888
-
 #define __bswap_16(x) \
   ((__uint16_t) ((((x) >> 8) & 0xff) | (((x) & 0xff) << 8)))
 
