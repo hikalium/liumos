@@ -96,7 +96,7 @@ void ParseResponse(char *response, char *body) {
 void ParseUrl() {
   host = "localhost:8888";
   path = "/index.html";
-  ip = "127.0.0.1";
+  ip = "10.0.2.2";
   port = 8888;
 }
 
