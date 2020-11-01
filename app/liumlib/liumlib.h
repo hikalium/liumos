@@ -128,5 +128,8 @@ uint16_t StrToNum16(const char* s, const char** next);
 void __assert(const char* expr_str, const char* file, int line);
 in_addr_t MakeIPv4Addr(uint8_t a, uint8_t b, uint8_t c, uint8_t d);
 in_addr_t MakeIPv4AddrFromString(const char* s);
+void PrintHex8ZeroFilled(uint8_t v);
+void PrintIPv4Addr(in_addr_t addr);
+void panic(const char* s);
 
 #endif /* GRANDPARENT_H */

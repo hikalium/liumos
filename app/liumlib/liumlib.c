@@ -288,3 +288,25 @@ in_addr_t MakeIPv4AddrFromString(const char* s) {
   return *(uint32_t*)buf;
 }
 
+void PrintHex8ZeroFilled(uint8_t v) {
+  char s[2];
+  s[0] = NumToHexChar((v >> 4) & 0xF);
+  s[1] = NumToHexChar(v & 0xF);
+  write(1, s, 2);
+}
+
+void PrintIPv4Addr(in_addr_t addr) {
+  uint8_t buf[4];
+  *(uint32_t*)buf = addr;
+  for (int i = 0;; i++) {
+    PrintNum(buf[i]);
+    if (i == 3)
+      break;
+    Print(".");
+  }
+}
+
+void panic(const char* s) {
+  write(1, s, strlen(s));
+  exit(EXIT_FAILURE);
+}

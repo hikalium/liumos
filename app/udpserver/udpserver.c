@@ -1,10 +1,5 @@
 #include "../liumlib/liumlib.h"
 
-static void panic(const char* s) {
-  write(1, s, strlen(s));
-  exit(EXIT_FAILURE);
-}
-
 int main(int argc, char** argv) {
   if (argc < 2) {
     Print("Usage: udpserver.bin <port>\n");
