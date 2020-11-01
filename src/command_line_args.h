@@ -33,7 +33,7 @@ class CommandLineArgs {
     return false;
   }
 
-  static constexpr int kMaxNumOfArgs = 8;
+  static constexpr int kMaxNumOfArgs = 16;
   static constexpr int kBufSize = 64;
 
  private:
