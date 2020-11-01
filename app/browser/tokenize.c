@@ -8,7 +8,7 @@
 Token *first_token = NULL;
 Token *current_token = NULL;
 
-Token *create_token(TokenType type) {
+Token *CreateToken(TokenType type) {
   Token *token = (Token *) malloc(sizeof(Token));
   token->type = type;
   if (type == START_TAG || type == END_TAG) {
@@ -22,7 +22,7 @@ Token *create_token(TokenType type) {
   return token;
 }
 
-Token *create_char_token(char s) {
+Token *CreateCharToken(char s) {
   Token *token = (Token *) malloc(sizeof(Token));
   char *data = (char *) malloc(2);
   data[0] = s;
@@ -37,7 +37,7 @@ Token *create_char_token(char s) {
   return token;
 }
 
-void append_token(Token *token) {
+void AppendToken(Token *token) {
   if (first_token == NULL) {
     first_token = token;
   } else {
@@ -49,7 +49,7 @@ void append_token(Token *token) {
 // https://html.spec.whatwg.org/multipage/parsing.html#tokenization
 // "The output of the tokenization step is a series of zero or more of the following tokens:
 // DOCTYPE, start tag, end tag, comment, character, end-of-file"
-void tokenize(char *html) {
+void Tokenize(char *html) {
   first_token = NULL;
   current_token = NULL;
 
@@ -77,7 +77,7 @@ void tokenize(char *html) {
           break;
         }
         // Anything else
-        append_token(create_char_token(*html));
+        AppendToken(CreateCharToken(*html));
         html++;
         break;
       case TAG_OPEN:
@@ -93,14 +93,14 @@ void tokenize(char *html) {
           // ASCII alpha
           // Create a new start tag token, set its tag name to the empty string.
           // Reconsume in the tag name state.
-          append_token(create_token(START_TAG));
+          AppendToken(CreateToken(START_TAG));
           state = TAG_NAME;
           break;
         }
         // Anything else
         // This is an invalid-first-character-of-tag-name parse error.
         // Emit a U+003C LESS-THAN SIGN character token. Reconsume in the data state.
-        append_token(create_char_token('<'));
+        AppendToken(CreateCharToken('<'));
         state = DATA;
         break;
       case END_TAG:
@@ -109,7 +109,7 @@ void tokenize(char *html) {
           // ASCII alpha
           // Create a new end tag token, set its tag name to the empty string.
           // Reconsume in the tag name state.
-          append_token(create_token(END_TAG));
+          AppendToken(CreateToken(END_TAG));
           state = TAG_NAME;
           break;
         }
@@ -161,18 +161,18 @@ void tokenize(char *html) {
 }
 
 // for debug.
-void print_token(Token *token) {
+void PrintToken(Token *token) {
   switch (token->type) {
     case START_TAG:
-      write(1, "start: ", 7);
+      Print("start: ");
       Println(token->tag_name);
       break;
     case END_TAG:
-      write(1, "end: ", 5);
+      Print("end: ");
       Println(token->tag_name);
       break;
     case CHAR:
-      write(1, "char: ", 6);
+      Print("char: ");
       Println(token->data);
       break;
     case EOF:
@@ -184,10 +184,10 @@ void print_token(Token *token) {
 }
 
 // for debug.
-void print_tokens() {
+void PrintTokens() {
   Println("==============");
   for (Token *token = first_token; token; token = token->next) {
-    print_token(token);
+    PrintToken(token);
   }
   Println("==============");
 }

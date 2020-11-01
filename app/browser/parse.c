@@ -6,7 +6,7 @@
 #include "../liumlib/liumlib.h"
 #include "tokenize.h"
 
-void insert_child(Node *child) {
+void InsertChild(Node *child) {
   child->parent = current_node;
 
   if (current_node->first_child == NULL) {
@@ -26,7 +26,7 @@ void insert_child(Node *child) {
 }
 
 // https://html.spec.whatwg.org/multipage/dom.html#document
-Node *create_document() {
+Node *CreateDocument() {
   Node *node = (Node *) malloc(sizeof(Node));
   node->element_type = DOCUMENT;
   node->local_name = NULL;
@@ -39,7 +39,7 @@ Node *create_document() {
   return node;
 }
 
-Node *create_element(ElementType element_type, char *local_name) {
+Node *CreateElement(ElementType element_type, char *local_name) {
   Node *node = (Node *) malloc(sizeof(Node));
   node->element_type = element_type;
   if (local_name)
@@ -54,7 +54,7 @@ Node *create_element(ElementType element_type, char *local_name) {
 }
 
 // https://html.spec.whatwg.org/multipage/parsing.html#create-an-element-for-the-token
-Node *create_element_from_token(ElementType element_type, Token *token) {
+Node *CreateElementFromToken(ElementType element_type, Token *token) {
   Node *node = (Node *) malloc(sizeof(Node));
   node->element_type = element_type;
   // "2. Let local name be the tag name of the token."
@@ -71,10 +71,10 @@ Node *create_element_from_token(ElementType element_type, Token *token) {
   return node;
 }
 
-void construct_tree() {
+void ConstructTree() {
   Mode mode = INITIAL;
 
-  Node *document = create_document();
+  Node *document = CreateDocument();
   root_node = document;
   current_node = document;
 
@@ -96,8 +96,8 @@ void construct_tree() {
           break;
         }
         if (token->type == START_TAG && strcmp(token->tag_name, "html") == 0) {
-          Node *element = create_element_from_token(HTML, token);
-          insert_child(element);
+          Node *element = CreateElementFromToken(HTML, token);
+          InsertChild(element);
           mode = BEFORE_HEAD;
           token = token->next;
           break;
@@ -114,8 +114,8 @@ void construct_tree() {
         }
         // Anything else
         {
-          Node *element = create_element(HTML, "html");
-          insert_child(element);
+          Node *element = CreateElement(HTML, "html");
+          InsertChild(element);
         }
         mode = BEFORE_HEAD;
         // Reprocess the token.
@@ -131,8 +131,8 @@ void construct_tree() {
         }
         if (token->type == START_TAG && strcmp(token->tag_name, "head") == 0) {
           // A start tag whose tag name is "head"
-          Node *element = create_element_from_token(HEAD, token);
-          insert_child(element);
+          Node *element = CreateElementFromToken(HEAD, token);
+          InsertChild(element);
           mode = IN_HEAD;
           token = token->next;
           break;
@@ -149,8 +149,8 @@ void construct_tree() {
         }
         // Anything else
         {
-          Node *element = create_element(HEAD, "head");
-          insert_child(element);
+          Node *element = CreateElement(HEAD, "head");
+          InsertChild(element);
         }
         mode = IN_HEAD;
         break;
@@ -213,8 +213,8 @@ void construct_tree() {
         }
         if (token->type == START_TAG && strcmp(token->tag_name, "body") == 0) {
           // A start tag whose tag name is "body"
-          Node *element = create_element_from_token(BODY, token);
-          insert_child(element);
+          Node *element = CreateElementFromToken(BODY, token);
+          InsertChild(element);
           mode = IN_BODY;
           token = token->next;
           break;
@@ -236,8 +236,8 @@ void construct_tree() {
         }
         // Anything else
         {
-          Node *element = create_element(BODY, "body");
-          insert_child(element);
+          Node *element = CreateElement(BODY, "body");
+          InsertChild(element);
         }
         mode = IN_BODY;
         // Reprocess the token.
@@ -246,8 +246,8 @@ void construct_tree() {
       //Println("6 in body");
         // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inbody
         if (token->type == CHAR) {
-          Node *element = create_element_from_token(TEXT, token);
-          insert_child(element);
+          Node *element = CreateElementFromToken(TEXT, token);
+          InsertChild(element);
           token = token->next;
           break;
         }
@@ -282,20 +282,20 @@ void construct_tree() {
           break;
         }
         if (token->type == START_TAG && strcmp(token->tag_name, "ul") == 0) {
-          Node *element = create_element_from_token(UL, token);
-          insert_child(element);
+          Node *element = CreateElementFromToken(UL, token);
+          InsertChild(element);
           token = token->next;
           break;
         }
         if (token->type == START_TAG && strcmp(token->tag_name, "p") == 0) {
-          Node *element = create_element_from_token(PARAGRAPH, token);
-          insert_child(element);
+          Node *element = CreateElementFromToken(PARAGRAPH, token);
+          InsertChild(element);
           token = token->next;
           break;
         }
         if (token->type == START_TAG && strcmp(token->tag_name, "div") == 0) {
-          Node *element = create_element_from_token(DIV, token);
-          insert_child(element);
+          Node *element = CreateElementFromToken(DIV, token);
+          InsertChild(element);
           token = token->next;
           break;
         }
@@ -307,15 +307,15 @@ void construct_tree() {
             strcmp(token->tag_name, "h5") == 0 ||
             strcmp(token->tag_name, "h6") == 0)) {
           // A start tag whose tag name is one of: "h1", "h2", "h3", "h4", "h5", "h6"
-          Node *element = create_element_from_token(HEADING, token);
-          insert_child(element);
+          Node *element = CreateElementFromToken(HEADING, token);
+          InsertChild(element);
           token = token->next;
           break;
         }
         if (token->type == START_TAG && strcmp(token->tag_name, "li") == 0) {
           // A start tag whose tag name is "li"
-          Node *element = create_element_from_token(LI, token);
-          insert_child(element);
+          Node *element = CreateElementFromToken(LI, token);
+          InsertChild(element);
           token = token->next;
         }
         if (token->type == END_TAG) {
@@ -365,7 +365,7 @@ void construct_tree() {
 }
 
 // for debug.
-void print_node(Node *node) {
+void PrintNode(Node *node) {
   switch (node->element_type) {
     case DOCUMENT:
       Println("DOCUMENT");
@@ -380,34 +380,34 @@ void print_node(Node *node) {
       Println("BODY");
       break;
     case TEXT:
-      write(1, "text: ", 6);
+      Print("text: ");
       Println(node->data);
       break;
     default:
-      write(1, "node: ", 6);
+      Print("node: ");
       Println(node->local_name);
       break;
   }
 }
 
 // for debug.
-void print_nodes() {
+void PrintNodes() {
   int nest = 0;
   Node *node = root_node;
 
   Println("--------------");
   while (node) {
     for (int i=0; i<nest; i++) {
-      write(1, " ", 1);
+      Print(" ");
     }
-    print_node(node);
+    PrintNode(node);
 
     Node *next = node->next;
     while (next) {
       for (int i=0; i<nest; i++) {
-        write(1, " ", 1);
+        Print(" ");
       }
-      print_node(next);
+      PrintNode(next);
       next = next->next;
     }
 

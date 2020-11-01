@@ -3,46 +3,46 @@
 #include "tokenize.h"
 #include "parse.h"
 
-void markdown(Node *node) {
+void Markdown(Node *node) {
   switch (node->element_type) {
     case TEXT:
-      write(1, node->data, strlen(node->data));
+      Print(node->data);
       break;
     case HEADING:
       if (strcmp(node->local_name, "h1") == 0) {
-        write(1, "# ", 2);
+        Print("# ");
       } else if (strcmp(node->local_name, "h2") == 0) {
-        write(1, "## ", 3);
+        Print("## ");
       } else if (strcmp(node->local_name, "h3") == 0) {
-        write(1, "### ", 4);
+        Print("### ");
       } else if (strcmp(node->local_name, "h4") == 0) {
-        write(1, "#### ", 5);
+        Print("#### ");
       } else if (strcmp(node->local_name, "h5") == 0) {
-        write(1, "##### ", 6);
+        Print("##### ");
       } else if (strcmp(node->local_name, "h6") == 0) {
-        write(1, "###### ", 7);
+        Print("###### ");
       }
       break;
     case LI:
-      write(1, "\n- ", 3);
+      Print("\n- ");
       break;
     case DIV:
-      write(1, "\n", 1);
+      Print("\n");
     case PARAGRAPH:
     default:
       break;
   }
 }
 
-void generate() {
+void Generate() {
   Node *node = root_node;
 
   while (node) {
-    markdown(node);
+    Markdown(node);
 
     Node *next = node->next;
     while (next) {
-      markdown(next);
+      Markdown(next);
       next = next->next;
     }
 
@@ -50,13 +50,13 @@ void generate() {
   }
 }
 
-void render(char* html) {
-  tokenize(html);
-  //print_tokens();
+void Render(char* html) {
+  Tokenize(html);
+  //PrintTokens();
 
-  construct_tree();
-  //print_nodes();
+  ConstructTree();
+  //PrintNodes();
 
-  generate();
-  //write(1, "\n", 1);
+  Generate();
+  //Print("\n");
 }

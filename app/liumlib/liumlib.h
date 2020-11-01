@@ -4,6 +4,8 @@
 #include "stdint.h"
 
 #define NULL 0
+#define true 1
+#define false 0
 
 #define EXIT_FAILURE 1
 

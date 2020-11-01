@@ -189,7 +189,7 @@ int main(int argc, char *argv[]) {
   if (parse_result == 2) {
     html = (char *) malloc(SIZE_RESPONSE);
     html = argv[2];
-    render(html);
+    Render(html);
     exit(0);
   }
 
@@ -203,7 +203,7 @@ int main(int argc, char *argv[]) {
   GetResponse(request, response);
   GetResponseBody(response, html);
 
-  render(html);
+  Render(html);
 
   exit(0);
 }

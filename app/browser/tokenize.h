@@ -40,12 +40,12 @@ typedef struct Token {
   struct Token *next;
 } Token;
 
-Token *create_token(TokenType type);
-Token *create_char_token(char s);
-void append_token(Token *token);
-void tokenize(char *html);
-void print_token(); // for debug.
-void print_tokens(); // for debug.
+Token *CreateToken(TokenType type);
+Token *CreateCharToken(char s);
+void AppendToken(Token *token);
+void Tokenize(char *html);
+void PrintToken(); // for debug.
+void PrintTokens(); // for debug.
 
 extern Token *first_token;
 extern Token *current_token;

@@ -45,13 +45,13 @@ typedef struct Node {
   struct Node *next;
 } Node;
 
-void insert_child(Node *child);
-Node *create_document();
-Node *create_element(ElementType element_type, char *local_name);
-Node *create_element_from_token(ElementType element_type, Token *token);
-void construct_tree();
-void print_node(Node *node); // for debug.
-void print_nodes(); // for debug.
+void InsertChild(Node *child);
+Node *CreateDocument();
+Node *CreateElement(ElementType element_type, char *local_name);
+Node *CreateElementFromToken(ElementType element_type, Token *token);
+void ConstructTree();
+void PrintNode(Node *node); // for debug.
+void PrintNodes(); // for debug.
 
 Node *root_node;
 Node *current_node;
