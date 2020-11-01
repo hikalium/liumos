@@ -72,28 +72,28 @@ int ParseArgs(int argc, char** argv) {
   path = "/";
 
   while (argc > 0) {
-    if (strcmp("-ip", argv[0]) == 0) {
+    if (strcmp("--ip", argv[0]) == 0 || strcmp("-i", argv[0]) == 0) {
       ip = argv[1];
       argc -= 2;
       argv += 2;
       continue;
     }
 
-    if (strcmp("-port", argv[0]) == 0) {
+    if (strcmp("--port", argv[0]) == 0 || strcmp("-p", argv[0]) == 0) {
       port = StrToNum16(argv[1], NULL);
       argc -= 2;
       argv += 2;
       continue;
     }
 
-    if (strcmp("-host", argv[0]) == 0) {
+    if (strcmp("--host", argv[0]) == 0 || strcmp("-h", argv[0]) == 0) {
       host = argv[1];
       argc -= 2;
       argv += 2;
       continue;
     }
 
-    if (strcmp("-path", argv[0]) == 0) {
+    if (strcmp("--path", argv[0]) == 0 || strcmp("-P", argv[0]) == 0) {
       path = argv[1];
       argc -= 2;
       argv += 2;
@@ -108,10 +108,10 @@ int ParseArgs(int argc, char** argv) {
 int main(int argc, char** argv) {
   if (ParseArgs(argc-1, argv+1) == 0) {
     Println("Usage: httpclient.bin [ OPTIONS ]");
-    Println("       -ip      IP address. Default: 127.0.0.1");
-    Println("       -port    Port number. Default: 8888");
-    Println("       -host    Host property of the URL. Default: Ø");
-    Println("       -path    Path property of the URL. Default: /");
+    Println("       -i, --ip      IP address. Default: 127.0.0.1");
+    Println("       -p, --port    Port number. Default: 8888");
+    Println("       -h, --host    Host property of the URL. Default: Ø");
+    Println("       -P, --path    Path property of the URL. Default: /");
     exit(EXIT_FAILURE);
     return EXIT_FAILURE;
   }
@@ -134,5 +134,4 @@ int main(int argc, char** argv) {
   SendRequest(request);
 
   exit(0);
-  return 0;
-}
+  return 0}

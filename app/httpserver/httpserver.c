@@ -148,7 +148,7 @@ int ParseArgs(int argc, char** argv) {
   port = 8888;
 
   while (argc > 0) {
-    if (strcmp("-port", argv[0]) == 0) {
+    if (strcmp("--port", argv[0]) == 0 || strcmp("-p", argv[0]) == 0) {
       port = StrToNum16(argv[1], NULL);
       argc -= 2;
       argv += 2;
@@ -163,7 +163,7 @@ int ParseArgs(int argc, char** argv) {
 int main(int argc, char *argv[]) {
   if (ParseArgs(argc-1, argv+1) == 0) {
     Println("Usage: httpserver.bin [ OPTION ]");
-    Println("       -port    Port number. Default: 8888");
+    Println("       -p, --port    Port number. Default: 8888");
     exit(EXIT_FAILURE);
     return EXIT_FAILURE;
   }
