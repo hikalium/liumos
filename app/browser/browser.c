@@ -1,23 +1,27 @@
 #include "../liumlib/liumlib.h"
 #include "rendering.h"
 
-char* host;
-char* path;
-char* ip;
-uint16_t port;
+typedef struct ParsedUrl {
+  char *scheme;
+  char *host;
+  uint16_t port;
+  char *path;
+} ParsedUrl;
 
+char *ip;
 char *url;
 char *html;
+ParsedUrl *parsed_url;
 
 void RequestLine(char* request) {
   strcpy(request, "GET ");
-  strcat(request, path);
+  strcat(request, parsed_url->path);
   strcat(request, " HTTP/1.1\n");
 }
 
 void Headers(char* request) {
   strcat(request, "Host: ");
-  strcat(request, host);
+  strcat(request, parsed_url->host);
   strcat(request, "\n");
 }
 
@@ -51,7 +55,7 @@ void GetResponse(char* request, char *response) {
 
   address.sin_family = AF_INET;
   address.sin_addr.s_addr = inet_addr(ip);
-  address.sin_port = htons(port);
+  address.sin_port = htons(parsed_url->port);
 
   if (sendto(socket_fd, request, strlen(request), 0,
              (struct sockaddr*)&address, addrlen) < 0) {
@@ -93,24 +97,7 @@ void ParseResponse(char *response, char *body) {
 
 }
 
-typedef struct ParsedUrl {
-  char *scheme;
-  char *host;
-  uint16_t port;
-  char *path;
-} ParsedUrl;
-
-/*
-char *ComsumeUntil(char* s, char delim) {
-  char *comsumed = (char *) malloc(100);
-  while (*s && *s != delim) {
-    *comsumed = *s;
-  }
-}
-*/
-
 ParsedUrl *ParseUrl() {
-  //url = "http://10.0.2.2:8888/index.html";
   ParsedUrl *parsed_url = (ParsedUrl *) malloc(sizeof(ParsedUrl));
 
   // Only support "http" scheme.
@@ -132,9 +119,6 @@ ParsedUrl *ParseUrl() {
   parsed_url->host = host;
 
   // Parse `ip` and `host` from `host`.
-  Println("----------- HOST ------------");
-  Println(host);
-  Println("-----------");
   for (int i=0; i<host_length; i++) {
     if (host[i] != ':')
       continue;
@@ -143,9 +127,6 @@ ParsedUrl *ParseUrl() {
     memcpy(tmp_ip, host, i);
     tmp_ip[i] = '\0';
     ip = tmp_ip;
-    Println("----------- IP -------------");
-    Println(ip);
-    Println("-----------");
 
     parsed_url->port = StrToNum16(&host[i+1], NULL);
   }
@@ -160,19 +141,6 @@ ParsedUrl *ParseUrl() {
   }
   path[path_idx] = '\0';
   parsed_url->path = path;
-
-  Println(parsed_url->scheme);
-  Println(parsed_url->host);
-  PrintNum(parsed_url->port);
-  Println("");
-  Println(parsed_url->path);
-
-  /*
-  host = "localhost:8888";
-  path = "/index.html";
-  ip = "10.0.2.2";
-  port = 8888;
-  */
 
   return parsed_url;
 }
@@ -225,7 +193,7 @@ int main(int argc, char *argv[]) {
     exit(0);
   }
 
-  ParseUrl();
+  parsed_url = ParseUrl();
 
   char *request = (char *) malloc(SIZE_REQUEST);
   char *response = (char *) malloc(SIZE_RESPONSE);
