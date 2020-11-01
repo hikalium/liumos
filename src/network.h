@@ -99,6 +99,10 @@ class Network {
       return ip_addr;
     }
   };
+  packed_struct IPv4NetMask {
+    uint8_t mask[4];
+    void Print() const;
+  };
   struct IPv4AddrHash {
     std::size_t operator()(const IPv4Addr& v) const {
       return std::hash<uint32_t>{}(*reinterpret_cast<const uint32_t*>(v.addr));
@@ -138,6 +142,11 @@ class Network {
                                     sizeof(IPv4Packet));
     }
   };
+
+  void SetIPv4DefaultGateway(IPv4Addr gateway) { gateway_ = gateway; }
+  IPv4Addr GetIPv4DefaultGateway() { return gateway_; }
+  void SetIPv4NetMask(IPv4NetMask netmask) { netmask_ = netmask; }
+  IPv4NetMask GetIPv4NetMask() { return netmask_; }
 
   //
   // ICMP
@@ -319,6 +328,8 @@ class Network {
     uint8_t chaddr_padding[10];
     uint8_t sname[64];
     uint8_t file[128];
+    uint8_t cookie[4];
+    // Option fields follow
     void SetupRequest(const Network::EtherAddr& src_eth_addr) {
       // ip.eth
       udp.ip.eth.dst = Network::kBroadcastEtherAddr;
@@ -363,12 +374,19 @@ class Network {
       for (int i = 0; i < 128; i++) {
         file[i] = 0;
       }
+      // https://tools.ietf.org/html/rfc2131
+      // 3. The Client-Server Protocol
+      cookie[0] = 99;
+      cookie[1] = 130;
+      cookie[2] = 83;
+      cookie[3] = 99;
       //
       udp.csum = CalcUDPChecksum(this, offsetof(DHCPPacket, udp.src_port),
                                  sizeof(DHCPPacket), Network::kWildcardIPv4Addr,
                                  Network::kBroadcastIPv4Addr, udp.length);
     }
   };
+  static_assert(offsetof(DHCPPacket, cookie) == 278);
 
   //
   // ARP Table
@@ -454,6 +472,8 @@ class Network {
   // +1ACD0
   RingBuffer<PacketContainer, kRXBufferSize> rx_buffer_;  // (2048 + 8) * 32
   std::vector<Socket> sockets_;
+  IPv4Addr gateway_;
+  IPv4NetMask netmask_;
 
   Network(){};
 };

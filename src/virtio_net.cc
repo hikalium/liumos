@@ -258,6 +258,8 @@ static bool ICMPPacketHandler(IPv4Packet& p, size_t frame_size) {
 }
 
 static bool UDPPacketHandler(IPv4Packet& p, size_t frame_size) {
+  using IPv4Addr = Network::IPv4Addr;
+  using IPv4NetMask = Network::IPv4NetMask;
   if (p.protocol != IPv4Packet::Protocol::kUDP) {
     return false;
   }
@@ -265,20 +267,51 @@ static bool UDPPacketHandler(IPv4Packet& p, size_t frame_size) {
     return false;
   }
   Net::IPv4UDPPacket& udp = *reinterpret_cast<Net::IPv4UDPPacket*>(&p);
-  if (udp.GetDestinationPort() == 68) {
-    PutString("DHCP: ");
-    Net::DHCPPacket& dhcp = *reinterpret_cast<Net::DHCPPacket*>(&p);
-    PutStringAndHex("op", dhcp.op);
-    PutString("client MAC Addr: ");
-    dhcp.chaddr.Print();
-    PutString("\nassigned IP Addr: ");
-    dhcp.yiaddr.Print();
-    PutString("\n");
-    Net& net = Net::GetInstance();
-    if (dhcp.op == 2 && dhcp.chaddr.IsEqualTo(net.GetSelfEtherAddr())) {
-      PutString("It's mine!!\n");
-      net.SetSelfIPv4Addr(dhcp.yiaddr);
+  if (udp.GetDestinationPort() != 68) {
+    // Not a DHCP packet
+    return false;
+  }
+  Net::DHCPPacket& dhcp = *reinterpret_cast<Net::DHCPPacket*>(&p);
+  Net& net = Net::GetInstance();
+  Network& network = Network::GetInstance();
+  if (dhcp.op != 2 || !dhcp.chaddr.IsEqualTo(net.GetSelfEtherAddr())) {
+    return false;
+  }
+  dhcp.yiaddr.Print();
+  kprintf(" is assigned by DHCP\n");
+  net.SetSelfIPv4Addr(dhcp.yiaddr);
+  // https://tools.ietf.org/html/rfc2131
+  // 3. The Client-Server Protocol
+  if (dhcp.cookie[0] != 99 || dhcp.cookie[1] != 130 || dhcp.cookie[2] != 83 ||
+      dhcp.cookie[3] != 99) {
+    kprintf("Unexpected DHCP Option cookie\n");
+    return true;
+  }
+  uint8_t* buf = reinterpret_cast<uint8_t*>(&dhcp);
+  size_t i = sizeof(Net::DHCPPacket);
+  while (i < frame_size) {
+    uint8_t option = buf[i];
+    uint8_t option_data_len = buf[i + 1];
+    if (option_data_len == 0) {
+      break;
     }
+    if (option == 3) {
+      // Router
+      assert(option_data_len == 4);
+      IPv4Addr router_ip = *reinterpret_cast<IPv4Addr*>(&buf[i + 2]);
+      router_ip.Print();
+      kprintf(" is router\n");
+      network.SetIPv4DefaultGateway(router_ip);
+    }
+    if (option == 1) {
+      // Subnet Mask
+      assert(option_data_len == 4);
+      IPv4NetMask netmask = *reinterpret_cast<IPv4NetMask*>(&buf[i + 2]);
+      netmask.Print();
+      kprintf(" is netmask\n");
+      network.SetIPv4NetMask(netmask);
+    }
+    i += 2 + option_data_len;
   }
   return true;
 }

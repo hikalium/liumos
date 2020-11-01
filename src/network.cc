@@ -11,6 +11,14 @@ void Network::IPv4Addr::Print() const {
   }
 }
 
+void Network::IPv4NetMask::Print() const {
+  for (int i = 0; i < 4; i++) {
+    PutDecimal64(mask[i]);
+    if (i != 3)
+      PutChar('.');
+  }
+}
+
 void Network::EtherAddr::Print() const {
   for (int i = 0; i < 6; i++) {
     PutHex8ZeroFilled(mac[i]);

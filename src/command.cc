@@ -609,6 +609,13 @@ void Run(TextBox& tbox) {
     PutString("Failed to parse command line\n");
     return;
   }
+  if (IsEqualString(args.GetArg(0), "gateway")) {
+    if (args.GetNumOfArgs() != 3) {
+      PutString("Usage: gateway <ip> <netmask>");
+      return;
+    }
+    return;
+  }
   if (IsEqualString(args.GetArg(0), "ip")) {
     Virtio::Net& net = Virtio::Net::GetInstance();
     auto ip_addr = net.GetSelfIPv4Addr();
@@ -616,6 +623,13 @@ void Run(TextBox& tbox) {
     ip_addr.Print();
     PutString(" eth ");
     mac_addr.Print();
+    auto& network = Network::GetInstance();
+    PutString(" mask ");
+    auto mask = network.GetIPv4NetMask();
+    mask.Print();
+    PutString(" gateway ");
+    auto gateway_ip = network.GetIPv4DefaultGateway();
+    gateway_ip.Print();
     PutString("\n");
     return;
   }
