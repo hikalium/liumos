@@ -609,6 +609,14 @@ void Run(TextBox& tbox) {
     PutString("Failed to parse command line\n");
     return;
   }
+  if (IsEqualString(args.GetArg(0), "gateway")) {
+    auto& net = Network::GetInstance();
+    auto ip_addr = net.GetIPv4DefaultGateway();
+    PutString("default gateway: ");
+    ip_addr.Print();
+    PutString("\n");
+    return;
+  }
   if (IsEqualString(args.GetArg(0), "ip")) {
     Virtio::Net& net = Virtio::Net::GetInstance();
     auto ip_addr = net.GetSelfIPv4Addr();

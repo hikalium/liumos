@@ -139,6 +139,8 @@ class Network {
     }
   };
 
+  IPv4Addr GetIPv4DefaultGateway() { return gateway_; }
+
   //
   // ICMP
   //
@@ -454,6 +456,7 @@ class Network {
   // +1ACD0
   RingBuffer<PacketContainer, kRXBufferSize> rx_buffer_;  // (2048 + 8) * 32
   std::vector<Socket> sockets_;
+  IPv4Addr gateway_;
 
   Network(){};
 };
