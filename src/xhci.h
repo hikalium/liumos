@@ -237,6 +237,7 @@ class Controller {
   void HandleTransferEvent(BasicTRB& e);
   void CheckPortAndInitiateProcess();
 
+  bool initialized_ = false;
   static Controller* xhci_;
   PCI::DeviceLocation dev_;
   TransferRequestBlockRing<kNumOfCmdTRBRingEntries>* cmd_ring_;

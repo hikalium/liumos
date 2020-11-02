@@ -378,7 +378,9 @@ uint64_t get_seconds() {
   return HPET::GetInstance().ReadMainCounterValue();
 }
 
-void TestMem(PhysicalPageAllocator& allocator, uint32_t proximity_domain) {
+void TestMem(
+    PhysicalPageAllocator<UsePhysicalAddressInternallyStrategy>& allocator,
+    uint32_t proximity_domain) {
   constexpr uint64_t kRangeMin = 1ULL << 10;
   constexpr uint64_t kRangeMax = 1ULL << 24;
   PutStringAndHex("Test memory on proximity_domain", proximity_domain);
@@ -476,7 +478,9 @@ void TestMem(PhysicalPageAllocator& allocator, uint32_t proximity_domain) {
   StoreIntFlag();
 }
 
-void TestMemWrite(PhysicalPageAllocator allocator, uint32_t proximity_domain) {
+void TestMemWrite(
+    PhysicalPageAllocator<UsePhysicalAddressInternallyStrategy> allocator,
+    uint32_t proximity_domain) {
   constexpr uint64_t kRangeMin = 1ULL << 10;
   constexpr uint64_t kRangeMax = 1ULL << 24;
   PutStringAndHex("Test memory on proximity_domain", proximity_domain);

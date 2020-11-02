@@ -9,7 +9,7 @@
 
 LiumOS* liumos;
 EFI::MemoryMap efi_memory_map;
-PhysicalPageAllocator* pmem_allocator;
+PhysicalPageAllocator<UsePhysicalAddressInternallyStrategy>* pmem_allocator;
 CPUFeatureSet cpu_features;
 SerialPort com2;
 
@@ -25,29 +25,33 @@ LoaderInfo& GetLoaderInfo() {
   return *loader_info_;
 }
 
-void FreePages(PhysicalPageAllocator* allocator,
-               void* phys_addr,
-               uint64_t num_of_pages) {
+uint64_t GetKernelStraightMappingBase() {
+  Panic("GetKernelStraightMappingBase should not be called in loader");
+}
+
+void FreePages(
+    PhysicalPageAllocator<UsePhysicalAddressInternallyStrategy>* allocator,
+    uint64_t phys_addr,
+    uint64_t num_of_pages) {
   const uint32_t prox_domain =
       liumos->acpi.srat ? liumos->acpi.srat->GetProximityDomainForAddrRange(
-                              reinterpret_cast<uint64_t>(phys_addr),
-                              num_of_pages << kPageSizeExponent)
+                              phys_addr, num_of_pages << kPageSizeExponent)
                         : 0;
   allocator->FreePagesWithProximityDomain(phys_addr, num_of_pages, prox_domain);
 }
 
-PhysicalPageAllocator dram_allocator_;
+PhysicalPageAllocator<UsePhysicalAddressInternallyStrategy> dram_allocator_;
 void InitDRAMManagement(EFI::MemoryMap& map) {
   auto dram_allocator = &dram_allocator_;
-  new (dram_allocator) PhysicalPageAllocator();
+  new (dram_allocator)
+      PhysicalPageAllocator<UsePhysicalAddressInternallyStrategy>();
   int available_pages = 0;
   for (int i = 0; i < map.GetNumberOfEntries(); i++) {
     const EFI::MemoryDescriptor* desc = map.GetDescriptor(i);
     if (desc->type != EFI::MemoryType::kConventionalMemory)
       continue;
     available_pages += desc->number_of_pages;
-    FreePages(dram_allocator, reinterpret_cast<void*>(desc->physical_start),
-              desc->number_of_pages);
+    FreePages(dram_allocator, desc->physical_start, desc->number_of_pages);
   }
   PutStringAndHex("Available DRAM (KiB)", available_pages * 4);
   GetLoaderInfo().dram_allocator = dram_allocator;
@@ -152,6 +156,7 @@ void MainForBootProcessor(EFI::Handle image_handle,
 
   PanicPrinter::Init(&panic_printer_work, *liumos->vram_sheet, com2);
 
+  PutString("Loading liumOS...\n");
   PutString("\nliumOS version: ");
   PutString(GetVersionStr());
   PutString("\n\n");
@@ -165,11 +170,19 @@ void MainForBootProcessor(EFI::Handle image_handle,
   InitDoubleBuffer();
   main_console_.SetSheet(liumos->screen_sheet);
 
-  constexpr uint64_t kNumOfKernelStackPages = 2;
+  constexpr uint64_t kNumOfKernelStackPages = 256;
   uint64_t kernel_stack_base =
       GetSystemDRAMAllocator().AllocPages<uint64_t>(kNumOfKernelStackPages);
   uint64_t kernel_stack_pointer =
       kernel_stack_base + (kNumOfKernelStackPages << kPageSizeExponent);
+  PutString("Kernel Stack: [ ");
+  PutHex64ZeroFilled(kernel_stack_base);
+  PutString(" - ");
+  PutHex64ZeroFilled(kernel_stack_base + kNumOfKernelStackPages * kPageSize);
+  PutString(" )\n");
+  PutString("Initial RSP: ");
+  PutHex64ZeroFilled(kernel_stack_pointer);
+  PutString("\n");
 
   uint64_t ist1_base =
       GetSystemDRAMAllocator().AllocPages<uint64_t>(kNumOfKernelStackPages);

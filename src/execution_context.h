@@ -1,7 +1,6 @@
 #pragma once
 
 #include "asm.h"
-#include "kernel_virtual_heap_allocator.h"
 #include "paging.h"
 
 class PersistentMemoryManager;

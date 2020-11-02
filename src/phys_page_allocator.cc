@@ -1,15 +1,9 @@
+#include "phys_page_allocator.h"
 #include "liumos.h"
 
-void PhysicalPageAllocator::Print() {
-  FreeInfo* info = head_;
-  while (info) {
-    info->Print();
-    info = info->GetNext();
-  }
-}
-
-void PhysicalPageAllocator::FreeInfo::Print() {
-  uint64_t physical_start = reinterpret_cast<uint64_t>(this);
+template <class TStrategy>
+void PhysicalPageAllocator<TStrategy>::FreeInfo::Print() {
+  uint64_t physical_start = TStrategy::GetPhysAddrFromFreeInfo(this);
   PutString("[ 0x");
   PutHex64ZeroFilled(physical_start);
   PutString(" - 0x");
@@ -20,8 +14,22 @@ void PhysicalPageAllocator::FreeInfo::Print() {
   PutHex64(num_of_pages_);
   PutString(" pages\n");
 }
+template void
+PhysicalPageAllocator<UsePhysicalAddressInternallyStrategy>::FreeInfo::Print();
 
-PhysicalPageAllocator& GetSystemDRAMAllocator() {
+template <class TStrategy>
+void PhysicalPageAllocator<TStrategy>::Print() {
+  FreeInfo* info = TStrategy::GetFreeInfoFromPhysAddr(head_phys_addr_);
+  while (info) {
+    info->Print();
+    info = info->GetNext();
+  }
+}
+template void
+PhysicalPageAllocator<UsePhysicalAddressInternallyStrategy>::Print();
+
+PhysicalPageAllocator<UsePhysicalAddressInternallyStrategy>&
+GetSystemDRAMAllocator() {
   assert(GetLoaderInfo().dram_allocator);
   return *GetLoaderInfo().dram_allocator;
 }

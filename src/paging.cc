@@ -167,6 +167,17 @@ void InitPaging() {
                     direct_mapping_end, kPageAttrPresent | kPageAttrWritable);
   liumos->direct_mapping_end_phys = direct_mapping_end;
 
+  PutString("kernel straight mapping:\n  phys[ 0x");
+  PutHex64ZeroFilled(reinterpret_cast<void*>(0));
+  PutString(" - 0x");
+  PutHex64ZeroFilled(liumos->direct_mapping_end_phys);
+  PutString(" ) =>\n  virt[ 0x");
+  PutHex64ZeroFilled(liumos->cpu_features->kernel_phys_page_map_begin);
+  PutString(" - 0x");
+  PutHex64ZeroFilled(liumos->cpu_features->kernel_phys_page_map_begin +
+                     liumos->direct_mapping_end_phys);
+  PutString(" )\n");
+
   CreatePageMapping(GetSystemDRAMAllocator(), *kernel_pml4,
                     kLAPICRegisterAreaVirtBase, kLAPICRegisterAreaPhysBase,
                     kLAPICRegisterAreaByteSize,

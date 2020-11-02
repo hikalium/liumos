@@ -85,6 +85,9 @@ class Net {
 
   template <typename T = uint8_t*>
   T GetNextTXPacketBuf(size_t size) {
+    if (!initialized_) {
+      Panic("Virtio::Net not initialized yet");
+    }
     uint32_t buf_size = static_cast<uint32_t>(sizeof(PacketBufHeader) + size);
     assert(buf_size < kPageSize);
     auto& txq = vq_[kIndexOfTXVirtqueue];
@@ -113,6 +116,7 @@ class Net {
   static constexpr int kIndexOfTXVirtqueue = 1;
 
   static Net* net_;
+  bool initialized_;
   PCI::DeviceLocation dev_;
   Network::EtherAddr mac_addr_;
   uint16_t config_io_addr_base_;

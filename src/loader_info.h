@@ -1,12 +1,11 @@
 #pragma once
 
 #include "efi.h"
-
-class PhysicalPageAllocator;
+#include "phys_page_allocator.h"
 
 constexpr int kNumOfRootFiles = 32;
 packed_struct LoaderInfo {
-  PhysicalPageAllocator* dram_allocator;
+  PhysicalPageAllocator<UsePhysicalAddressInternallyStrategy>* dram_allocator;
   EFIFile root_files[kNumOfRootFiles];
   int root_files_used;
   EFI* efi;

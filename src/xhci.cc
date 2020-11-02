@@ -965,6 +965,8 @@ void Controller::CheckPortAndInitiateProcess() {
 }
 
 void Controller::PollEvents() {
+  if (!initialized_)
+    return;
   static int counter = 0;
   if (controller_reset_requested_) {
     Init();
@@ -1140,6 +1142,7 @@ void Controller::Init() {
   }
 
   NotifyHostControllerDoorbell();
+  initialized_ = true;
 }
 
 }  // namespace XHCI

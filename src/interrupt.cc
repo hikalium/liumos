@@ -34,13 +34,6 @@ static void PrintInterruptInfo(PanicPrinter& pp,
 }
 
 void IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
-  if (liumos->is_multi_task_enabled && ReadRSP() < kKernelBaseAddr) {
-    auto& pp = PanicPrinter::BeginPanic();
-    PrintInterruptInfo(pp, intcode, info);
-    Process& proc = liumos->scheduler->GetCurrentProcess();
-    pp.PrintLineWithHex("Context#", proc.GetID());
-    pp.EndPanicAndDie("Handling exception in user mode stack");
-  }
   if (intcode <= 0xFF && handler_list_[intcode]) {
     handler_list_[intcode](intcode, info);
     return;
@@ -71,7 +64,7 @@ void IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
       // present but not ok. print entries.
       reinterpret_cast<IA_PML4*>(ReadCR3())->DebugPrintEntryForAddr(ReadCR2());
     }
-    pp.PrintLine("Page Fault");
+    pp.EndPanicAndDie("Page Fault");
   }
   for (int i = 0; i < 16; i++) {
     StringBuffer<128> line;

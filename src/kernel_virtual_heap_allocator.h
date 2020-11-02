@@ -2,18 +2,22 @@
 
 #include "generic.h"
 #include "paging.h"
+#include "phys_page_allocator.h"
 
 class KernelVirtualHeapAllocator {
  public:
   KernelVirtualHeapAllocator(IA_PML4& pml4,
-                             PhysicalPageAllocator& dram_allocator)
+                             KernelPhysPageAllocator& dram_allocator)
       : next_base_(kKernelHeapBaseAddr),
         pml4_(pml4),
         dram_allocator_(dram_allocator){};
   template <typename T>
-  T AllocPages(uint64_t num_of_pages, uint64_t page_attr) {
-    return MapPages<T>(dram_allocator_.AllocPages<uint64_t>(num_of_pages),
-                       num_of_pages, page_attr);
+  T AllocPages(uint64_t num_of_pages) {
+    // Returns a memory region writable && present (in the kernel straight
+    // mapping). This function is safe to be called under a user mappings.
+    return reinterpret_cast<T>(
+        dram_allocator_.AllocPages<uint64_t>(num_of_pages) +
+        GetKernelStraightMappingBase());
   }
   template <typename T>
   T MapPages(uint64_t paddr, uint64_t num_of_pages, uint64_t page_attr) {
@@ -30,8 +34,9 @@ class KernelVirtualHeapAllocator {
 
   template <typename T>
   T* Alloc() {
-    return AllocPages<T*>(ByteSizeToPageSize(sizeof(T)),
-                          kPageAttrPresent | kPageAttrWritable);
+    // Returns a memory region writable && present (in the kernel straight
+    // mapping). This function is safe to be called under a user mappings.
+    return AllocPages<T*>(ByteSizeToPageSize(sizeof(T)));
   }
 
  private:
@@ -39,5 +44,5 @@ class KernelVirtualHeapAllocator {
   static constexpr uint64_t kKernelHeapSize = 0x0000'0000'4000'0000;
   uint64_t next_base_;
   IA_PML4& pml4_;
-  PhysicalPageAllocator& dram_allocator_;
+  KernelPhysPageAllocator& dram_allocator_;
 };

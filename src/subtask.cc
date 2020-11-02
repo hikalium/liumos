@@ -1,5 +1,6 @@
 #include <math.h>
 
+#include "kernel.h"
 #include "liumos.h"
 #include "sheet.h"
 
@@ -136,7 +137,7 @@ class PolygonCube {
                                       50.0, 50.0, -50.0, -50.0};
   static constexpr double vertz[8] = {50.0, -50.0, 50.0, -50.0,
                                       50.0, -50.0, 50.0, -50.0};
-  uint32_t buf_[width * width];
+  uint32_t buf_[width * height];
   double vx_[8], vy_[8], vz_[8];
   double centerz4_[6];
   int scx_[8], scy_[8];
@@ -203,6 +204,7 @@ void CellularAutomaton() {
 
 void SubTask() {
   PolygonCube pcube;
+  kprintf("pcube size: 0x%X\n", sizeof(pcube));
   for (;;) {
     pcube.Draw();
     HPET::GetInstance().BusyWait(10);

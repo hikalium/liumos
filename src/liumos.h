@@ -13,7 +13,6 @@
 #include "guid.h"
 #include "hpet.h"
 #include "interrupt.h"
-#include "kernel_virtual_heap_allocator.h"
 #include "keyboard.h"
 #include "keyid.h"
 #include "libfunc.h"

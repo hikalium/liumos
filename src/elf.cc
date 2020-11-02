@@ -185,8 +185,7 @@ Process& LoadELFAndCreateEphemeralProcess(EFIFile& file) {
 
   uint64_t kernel_stack_pointer =
       liumos->kernel_heap_allocator->AllocPages<uint64_t>(
-          kKernelStackPagesForEachProcess,
-          kPageAttrPresent | kPageAttrWritable) +
+          kKernelStackPagesForEachProcess) +
       kPageSize * kKernelStackPagesForEachProcess;
 
   if (liumos->debug_mode_enabled) {

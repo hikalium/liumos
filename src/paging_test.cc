@@ -18,7 +18,7 @@ alignas(4096) IA_PDPT pdpt;
 alignas(4096) IA_PDT pdt;
 alignas(4096) IA_PT pt;
 
-PhysicalPageAllocator dummy_allocator;
+PhysicalPageAllocator<UsePhysicalAddressInternallyStrategy> dummy_allocator;
 
 void Test1GBPageMapping(const uint64_t virt_base, const uint64_t phys_base) {
   pml4.ClearMapping();
@@ -83,8 +83,7 @@ void TestRangeMapping(IA_PML4& pml4,
     exit(EXIT_FAILURE);
   }
   dummy_allocator.FreePagesWithProximityDomain(
-      reinterpret_cast<void*>((malloc_addr + kPageSize - 1) & ~kPageAddrMask),
-      kPageTableBufferSize, 0);
+      (malloc_addr + kPageSize - 1) & ~kPageAddrMask, kPageTableBufferSize, 0);
   CreatePageMapping(dummy_allocator, pml4, vaddr, paddr, size,
                     kPageAttrPresent);
   assert(v2p(pml4, vaddr - 1) == kAddrCannotTranslate);

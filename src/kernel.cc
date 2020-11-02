@@ -27,6 +27,10 @@ SerialPort com1_;
 SerialPort com2_;
 LoaderInfo* loader_info_;
 
+uint64_t GetKernelStraightMappingBase() {
+  return liumos->cpu_features->kernel_phys_page_map_begin;
+}
+
 void kprintf(const char* fmt, ...) {
   constexpr int kSizeOfBuffer = 4096;
   static char buf[kSizeOfBuffer];
@@ -112,13 +116,16 @@ void InitializeVRAMForKernel() {
 }
 
 void CreateAndLaunchKernelTask(void (*entry_point)()) {
-  const int kNumOfStackPages = 8;
+  const int kNumOfStackPages = 64;
   void* sub_context_stack_base =
-      liumos->kernel_heap_allocator->AllocPages<void*>(
-          kNumOfStackPages, kPageAttrPresent | kPageAttrWritable);
+      liumos->kernel_heap_allocator->AllocPages<void*>(kNumOfStackPages);
+  kprintf("KernelTask stack: [%p - %p)\n", sub_context_stack_base,
+          reinterpret_cast<uint8_t*>(sub_context_stack_base) +
+              kNumOfStackPages * kPageSize);
   void* sub_context_rsp = reinterpret_cast<void*>(
       reinterpret_cast<uint64_t>(sub_context_stack_base) +
       (kNumOfStackPages << kPageSizeExponent) - 8);
+  kprintf("Initial RSP: %p\n", sub_context_rsp);
   // -8 here for alignment (which is usually used to store return pointer)
 
   ExecutionContext& sub_context =
@@ -212,6 +219,12 @@ LoaderInfo& GetLoaderInfo() {
   return *loader_info_;
 }
 
+KernelPhysPageAllocator& GetKernelPhysPageAllocator() {
+  return *reinterpret_cast<KernelPhysPageAllocator*>(
+      reinterpret_cast<uint64_t>(&GetSystemDRAMAllocator()) +
+      GetKernelStraightMappingBase());
+}
+
 void SubTask();  // @subtask.cc
 
 extern "C" void KernelEntry(LiumOS* liumos_passed, LoaderInfo& loader_info) {
@@ -219,10 +232,11 @@ extern "C" void KernelEntry(LiumOS* liumos_passed, LoaderInfo& loader_info) {
   liumos_ = *liumos_passed;
   liumos = &liumos_;
 
+  auto& kernel_phys_page_allocator = GetKernelPhysPageAllocator();
   InitPMEMManagement();
 
   KernelVirtualHeapAllocator kernel_heap_allocator(GetKernelPML4(),
-                                                   GetSystemDRAMAllocator());
+                                                   kernel_phys_page_allocator);
   liumos->kernel_heap_allocator = &kernel_heap_allocator;
 
   Disable8259PIC();
@@ -299,10 +313,16 @@ extern "C" void KernelEntry(LiumOS* liumos_passed, LoaderInfo& loader_info) {
     }
   }
 
+  // At this point, kprintf is available.
   kprintf("Hello from kernel!\n");
   ConsoleCommand::Version();
 
   ClearIntFlag();
+
+  kprintf("SystemDRAMAllocator is at: %p\n", &GetSystemDRAMAllocator());
+  kprintf("KernelPhysPageAllocator is at: %p\n", &kernel_phys_page_allocator);
+  kprintf("KernelPhysPageAllocator alloc 1: %p\n",
+          kernel_phys_page_allocator.AllocPages<void*>(1));
 
   constexpr uint64_t kNumOfKernelStackPages = 128;
   uint64_t kernel_stack_physical_base =
@@ -315,8 +335,8 @@ extern "C" void KernelEntry(LiumOS* liumos_passed, LoaderInfo& loader_info) {
   uint64_t kernel_stack_pointer =
       kernel_stack_virtual_base + (kNumOfKernelStackPages << kPageSizeExponent);
 
-  uint64_t ist1_virt_base = kernel_heap_allocator.AllocPages<uint64_t>(
-      kNumOfKernelStackPages, kPageAttrPresent | kPageAttrWritable);
+  uint64_t ist1_virt_base =
+      kernel_heap_allocator.AllocPages<uint64_t>(kNumOfKernelStackPages);
 
   gdt_.Init(kernel_stack_pointer,
             ist1_virt_base + (kNumOfKernelStackPages << kPageSizeExponent));
@@ -331,13 +351,13 @@ extern "C" void KernelEntry(LiumOS* liumos_passed, LoaderInfo& loader_info) {
   PCI& pci = PCI::GetInstance();
   pci.DetectDevices();
 
-  StoreIntFlag();
-
   CreateAndLaunchKernelTask(SubTask);
   CreateAndLaunchKernelTask(NetworkManager);
   CreateAndLaunchKernelTask(MouseManager);
 
   EnableSyscall();
+
+  StoreIntFlag();
 
   // XHCI::Controller::GetInstance().Init();
   Virtio::Net::GetInstance().Init();

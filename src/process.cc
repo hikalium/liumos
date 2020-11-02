@@ -54,8 +54,7 @@ void Process::PrintStatistics() {
 
 Process& ProcessController::Create() {
   Process* proc = kernel_heap_allocator_.AllocPages<Process*>(
-      ByteSizeToPageSize(sizeof(Process)),
-      kPageAttrPresent | kPageAttrWritable);
+      ByteSizeToPageSize(sizeof(Process)));
   new (proc) Process(++last_id_);
   return *proc;
 }
@@ -63,8 +62,7 @@ Process& ProcessController::Create() {
 static void PrepareContextForRestoringPersistentProcess(ExecutionContext& ctx) {
   SetKernelPageEntries(ctx.GetCR3());
   ctx.SetKernelRSP(liumos->kernel_heap_allocator->AllocPages<uint64_t>(
-                       kKernelStackPagesForEachProcess,
-                       kPageAttrPresent | kPageAttrWritable) +
+                       kKernelStackPagesForEachProcess) +
                    (kKernelStackPagesForEachProcess << kPageSizeExponent));
 }
 

@@ -456,6 +456,8 @@ void Net::Init() {
 
   WriteDeviceStatus(ReadDeviceStatus() | kDeviceStatusDriverOK);
 
+  initialized_ = true;
+
   PutString("MAC Addr: ");
   for (int i = 0; i < 6; i++) {
     mac_addr_.mac[i] = ReadConfigReg8(0x14 + i);
