@@ -32,15 +32,11 @@ int main(int argc, char** argv) {
     Print(" <ip addr>\n");
     exit(EXIT_FAILURE);
   }
-  struct sockaddr_in addr;
+
   in_addr_t ping_target_ip_addr = MakeIPv4AddrFromString(argv[1]);
   Print("Ping to ");
   PrintIPv4Addr(ping_target_ip_addr);
   Print("...\n");
-
-  // Create sockaddr_in
-  addr.sin_family = AF_INET;
-  addr.sin_addr.s_addr = ping_target_ip_addr;
 
   // Create ICMP socket
   // https://lwn.net/Articles/422330/
@@ -49,13 +45,15 @@ int main(int argc, char** argv) {
     panic("socket() failed\n");
   }
 
+  // Create sockaddr_in
+  struct sockaddr_in addr;
+  addr.sin_family = AF_INET;
+  addr.sin_addr.s_addr = ping_target_ip_addr;
+
   // Send ICMP
   struct ICMPMessage icmp;
+  memset(&icmp, 0, sizeof(icmp));
   icmp.type = ICMP_TYPE_ECHO_REQUEST;
-  icmp.code = 0;
-  icmp.checksum = 0;
-  icmp.identifier = 0;
-  icmp.sequence = 0;
   icmp.checksum = CalcChecksum(&icmp, 0, sizeof(icmp));
   int n = sendto(soc, &icmp, sizeof(icmp), 0, (struct sockaddr*)&addr,
                  sizeof(addr));
