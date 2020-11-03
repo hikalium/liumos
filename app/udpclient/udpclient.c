@@ -7,7 +7,7 @@ int main(int argc, char** argv) {
   }
 
   int socket_fd;
-  if ((socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
+  if ((socket_fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
     write(1, "error: fail to create socket\n", 29);
     return EXIT_FAILURE;
   }
