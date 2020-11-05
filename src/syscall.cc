@@ -250,20 +250,30 @@ static ssize_t sys_read(int fd, void* buf, size_t count) {
 }
 
 static std::optional<Network::EtherAddr> ResolveIPv4WithTimeout(
-    Network::IPv4Addr ip_addr,
+    Network::IPv4Addr dst_ip_addr,
     uint64_t timeout_ms) {
   Network& network = Network::GetInstance();
   uint64_t time_passed_ms = 0;
   constexpr uint64_t kWaitTimePerTryMs = 200;
+  Network::IPv4Addr nexthop_ip_addr;
+  if (dst_ip_addr.IsInSameSubnet(network.GetIPv4DefaultGateway(),
+                                 network.GetIPv4NetMask())) {
+    kprintf("kernel: dst is in the same subnet.\n");
+    nexthop_ip_addr = dst_ip_addr;
+  } else {
+    kprintf("kernel: dst is in a different subnet.\n");
+    nexthop_ip_addr = network.GetIPv4DefaultGateway();
+  }
   while (time_passed_ms < timeout_ms) {
-    auto eth_container = network.ResolveIPv4(ip_addr);
+    auto eth_container = network.ResolveIPv4(nexthop_ip_addr);
     if (eth_container.has_value()) {
       kprintf("kernel: ARP entry found!\n");
       return eth_container;
     }
-    SendARPRequest(ip_addr);
-    kprintf("kernel: ARP request sent to %d.%d.%d.%d...\n", ip_addr.addr[0],
-            ip_addr.addr[1], ip_addr.addr[2], ip_addr.addr[3]);
+    SendARPRequest(nexthop_ip_addr);
+    kprintf("kernel: ARP request sent to %d.%d.%d.%d...\n",
+            nexthop_ip_addr.addr[0], nexthop_ip_addr.addr[1],
+            nexthop_ip_addr.addr[2], nexthop_ip_addr.addr[3]);
     Sleep();
     HPET::GetInstance().BusyWait(kWaitTimePerTryMs);
     time_passed_ms += kWaitTimePerTryMs;

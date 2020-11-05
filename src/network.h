@@ -76,6 +76,10 @@ class Network {
   //
   // IPv4
   //
+  packed_struct IPv4NetMask {
+    uint8_t mask[4];
+    void Print() const;
+  };
   packed_struct IPv4Addr {
     uint8_t addr[4];
     bool IsEqualTo(IPv4Addr to) const {
@@ -98,10 +102,11 @@ class Network {
         return std::nullopt;
       return ip_addr;
     }
-  };
-  packed_struct IPv4NetMask {
-    uint8_t mask[4];
-    void Print() const;
+    bool IsInSameSubnet(IPv4Addr another, IPv4NetMask mask) {
+      return ((*reinterpret_cast<const uint32_t*>(addr) ^
+               *reinterpret_cast<const uint32_t*>(another.addr)) &
+              *reinterpret_cast<const uint32_t*>(mask.mask)) == 0;
+    }
   };
   struct IPv4AddrHash {
     std::size_t operator()(const IPv4Addr& v) const {
