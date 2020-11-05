@@ -1,5 +1,6 @@
 APPS=\
 	 argstest/argstest.bin \
+	 dig/dig.bin \
 	 fizzbuzz/fizzbuzz.bin \
 	 hello/hello.bin \
 	 httpclient/httpclient.bin \
