@@ -15,8 +15,8 @@ char packet_bytes[] = {0x00, 0x00, 0x01, 0x20, 0x00, 0x01, 0x00, 0x00,
                        0x6d, 0x00, 0x00, 0x01, 0x00, 0x01};
 
 int main(int argc, char** argv) {
-  if (argc != 2) {
-    Print("Usage: dig.bin <DNS server ip>\n");
+  if (argc != 3) {
+    Print("Usage: dig.bin <DNS server ip> <hostname>\n");
     return EXIT_FAILURE;
   }
 
@@ -33,8 +33,43 @@ int main(int argc, char** argv) {
 
   ssize_t sent_size;
 
-  sent_size = sendto(socket_fd, packet_bytes, sizeof(packet_bytes), 0,
+  const char* hostname = argv[2];
+
+  uint8_t query_buf[512];
+  ssize_t query_size = 0;
+  struct DNSMessage* query = (struct DNSMessage*)query_buf;
+  memset(query, 0, sizeof(struct DNSMessage));
+  query->flags = 0x2001;
+  query->num_questions = 0x0100;
+  query_size += sizeof(struct DNSMessage);
+
+  const char* s = hostname;
+  while (*s) {
+    uint8_t count = 0;
+    query_size++;
+    while (*s && *s != '.') {
+      query_buf[query_size++] = *s;
+      count++;
+      s++;
+    }
+    if (*s == '.') {
+      s++;
+    }
+    query_buf[query_size - count - 1] = count;
+  }
+  query_buf[query_size++] = 0x00;
+  query_buf[query_size++] = 0x00;
+  query_buf[query_size++] = 0x01;
+  query_buf[query_size++] = 0x00;
+  query_buf[query_size++] = 0x01;
+
+  sent_size = sendto(socket_fd, query_buf, query_size, 0,
                      (struct sockaddr*)&dst_address, sizeof(dst_address));
+  for (int i = 0; i < query_size; i++) {
+    PrintHex8ZeroFilled(query_buf[i]);
+    Print((i & 0xF) == 0xF ? "\n" : " ");
+  }
+  Print("\n");
   Print("Sent size: ");
   PrintNum(sent_size);
   Print("\n");
@@ -58,9 +93,6 @@ int main(int argc, char** argv) {
   }
   Print("\n");
 
-  write(1, buf, recv_size);
-  Print("\n");
-
   struct DNSMessage* dns = (struct DNSMessage*)buf;
   Print("Num of answer RRs: ");
   PrintNum(htons(dns->num_answers));
@@ -82,13 +114,14 @@ int main(int argc, char** argv) {
     Print("\n");
   }
 
-  for (int i = 0; i < htons(dns->num_answers); i++){
-    p += 2; // pointer
+  Print("Answers:\n");
+  for (int i = 0; i < htons(dns->num_answers); i++) {
+    p += 2;  // pointer
     p += 2;  // Type
     p += 2;  // Class
     p += 4;  // TTL
     p += 2;  // len (4)
-  PrintIPv4Addr(*(uint32_t *)p);
+    PrintIPv4Addr(*(uint32_t*)p);
     p += 4;
     Print("\n");
   }
