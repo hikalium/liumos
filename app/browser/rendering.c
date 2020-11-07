@@ -18,7 +18,7 @@ bool Printable(char *data) {
   return printable;
 }
 
-void Markdown(Node *node) {
+bool Markdown(Node *node, bool first_line) {
   switch (node->element_type) {
     case TEXT: if (Printable(node->data))
         Print(node->data);
@@ -39,32 +39,39 @@ void Markdown(Node *node) {
       }
       break;
     case UL:
+      if (first_line)
+        return true;
       Print("\n");
       break;
     case LI:
-      Print("\n");
+      if (!first_line)
+        Print("\n");
       Print("- ");
       break;
     case DIV:
-      Print("\n");
+      if (!first_line)
+        Print("\n");
       break;
     case PARAGRAPH:
-      Print("\n");
+      if (!first_line)
+        Print("\n");
       break;
     default:
-      break;
+      return true;
   }
+  return false;
 }
 
 void Generate() {
   Node *node = root_node;
+  bool first_line = true;
 
   while (node) {
-    Markdown(node);
+    first_line = Markdown(node, first_line);
 
     Node *next = node->next;
     while (next) {
-      Markdown(next);
+      first_line = Markdown(next, first_line);
       next = next->next;
     }
 

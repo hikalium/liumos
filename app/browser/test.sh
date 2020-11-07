@@ -31,10 +31,8 @@ assert "### bar" "<h3>bar</h3>"
 assert "#### bar" "<h4>bar</h4>"
 assert "##### bar" "<h5>bar</h5>"
 assert "###### bar" "<h6>bar</h6>"
-assert "
-- bar" "<ul><li>bar</li></ul>"
-assert "
-- bar
+assert "- bar" "<ul><li>bar</li></ul>"
+assert "- bar
 - foo" "<ul><li>bar</li><li>foo</li></ul>"
 assert "bar" "<p>bar</p>"
 
@@ -43,12 +41,12 @@ assert "# bar" "<html><h1>bar</h1></html>"
 assert "# bar" "<body><h1>bar</h1></body>"
 assert "# bar" "<html><body><h1>bar</h1></body></html>"
 assert "# bar
+
 - abc
 - def" "<html><body><h1>bar</h1><ul><li>abc</li><li>def</li></ul></body></html>"
 
 assert "# bar" "<H1>bar</H1>"
-assert "
-- abc
+assert "- abc
 - def" "<HTML><BODY><UL><LI>abc</li><LI>def</li></ul></body></html>"
 
 echo "----------------"
