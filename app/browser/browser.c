@@ -73,16 +73,7 @@ void GetResponse(char* request, char *response) {
   close(socket_fd);
 }
 
-struct ResponseHeader {
-  char *key;
-  char *value;
-} response_headers[100];
-
-void GetResponseHeaders(char *response) {
-
-}
-
-void GetResponseBody(char *response, char *html) {
+void GetHtmlFromResponse(char *response, char *html) {
   while (*response) {
     // Assume a HTML tag comes.
     if (*response == '<') {
@@ -91,10 +82,6 @@ void GetResponseBody(char *response, char *html) {
     }
     response++;
   }
-}
-
-void ParseResponse(char *response, char *body) {
-
 }
 
 ParsedUrl *ParseUrl() {
@@ -198,11 +185,11 @@ int main(int argc, char *argv[]) {
 
   char *request = (char *) malloc(SIZE_REQUEST);
   char *response = (char *) malloc(SIZE_RESPONSE);
-  html = (char *) malloc(SIZE_RESPONSE);
   BuildRequest(request);
 
+  html = (char *) malloc(SIZE_RESPONSE);
   GetResponse(request, response);
-  GetResponseBody(response, html);
+  GetHtmlFromResponse(response, html);
 
   Render(html);
 
