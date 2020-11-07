@@ -60,11 +60,28 @@ void Route(char *response, char *path) {
     BuildResponse(response, 200, body);
     return;
   }
-  if (strcmp(path, "/example.html") == 0) {
+  if (strcmp(path, "/page1.html") == 0) {
     char *body =
         "<html>\n"
         "  <body>\n"
-        "    <h1>Example Page</h1>\n"
+        "    <h1>Example Page 1</h1>\n"
+        "    <div>\n"
+        "       <p>This is a sample paragraph.</p>\n"
+        "       <ul>\n"
+        "           <li>List 1</li>\n"
+        "           <li>List 2</li>\n"
+        "       </ul>\n"
+        "   </div>\n"
+        " </body>\n"
+        "</html>\n";
+    BuildResponse(response, 200, body);
+    return;
+  }
+  if (strcmp(path, "/page2.html") == 0) {
+    char *body =
+        "<html>\n"
+        "  <body>\n"
+        "    <h1>Example Page 2</h1>\n"
         "    <div>\n"
         "       <p>This is a sample paragraph.</p>\n"
         "       <ul>\n"

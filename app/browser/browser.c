@@ -106,15 +106,18 @@ ParsedUrl *ParseUrl() {
     exit(EXIT_FAILURE);
   }
   parsed_url->scheme = "http";
+  url += 7;
 
   // Parse `host`.
-  int host_separator = 7;
-  while (url[host_separator] && url[host_separator] != '/') {
-    host_separator++;
+  char *tmp_host = (char *) malloc(strlen(url));
+  int host_length = 0;
+  while (*url && *url != '/') {
+    tmp_host[host_length] = *url;
+    host_length++;
+    url++;
   }
-  int host_length = host_separator - 7;
   char *host = (char *) malloc(host_length + 1);
-  memcpy(host, &url[7], host_length);
+  memcpy(host, tmp_host, host_length);
   host[host_length] = '\0';
   parsed_url->host = host;
 
@@ -123,21 +126,19 @@ ParsedUrl *ParseUrl() {
     if (host[i] != ':')
       continue;
 
-    char *tmp_ip = (char *) malloc(i+1);
-    memcpy(tmp_ip, host, i);
-    tmp_ip[i] = '\0';
-    ip = tmp_ip;
+    ip = (char *) malloc(i+1);
+    memcpy(ip, host, i);
+    ip[i] = '\0';
 
     parsed_url->port = StrToNum16(&host[i+1], NULL);
   }
 
-  char *path = (char *) malloc(strlen(url) - host_separator + 1);
-  int url_idx = host_separator;
+  char *path = (char *) malloc(strlen(url) + 1);
   int path_idx = 0;
-  while (url[url_idx]) {
-    path[path_idx] = url[url_idx];
+  while (*url) {
+    path[path_idx] = *url;
+    url++;
     path_idx++;
-    url_idx++;
   }
   path[path_idx] = '\0';
   parsed_url->path = path;
@@ -148,7 +149,7 @@ ParsedUrl *ParseUrl() {
 // Return 1 when parse succeeded, return 2 when debug mode, otherwise return 0.
 int ParseArgs(int argc, char** argv) {
   // Set default values.
-  url = "http://localhost:8888/index.html";
+  url = "http://127.0.0.1:8888/index.html";
 
   bool is_debug = 0;
 
@@ -180,7 +181,7 @@ int main(int argc, char *argv[]) {
   int parse_result = ParseArgs(argc-1, argv+1);
   if (parse_result == 0) {
     Println("Usage: browser.bin [ OPTIONS ]");
-    Println("       -u, --url      URL. Default: http://localhost:8888/index.html");
+    Println("       -u, --url      URL. Default: http://127.0.0.1:8888/index.html");
     Println("           --rawtext  Raw HTML text for debug.");
     exit(EXIT_FAILURE);
   }
