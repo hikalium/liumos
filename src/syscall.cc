@@ -179,36 +179,36 @@ static int sys_socket(int domain, int type, int protocol) {
     if (type == kTypeDatagram && protocol == kProtocolICMP) {
       if (network.RegisterSocket(pid, sockfd,
                                  Network::Socket::Type::kICMPDatagram)) {
-        kprintf("%s: failed to register socket.\n", __func__);
+        kprintf("kernel: %s: failed to register socket.\n", __func__);
         return -1 /* Return -1 on error */;
       }
-      kprintf("%s: socket (fd=%d) created (IPv4, DGRAM, ICMP)\n", __func__,
-              sockfd);
+      kprintf("kernel: %s: socket (fd=%d) created (IPv4, DGRAM, ICMP)\n",
+              __func__, sockfd);
       return sockfd /* Always returns 3 for now */;
     }
     if (type == kTypeRawSocket && protocol == kProtocolICMP) {
       if (network.RegisterSocket(pid, sockfd,
                                  Network::Socket::Type::kICMPRaw)) {
-        kprintf("%s: failed to register socket.\n", __func__);
+        kprintf("kernel: %s: failed to register socket.\n", __func__);
         return -1 /* Return -1 on error */;
       }
-      kprintf("%s: socket (fd=%d) created (IPv4, Raw, ICMPRaw)\n", __func__,
-              sockfd);
+      kprintf("kernel: %s: socket (fd=%d) created (IPv4, Raw, ICMPRaw)\n",
+              __func__, sockfd);
       return sockfd /* Always returns 3 for now */;
     }
-    if (type == kTypeDatagram && protocol == 0) {
+    if (type == kTypeDatagram && (protocol == 0 || protocol == 17)) {
       /* UDP */
       if (network.RegisterSocket(pid, sockfd, Network::Socket::Type::kUDP)) {
-        kprintf("%s: failed to register socket.\n", __func__);
+        kprintf("kernel: %s: failed to register socket.\n", __func__);
         return -1 /* Return -1 on error */;
       }
-      kprintf("%s: socket (fd=%d) created (IPv4, DGRAM, 0)(UDP)\n", __func__,
-              sockfd);
+      kprintf("kernel: %s: socket (fd=%d) created (IPv4, DGRAM, %d)(UDP)\n",
+              __func__, sockfd, protocol);
       return sockfd;
     }
   }
-  kprintf("%s: socket(%d, %d, %d) is not supported yet\n", __func__, domain,
-          type, protocol);
+  kprintf("kernel: %s: socket(%d, %d, %d) is not supported yet\n", __func__,
+          domain, type, protocol);
   return -1 /* Return -1 on error */;
 }
 
@@ -250,35 +250,35 @@ static ssize_t sys_read(int fd, void* buf, size_t count) {
 }
 
 static std::optional<Network::EtherAddr> ResolveIPv4WithTimeout(
-    Network::IPv4Addr ip_addr,
+    Network::IPv4Addr dst_ip_addr,
     uint64_t timeout_ms) {
   Network& network = Network::GetInstance();
   uint64_t time_passed_ms = 0;
-  constexpr uint64_t kWaitTimePerTryMs = 100;
+  constexpr uint64_t kWaitTimePerTryMs = 200;
+  Network::IPv4Addr nexthop_ip_addr;
+  if (dst_ip_addr.IsInSameSubnet(network.GetIPv4DefaultGateway(),
+                                 network.GetIPv4NetMask())) {
+    kprintf("kernel: dst is in the same subnet.\n");
+    nexthop_ip_addr = dst_ip_addr;
+  } else {
+    kprintf("kernel: dst is in a different subnet.\n");
+    nexthop_ip_addr = network.GetIPv4DefaultGateway();
+  }
   while (time_passed_ms < timeout_ms) {
-    kprintf("Try resolving %d.%d.%d.%d...\n", ip_addr.addr[0], ip_addr.addr[1],
-            ip_addr.addr[2], ip_addr.addr[3]);
-    auto eth_container = network.ResolveIPv4(ip_addr);
+    auto eth_container = network.ResolveIPv4(nexthop_ip_addr);
     if (eth_container.has_value()) {
-      kprintf("ARP entry found...\n");
+      kprintf("kernel: ARP entry found!\n");
       return eth_container;
     }
-    kprintf("ARP sending...\n");
-    SendARPRequest(ip_addr);
-    kprintf("sleep now...\n");
+    SendARPRequest(nexthop_ip_addr);
+    kprintf("kernel: ARP request sent to %d.%d.%d.%d...\n",
+            nexthop_ip_addr.addr[0], nexthop_ip_addr.addr[1],
+            nexthop_ip_addr.addr[2], nexthop_ip_addr.addr[3]);
     Sleep();
-    kprintf("busy wait begin...\n");
-    for (int i = 0; i < 0xfffff; i++) {
-      asm volatile("pause;");
-    }
-    /*
-    // TODO: Use this (but not working for now)
     HPET::GetInstance().BusyWait(kWaitTimePerTryMs);
-    */
-    kprintf("busy wait end\n");
     time_passed_ms += kWaitTimePerTryMs;
   }
-  kprintf("ARP resolution done.\n");
+  kprintf("kernel: ARP resolution failed. (timeout)\n");
   return std::nullopt;
 }
 

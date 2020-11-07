@@ -22,9 +22,6 @@ uint16_t CalcChecksum(void* buf, size_t start, size_t end) {
   return ((sum >> 8) & 0xFF) | ((sum & 0xFF) << 8);
 }
 
-#define ICMP_TYPE_ECHO_REQUEST 8
-#define ICMP_TYPE_ECHO_REPLY 0
-
 int main(int argc, char** argv) {
   if (argc != 2) {
     Print("Usage: ");
@@ -53,7 +50,7 @@ int main(int argc, char** argv) {
   // Send ICMP
   struct ICMPMessage icmp;
   memset(&icmp, 0, sizeof(icmp));
-  icmp.type = ICMP_TYPE_ECHO_REQUEST;
+  icmp.type = 8; /* Echo Request */
   icmp.checksum = CalcChecksum(&icmp, 0, sizeof(icmp));
   int n = sendto(soc, &icmp, sizeof(icmp), 0, (struct sockaddr*)&addr,
                  sizeof(addr));
@@ -64,7 +61,8 @@ int main(int argc, char** argv) {
   // Recieve reply
   uint8_t recv_buf[256];
   socklen_t addr_size;
-  int recv_len = recvfrom(soc, &recv_buf, sizeof(recv_buf), 0, (struct sockaddr *)&addr, &addr_size);
+  int recv_len = recvfrom(soc, &recv_buf, sizeof(recv_buf), 0,
+                          (struct sockaddr*)&addr, &addr_size);
   if (recv_len < 1) {
     panic("recvfrom() failed\n");
   }
@@ -79,7 +77,7 @@ int main(int argc, char** argv) {
   }
   Print("\n");
 
-  struct ICMPMessage* recv_icmp = (struct ICMPMessage *)(recv_buf);
+  struct ICMPMessage* recv_icmp = (struct ICMPMessage*)(recv_buf);
   Print("ICMP packet recieved from ");
   PrintIPv4Addr(addr.sin_addr.s_addr);
   Print(" ICMP Type = ");

@@ -17,6 +17,7 @@
 #define SO_SNDTIMEO 21
 #define SOL_SOCKET  1
 #define PROT_ICMP 1
+#define IPPROTO_UDP 17
 
 #define INADDR_ANY ((unsigned long int) 0x00000000)
 

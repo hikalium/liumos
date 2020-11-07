@@ -351,7 +351,7 @@ extern "C" void KernelEntry(LiumOS* liumos_passed, LoaderInfo& loader_info) {
   PCI& pci = PCI::GetInstance();
   pci.DetectDevices();
 
-  CreateAndLaunchKernelTask(SubTask);
+  // CreateAndLaunchKernelTask(SubTask);
   CreateAndLaunchKernelTask(NetworkManager);
   CreateAndLaunchKernelTask(MouseManager);
 
