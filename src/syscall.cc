@@ -97,6 +97,7 @@ static ssize_t sys_recvfrom(int sockfd,
   /* returns -1 on failure */
   using IPv4Packet = Network::IPv4Packet;
   using IPv4UDPPacket = Network::IPv4UDPPacket;
+  using ICMPPacket = Network::ICMPPacket;
   using EtherFrame = Network::EtherFrame;
   using Socket = Network::Socket;
   Network& network = Network::GetInstance();
@@ -114,9 +115,11 @@ static ssize_t sys_recvfrom(int sockfd,
         if (!IsICMPPacket(packet.data, packet.size)) {
           continue;
         }
+        ICMPPacket& icmp = *reinterpret_cast<ICMPPacket*>(packet.data);
         size_t icmp_data_size = packet.size - sizeof(IPv4Packet);
         size_t copy_size = std::min(icmp_data_size, buf_size);
-        memcpy(buf, &packet.data[sizeof(IPv4Packet)], copy_size);
+        memcpy(buf, &icmp.type, copy_size);
+        recv_addr->sin_addr = icmp.ip.src_ip;
         return icmp_data_size;
       }
       Sleep();
