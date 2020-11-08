@@ -3,6 +3,7 @@
 #include "../liumlib/liumlib.h"
 
 uint16_t port;
+bool tcp;
 
 void StatusLine(char *response, int status) {
   switch (status) {
@@ -104,11 +105,18 @@ void Route(char *response, char *path) {
 }
 
 void StartServer() {
-  int socket_fd;
+  int socket_fd, accepted_socket;
   struct sockaddr_in address;
   unsigned int addrlen = sizeof(address);
 
-  if ((socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+  // In TCP, the second argument of socket() should be `SOCK_STREAM`.
+  // In UDP, the second argument of socket() should be `SOCK_DGRAM`.
+  if (tcp) {
+    socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+  } else {
+    socket_fd = socket(AF_INET, SOCK_DGRAM, 0);
+  }
+  if (socket_fd < 0) {
     Println("Error: Failed to create a socket");
     exit(1);
   }
@@ -122,16 +130,35 @@ void StartServer() {
     exit(EXIT_FAILURE);
   }
 
-  Print("Listening port: ");
-  PrintNum(port);
-  Print("\n");
+  // In TCP, listen() should be called.
+  if (tcp) {
+    if (listen(socket_fd, 3) < 0) {
+      Println("Error: Failed to listen a socket");
+      exit(1);
+    }
+  }
 
   while (1) {
     Println("Log: Waiting for a request...\n");
 
     char request[SIZE_REQUEST];
-    if (recvfrom(socket_fd, request, SIZE_REQUEST, 0,
-                 (struct sockaddr*) &address, &addrlen) < 0) {
+    int size = -1;
+
+    // In TCP, a request is received by accept() and read().
+    // In UDP, a request is received by recvfrom().
+    if (tcp) {
+      if ((accepted_socket = accept(socket_fd, (struct sockaddr *)&address,
+                                    (socklen_t*)&addrlen)) < 0) {
+        Println("Error: Failed to accept a socket.");
+        exit(1);
+      }
+
+      size = read(accepted_socket, request, SIZE_REQUEST);
+    } else {
+      size = recvfrom(socket_fd, request, SIZE_REQUEST, 0,
+                      (struct sockaddr*) &address, &addrlen);
+    }
+    if (size < 0) {
       Println("Error: Failed to receive a request.");
       exit(EXIT_FAILURE);
     }
@@ -150,20 +177,35 @@ void StartServer() {
       BuildResponse(response, 500, "Only GET method is supported.");
     }
 
-    if (sendto(socket_fd, response, strlen(response), 0,
-               (struct sockaddr *) &address, addrlen) < 0) {
+    size = -1;
+    // In TCP, a response is sent to `accepted_socket`.
+    // In UDP, a response is sent to `socket_fd`.
+    if (tcp) {
+      size = sendto(accepted_socket, response, strlen(response), 0,
+                    (struct sockaddr *) &address, addrlen);
+    } else {
+      size = sendto(socket_fd, response, strlen(response), 0,
+                    (struct sockaddr *) &address, addrlen);
+    }
+    if (size < 0) {
       Println("Error: Failed to send a response.");
       exit(EXIT_FAILURE);
+    }
+
+    // In TCP, an accepted socket should be closed.
+    if (tcp) {
+      close(accepted_socket);
     }
   }
 
   close(socket_fd);
 }
 
-// Return 1 when parse succeeded, otherwise return 0.
-int ParseArgs(int argc, char** argv) {
+// Return true when parse succeeded, otherwise return false.
+bool ParseArgs(int argc, char **argv) {
   // Set default values.
   port = 8888;
+  tcp = false;
 
   while (argc > 0) {
     if (strcmp("--port", argv[0]) == 0 || strcmp("-p", argv[0]) == 0) {
@@ -173,18 +215,34 @@ int ParseArgs(int argc, char** argv) {
       continue;
     }
 
-    return 0;
+    if (strcmp("--tcp", argv[0]) == 0) {
+      tcp = true;
+      argc -= 1;
+      argv += 1;
+      continue;
+    }
+
+    return false;
   }
-  return 1;
+  return true;
 }
 
-int main(int argc, char *argv[]) {
-  if (ParseArgs(argc-1, argv+1) == 0) {
+int main(int argc, char **argv) {
+  if (!ParseArgs(argc - 1, argv + 1)) {
     Println("Usage: httpserver.bin [ OPTION ]");
     Println("       -p, --port    Port number. Default: 8888");
+    Println("           --tcp     Flag to use TCP. Use UDP when it doesn't exist.");
     exit(EXIT_FAILURE);
     return EXIT_FAILURE;
   }
+
+  if (tcp)
+    Println("Log: Using protocol: TCP");
+  else
+    Println("Log: Using protocol: UDP");
+  Print("Log: Listening port: ");
+  PrintNum(port);
+  Print("\n");
 
   StartServer();
 

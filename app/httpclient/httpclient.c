@@ -1,44 +1,60 @@
-// HTTP client with UDP protocol.
+// HTTP client with UDP/TCP protocol.
 
 #include "../liumlib/liumlib.h"
 
-char* host;
-char* path;
-char* ip;
+char *host;
+char *path;
+char *ip;
 uint16_t port;
+bool tcp;
 
-void RequestLine(char* request) {
+void RequestLine(char *request) {
   strcpy(request, "GET ");
   strcat(request, path);
   strcat(request, " HTTP/1.1\n");
 }
 
-void Headers(char* request) {
+void Headers(char *request) {
   strcat(request, "Host: ");
   strcat(request, host);
   strcat(request, "\n");
 }
 
-void Crlf(char* request) {
+void Crlf(char *request) {
   strcat(request, "\n");
 }
 
-void Body(char* request) {}
+void Body(char *request) {}
 
-void SendRequest(char* request) {
+void SendRequest(char *request) {
   int socket_fd = 0;
   struct sockaddr_in address;
   int addrlen = sizeof(address);
   char response[SIZE_RESPONSE];
 
-  if ((socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-    Println("Error: Fail to create a socket");
-    exit(EXIT_FAILURE);
+  // In TCP, the second argument of socket() should be `SOCK_STREAM`.
+  // In UDP, the second argument of socket() should be `SOCK_DGRAM`.
+  if (tcp) {
+    socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+  } else {
+    socket_fd = socket(AF_INET, SOCK_DGRAM, 0);
+  }
+  if (socket_fd < 0) {
+    Println("Error: Failed to create a socket");
+    exit(1);
   }
 
   address.sin_family = AF_INET;
   address.sin_addr.s_addr = inet_addr(ip);
   address.sin_port = htons(port);
+
+  // In TCP, connect() should be called.
+  if (tcp) {
+    if (connect(socket_fd, (struct sockaddr *) &address, sizeof(address)) < 0) {
+      Println("Error: Fail to connect a socket");
+      exit(EXIT_FAILURE);
+    }
+  }
 
   if (sendto(socket_fd, request, strlen(request), 0,
              (struct sockaddr*)&address, addrlen) < 0) {
@@ -50,7 +66,7 @@ void SendRequest(char* request) {
   unsigned int len = sizeof(address);
   if (recvfrom(socket_fd, response, SIZE_RESPONSE, 0,
                (struct sockaddr*)&address, &len) < 0) {
-    Println("Error: Failed to receiver a response.");
+    Println("Error: Failed to receive a response.");
     exit(EXIT_FAILURE);
   }
   Println("----- response -----");
@@ -59,13 +75,14 @@ void SendRequest(char* request) {
   close(socket_fd);
 }
 
-// Return 1 when parse succeeded, otherwise return 0.
-int ParseArgs(int argc, char** argv) {
+// Return true when parse succeeded, otherwise return false.
+bool ParseArgs(int argc, char **argv) {
   // Set default values.
   ip = "127.0.0.1";
   port = 8888;
   host = "";
   path = "/";
+  tcp = false;
 
   while (argc > 0) {
     if (strcmp("--ip", argv[0]) == 0 || strcmp("-i", argv[0]) == 0) {
@@ -96,23 +113,36 @@ int ParseArgs(int argc, char** argv) {
       continue;
     }
 
-    return 0;
+    if (strcmp("--tcp", argv[0]) == 0) {
+      tcp = true;
+      argc -= 1;
+      argv += 1;
+      continue;
+    }
+
+    return false;
   }
-  return 1;
+  return true;
 }
 
-int main(int argc, char** argv) {
-  if (ParseArgs(argc-1, argv+1) == 0) {
+int main(int argc, char **argv) {
+  if (!ParseArgs(argc - 1, argv + 1)) {
     Println("Usage: httpclient.bin [ OPTIONS ]");
     Println("       -i, --ip      IP address. Default: 127.0.0.1");
     Println("       -p, --port    Port number. Default: 8888");
     Println("       -h, --host    Host property of the URL. Default: Ø");
     Println("       -P, --path    Path property of the URL. Default: /");
+    Println("           --tcp     Flag to use TCP. Use UDP when it doesn't exist.");
     exit(EXIT_FAILURE);
     return EXIT_FAILURE;
   }
 
-  char* request = (char*) malloc(SIZE_REQUEST);
+  if (tcp)
+    Println("Log: Using protocol: TCP");
+  else
+    Println("Log: Using protocol: UDP");
+
+  char *request = (char *) malloc(SIZE_REQUEST);
 
   // https://tools.ietf.org/html/rfc7230#section-3
   // HTTP-message = start-line
