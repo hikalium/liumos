@@ -124,7 +124,7 @@ static ssize_t sys_recvfrom(int sockfd,
       }
       Sleep();
     }
-    return 0;
+    return -1;
   }
   if (socket_type == Socket::Type::kICMPRaw) {
     for (;;) {
@@ -140,7 +140,7 @@ static ssize_t sys_recvfrom(int sockfd,
       }
       Sleep();
     }
-    return 0;
+    return -1;
   }
   if (socket_type == Socket::Type::kUDP) {
     uint16_t port = (*sock_holder).listen_port;
@@ -162,11 +162,11 @@ static ssize_t sys_recvfrom(int sockfd,
       }
       Sleep();
     }
-    return 0;
+    return -1;
   }
   kprintf("%s: socket_type = %d is not a supported yet\n", __func__,
           socket_type);
-  return 0;
+  return -1;
 }
 
 static int sys_socket(int domain, int type, int protocol) {
