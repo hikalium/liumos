@@ -981,7 +981,7 @@ void Run(TextBox& tbox) {
 }
 
 void WaitAndProcess(TextBox& tbox) {
-  PutString("> ");
+  PutString("(liumos) ");
   tbox.StartRecording();
   while (1) {
     uint16_t keyid;
