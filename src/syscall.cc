@@ -342,7 +342,7 @@ static ssize_t sys_sendto(int sockfd,
     return len;
   }
   if (socket_type == Network::Socket::Type::kUDP) {
-    len = (len + 1) & ~1;  // make size odd
+    len = (len + 1) & ~1;  // make size even
     using IPv4UDPPacket = Virtio::Net::IPv4UDPPacket;
     IPv4UDPPacket& udp = *virtio_net.GetNextTXPacketBuf<IPv4UDPPacket*>(
         sizeof(IPv4UDPPacket) + len);
