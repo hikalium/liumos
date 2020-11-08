@@ -24,17 +24,17 @@ bool Markdown(Node *node, bool first_line) {
         Print(node->data);
       break;
     case HEADING:
-      if (strcmp(node->local_name, "h1") == 0) {
+      if (strcmp(node->tag_name, "h1") == 0) {
         Print("# ");
-      } else if (strcmp(node->local_name, "h2") == 0) {
+      } else if (strcmp(node->tag_name, "h2") == 0) {
         Print("## ");
-      } else if (strcmp(node->local_name, "h3") == 0) {
+      } else if (strcmp(node->tag_name, "h3") == 0) {
         Print("### ");
-      } else if (strcmp(node->local_name, "h4") == 0) {
+      } else if (strcmp(node->tag_name, "h4") == 0) {
         Print("#### ");
-      } else if (strcmp(node->local_name, "h5") == 0) {
+      } else if (strcmp(node->tag_name, "h5") == 0) {
         Print("##### ");
-      } else if (strcmp(node->local_name, "h6") == 0) {
+      } else if (strcmp(node->tag_name, "h6") == 0) {
         Print("###### ");
       }
       break;

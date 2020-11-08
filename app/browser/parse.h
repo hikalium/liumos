@@ -35,7 +35,7 @@ typedef enum ElementType {
 
 typedef struct Node {
   ElementType element_type;
-  char *local_name;
+  char *tag_name;
   Attribute *attributes;
   char *data;
   struct Node *parent;
@@ -47,7 +47,7 @@ typedef struct Node {
 
 void InsertChild(Node *child);
 Node *CreateDocument();
-Node *CreateElement(ElementType element_type, char *local_name);
+Node *CreateElement(ElementType element_type, char *tag_name);
 Node *CreateElementFromToken(ElementType element_type, Token *token);
 void ConstructTree();
 void PrintNode(Node *node); // for debug.

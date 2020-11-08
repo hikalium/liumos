@@ -29,7 +29,7 @@ void InsertChild(Node *child) {
 Node *CreateDocument() {
   Node *node = (Node *) malloc(sizeof(Node));
   node->element_type = DOCUMENT;
-  node->local_name = NULL;
+  node->tag_name = NULL;
   node->attributes = NULL;
   node->data = NULL;
   node->first_child = NULL;
@@ -39,11 +39,11 @@ Node *CreateDocument() {
   return node;
 }
 
-Node *CreateElement(ElementType element_type, char *local_name) {
+Node *CreateElement(ElementType element_type, char *tag_name) {
   Node *node = (Node *) malloc(sizeof(Node));
   node->element_type = element_type;
-  if (local_name)
-    node->local_name = local_name;
+  if (tag_name)
+    node->tag_name = tag_name;
   node->attributes = NULL;
   node->data = NULL;
   node->first_child = NULL;
@@ -59,7 +59,7 @@ Node *CreateElementFromToken(ElementType element_type, Token *token) {
   node->element_type = element_type;
   // "2. Let local name be the tag name of the token."
   if (token->tag_name)
-    node->local_name = token->tag_name;
+    node->tag_name = token->tag_name;
   if (token->attributes)
     node->attributes = token->attributes;
   node->data = NULL;
@@ -429,7 +429,7 @@ void PrintNode(Node *node) {
       break;
     default:
       Print("node: ");
-      Println(node->local_name);
+      Println(node->tag_name);
       break;
   }
 }
