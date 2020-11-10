@@ -41,8 +41,8 @@ typedef struct Node {
   struct Node *parent;
   struct Node *first_child;
   struct Node *last_child;
-  struct Node *previous;
-  struct Node *next;
+  struct Node *previous_sibling;
+  struct Node *next_sibling;
 } Node;
 
 void InsertChild(Node *child);

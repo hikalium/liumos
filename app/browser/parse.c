@@ -18,8 +18,8 @@ void InsertChild(Node *child) {
   }
 
   Node *previous_last_child = current_node->last_child;
-  previous_last_child->next = child;
-  child->previous = previous_last_child;
+  previous_last_child->next_sibling = child;
+  child->previous_sibling = previous_last_child;
 
   current_node->last_child = child;
   current_node = child;
@@ -34,8 +34,8 @@ Node *CreateDocument() {
   node->data = NULL;
   node->first_child = NULL;
   node->last_child = NULL;
-  node->previous = NULL;
-  node->next = NULL;
+  node->previous_sibling = NULL;
+  node->next_sibling = NULL;
   return node;
 }
 
@@ -48,8 +48,8 @@ Node *CreateElement(ElementType element_type, char *tag_name) {
   node->data = NULL;
   node->first_child = NULL;
   node->last_child = NULL;
-  node->previous = NULL;
-  node->next = NULL;
+  node->previous_sibling = NULL;
+  node->next_sibling = NULL;
   return node;
 }
 
@@ -65,8 +65,8 @@ Node *CreateElementFromToken(ElementType element_type, Token *token) {
   node->data = NULL;
   node->first_child = NULL;
   node->last_child = NULL;
-  node->previous = NULL;
-  node->next = NULL;
+  node->previous_sibling = NULL;
+  node->next_sibling = NULL;
   return node;
 }
 
@@ -80,8 +80,8 @@ Node *CreateText(Token *token) {
   node->data = data;
   node->first_child = NULL;
   node->last_child = NULL;
-  node->previous = NULL;
-  node->next = NULL;
+  node->previous_sibling = NULL;
+  node->next_sibling = NULL;
   return node;
 }
 
@@ -442,10 +442,10 @@ void PrintNodes() {
   while (node) {
     PrintNode(node);
 
-    Node *next = node->next;
+    Node *next = node->next_sibling;
     while (next) {
       PrintNode(next);
-      next = next->next;
+      next = next->next_sibling;
     }
 
     node = node->first_child;

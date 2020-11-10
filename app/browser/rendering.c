@@ -69,10 +69,10 @@ void Generate() {
   while (node) {
     first_line = Markdown(node, first_line);
 
-    Node *next = node->next;
+    Node *next = node->next_sibling;
     while (next) {
       first_line = Markdown(next, first_line);
-      next = next->next;
+      next = next->next_sibling;
     }
 
     node = node->first_child;
