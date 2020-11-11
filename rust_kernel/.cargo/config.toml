@@ -1,0 +1,6 @@
+[build]
+target = "x86_64-liumos_kernel.json"
+[unstable]
+build-std = ["core", "compiler_builtins"]
+[target.x86_64-liumos_kernel]
+rustflags = ["-C", "link-arg=-Tkernel.ld"]

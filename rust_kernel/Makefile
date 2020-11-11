@@ -2,6 +2,8 @@
 
 default : deploy_release
 
+include ../common.mk
+
 clean :
 	-rm -rf target/
 

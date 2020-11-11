@@ -97,6 +97,7 @@ files : src/BOOTX64.EFI src/LIUMOS.ELF .FORCE
 	cp src/LIUMOS.ELF mnt/LIUMOS.ELF
 	mkdir -p mnt/EFI/EFI/
 	echo 'FS0:\\EFI\\BOOT\\BOOTX64.EFI' > mnt/startup.nsh
+	make -C rust_kernel deploy_release
 
 run_nopmem : files .FORCE
 	$(QEMU) $(QEMU_ARGS)

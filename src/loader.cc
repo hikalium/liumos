@@ -194,7 +194,7 @@ void MainForBootProcessor(EFI::Handle image_handle,
   IDT::Init();
   InitPaging();
 
-  int idx = loader_info.FindFile("LIUMOS.ELF");
+  int idx = loader_info.FindFile("LIUMOSRS.ELF");
   if (idx == -1) {
     PutString("file not found.");
     return;
