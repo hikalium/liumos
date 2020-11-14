@@ -10,14 +10,18 @@ constexpr uint16_t kIOAddrPCIConfigData = 0x0CFC;
 
 PCI* PCI::pci_;
 
-static const std::unordered_multimap<uint32_t, const char*> device_infos = {
-    {0x000D'1B36, "QEMU XHCI Host Controller"},
-    {0x2918'8086, "82801IB (ICH9) LPC Interface Controller"},
-    {0x29c0'8086, "82G33/G31/P35/P31 Express DRAM Controller"},
-    {0x31A8'8086, "Intel XHCI Controller"},
-    {0x1111'1234, "QEMU Virtual Video Controller"},
-    {0x8168'10ec, "RTL8111/8168/8411 PCI Express Gigabit Ethernet Controller"},
-    {0x1000'1af4, "Virtio Network Card"},
+static const std::
+    unordered_multimap<PCI::DeviceIdent, const char*, PCI::DeviceIdentHash>
+        device_infos = {
+            {{0x1B36, 0x000D}, "QEMU XHCI Host Controller"},
+            {{0x8086, 0x2918}, "82801IB (ICH9) LPC Interface Controller"},
+            {{0x8086, 0x29c0}, "82G33/G31/P35/P31 Express DRAM Controller"},
+            {{0x8086, 0x31A8}, "Intel XHCI Controller"},
+            {{0x1234, 0x1111}, "QEMU Virtual Video Controller"},
+            {{0x10ec, 0x8168},
+             "RTL8111/8168/8411 PCI Express Gigabit Ethernet Controller"},
+            {{0x10ec, 0x8139}, "RTL-8100/8101L/8139 PCI Fast Ethernet Adapter"},
+            {{0x1af4, 0x1000}, "Virtio Network Card"},
 };
 
 static void SelectRegister(uint32_t bus,
@@ -62,9 +66,10 @@ bool PCI::DetectDevice(int bus, int device, int func) {
   uint32_t id = ReadConfigRegister32(bus, device, func, 0);
   if (id == kPCIInvalidVendorID)
     return false;
-  device_list_.insert({id,
-                       {static_cast<uint8_t>(bus), static_cast<uint8_t>(device),
-                        static_cast<uint8_t>(func)}});
+  device_list_.insert(
+      {{static_cast<uint16_t>(id & 0xFFFF), static_cast<uint16_t>(id >> 16)},
+       {static_cast<uint8_t>(bus), static_cast<uint8_t>(device),
+        static_cast<uint8_t>(func)}});
   return true;
 }
 
@@ -84,19 +89,11 @@ void PCI::DetectDevices() {
   }
 }
 
-static uint16_t GetVendorID(uint32_t id) {
-  return static_cast<uint16_t>(id);
-}
-
-static uint16_t GetDeviceID(uint32_t id) {
-  return static_cast<uint16_t>(id >> 16);
-}
-
 void PCI::PrintDevices() {
   char s[128];
   for (auto& e : device_list_) {
-    const uint16_t vendor_id = GetVendorID(e.first);
-    const uint16_t device_id = GetDeviceID(e.first);
+    const uint16_t vendor_id = e.first.vendor;
+    const uint16_t device_id = e.first.device;
     const auto location = e.second;
     snprintf(s, sizeof(s), "/%02X/%02X/%X %04X:%04X  %s\n", location.bus,
              location.device, location.func, vendor_id, device_id,
@@ -123,7 +120,7 @@ void PCI::PrintDevices() {
   }
 }
 
-const char* PCI::GetDeviceName(uint32_t key) {
+const char* PCI::GetDeviceName(DeviceIdent key) {
   const auto& it = device_infos.find(key);
   return it != device_infos.end() ? it->second : "(Unknown)";
 }

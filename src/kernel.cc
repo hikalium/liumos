@@ -10,6 +10,7 @@
 #include "panic_printer.h"
 #include "pci.h"
 #include "ps2_mouse.h"
+#include "rtl81xx.h"
 #include "virtio_net.h"
 #include "xhci.h"
 
@@ -361,6 +362,7 @@ extern "C" void KernelEntry(LiumOS* liumos_passed, LoaderInfo& loader_info) {
 
   // XHCI::Controller::GetInstance().Init();
   Virtio::Net::GetInstance().Init();
+  RTL81::GetInstance().Init();
 
   TextBox console_text_box;
   while (1) {

@@ -29,6 +29,7 @@ KERNEL_SRCS= $(COMMON_SRCS) \
 			 network.cc newlib_support.cc \
 			 pci.cc \
 			 ps2_mouse.cc \
+			 rtl81xx.cc \
 			 scheduler.cc subtask.cc \
 			 sleep_handler.S syscall.cc syscall_handler.S \
 			 virtio_net.cc \

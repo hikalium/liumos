@@ -3,7 +3,9 @@
 #include <sys/types.h>
 
 #include "generic.h"
+#include "kernel.h"
 #include "liumos.h"
+#include "panic_printer.h"
 
 extern "C" {
 
@@ -38,8 +40,11 @@ void read(int) {
   Panic("lseek");
 }
 
-void write(int) {
-  Panic("write");
+size_t write(int, char* s, size_t len) {
+  for (size_t i = 0; i < len; i++) {
+    kprintf("%c", s[i]);
+  }
+  return len;
 }
 void fstat(int) {
   Panic("fstat");
