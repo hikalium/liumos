@@ -22,6 +22,10 @@ QEMU_ARGS_NET_MACOS=\
 		-nic user,id=u1,model=virtio,hostfwd=tcp::10023-:23 \
 		-object filter-dump,id=f1,netdev=u1,file=dump.dat
 
+QEMU_ARGS_NET_MACOS_RTL=\
+		-nic user,id=u1,model=rtl8139,hostfwd=tcp::10023-:23 \
+		-object filter-dump,id=f1,netdev=u1,file=dump.dat
+
 QEMU_ARGS_NET_LINUX=\
 		--enable-kvm \
 		-nic tap,ifname=tap0,id=u1,model=virtio,script=no \
@@ -102,6 +106,9 @@ run_xhci_gdb : files .FORCE
 	
 run_root : files pmem.img .FORCE
 	$(QEMU) $(QEMU_ARGS_PMEM)
+
+run_rtl : files pmem.img .FORCE
+	$(QEMU) $(QEMU_ARGS_COMMON) $(QEMU_ARGS_NET_MACOS_RTL)
 
 run_user : files pmem.img .FORCE
 	$(QEMU) $(QEMU_ARGS_COMMON) $(QEMU_ARGS_USER_NET_LINUX)

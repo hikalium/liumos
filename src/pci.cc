@@ -97,10 +97,29 @@ void PCI::PrintDevices() {
   for (auto& e : device_list_) {
     const uint16_t vendor_id = GetVendorID(e.first);
     const uint16_t device_id = GetDeviceID(e.first);
-    snprintf(s, sizeof(s), "/%02X/%02X/%X %04X:%04X  %s\n", e.second.bus,
-             e.second.device, e.second.func, vendor_id, device_id,
+    const auto location = e.second;
+    snprintf(s, sizeof(s), "/%02X/%02X/%X %04X:%04X  %s\n", location.bus,
+             location.device, location.func, vendor_id, device_id,
              GetDeviceName(e.first));
     PutString(s);
+    for (int i = 0; i < 6; i++) {
+      uint32_t bar = ReadConfigRegister32(location, 0x10 + i * 4);
+      // https://wiki.osdev.org/PCI
+      if (bar == 0) {
+        continue;
+      }
+      if (bar & 1) {
+        // 1: I/O Space BAR
+        snprintf(s, sizeof(s), "  BAR%d(I/O): 0x%08X\n", i, bar);
+        PutString(s);
+      } else {
+        // 0: Memory Space BAR
+        uint8_t type = (bar >> 1) & 3;
+        snprintf(s, sizeof(s), "  BAR%d(Mem): 0x%08X type = %d\n", i, bar,
+                 type);
+        PutString(s);
+      }
+    }
   }
 }
 
