@@ -6,23 +6,27 @@
 #include "../liumlib/liumlib.h"
 #include "tokenize.h"
 
-void InsertChild(Node *child) {
-  child->parent = current_node;
+// https://html.spec.whatwg.org/multipage/parsing.html#insert-a-foreign-element
+void InsertElement(Node *element) {
+  // "1. Let the adjusted insertion location be the appropriate place for inserting a node."
+  // https://html.spec.whatwg.org/multipage/parsing.html#appropriate-place-for-inserting-a-node
+  // TODO: implement it correctly.
+  element->parent = current_node;
 
   if (current_node->first_child == NULL) {
-    current_node->first_child = child;
-    current_node->last_child = child;
+    current_node->first_child = element;
+    current_node->last_child = element;
 
-    current_node = child;
+    current_node = element;
     return;
   }
 
   Node *previous_last_child = current_node->last_child;
-  previous_last_child->next_sibling = child;
-  child->previous_sibling = previous_last_child;
+  previous_last_child->next_sibling = element;
+  element->previous_sibling = previous_last_child;
 
-  current_node->last_child = child;
-  current_node = child;
+  current_node->last_child = element;
+  current_node = element;
 }
 
 // https://html.spec.whatwg.org/multipage/dom.html#document
@@ -124,7 +128,7 @@ void ConstructTree() {
         }
         if (token->type == START_TAG && strcmp(token->tag_name, "html") == 0) {
           Node *element = CreateElementFromToken(HTML, token);
-          InsertChild(element);
+          InsertElement(element);
           mode = BEFORE_HEAD;
           token = token->next;
           break;
@@ -142,7 +146,7 @@ void ConstructTree() {
         // Anything else
         {
           Node *element = CreateElement(HTML, "html");
-          InsertChild(element);
+          InsertElement(element);
         }
         mode = BEFORE_HEAD;
         // Reprocess the token.
@@ -170,7 +174,7 @@ void ConstructTree() {
         if (token->type == START_TAG && strcmp(token->tag_name, "head") == 0) {
           // A start tag whose tag name is "head"
           Node *element = CreateElementFromToken(HEAD, token);
-          InsertChild(element);
+          InsertElement(element);
           mode = IN_HEAD;
           token = token->next;
           break;
@@ -188,7 +192,7 @@ void ConstructTree() {
         // Anything else
         {
           Node *element = CreateElement(HEAD, "head");
-          InsertChild(element);
+          InsertElement(element);
         }
         mode = IN_HEAD;
         break;
@@ -252,7 +256,7 @@ void ConstructTree() {
         if (token->type == START_TAG && strcmp(token->tag_name, "body") == 0) {
           // A start tag whose tag name is "body"
           Node *element = CreateElementFromToken(BODY, token);
-          InsertChild(element);
+          InsertElement(element);
           mode = IN_BODY;
           token = token->next;
           break;
@@ -275,7 +279,7 @@ void ConstructTree() {
         // Anything else
         {
           Node *element = CreateElement(BODY, "body");
-          InsertChild(element);
+          InsertElement(element);
         }
         mode = IN_BODY;
         // Reprocess the token.
@@ -288,7 +292,7 @@ void ConstructTree() {
             strcat(current_node->data, &token->data);
           } else {
             Node *element = CreateText(token);
-            InsertChild(element);
+            InsertElement(element);
           }
           token = token->next;
           inserting_char = true;
@@ -327,19 +331,19 @@ void ConstructTree() {
         }
         if (token->type == START_TAG && strcmp(token->tag_name, "ul") == 0) {
           Node *element = CreateElementFromToken(UL, token);
-          InsertChild(element);
+          InsertElement(element);
           token = token->next;
           break;
         }
         if (token->type == START_TAG && strcmp(token->tag_name, "p") == 0) {
           Node *element = CreateElementFromToken(PARAGRAPH, token);
-          InsertChild(element);
+          InsertElement(element);
           token = token->next;
           break;
         }
         if (token->type == START_TAG && strcmp(token->tag_name, "div") == 0) {
           Node *element = CreateElementFromToken(DIV, token);
-          InsertChild(element);
+          InsertElement(element);
           token = token->next;
           break;
         }
@@ -352,14 +356,14 @@ void ConstructTree() {
             strcmp(token->tag_name, "h6") == 0)) {
           // A start tag whose tag name is one of: "h1", "h2", "h3", "h4", "h5", "h6"
           Node *element = CreateElementFromToken(HEADING, token);
-          InsertChild(element);
+          InsertElement(element);
           token = token->next;
           break;
         }
         if (token->type == START_TAG && strcmp(token->tag_name, "li") == 0) {
           // A start tag whose tag name is "li"
           Node *element = CreateElementFromToken(LI, token);
-          InsertChild(element);
+          InsertElement(element);
           token = token->next;
         }
         if (token->type == END_TAG) {

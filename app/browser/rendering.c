@@ -79,22 +79,6 @@ void Dfs(Node *node, bool first_line) {
 }
 
 void Generate() {
-  /*
-  Node *node = root_node;
-  bool first_line = true;
-
-  while (node) {
-    first_line = Markdown(node, first_line);
-
-    Node *next = node->next_sibling;
-    while (next) {
-      first_line = Markdown(next, first_line);
-      next = next->next_sibling;
-    }
-
-    node = node->first_child;
-  }
-  */
   Dfs(root_node, true);
   Print("\n");
 }

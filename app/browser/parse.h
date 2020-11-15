@@ -45,7 +45,7 @@ typedef struct Node {
   struct Node *next_sibling;
 } Node;
 
-void InsertChild(Node *child);
+void InsertElement(Node *element);
 Node *CreateDocument();
 Node *CreateElement(ElementType element_type, char *tag_name);
 Node *CreateElementFromToken(ElementType element_type, Token *token);
