@@ -409,7 +409,9 @@ void ConstructTree() {
 }
 
 // for debug.
-void PrintNode(Node *node) {
+void PrintNode(Node *node, int depth) {
+  PrintNum(depth);
+  Print(": ");
   switch (node->element_type) {
     case DOCUMENT:
       Println("DOCUMENT");
@@ -435,20 +437,24 @@ void PrintNode(Node *node) {
 }
 
 // for debug.
-void PrintNodes() {
-  Node *node = root_node;
+void DfsWithDepth(Node *node, int depth) {
+  if (node == NULL)
+    return;
 
-  Println("--------------");
-  while (node) {
-    PrintNode(node);
+  PrintNode(node, depth);
 
-    Node *next = node->next_sibling;
-    while (next) {
-      PrintNode(next);
-      next = next->next_sibling;
-    }
+  DfsWithDepth(node->first_child, depth + 1);
 
-    node = node->first_child;
+  Node *next = node->next_sibling;
+  while (next) {
+    DfsWithDepth(next, depth);
+    next = next->next_sibling;
   }
+}
+
+// for debug.
+void PrintNodes() {
+  Println("--------------");
+  DfsWithDepth(root_node, 0);
   Println("--------------");
 }

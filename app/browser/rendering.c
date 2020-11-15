@@ -57,12 +57,29 @@ bool Markdown(Node *node, bool first_line) {
         Print("\n");
       break;
     default:
-      return true;
+      if (first_line)
+        return true;
   }
   return false;
 }
 
+void Dfs(Node *node, bool first_line) {
+  if (node == NULL)
+    return;
+
+  first_line = Markdown(node, first_line);
+
+  Dfs(node->first_child, first_line);
+
+  Node *next = node->next_sibling;
+  while (next) {
+    Dfs(next, first_line);
+    next = next->next_sibling;
+  }
+}
+
 void Generate() {
+  /*
   Node *node = root_node;
   bool first_line = true;
 
@@ -77,15 +94,17 @@ void Generate() {
 
     node = node->first_child;
   }
+  */
+  Dfs(root_node, true);
   Print("\n");
 }
 
 void Render(char* html) {
   Tokenize(html);
-  //PrintTokens();
+  PrintTokens();
 
   ConstructTree();
-  //PrintNodes();
+  PrintNodes();
 
   Generate();
 }

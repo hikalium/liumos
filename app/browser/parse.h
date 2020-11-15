@@ -50,7 +50,6 @@ Node *CreateDocument();
 Node *CreateElement(ElementType element_type, char *tag_name);
 Node *CreateElementFromToken(ElementType element_type, Token *token);
 void ConstructTree();
-void PrintNode(Node *node); // for debug.
 void PrintNodes(); // for debug.
 
 Node *root_node;
