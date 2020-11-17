@@ -45,10 +45,15 @@ typedef struct Node {
   struct Node *next_sibling;
 } Node;
 
+void PushStack(Node *node);
+Node *PopStack();
+Node *CurrentNode();
 void InsertElement(Node *element);
+void InsertCharFromToken(Token *token, bool inserting_char);
 Node *CreateDocument();
 Node *CreateElement(ElementType element_type, char *tag_name);
 Node *CreateElementFromToken(ElementType element_type, Token *token);
+Node *CreateText(Token *token);
 void ConstructTree();
 void PrintNode(); // for debug.
 void PrintNodes(); // for debug.

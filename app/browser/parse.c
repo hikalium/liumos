@@ -7,20 +7,17 @@
 #include "tokenize.h"
 
 void PushStack(Node *node) {
-  PrintNode(node, -1);
-  Print("PushStack: ");
-  PrintNum(stack_index);
-  Println("");
   stack_of_open_elements[stack_index] = node;
   stack_index++;
+  //Print("PushStack: ");
+  //PrintNode(CurrentNode(), -1);
 }
 
 Node *PopStack() {
-  Print("PopStack: ");
-  PrintNum(stack_index);
-  Println("");
   if (stack_index > 0)
     stack_index--;
+  //Print("PopStack: ");
+  //PrintNode(stack_of_open_elements[stack_index], -1);
   return stack_of_open_elements[stack_index];
 }
 
@@ -58,6 +55,45 @@ void InsertElement(Node *element) {
 
   // "4. Push element onto the stack of open elements so that it is the new current node."
   PushStack(element);
+}
+
+// https://html.spec.whatwg.org/multipage/parsing.html#insert-a-character
+void InsertCharFromToken(Token *token, bool inserting_char) {
+  // "1. Let data be the characters passed to the algorithm, or, if no characters were
+  // explicitly specified, the character of the character token being processed."
+
+  // "2. Let the adjusted insertion location be the appropriate place for inserting a node."
+  Node *target = CurrentNode();
+
+  // "3. If the adjusted insertion location is in a Document node, then return."
+  if (target->element_type == DOCUMENT)
+    return;
+
+  // "4. If there is a Text node immediately before the adjusted insertion location,
+  // then append data to that Text node's data."
+  if (target->element_type == TEXT) {
+    strcat(CurrentNode()->data, &token->data);
+  } else {
+    Node *node = CreateText(token);
+    InsertElement(node);
+    /*
+    PopStack();
+    return;
+
+    node->parent = target;
+    if (target->last_child == NULL) {
+      target->first_child = node;
+      target->last_child = node;
+    } else {
+      Node *ex_last_child = target->last_child;
+      target->last_child = node;
+
+      // Connect siblings.
+      ex_last_child->next_sibling = node;
+      node->previous_sibling = ex_last_child;
+    }
+    */
+  }
 }
 
 // https://html.spec.whatwg.org/multipage/dom.html#document
@@ -320,12 +356,15 @@ void ConstructTree() {
       case IN_BODY:
         // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inbody
         if (token->type == CHAR) {
+          InsertCharFromToken(token, inserting_char);
+          /*
           if (CurrentNode()->element_type == TEXT && inserting_char) {
             strcat(CurrentNode()->data, &token->data);
           } else {
-            Node *element = CreateText(token);
-            InsertElement(element);
+            Node *textnode = CreateText(token);
+            InsertElement(textnode);
           }
+          */
           token = token->next;
           inserting_char = true;
           break;
@@ -402,6 +441,7 @@ void ConstructTree() {
         }
         if (token->type == END_TAG) {
           // Any other end tag
+          PopStack();
           token = token->next;
           break;
         }
