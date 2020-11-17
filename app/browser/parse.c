@@ -9,15 +9,20 @@
 void PushStack(Node *node) {
   stack_of_open_elements[stack_index] = node;
   stack_index++;
-  //Print("PushStack: ");
-  //PrintNode(CurrentNode(), -1);
 }
 
 Node *PopStack() {
   if (stack_index > 0)
     stack_index--;
-  //Print("PopStack: ");
-  //PrintNode(stack_of_open_elements[stack_index], -1);
+  return stack_of_open_elements[stack_index];
+}
+
+Node *PopStackUntil(ElementType type) {
+  while (stack_index > 0) {
+    stack_index--;
+    if (type == stack_of_open_elements[stack_index]->element_type)
+      return stack_of_open_elements[stack_index];
+  }
   return stack_of_open_elements[stack_index];
 }
 
@@ -76,23 +81,6 @@ void InsertCharFromToken(Token *token, bool inserting_char) {
   } else {
     Node *node = CreateText(token);
     InsertElement(node);
-    /*
-    PopStack();
-    return;
-
-    node->parent = target;
-    if (target->last_child == NULL) {
-      target->first_child = node;
-      target->last_child = node;
-    } else {
-      Node *ex_last_child = target->last_child;
-      target->last_child = node;
-
-      // Connect siblings.
-      ex_last_child->next_sibling = node;
-      node->previous_sibling = ex_last_child;
-    }
-    */
   }
 }
 
@@ -288,7 +276,7 @@ void ConstructTree() {
         if (token->type == END_TAG && strcmp(token->tag_name, "head") == 0) {
           // An end tag whose tag name is "head"
           // Pop the current node (which will be the head element) off the stack of open elements.
-          PopStack(); // should be head element
+          PopStackUntil(HEAD);
           token = token->next;
           mode = AFTER_HEAD;
           break;
@@ -303,7 +291,7 @@ void ConstructTree() {
           break;
         }
         // Anything else
-        PopStack(); // should be head element
+        PopStackUntil(HEAD);
         mode = AFTER_HEAD;
         // Reprocess the token.
         break;
@@ -357,14 +345,6 @@ void ConstructTree() {
         // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inbody
         if (token->type == CHAR) {
           InsertCharFromToken(token, inserting_char);
-          /*
-          if (CurrentNode()->element_type == TEXT && inserting_char) {
-            strcat(CurrentNode()->data, &token->data);
-          } else {
-            Node *textnode = CreateText(token);
-            InsertElement(textnode);
-          }
-          */
           token = token->next;
           inserting_char = true;
           break;
@@ -390,14 +370,14 @@ void ConstructTree() {
         }
         if (token->type == END_TAG && strcmp(token->tag_name, "body") == 0) {
           // An end tag whose tag name is "body"
-          PopStack();
+          PopStackUntil(BODY);
           mode = AFTER_BODY;
           token = token->next;
           break;
         }
         if (token->type == END_TAG && strcmp(token->tag_name, "html") == 0) {
           // An end tag whose tag name is "html"
-          PopStack();
+          PopStackUntil(HTML);
           mode = AFTER_BODY;
           // Reprocess the token.
           break;
@@ -438,6 +418,36 @@ void ConstructTree() {
           Node *element = CreateElementFromToken(LI, token);
           InsertElement(element);
           token = token->next;
+        }
+        if (token->type == END_TAG &&
+            (strcmp(token->tag_name, "div") == 0)) {
+          PopStackUntil(DIV);
+          token = token->next;
+          break;
+        }
+        if (token->type == END_TAG &&
+            (strcmp(token->tag_name, "ul") == 0)) {
+          PopStackUntil(UL);
+          token = token->next;
+          break;
+        }
+        if (token->type == END_TAG &&
+            (strcmp(token->tag_name, "p") == 0)) {
+          PopStackUntil(PARAGRAPH);
+          token = token->next;
+          break;
+        }
+        if (token->type == END_TAG &&
+            (strcmp(token->tag_name, "h1") == 0 ||
+            strcmp(token->tag_name, "h2") == 0 ||
+            strcmp(token->tag_name, "h3") == 0 ||
+            strcmp(token->tag_name, "h4") == 0 ||
+            strcmp(token->tag_name, "h5") == 0 ||
+            strcmp(token->tag_name, "h6") == 0)) {
+         // An end tag whose tag name is one of: "h1", "h2", "h3", "h4", "h5", "h6"
+          PopStackUntil(HEADING);
+          token = token->next;
+          break;
         }
         if (token->type == END_TAG) {
           // Any other end tag
