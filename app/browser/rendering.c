@@ -85,10 +85,10 @@ void Generate() {
 
 void Render(char* html) {
   Tokenize(html);
-  PrintTokens();
+  //PrintTokens();
 
   ConstructTree();
-  PrintNodes();
+  //PrintNodes();
 
   Generate();
 }

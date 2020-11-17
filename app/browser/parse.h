@@ -50,9 +50,12 @@ Node *CreateDocument();
 Node *CreateElement(ElementType element_type, char *tag_name);
 Node *CreateElementFromToken(ElementType element_type, Token *token);
 void ConstructTree();
+void PrintNode(); // for debug.
 void PrintNodes(); // for debug.
 
 Node *root_node;
-Node *current_node;
+// https://html.spec.whatwg.org/multipage/parsing.html#the-stack-of-open-elements
+Node *stack_of_open_elements[100];
+int stack_index;
 
 #endif // APP_BROWSER_PARSE_H

@@ -87,6 +87,7 @@ void GetHtmlFromResponse(char *response, char *html) {
 ParsedUrl *ParseUrl() {
   ParsedUrl *parsed_url = (ParsedUrl *) malloc(sizeof(ParsedUrl));
 
+  // Parse `scheme`.
   // Only support "http" scheme.
   if (strncmp("http://", url, 7) != 0) {
     Println("Error: Only support 'http' scheme.");
@@ -108,7 +109,7 @@ ParsedUrl *ParseUrl() {
   host[host_length] = '\0';
   parsed_url->host = host;
 
-  // Parse `ip` and `host` from `host`.
+  // Parse `ip` and `port` from `host`.
   for (int i=0; i<host_length; i++) {
     if (host[i] != ':')
       continue;
@@ -120,6 +121,7 @@ ParsedUrl *ParseUrl() {
     parsed_url->port = StrToNum16(&host[i+1], NULL);
   }
 
+  // Parse `path`.
   char *path = (char *) malloc(strlen(url) + 1);
   int path_idx = 0;
   while (*url) {

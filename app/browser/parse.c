@@ -6,27 +6,58 @@
 #include "../liumlib/liumlib.h"
 #include "tokenize.h"
 
+void PushStack(Node *node) {
+  PrintNode(node, -1);
+  Print("PushStack: ");
+  PrintNum(stack_index);
+  Println("");
+  stack_of_open_elements[stack_index] = node;
+  stack_index++;
+}
+
+Node *PopStack() {
+  Print("PopStack: ");
+  PrintNum(stack_index);
+  Println("");
+  if (stack_index > 0)
+    stack_index--;
+  return stack_of_open_elements[stack_index];
+}
+
+Node *CurrentNode() {
+  return stack_of_open_elements[stack_index - 1];
+}
+
 // https://html.spec.whatwg.org/multipage/parsing.html#insert-a-foreign-element
 void InsertElement(Node *element) {
   // "1. Let the adjusted insertion location be the appropriate place for inserting a node."
   // https://html.spec.whatwg.org/multipage/parsing.html#appropriate-place-for-inserting-a-node
-  // TODO: implement it correctly.
-  element->parent = current_node;
+  Node *target = CurrentNode();
 
-  if (current_node->first_child == NULL) {
-    current_node->first_child = element;
-    current_node->last_child = element;
+  // "2. Let element be the result of creating an element for the token in the given
+  // namespace, with the intended parent being the element in which the adjusted
+  // insertion location finds itself."
+  element->parent = target;
 
-    current_node = element;
-    return;
+  // "3. If it is possible to insert element at the adjusted insertion location, then:
+  //  3.2. Insert element at the adjusted insertion location."
+  //
+  // https://html.spec.whatwg.org/multipage/parsing.html#appropriate-place-for-inserting-a-node
+  // "2. Let adjusted insertion location be inside target, after its last child (if any)."
+  if (target->last_child == NULL) {
+    target->first_child = element;
+    target->last_child = element;
+  } else {
+    Node *ex_last_child = target->last_child;
+    target->last_child = element;
+
+    // Connect siblings.
+    ex_last_child->next_sibling = element;
+    element->previous_sibling = ex_last_child;
   }
 
-  Node *previous_last_child = current_node->last_child;
-  previous_last_child->next_sibling = element;
-  element->previous_sibling = previous_last_child;
-
-  current_node->last_child = element;
-  current_node = element;
+  // "4. Push element onto the stack of open elements so that it is the new current node."
+  PushStack(element);
 }
 
 // https://html.spec.whatwg.org/multipage/dom.html#document
@@ -94,7 +125,9 @@ void ConstructTree() {
 
   Node *document = CreateDocument();
   root_node = document;
-  current_node = document;
+
+  stack_index = 0;
+  PushStack(document);
 
   Token *token = first_token;
 
@@ -103,12 +136,10 @@ void ConstructTree() {
   while (token) {
     switch (mode) {
       case INITIAL:
-      //Println("1 initial");
         // https://html.spec.whatwg.org/multipage/parsing.html#the-initial-insertion-mode
         mode = BEFORE_HTML;
         break;
       case BEFORE_HTML:
-      //Println("2 before html");
         // https://html.spec.whatwg.org/multipage/parsing.html#the-before-html-insertion-mode
         if (token->type == DOCTYPE) {
           // Parse error. Ignore the token.
@@ -127,6 +158,8 @@ void ConstructTree() {
           break;
         }
         if (token->type == START_TAG && strcmp(token->tag_name, "html") == 0) {
+          // A start tag whose tag name is "html"
+          // Create an element for the token in the HTML namespace, with the Document as the intended parent. Append it to the Document object. Put this element in the stack of open elements.
           Node *element = CreateElementFromToken(HTML, token);
           InsertElement(element);
           mode = BEFORE_HEAD;
@@ -152,7 +185,6 @@ void ConstructTree() {
         // Reprocess the token.
         break;
       case BEFORE_HEAD:
-      //Println("3 before head");
         // https://html.spec.whatwg.org/multipage/parsing.html#the-before-head-insertion-mode
         if (token->type == CHAR &&
             (token->data == 0x09 /* Tab */ ||
@@ -197,7 +229,6 @@ void ConstructTree() {
         mode = IN_HEAD;
         break;
       case IN_HEAD:
-      //Println("4 in head");
         // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inhead
         if (token->type == DOCTYPE) {
           // A DOCTYPE token
@@ -220,6 +251,8 @@ void ConstructTree() {
         }
         if (token->type == END_TAG && strcmp(token->tag_name, "head") == 0) {
           // An end tag whose tag name is "head"
+          // Pop the current node (which will be the head element) off the stack of open elements.
+          PopStack(); // should be head element
           token = token->next;
           mode = AFTER_HEAD;
           break;
@@ -234,11 +267,11 @@ void ConstructTree() {
           break;
         }
         // Anything else
+        PopStack(); // should be head element
         mode = AFTER_HEAD;
         // Reprocess the token.
         break;
       case AFTER_HEAD:
-      //Println("5 after head");
         // https://html.spec.whatwg.org/multipage/parsing.html#the-after-head-insertion-mode
         if (token->type == DOCTYPE) {
           // A DOCTYPE token
@@ -285,11 +318,10 @@ void ConstructTree() {
         // Reprocess the token.
         break;
       case IN_BODY:
-      //Println("6 in body");
         // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inbody
         if (token->type == CHAR) {
-          if (current_node->element_type == TEXT && inserting_char) {
-            strcat(current_node->data, &token->data);
+          if (CurrentNode()->element_type == TEXT && inserting_char) {
+            strcat(CurrentNode()->data, &token->data);
           } else {
             Node *element = CreateText(token);
             InsertElement(element);
@@ -319,12 +351,14 @@ void ConstructTree() {
         }
         if (token->type == END_TAG && strcmp(token->tag_name, "body") == 0) {
           // An end tag whose tag name is "body"
+          PopStack();
           mode = AFTER_BODY;
           token = token->next;
           break;
         }
         if (token->type == END_TAG && strcmp(token->tag_name, "html") == 0) {
           // An end tag whose tag name is "html"
+          PopStack();
           mode = AFTER_BODY;
           // Reprocess the token.
           break;
@@ -373,7 +407,6 @@ void ConstructTree() {
         }
         break;
       case AFTER_BODY:
-      //Println("7 after body");
         // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-afterbody
         if (token->type == DOCTYPE) {
           // A DOCTYPE token
@@ -397,7 +430,6 @@ void ConstructTree() {
         mode = IN_BODY;
         break;
       case AFTER_AFTER_BODY:
-      //Println("8 after after body");
         // https://html.spec.whatwg.org/multipage/parsing.html#the-after-after-body-insertion-mode
         if (token->type == EOF) {
           // An end-of-file token
@@ -415,7 +447,11 @@ void ConstructTree() {
 // for debug.
 void PrintNode(Node *node, int depth) {
   PrintNum(depth);
-  Print(": ");
+  Print(":");
+  for (int i=0; i<depth; i++) {
+    Print(" ");
+  }
+  Print(":");
   switch (node->element_type) {
     case DOCUMENT:
       Println("DOCUMENT");
