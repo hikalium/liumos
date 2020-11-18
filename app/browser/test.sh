@@ -53,6 +53,11 @@ assert "# bar" "<H1>bar</H1>"
 assert "- abc
 - def" "<HTML><BODY><UL><LI>abc</li><LI>def</li></ul></body></html>"
 
+#assert "# hoge
+#- bar
+#
+#- foo" "<h1>hoge</h1><ul><li>bar</li></ul><ul><li>foo</li></ul>"
+
 echo "----------------"
 echo "All tests passed"
 echo "----------------"
