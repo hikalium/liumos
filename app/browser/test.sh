@@ -34,6 +34,10 @@ assert "###### bar" "<h6>bar</h6>"
 assert "- bar" "<ul><li>bar</li></ul>"
 assert "- bar
 - foo" "<ul><li>bar</li><li>foo</li></ul>"
+assert "- bar
+- foo
+
+- foobar" "<ul><li>bar</li><li>foo</li></ul><ul><li>foobar</li></ul>"
 assert "bar" "<p>bar</p>"
 
 assert "bar" "<html><body>bar</body></html>"

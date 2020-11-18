@@ -18,10 +18,13 @@ bool Printable(char *data) {
   return printable;
 }
 
-bool Markdown(Node *node, bool first_line) {
+void Markdown(Node *node) {
   switch (node->element_type) {
-    case TEXT: if (Printable(node->data))
+    case TEXT:
+      if (Printable(node->data)) {
         Print(node->data);
+        first_line = false;
+      }
       break;
     case HEADING:
       if (strcmp(node->tag_name, "h1") == 0) {
@@ -37,16 +40,17 @@ bool Markdown(Node *node, bool first_line) {
       } else if (strcmp(node->tag_name, "h6") == 0) {
         Print("###### ");
       }
+      first_line = false;
       break;
     case UL:
-      if (first_line)
-        return true;
-      Print("\n");
+      if (!first_line)
+        Print("\n");
       break;
     case LI:
       if (!first_line)
         Print("\n");
       Print("- ");
+      first_line = false;
       break;
     case DIV:
       if (!first_line)
@@ -57,29 +61,28 @@ bool Markdown(Node *node, bool first_line) {
         Print("\n");
       break;
     default:
-      if (first_line)
-        return true;
+      break;
   }
-  return false;
 }
 
-void Dfs(Node *node, bool first_line) {
+void Dfs(Node *node) {
   if (node == NULL)
     return;
 
-  first_line = Markdown(node, first_line);
+  Markdown(node);
 
-  Dfs(node->first_child, first_line);
+  Dfs(node->first_child);
 
   Node *next = node->next_sibling;
   while (next) {
-    Dfs(next, first_line);
+    Dfs(next);
     next = next->next_sibling;
   }
 }
 
 void Generate() {
-  Dfs(root_node, true);
+  first_line = true;
+  Dfs(root_node);
   Print("\n");
 }
 

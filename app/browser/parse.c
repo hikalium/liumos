@@ -437,6 +437,14 @@ void ConstructTree() {
           token = token->next;
           break;
         }
+        /*
+        if (token->type == END_TAG &&
+            (strcmp(token->tag_name, "li") == 0)) {
+          PopStackUntil(LI);
+          token = token->next;
+          break;
+        }
+        */
         if (token->type == END_TAG &&
             (strcmp(token->tag_name, "h1") == 0 ||
             strcmp(token->tag_name, "h2") == 0 ||
@@ -496,6 +504,9 @@ void ConstructTree() {
 
 // for debug.
 void PrintNode(Node *node, int depth) {
+  if (node == NULL)
+    return;
+
   PrintNum(depth);
   Print(":");
   for (int i=0; i<depth; i++) {
