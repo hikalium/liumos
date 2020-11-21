@@ -168,6 +168,9 @@ test :
 	make -C src test
 	make -C app/liumlib test
 
+local_test :
+	make -C e2e_test test
+
 ci :
 	circleci config validate
 	circleci local execute
@@ -180,7 +183,7 @@ clean :
 format :
 	make -C src format
 
-commit_root : format test
+commit_root : format test local_test
 	git add .
 	./scripts/ensure_objs_are_not_under_git_control.sh
 	git diff HEAD --color=always | less -R
