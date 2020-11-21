@@ -8,7 +8,10 @@
 KernelPhysPageAllocator& GetKernelPhysPageAllocator();
 uint64_t GetKernelStraightMappingBase();
 void kprintf(const char* fmt, ...);
-void kprintbuf(const char* desc, const void* data, size_t start, size_t end);
+void kprintbuf(const char* desc,
+               const volatile void* data,
+               size_t start,
+               size_t end);
 
 template <typename PhysType = uint64_t, typename VirtType>
 PhysType v2p(VirtType v) {
