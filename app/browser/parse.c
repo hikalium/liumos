@@ -437,14 +437,12 @@ void ConstructTree() {
           token = token->next;
           break;
         }
-        /*
         if (token->type == END_TAG &&
             (strcmp(token->tag_name, "li") == 0)) {
           PopStackUntil(LI);
           token = token->next;
           break;
         }
-        */
         if (token->type == END_TAG &&
             (strcmp(token->tag_name, "h1") == 0 ||
             strcmp(token->tag_name, "h2") == 0 ||
@@ -539,17 +537,10 @@ void PrintNode(Node *node, int depth) {
 
 // for debug.
 void DfsWithDepth(Node *node, int depth) {
-  if (node == NULL)
-    return;
-
   PrintNode(node, depth);
 
-  DfsWithDepth(node->first_child, depth + 1);
-
-  Node *next = node->next_sibling;
-  while (next) {
-    DfsWithDepth(next, depth);
-    next = next->next_sibling;
+  for (Node *cur = node->first_child; cur; cur = cur->next_sibling) {
+    DfsWithDepth(cur, depth + 1);
   }
 }
 

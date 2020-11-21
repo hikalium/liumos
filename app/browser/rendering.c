@@ -66,17 +66,10 @@ void Markdown(Node *node) {
 }
 
 void Dfs(Node *node) {
-  if (node == NULL)
-    return;
-
   Markdown(node);
 
-  Dfs(node->first_child);
-
-  Node *next = node->next_sibling;
-  while (next) {
-    Dfs(next);
-    next = next->next_sibling;
+  for (Node *cur = node->first_child; cur; cur = cur->next_sibling) {
+    Dfs(cur);
   }
 }
 
