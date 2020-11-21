@@ -46,11 +46,14 @@ void kprintf(const char* fmt, ...) {
   va_end(args);
 }
 
-void kprintbuf(const char* desc, const void* data, size_t start, size_t end) {
+void kprintbuf(const char* desc,
+               const volatile void* data,
+               size_t start,
+               size_t end) {
   kprintf("%s [ +%llu - +%llu ):\n", desc, start, end);
   int cnt = 0;
   for (size_t i = start; i < end; i++) {
-    kprintf("%02X%c", reinterpret_cast<const uint8_t*>(data)[i],
+    kprintf("%02X%c", reinterpret_cast<const volatile uint8_t*>(data)[i],
             (cnt & 0xF) == 0xF ? '\n' : ' ');
     cnt++;
   }
