@@ -16,7 +16,7 @@ liumos_root_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(
 print('liumOS root is at: ', liumos_root_path, file=sys.stderr, flush=True)
 
 def launch_qemu():
-    p = pexpect.spawn("make -C {} run".format(liumos_root_path))
+    p = pexpect.spawn("make -C {} run_for_e2e_test".format(liumos_root_path))
     p.expect(r"(qemu)")
     print('QEMU Launched', file=sys.stderr, flush=True)
     return p

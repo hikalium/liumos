@@ -113,6 +113,9 @@ run_rtl : files pmem.img .FORCE
 run_user : files pmem.img .FORCE
 	$(QEMU) $(QEMU_ARGS_COMMON) $(QEMU_ARGS_USER_NET_LINUX)
 
+run_for_e2e_test : files pmem.img .FORCE
+	$(QEMU) $(QEMU_ARGS) -nographic
+
 run_user_headless : files pmem.img .FORCE
 	( echo 'change vnc password $(VNC_PASSWORD)' | while ! nc localhost $(PORT_MONITOR) ; do sleep 1 ; done ) &
 	$(QEMU) $(QEMU_ARGS_COMMON) $(QEMU_ARGS_USER_NET_LINUX) -vnc 0.0.0.0:$(PORT_VNC),password 
@@ -168,7 +171,7 @@ test :
 	make -C src test
 	make -C app/liumlib test
 
-local_test :
+e2etest :
 	make -C e2e_test test
 
 ci :
@@ -183,7 +186,7 @@ clean :
 format :
 	make -C src format
 
-commit_root : format test local_test
+commit_root : format test e2etest
 	git add .
 	./scripts/ensure_objs_are_not_under_git_control.sh
 	git diff HEAD --color=always | less -R
