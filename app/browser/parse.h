@@ -55,7 +55,7 @@ void PushStack(Node *node);
 Node *PopStack();
 Node *CurrentNode();
 void InsertElement(Node *element);
-void InsertCharFromToken(Token *token, bool inserting_char);
+void InsertCharFromToken(Token *token);
 Node *CreateDocument();
 Node *CreateElement(ElementType element_type, char *tag_name);
 Node *CreateElementFromToken(ElementType element_type, Token *token);

@@ -63,7 +63,7 @@ void InsertElement(Node *element) {
 }
 
 // https://html.spec.whatwg.org/multipage/parsing.html#insert-a-character
-void InsertCharFromToken(Token *token, bool inserting_char) {
+void InsertCharFromToken(Token *token) {
   // "1. Let data be the characters passed to the algorithm, or, if no characters were
   // explicitly specified, the character of the character token being processed."
 
@@ -152,8 +152,6 @@ void ConstructTree() {
   PushStack(document);
 
   Token *token = first_token;
-
-  bool inserting_char = false;
 
   while (token) {
     switch (mode) {
@@ -342,12 +340,10 @@ void ConstructTree() {
       case IN_BODY:
         // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inbody
         if (token->type == CHAR) {
-          InsertCharFromToken(token, inserting_char);
+          InsertCharFromToken(token);
           token = token->next;
-          inserting_char = true;
           break;
         }
-        inserting_char = false;
         if (token->type == DOCTYPE) {
           // A DOCTYPE token
           // Parse error. Ignore the token.
