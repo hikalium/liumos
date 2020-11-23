@@ -26,6 +26,8 @@ void InitDoubleBuffer() {
           (vram_sheet_.GetBufSize() + kPageSize - 1) >> kPageSizeExponent),
       vram_sheet_.GetXSize(), vram_sheet_.GetYSize(),
       vram_sheet_.GetPixelsPerScanLine());
+  memcpy(screen_sheet_.GetBuf(), vram_sheet_.GetBuf(),
+         screen_sheet_.GetBufSize());
   screen_sheet_.SetParent(&vram_sheet_);
   screen_sheet->Flush(0, 0, screen_sheet->GetXSize(), screen_sheet->GetYSize());
   screen_sheet = &screen_sheet_;

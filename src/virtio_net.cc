@@ -8,7 +8,7 @@ Net* Net::net_;
 
 static std::optional<PCI::DeviceLocation> FindVirtioNet() {
   for (auto& it : PCI::GetInstance().GetDeviceList()) {
-    if (it.first != 0x1000'1af4)
+    if (!it.first.HasID(0x1af4, 0x1000))
       continue;
     PutString("Device Found: ");
     PutString(PCI::GetDeviceName(it.first));

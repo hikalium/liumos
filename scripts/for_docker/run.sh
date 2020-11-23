@@ -1,6 +1,6 @@
 #!/bin/bash -xe
-echo "Removing /liumos..."
-rm -rf /liumos ; true
+echo 'Removing /liumos/*...'
+rm -rf /liumos/* ; true
 echo "Syncing to /liumos..."
 rsync -avh --exclude='*.img' --exclude='src/third_party*/' --exclude='tools/' --exclude='.git/' /liumos_host/ /liumos/
 echo "Syncing third_party_root..."

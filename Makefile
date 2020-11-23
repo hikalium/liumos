@@ -22,6 +22,10 @@ QEMU_ARGS_NET_MACOS=\
 		-nic user,id=u1,model=virtio,hostfwd=tcp::10023-:23 \
 		-object filter-dump,id=f1,netdev=u1,file=dump.dat
 
+QEMU_ARGS_NET_MACOS_RTL=\
+		-nic user,id=u1,model=rtl8139,hostfwd=tcp::10023-:23 \
+		-object filter-dump,id=f1,netdev=u1,file=dump.dat
+
 QEMU_ARGS_NET_LINUX=\
 		--enable-kvm \
 		-nic tap,ifname=tap0,id=u1,model=virtio,script=no \
@@ -103,8 +107,14 @@ run_xhci_gdb : files .FORCE
 run_root : files pmem.img .FORCE
 	$(QEMU) $(QEMU_ARGS_PMEM)
 
+run_rtl : files pmem.img .FORCE
+	$(QEMU) $(QEMU_ARGS_COMMON) $(QEMU_ARGS_NET_MACOS_RTL)
+
 run_user : files pmem.img .FORCE
 	$(QEMU) $(QEMU_ARGS_COMMON) $(QEMU_ARGS_USER_NET_LINUX)
+
+run_for_e2e_test : files pmem.img .FORCE
+	$(QEMU) $(QEMU_ARGS) -nographic
 
 run_user_headless : files pmem.img .FORCE
 	( echo 'change vnc password $(VNC_PASSWORD)' | while ! nc localhost $(PORT_MONITOR) ; do sleep 1 ; done ) &
@@ -161,6 +171,9 @@ test :
 	make -C src test
 	make -C app/liumlib test
 
+e2etest :
+	make -C e2e_test test
+
 ci :
 	circleci config validate
 	circleci local execute
@@ -173,7 +186,7 @@ clean :
 format :
 	make -C src format
 
-commit_root : format test
+commit_root : format test e2etest
 	git add .
 	./scripts/ensure_objs_are_not_under_git_control.sh
 	git diff HEAD --color=always | less -R

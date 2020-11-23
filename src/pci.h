@@ -8,6 +8,21 @@ class PCI {
     uint8_t device;
     uint8_t func;
   };
+  struct DeviceIdent {
+    uint16_t vendor;
+    uint16_t device;
+    bool HasID(uint16_t vendor_id, uint16_t device_id) const {
+      return vendor == vendor_id && device == device_id;
+    }
+    bool operator==(const DeviceIdent& rhs) const {
+      return HasID(rhs.vendor, rhs.device);
+    }
+  };
+  struct DeviceIdentHash {
+    std::size_t operator()(const DeviceIdent& v) const {
+      return std::hash<uint32_t>{}(*reinterpret_cast<const uint32_t*>(&v));
+    }
+  };
 
   void DetectDevices();
   void PrintDevices();
@@ -50,7 +65,7 @@ class PCI {
     WriteConfigRegister32(dev, reg, static_cast<uint32_t>(value));
     WriteConfigRegister32(dev, reg + 4, static_cast<uint32_t>(value >> 32));
   }
-  static const char* GetDeviceName(uint32_t key);
+  static const char* GetDeviceName(DeviceIdent key);
   static void EnsureBusMasterEnabled(DeviceLocation& dev) {
     constexpr uint32_t kPCIRegOffsetCommandAndStatus = 0x04;
     constexpr uint64_t kPCIRegCommandAndStatusMaskBusMasterEnable = 1 << 2;
@@ -108,5 +123,6 @@ class PCI {
   bool DetectDevice(int bus, int device, int func);
 
   static PCI* pci_;
-  std::unordered_multimap<uint32_t, DeviceLocation> device_list_;
+  std::unordered_multimap<DeviceIdent, DeviceLocation, DeviceIdentHash>
+      device_list_;
 };

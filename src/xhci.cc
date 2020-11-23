@@ -138,7 +138,7 @@ void Controller::WritePORTSC(int slot, uint32_t data) {
 
 static std::optional<PCI::DeviceLocation> FindXHCIController() {
   for (auto& it : PCI::GetInstance().GetDeviceList()) {
-    if (it.first != 0x000D'1B36 && it.first != 0x31A8'8086)
+    if (!it.first.HasID(0x1B36, 0x000D) && !it.first.HasID(0x8086, 0x31A8))
       continue;
     PutString("XHCI Controller Found: ");
     PutString(PCI::GetDeviceName(it.first));

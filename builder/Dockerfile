@@ -45,4 +45,8 @@ WORKDIR /prebuilt/liumos
 RUN make
 RUN make -C app/rusttest
 
+# Finalize the workdir and prompt
+WORKDIR /liumos/
+RUN echo 'export PS1="(liumos-builder)$ "' >> /root/.bashrc
+
 CMD ["/bin/bash"]
