@@ -16,7 +16,6 @@ Token *CreateToken(TokenType type) {
     token->tag_name = tag_name;
   }
   token->self_closing = 0;
-  token->attributes = NULL;
   token->data = 0;
   token->next = NULL;
   return token;
@@ -27,7 +26,6 @@ Token *CreateCharToken(char c) {
   token->type = CHAR;
   token->tag_name = NULL;
   token->self_closing = 0;
-  token->attributes = NULL;
   token->data = c;
   token->next = NULL;
   return token;

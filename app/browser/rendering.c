@@ -19,13 +19,15 @@ bool Printable(char *data) {
 }
 
 void Markdown(Node *node) {
+  if (node->node_type == TEXT) {
+    if (Printable(node->data)) {
+      Print(node->data);
+      first_line = false;
+    }
+    return;
+  }
+
   switch (node->element_type) {
-    case TEXT:
-      if (Printable(node->data)) {
-        Print(node->data);
-        first_line = false;
-      }
-      break;
     case HEADING:
       if (strcmp(node->tag_name, "h1") == 0) {
         Print("# ");

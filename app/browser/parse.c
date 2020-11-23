@@ -71,12 +71,12 @@ void InsertCharFromToken(Token *token, bool inserting_char) {
   Node *target = CurrentNode();
 
   // "3. If the adjusted insertion location is in a Document node, then return."
-  if (target->element_type == DOCUMENT)
+  if (target->node_type == DOCUMENT)
     return;
 
   // "4. If there is a Text node immediately before the adjusted insertion location,
   // then append data to that Text node's data."
-  if (target->element_type == TEXT) {
+  if (target->node_type == TEXT) {
     strcat(CurrentNode()->data, &token->data);
   } else {
     Node *node = CreateText(token);
@@ -87,9 +87,9 @@ void InsertCharFromToken(Token *token, bool inserting_char) {
 // https://html.spec.whatwg.org/multipage/dom.html#document
 Node *CreateDocument() {
   Node *node = (Node *) malloc(sizeof(Node));
-  node->element_type = DOCUMENT;
+  node->node_type = DOCUMENT;
+  node->element_type = NONE;
   node->tag_name = NULL;
-  node->attributes = NULL;
   node->data = NULL;
   node->first_child = NULL;
   node->last_child = NULL;
@@ -100,10 +100,10 @@ Node *CreateDocument() {
 
 Node *CreateElement(ElementType element_type, char *tag_name) {
   Node *node = (Node *) malloc(sizeof(Node));
+  node->node_type = ELEMENT;
   node->element_type = element_type;
   if (tag_name)
     node->tag_name = tag_name;
-  node->attributes = NULL;
   node->data = NULL;
   node->first_child = NULL;
   node->last_child = NULL;
@@ -115,12 +115,10 @@ Node *CreateElement(ElementType element_type, char *tag_name) {
 // https://html.spec.whatwg.org/multipage/parsing.html#create-an-element-for-the-token
 Node *CreateElementFromToken(ElementType element_type, Token *token) {
   Node *node = (Node *) malloc(sizeof(Node));
+  node->node_type = ELEMENT;
   node->element_type = element_type;
-  // "2. Let local name be the tag name of the token."
   if (token->tag_name)
     node->tag_name = token->tag_name;
-  if (token->attributes)
-    node->attributes = token->attributes;
   node->data = NULL;
   node->first_child = NULL;
   node->last_child = NULL;
@@ -131,8 +129,8 @@ Node *CreateElementFromToken(ElementType element_type, Token *token) {
 
 Node *CreateText(Token *token) {
   Node *node = (Node *) malloc(sizeof(Node));
-  node->element_type = TEXT;
-  node->attributes = NULL;
+  node->node_type = TEXT;
+  node->element_type = NONE;
   char *data = (char *) malloc(100);
   data[0] = token->data;
   data[1] = '\0';
@@ -511,25 +509,16 @@ void PrintNode(Node *node, int depth) {
     Print(" ");
   }
   Print(":");
-  switch (node->element_type) {
+  switch (node->node_type) {
     case DOCUMENT:
       Println("DOCUMENT");
       break;
-    case HTML:
-      Println("HTML");
-      break;
-    case HEAD:
-      Println("HEAD");
-      break;
-    case BODY:
-      Println("BODY");
-      break;
     case TEXT:
-      Print("text: ");
+      Print("TEXT: ");
       Println(node->data);
       break;
-    default:
-      Print("node: ");
+    case ELEMENT:
+      Print("ELEMENT: ");
       Println(node->tag_name);
       break;
   }

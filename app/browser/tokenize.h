@@ -25,17 +25,10 @@ typedef enum TokenType {
   EOF,
 } TokenType;
 
-typedef struct Attribute {
-  char *key;
-  char *value;
-  struct Attribute *next;
-} Attribute;
-
 typedef struct Token {
   TokenType type;
   char *tag_name; // for start/end tag.
   bool self_closing; // for start/end tag.
-  Attribute *attributes; // for start/end tag.
   char data; // for character.
   struct Token *next;
 } Token;

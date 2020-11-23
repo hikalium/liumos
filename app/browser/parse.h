@@ -18,11 +18,16 @@ typedef enum Mode {
   AFTER_AFTER_BODY,
 } Mode;
 
-typedef enum ElementType {
-  // https://html.spec.whatwg.org/multipage/dom.html#document
+typedef enum NodeType {
+  // https://dom.spec.whatwg.org/#interface-document
   DOCUMENT,
+  // https://dom.spec.whatwg.org/#interface-element
+  ELEMENT,
   // https://dom.spec.whatwg.org/#interface-text
   TEXT,
+} NodeType;
+
+typedef enum ElementType {
   HTML,
   HEAD,
   BODY, // HTMLBodyElement
@@ -31,12 +36,13 @@ typedef enum ElementType {
   PARAGRAPH, // HTMLParagraphElement
   UL, // HTMLUListElement
   LI, // HTMLLIElement
+  NONE, // Fake element type
 } ElementType;
 
 typedef struct Node {
+  NodeType node_type;
   ElementType element_type;
   char *tag_name;
-  Attribute *attributes;
   char *data;
   struct Node *parent;
   struct Node *first_child;
