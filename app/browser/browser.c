@@ -55,7 +55,11 @@ void GetResponse(char* request, char *response) {
 
   address.sin_family = AF_INET;
   address.sin_addr.s_addr = inet_addr(ip);
-  address.sin_port = htons(parsed_url->port);
+  if (parsed_url->port) {
+    address.sin_port = htons(parsed_url->port);
+  } else {
+    address.sin_port = htons(8888);
+  }
 
   if (sendto(socket_fd, request, strlen(request), 0,
              (struct sockaddr*)&address, addrlen) < 0) {
