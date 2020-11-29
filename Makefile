@@ -146,7 +146,7 @@ run_vb_dbg : .FORCE
 	VBoxManage storageattach liumOS --storagectl SATA --port 0 --medium liumos.vdi --type hdd
 	VirtualBoxVM --startvm liumOS --dbg
 
-run_docker : .FORCE
+run_docker_root : .FORCE
 	scripts/make_run_with_docker.sh
 
 img : files .FORCE

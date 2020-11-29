@@ -24,6 +24,9 @@ commit :
 run :
 	make -C $(THIS_DIR) run_root
 
+run_docker :
+	make -C $(THIS_DIR) run_docker_root
+
 run_gdb :
 	make -C $(THIS_DIR) run_gdb_root
 
