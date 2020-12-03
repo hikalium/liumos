@@ -1,3 +1,7 @@
+default: test
+
+include ../common.mk
+
 test: .FORCE
 	./ip_assignment_on_qemu.py
 	./ping_to_router_on_qemu.py
