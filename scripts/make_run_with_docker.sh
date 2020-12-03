@@ -1,4 +1,5 @@
 #!/bin/bash -e
+docker kill liumos-builder0 && echo "Killed previous container" || true
 cd "$(dirname "$0")"
 cd ..
 docker run --rm -ti -v `echo $PWD`:/liumos_host \

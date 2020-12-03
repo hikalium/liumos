@@ -149,6 +149,9 @@ run_vb_dbg : .FORCE
 run_docker_root : .FORCE
 	scripts/make_run_with_docker.sh
 
+stop_docker_root : .FORCE
+	docker kill liumos-builder0 && echo "Killed previous container" || true
+
 img : files .FORCE
 	dd if=/dev/zero of=liumos.img bs=16384 count=1024
 	/usr/local/Cellar/dosfstools/4.1/sbin/mkfs.vfat liumos.img || /usr/local/Cellar/dosfstools/4.1/sbin/mkfs.fat liumos.img

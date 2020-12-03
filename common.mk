@@ -27,6 +27,9 @@ run :
 run_docker :
 	make -C $(THIS_DIR) run_docker_root
 
+stop_docker :
+	make -C $(THIS_DIR) stop_docker_root
+
 run_gdb :
 	make -C $(THIS_DIR) run_gdb_root
 
