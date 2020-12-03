@@ -189,7 +189,7 @@ clean :
 format :
 	make -C src format
 
-commit_root : format test e2etest
+commit_root : format test 
 	git add .
 	./scripts/ensure_objs_are_not_under_git_control.sh
 	git diff HEAD --color=always | less -R

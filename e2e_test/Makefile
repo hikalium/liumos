@@ -6,6 +6,7 @@ test: .FORCE stop_docker
 	./ip_assignment_on_qemu.py
 	./ping_to_router_on_qemu.py
 	./udp_client.py
+	./udp_server.py
 	echo "All End-to-end tests PASSed"
 
 .PHONY: .FORCE
