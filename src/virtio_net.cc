@@ -240,7 +240,6 @@ static void SendICMPEchoReply(const ICMPPacket& req, size_t req_frame_size) {
   p.ip.eth.src = net.GetSelfEtherAddr();
   // Send
   net.SendPacket();
-  PutString("UDP sent!: ");
 }
 
 static bool ICMPPacketHandler(IPv4Packet& p, size_t frame_size) {
