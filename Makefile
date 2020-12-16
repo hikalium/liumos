@@ -4,7 +4,6 @@ include common.mk
 
 OVMF=ovmf/bios64.bin
 QEMU=qemu-system-x86_64
-#-soundhw adlib
 OSNAME=${shell uname -s}
 
 QEMU_ARGS_COMMON=\
@@ -109,6 +108,9 @@ run_root : files pmem.img .FORCE
 
 run_rtl : files pmem.img .FORCE
 	$(QEMU) $(QEMU_ARGS_COMMON) $(QEMU_ARGS_NET_MACOS_RTL)
+
+run_adlib : files pmem.img .FORCE
+	$(QEMU) $(QEMU_ARGS_COMMON) -soundhw adlib
 
 run_user : files pmem.img .FORCE
 	$(QEMU) $(QEMU_ARGS_COMMON) $(QEMU_ARGS_USER_NET_LINUX)
