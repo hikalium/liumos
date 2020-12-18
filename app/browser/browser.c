@@ -97,7 +97,10 @@ ParsedUrl *ParseUrl() {
     Println("Error: Only support 'http' scheme.");
     exit(EXIT_FAILURE);
   }
-  parsed_url->scheme = "http";
+  char *scheme = (char *) malloc(5);
+  strcpy(scheme, "http");
+  scheme[4] = '\0';
+  parsed_url->scheme = scheme;
   url += 7;
 
   // Parse `host`.
@@ -114,15 +117,33 @@ ParsedUrl *ParseUrl() {
   parsed_url->host = host;
 
   // Parse `ip` and `port` from `host`.
-  for (int i=0; i<host_length; i++) {
-    if (host[i] != ':')
-      continue;
+  int port_start = 0;
+  for (; port_start < host_length; port_start++) {
+    if (host[port_start] == ':')
+      break;
+  }
 
-    ip = (char *) malloc(i+1);
-    memcpy(ip, host, i);
-    ip[i] = '\0';
+  ip = (char *) malloc(port_start+1);
+  memcpy(ip, host, port_start);
+  ip[port_start] = '\0';
 
-    parsed_url->port = StrToNum16(&host[i+1], NULL);
+  if (port_start == host_length) {
+    // Port is not found.
+    // Set the default port number 80.
+    parsed_url->port = 80;
+  } else {
+    parsed_url->port = StrToNum16(&host[port_start+1], NULL);
+  }
+
+  // Check if the URL ends.
+  if (!*url) {
+    // Path is not found.
+    // Set the default path '/'.
+    char *path = (char *) malloc(2);
+    strcpy(path, "/");
+    path[1] = '\0';
+    parsed_url->path = path;
+    return parsed_url;
   }
 
   // Parse `path`.
@@ -139,12 +160,13 @@ ParsedUrl *ParseUrl() {
   return parsed_url;
 }
 
-// Return 1 when parse succeeded, return 2 when debug mode, otherwise return 0.
+// Return 1 when parse succeeded, return 2 when debug mode for HTML, and return
+// 3 when debug mode for URL. Otherwise, return 0.
 int ParseArgs(int argc, char** argv) {
   // Set default values.
   url = "http://127.0.0.1:8888/index.html";
 
-  bool is_debug = 0;
+  int parse_result = 1;
 
   while (argc > 0) {
     if (strcmp("--url", argv[0]) == 0 || strcmp("-u", argv[0]) == 0) {
@@ -156,18 +178,26 @@ int ParseArgs(int argc, char** argv) {
 
     if (strcmp("--rawtext", argv[0]) == 0) {
       html = argv[1];
-      is_debug = 1;
+      parse_result = 2;
       argc -= 2;
       argv += 2;
       continue;
     }
 
+    if (strcmp("--url_test", argv[0]) == 0) {
+      url = argv[1];
+      parse_result = 3;
+      argc -= 2;
+      argv += 2;
+      continue;
+    }
+
+    // Parse error.
     return 0;
   }
 
-  if (is_debug)
-    return 2;
-  return 1;
+  // Parse success.
+  return parse_result;
 }
 
 int main(int argc, char *argv[]) {
@@ -176,14 +206,30 @@ int main(int argc, char *argv[]) {
     Println("Usage: browser.bin [ OPTIONS ]");
     Println("       -u, --url      URL. Default: http://127.0.0.1:8888/index.html");
     Println("           --rawtext  Raw HTML text for debug.");
+    Println("           --url_test URL. It's used for debug.");
     exit(EXIT_FAILURE);
   }
 
-  // For debug.
+  // For `--rawtext`.
   if (parse_result == 2) {
     html = (char *) malloc(SIZE_RESPONSE);
     html = argv[2];
     Render(html);
+    exit(0);
+  }
+
+  // For `--url_test`.
+  if (parse_result == 3) {
+    parsed_url = ParseUrl();
+    Print("scheme: ");
+    Println(parsed_url->scheme);
+    Print("host: ");
+    Println(parsed_url->host);
+    Print("port: ");
+    PrintNum(parsed_url->port);
+    Println("");
+    Print("path: ");
+    Println(parsed_url->path);
     exit(0);
   }
 

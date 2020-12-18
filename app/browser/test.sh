@@ -6,17 +6,12 @@ assert() {
 
   actual=$(./browser.bin --rawtext "$input" 2>&1)
 
-  echo "input, expected, actual:"
-  echo $input
-  echo $expected
-  echo $actual
   if [ "$actual" = "$expected" ]; then
-    echo "$input => $actual"
+    echo "input: $input => result: $actual"
   else
-    echo "$input => $expected expected, but got $actual"
+    echo "input: $input => $expected expected, but got $actual"
     exit 1
   fi
-  echo "------------------------"
 }
 
 make clean
