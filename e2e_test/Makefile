@@ -3,6 +3,7 @@ default: test
 include ../common.mk
 
 test: .FORCE stop_docker
+	./http_client.py
 	./ip_assignment_on_qemu.py
 	./ping_to_router_on_qemu.py
 	./udp_client.py

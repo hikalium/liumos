@@ -2,6 +2,7 @@
 import pexpect
 import os
 import sys
+import time
 
 liumos_root_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 print('liumOS root is at: ', liumos_root_path, file=sys.stderr, flush=True)
@@ -46,7 +47,25 @@ def expect_liumos_command_result(p, cmd, expected, timeout):
         p.expect(expected, timeout=timeout)
     except pexpect.TIMEOUT:
         print("FAIL (timed out): {} => {}".format(cmd, expected))
-        print(p.before)
+        print(p.before.decode("utf-8"))
         sys.exit(1)
     print("PASS: {} => {}".format(cmd, expected))
+
+def launch_test(test_body_func):
+    print("---- Running", test_body_func.__name__);
+    qemu_mon_conn = launch_liumos_on_docker();
+    time.sleep(2);
+    liumos_serial_conn = connect_to_liumos_serial();
+    liumos_builder_conn = connect_to_liumos_builder();
+    test_body_func(qemu_mon_conn, liumos_serial_conn, liumos_builder_conn);
+    print("---- PASS ", test_body_func.__name__);
+    try:
+        qemu_mon_conn.sendline("q");
+        qemu_mon_conn.expect("dummy");
+        time.sleep(2);
+    except pexpect.EOF:
+        print("Docker stopped.")
+        sys.exit(0)
+    print("Error: Docker is still running")
+    sys.exit(1)
 
