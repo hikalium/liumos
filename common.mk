@@ -35,3 +35,8 @@ run_gdb :
 
 gdb :
 	make -C $(THIS_DIR) gdb_root
+
+e2etest :
+	make -C $(THIS_DIR) e2etest_root
+
+.PHONY : e2etest

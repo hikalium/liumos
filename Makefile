@@ -176,8 +176,8 @@ test :
 	make -C src test
 	make -C app/liumlib test
 
-e2etest :
-	make -C e2e_test test
+e2etest_root :
+	make -C e2etest test
 
 ci :
 	circleci config validate
