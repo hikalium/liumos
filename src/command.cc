@@ -606,11 +606,42 @@ static void PlayMIDI(const char* file_name) {
   PlayMIDI(GetLoaderInfo().root_files[idx]);
 }
 
+uint8_t ReadCMOS(uint8_t reg_id) {
+  WriteIOPort8(0x70, (1 << 7 /* NMI Disable */) | reg_id);
+  return ReadIOPort8(0x71);
+}
+
+const char* tree_aa[10] = {
+    "        X",     "        A",      "       / \\",     "      / u \\",
+    "     / l   \\", "    / O  i  \\", "   /    S  m \\", "   -----------",
+    "       | |",    "      |---|",
+};
+
+void Date() {
+  uint8_t bcd_year = ReadCMOS(0x09);
+  uint8_t bcd_month = ReadCMOS(0x08);
+  uint8_t bcd_day_of_month = ReadCMOS(0x07);
+  kprintf("%02X-%02X-%02X %02X:%02X:%02X\n", bcd_year, bcd_month,
+          bcd_day_of_month, ReadCMOS(0x04), ReadCMOS(0x02), ReadCMOS(0x00));
+  if (bcd_month == 0x12 && bcd_day_of_month == 0x25) {
+    kprintf("\n");
+    for (int i = 0; i < 10; i++) {
+      kprintf(tree_aa[i]);
+      kprintf("\n");
+    }
+    kprintf("\n>>>> Happy Holidays! <<<<\n\n");
+  }
+}
+
 void Run(TextBox& tbox) {
   const char* line = tbox.GetRecordedString();
   CommandLineArgs args;
   if (!args.Parse(line)) {
     PutString("Failed to parse command line\n");
+    return;
+  }
+  if (IsEqualString(args.GetArg(0), "date")) {
+    Date();
     return;
   }
   if (IsEqualString(args.GetArg(0), "gateway")) {
