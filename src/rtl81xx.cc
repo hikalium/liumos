@@ -128,7 +128,7 @@ void RTL81::Init() {
     }
     if ((rx_desc_flags & kRXFlagsOwnedByController) == 0) {
       size_t size = rx_descriptors_[idx].buf_size_and_flag & 0x1FFF;
-      kprintf("update on rx_descriptors_[%d]: recieved size = %d\n", idx, size);
+      kprintf("update on rx_descriptors_[%d]: received size = %d\n", idx, size);
       // volatile void *data = rx_buffers_[idx];
       // kprintbuf("received", data, 0, size);
 

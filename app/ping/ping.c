@@ -58,7 +58,7 @@ int main(int argc, char** argv) {
     panic("sendto() failed\n");
   }
 
-  // Recieve reply
+  // Receive reply
   uint8_t recv_buf[256];
   socklen_t addr_size;
   int recv_len = recvfrom(soc, &recv_buf, sizeof(recv_buf), 0,
@@ -70,7 +70,7 @@ int main(int argc, char** argv) {
   Print("recvfrom returned: ");
   PrintNum(recv_len);
   Print("\n");
-  // Show recieved ICMP packet
+  // Show received ICMP packet
   for (int i = 0; i < recv_len; i++) {
     PrintHex8ZeroFilled(recv_buf[i]);
     Print((i & 0xF) == 0xF ? "\n" : " ");
@@ -78,7 +78,7 @@ int main(int argc, char** argv) {
   Print("\n");
 
   struct ICMPMessage* recv_icmp = (struct ICMPMessage*)(recv_buf);
-  Print("ICMP packet recieved from ");
+  Print("ICMP packet received from ");
   PrintIPv4Addr(addr.sin_addr.s_addr);
   Print(" ICMP Type = ");
   PrintNum(recv_icmp->type);
