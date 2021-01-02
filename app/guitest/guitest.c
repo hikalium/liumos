@@ -1,6 +1,8 @@
+#include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 // c.f. https://en.wikipedia.org/wiki/BMP_file_format
 
@@ -28,17 +30,20 @@ struct __attribute__((packed)) BMPInfoV3Header {
 };
 
 int main(int argc, char* argv[]) {
+  int fd = open("window.bmp", O_WRONLY);
   const int w = 16;
   const int h = 16;
   uint32_t header_size_with_padding =
       (sizeof(struct BMPFileHeader) + sizeof(struct BMPInfoV3Header) + 0xF) &
       ~0xF; /* header size aligned to 16-byte boundary */
+  uint32_t file_size = header_size_with_padding + w * h * 4;
+  ftruncate(fd, file_size);
 
   struct BMPFileHeader file_header;
   bzero(&file_header, sizeof(file_header));
   file_header.signature[0] = 'B';
   file_header.signature[1] = 'M';
-  file_header.file_size = header_size_with_padding + w * h * 4;
+  file_header.file_size = file_size;
   file_header.offset_to_data = header_size_with_padding;
 
   struct BMPInfoV3Header info_header;
@@ -57,21 +62,18 @@ int main(int argc, char* argv[]) {
   info_header.g_mask = 0x00FF00;
   info_header.b_mask = 0x0000FF;
 
-  FILE* fp = fopen("window_16x16.bmp", "wb");
-  fwrite(&file_header, 1, sizeof(file_header), fp);
-  fwrite(&info_header, 1, sizeof(info_header), fp);
+  write(fd, &file_header, sizeof(file_header));
+  write(fd, &info_header, sizeof(info_header));
   for (int i = 0;
        i < header_size_with_padding - sizeof(file_header) - sizeof(info_header);
        i++) {
-    fputc(0, fp);
+    uint8_t zero = 0;
+    write(fd, &zero, 1);
   }
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
-      // BGRA
-      fputc(0, fp);
-      fputc(y * 16, fp);  // G
-      fputc(x * 16, fp);  // R
-      fputc(0, fp);
+      uint8_t pixel_bgra[4] = {0, y * 16, x * 16, 0};
+      write(fd, &pixel_bgra, 4);
     }
   }
 
