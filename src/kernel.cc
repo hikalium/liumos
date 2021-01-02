@@ -361,11 +361,11 @@ extern "C" void KernelEntry(LiumOS* liumos_passed, LoaderInfo& loader_info) {
 
   EnableSyscall();
 
-  StoreIntFlag();
-
   // XHCI::Controller::GetInstance().Init();
   Virtio::Net::GetInstance().Init();
   RTL81::GetInstance().Init();
+
+  StoreIntFlag();
 
   TextBox console_text_box;
   while (1) {
