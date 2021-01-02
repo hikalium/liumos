@@ -1,9 +1,4 @@
-#include <fcntl.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
-#include <sys/mman.h>
-#include <unistd.h>
+#include "../liumlib/liumlib.h"
 
 // c.f. https://en.wikipedia.org/wiki/BMP_file_format
 
@@ -37,8 +32,8 @@ int main(int argc, char* argv[]) {
       (sizeof(struct BMPFileHeader) + sizeof(struct BMPInfoV3Header) + 0xF) &
       ~0xF; /* header size aligned to 16-byte boundary */
   uint32_t file_size = header_size_with_padding + w * h * 4;
-  int fd = open("window.bmp", O_RDWR | O_CREAT);
-
+  int fd = open("window.bmp", O_RDWR | O_CREAT, 0664);
+  ftruncate(fd, file_size);
   void* buf = mmap(NULL, file_size, PROT_WRITE, MAP_SHARED, fd, 0);
   if (buf == MAP_FAILED) {
     return 1;

@@ -1,5 +1,11 @@
 #include "liumlib.h"
 
+void bzero(void* s, size_t n) {
+  for(size_t i = 0; i < n; i++){
+    ((uint8_t *)s)[i] = 0;
+  }
+}
+
 size_t strlen(const char* s) {
   size_t len = 0;
   while (*s) {

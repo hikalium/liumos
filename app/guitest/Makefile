@@ -1,4 +1,7 @@
-default: guitest.bin
+NAME=guitest
+TARGET=$(NAME).bin
+TARGET_OBJS=$(NAME).o
 
-guitest.bin : guitest.c
-	$(CC) -o $@ guitest.c
+default: $(TARGET)
+
+include ../liumlib/common.mk

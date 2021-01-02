@@ -18,6 +18,53 @@ write:
 	syscall
 	ret
 
+// int ftruncate(int fd, off_t length);
+.global ftruncate
+ftruncate:
+	// arg[1]: rdi = rdi
+	// arg[2]: rsi = rsi
+	mov rax, 77
+	syscall
+	ret
+
+// int open(const char* pathname, int flags, int mode);
+.global open
+open:
+	// arg[1]: rdi = rdi
+	// arg[2]: rsi = rsi
+	// arg[3]: rdx = rdx
+	mov rax, 2
+	syscall
+	ret
+
+// void* mmap(void* addr,
+//            size_t length,
+//            int prot,
+//            int flags,
+//            int fd,
+//            off_t offset);
+.global mmap
+mmap:
+	mov rax, 9
+	// arg[1]: rdi = rdi
+	// arg[2]: rsi = rsi
+	// arg[3]: rdx = rdx
+	mov r10, rcx
+	// arg[5]: r8 = r8
+	// arg[6]: r9 = r9
+	syscall
+	ret
+
+// int msync(void* addr, size_t length, int flags);
+.global msync
+msync:
+	// arg[1]: rdi = rdi
+	// arg[2]: rsi = rsi
+	// arg[3]: rdx = rdx
+	mov rax, 26
+	syscall
+	ret
+
 // int socket(int domain, int type, int protocol);
 .global socket
 socket:
