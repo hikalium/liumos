@@ -103,6 +103,7 @@ void InitializeVRAMForKernel() {
       liumos->vram_sheet->GetBufSize(), kPageAttrPresent | kPageAttrWritable);
   virtual_vram_.Init(reinterpret_cast<uint32_t*>(kernel_virtual_vram_base),
                      xsize, ysize, ppsl);
+  liumos->vram_sheet = &virtual_vram_;
 
   constexpr uint64_t kernel_virtual_screen_base = 0xFFFF'FFFF'8800'0000ULL;
   CreatePageMapping(

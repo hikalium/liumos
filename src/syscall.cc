@@ -12,6 +12,7 @@ constexpr uint64_t kSyscallIndex_sys_write = 1;
 constexpr uint64_t kSyscallIndex_sys_open = 2;
 constexpr uint64_t kSyscallIndex_sys_close = 3;
 constexpr uint64_t kSyscallIndex_sys_mmap = 9;
+constexpr uint64_t kSyscallIndex_sys_msync = 26;
 constexpr uint64_t kSyscallIndex_sys_socket = 41;
 constexpr uint64_t kSyscallIndex_sys_sendto = 44;
 constexpr uint64_t kSyscallIndex_sys_recvfrom = 45;
@@ -447,9 +448,40 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     uint64_t phys_addr = v2p(buf_kernel);
     uint64_t user_cr3 = ReadCR3();
     WriteCR3(liumos->kernel_pml4_phys);
-    CreatePageMapping(GetSystemDRAMAllocator(), *reinterpret_cast<IA_PML4 *>(user_cr3), 0x1'0000'0000, phys_addr, map_size, kPageAttrPresent | kPageAttrWritable | kPageAttrUser);
+    CreatePageMapping(GetSystemDRAMAllocator(),
+                      *reinterpret_cast<IA_PML4*>(user_cr3), 0x1'0000'0000,
+                      phys_addr, map_size,
+                      kPageAttrPresent | kPageAttrWritable | kPageAttrUser);
     WriteCR3(user_cr3);
     args[0] = 0x1'0000'0000;
+    return;
+  }
+  if (idx == kSyscallIndex_sys_msync) {
+    uint64_t addr = args[1];
+    if (addr != 0x1'0000'0000) {
+      kprintf("invalid addr");
+      args[0] = static_cast<uint64_t>(-1);
+      return;
+    }
+    uint32_t offset_to_data = *reinterpret_cast<uint32_t*>(addr + 10);
+    int32_t xsize = *reinterpret_cast<uint32_t*>(addr + 18);
+    int32_t ysize = *reinterpret_cast<uint32_t*>(addr + 22);
+    kprintf("offset_to_data = %d, xsize = %d, ysize = %d\n", offset_to_data,
+            xsize, ysize);
+    if (ysize >= 0) {
+      kprintf("ysize should be negative\n");
+      args[0] = static_cast<uint64_t>(-1);
+      return;
+    }
+    ysize = -ysize;
+    Sheet sheet;
+    bzero(&sheet, sizeof(Sheet));
+    sheet.Init(reinterpret_cast<uint32_t*>(addr + offset_to_data), xsize, ysize,
+               xsize, 0, 0);
+    kprintf("vram_sheet is at %p\n", liumos->vram_sheet);
+    sheet.SetParent(liumos->vram_sheet);
+    sheet.Flush(0, 0, xsize, ysize);
+    args[0] = 0;
     return;
   }
   if (idx == kSyscallIndex_sys_exit) {
