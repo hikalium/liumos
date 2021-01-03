@@ -25,7 +25,11 @@ struct __attribute__((packed)) BMPInfoV3Header {
   uint32_t b_mask;
 };
 
+void InitFreeType();
+
 int main(int argc, char* argv[]) {
+  InitFreeType();
+
   const int w = 256;
   const int h = 256;
   uint32_t header_size_with_padding =
@@ -69,7 +73,7 @@ int main(int argc, char* argv[]) {
 
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
-      uint8_t pixel_bgra[4] = {0, y, x, 0};
+      uint8_t pixel_bgra[4] = {x, y, 0, 0};
       bmp[y * w + x] = *(uint32_t*)pixel_bgra;
     }
   }
