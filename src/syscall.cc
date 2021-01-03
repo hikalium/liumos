@@ -443,8 +443,13 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     }
     uint64_t map_size = fd_info_iter->second.window_fb_map_size;
     kprintf("window_fb_map_size = %d\n", map_size);
-    uint8_t* buf = AllocKernelMemory<uint8_t*>(map_size);
-    args[0] = reinterpret_cast<uint64_t>(buf);
+    uint8_t* buf_kernel = AllocKernelMemory<uint8_t*>(map_size);
+    uint64_t phys_addr = v2p(buf_kernel);
+    uint64_t user_cr3 = ReadCR3();
+    WriteCR3(liumos->kernel_pml4_phys);
+    CreatePageMapping(GetSystemDRAMAllocator(), *reinterpret_cast<IA_PML4 *>(user_cr3), 0x1'0000'0000, phys_addr, map_size, kPageAttrPresent | kPageAttrWritable | kPageAttrUser);
+    WriteCR3(user_cr3);
+    args[0] = 0x1'0000'0000;
     return;
   }
   if (idx == kSyscallIndex_sys_exit) {
