@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <map>
 
 #include "liumos.h"
 
@@ -8,12 +9,15 @@
 
 constexpr uint64_t kSyscallIndex_sys_read = 0;
 constexpr uint64_t kSyscallIndex_sys_write = 1;
+constexpr uint64_t kSyscallIndex_sys_open = 2;
 constexpr uint64_t kSyscallIndex_sys_close = 3;
+constexpr uint64_t kSyscallIndex_sys_mmap = 9;
 constexpr uint64_t kSyscallIndex_sys_socket = 41;
 constexpr uint64_t kSyscallIndex_sys_sendto = 44;
 constexpr uint64_t kSyscallIndex_sys_recvfrom = 45;
 constexpr uint64_t kSyscallIndex_sys_bind = 49;
 constexpr uint64_t kSyscallIndex_sys_exit = 60;
+constexpr uint64_t kSyscallIndex_sys_ftruncate = 77;
 constexpr uint64_t kSyscallIndex_arch_prctl = 158;
 // constexpr uint64_t kArchSetGS = 0x1001;
 constexpr uint64_t kArchSetFS = 0x1002;
@@ -380,6 +384,12 @@ static ssize_t sys_sendto(int sockfd,
   return -1;
 }
 
+struct FileDescriptor {
+  uint64_t window_fb_map_size;
+};
+
+std::map<std::pair<Process::PID, int>, FileDescriptor> fd_table;
+
 __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
   // This function will be called under exceptions are masked
   // with Kernel Stack
@@ -408,8 +418,33 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     }
     return;
   }
+  if (idx == kSyscallIndex_sys_open) {
+    args[0] = 5;
+    return;
+  }
   if (idx == kSyscallIndex_sys_close) {
     args[0] = 0;
+    return;
+  }
+  if (idx == kSyscallIndex_sys_mmap) {
+    uint64_t fd = args[5];
+    if (fd != 5) {
+      kprintf("fd != 5\n");
+      args[0] = static_cast<uint64_t>(-1);
+      return;
+    }
+    Process::PID pid = liumos->scheduler->GetCurrentProcess().GetID();
+    std::pair<Process::PID, uint64_t> key = {pid, fd};
+    const auto& fd_info_iter = fd_table.find(key);
+    if (fd_info_iter == fd_table.end()) {
+      kprintf("fd info not found\n");
+      args[0] = static_cast<uint64_t>(-1);
+      return;
+    }
+    uint64_t map_size = fd_info_iter->second.window_fb_map_size;
+    kprintf("window_fb_map_size = %d\n", map_size);
+    uint8_t* buf = AllocKernelMemory<uint8_t*>(map_size);
+    args[0] = reinterpret_cast<uint64_t>(buf);
     return;
   }
   if (idx == kSyscallIndex_sys_exit) {
@@ -422,6 +457,20 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     for (;;) {
       StoreIntFlagAndHalt();
     };
+    return;
+  }
+  if (idx == kSyscallIndex_sys_ftruncate) {
+    uint64_t fd = args[1];
+    uint64_t size = args[2];
+    kprintf("ftruncate(fd=%d, size=%d)\n", fd, size);
+    if (fd != 5) {
+      args[0] = -1;
+      return;
+    }
+    Process::PID pid = liumos->scheduler->GetCurrentProcess().GetID();
+    std::pair<Process::PID, uint64_t> key = {pid, fd};
+    fd_table[key] = {size};
+    args[0] = 0;
     return;
   }
   if (idx == kSyscallIndex_arch_prctl) {

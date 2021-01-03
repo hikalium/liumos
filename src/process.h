@@ -6,6 +6,7 @@
 
 class Process {
  public:
+  using PID = uint64_t;
   enum class Status {
     kNotInitialized,
     kNotScheduled,
@@ -22,7 +23,7 @@ class Process {
     assert(pp_info_);
     return true;
   }
-  uint64_t GetID() { return id_; }
+  PID GetID() { return id_; }
   int GetSchedulerIndex() const { return scheduler_index_; }
   void SetSchedulerIndex(int scheduler_index) {
     scheduler_index_ = scheduler_index;

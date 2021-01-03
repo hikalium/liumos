@@ -33,6 +33,79 @@ static void PrintInterruptInfo(PanicPrinter& pp,
   pp.PrintLine("");
 }
 
+static void PanicPrintPageEntriesForAddr(PanicPrinter& pp,
+                                         IA_PML4& pml4,
+                                         uint64_t vaddr) {
+  StringBuffer<128> line;
+
+  IA_PML4E& pml4e = pml4.GetEntryForAddr(vaddr);
+  line.WriteString("PML4@");
+  line.WriteHex64ZeroFilled(&pml4);
+  line.WriteString("[");
+  line.WriteHex64(IA_PML4::addr2index(vaddr), 3);
+  line.WriteString("]: ");
+  line.WriteHex64(pml4e.data);
+  pp.PrintLine(line.GetString());
+  line.Clear();
+  if (!pml4e.IsPresent()) {
+    pp.PrintLine("  -> Not present");
+    return;
+  }
+  IA_PDPT& pdpt = *pml4e.GetTableAddr();
+
+  IA_PDPTE& pdpte = pdpt.GetEntryForAddr(vaddr);
+  line.WriteString("PDPT@");
+  line.WriteHex64ZeroFilled(&pdpt);
+  line.WriteString("[");
+  line.WriteHex64(IA_PDPT::addr2index(vaddr), 3);
+  line.WriteString("]: ");
+  line.WriteHex64(pdpte.data);
+  pp.PrintLine(line.GetString());
+  line.Clear();
+  if (!pdpte.IsPresent()) {
+    pp.PrintLine("  -> Not present");
+    return;
+  }
+  if (pdpte.IsPage()) {
+    pp.PrintLine("  -> 1GiB Page");
+    return;
+  }
+  IA_PDT& pdt = *pdpte.GetTableAddr();
+
+  IA_PDE& pdte = pdt.GetEntryForAddr(vaddr);
+  line.WriteString(" PDT@");
+  line.WriteHex64ZeroFilled(&pdt);
+  line.WriteString("[");
+  line.WriteHex64(IA_PDT::addr2index(vaddr), 3);
+  line.WriteString("]: ");
+  line.WriteHex64(pdte.data);
+  pp.PrintLine(line.GetString());
+  line.Clear();
+  if (!pdte.IsPresent()) {
+    pp.PrintLine("  -> Not present");
+    return;
+  }
+  if (pdte.IsPage()) {
+    pp.PrintLine("  -> 2MiB Page");
+    return;
+  }
+  IA_PT& pt = *pdte.GetTableAddr();
+
+  IA_PTE& pte = pt.GetEntryForAddr(vaddr);
+  line.WriteString("  PT@");
+  line.WriteHex64ZeroFilled(&pt);
+  line.WriteString("[");
+  line.WriteHex64(IA_PT::addr2index(vaddr), 3);
+  line.WriteString("]: ");
+  line.WriteHex64(pte.data);
+  pp.PrintLine(line.GetString());
+  if (!pte.IsPresent()) {
+    pp.PrintLine("  -> Not present");
+    return;
+  }
+  pp.PrintLine("  -> 4KiB Page");
+}
+
 void IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
   if (intcode <= 0xFF && handler_list_[intcode]) {
     handler_list_[intcode](intcode, info);
@@ -40,9 +113,12 @@ void IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
   }
   auto& pp = PanicPrinter::BeginPanic();
   PrintInterruptInfo(pp, intcode, info);
+  uint64_t cr3_at_interrupt = ReadCR3();
   if (liumos->is_multi_task_enabled) {
     Process& proc = liumos->scheduler->GetCurrentProcess();
     pp.PrintLineWithHex("Context#", proc.GetID());
+    // Switch CR3 to kernel to access full memory space
+    WriteCR3(liumos->kernel_pml4_phys);
   }
   if (intcode == 0x08) {
     pp.EndPanicAndDie("Double Fault");
@@ -61,8 +137,9 @@ void IDT::IntHandler(uint64_t intcode, InterruptInfo* info) {
     pp.PrintLineWithHex("CR3", ReadCR3());
     pp.PrintLineWithHex("CR2", ReadCR2());
     if (info->error_code & 1) {
-      // present but not ok. print entries.
-      reinterpret_cast<IA_PML4*>(ReadCR3())->DebugPrintEntryForAddr(ReadCR2());
+      PanicPrintPageEntriesForAddr(
+          pp, *reinterpret_cast<IA_PML4*>(cr3_at_interrupt), ReadCR2());
+      pp.PrintLine("Page is present but not accessible in this context");
     }
     pp.EndPanicAndDie("Page Fault");
   }

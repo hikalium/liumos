@@ -15,6 +15,7 @@ QEMU_ARGS_COMMON=\
 		  -m 2G,slots=2,maxmem=4G \
 		  -drive format=raw,file=fat:rw:mnt -net none \
 		  -rtc base=localtime \
+		  -d cpu_reset \
 		  -serial tcp::1234,server,nowait \
 		  -serial tcp::1235,server,nowait
 

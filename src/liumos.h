@@ -79,6 +79,7 @@ packed_struct LiumOS {
   KernelVirtualHeapAllocator* kernel_heap_allocator;
   EFI::MemoryMap* efi_memory_map;
   IA_PML4* kernel_pml4;
+  uint64_t kernel_pml4_phys;
   Scheduler* scheduler;
   ProcessController* proc_ctrl;
   Process* root_process;

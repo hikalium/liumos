@@ -11,6 +11,7 @@ APPS=\
 	 udpserver/udpserver.bin \
 	 udpclient/udpclient.bin \
 	 browser/browser.bin \
+	 guitest/guitest.bin \
 	 # dummy line
 
 default: $(APPS)

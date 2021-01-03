@@ -24,9 +24,10 @@ class StringBuffer {
       WriteChar(c);
     }
   }
-  void WriteHex64(const uint64_t v) {
+  void WriteHex64(const uint64_t v) { WriteHex64(v, 1); }
+  void WriteHex64(const uint64_t v, int min_digits) {
     int i;
-    for (i = 15; i > 0; i--) {
+    for (i = 15; i >= min_digits; i--) {
       if ((v >> (4 * i)) & 0xF)
         break;
     }
@@ -64,6 +65,9 @@ class StringBuffer {
         c += 'A' - 10;
       WriteChar(c);
     }
+  }
+  void WriteHex64ZeroFilled(const void* v) {
+    WriteHex64ZeroFilled(reinterpret_cast<const uint64_t>(v));
   }
   const char* GetString() {
     buf_[write_index_] = 0;
