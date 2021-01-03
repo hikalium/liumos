@@ -26,8 +26,8 @@ struct __attribute__((packed)) BMPInfoV3Header {
 };
 
 int main(int argc, char* argv[]) {
-  const int w = 16;
-  const int h = 16;
+  const int w = 256;
+  const int h = 256;
   uint32_t header_size_with_padding =
       (sizeof(struct BMPFileHeader) + sizeof(struct BMPInfoV3Header) + 0xF) &
       ~0xF; /* header size aligned to 16-byte boundary */
@@ -69,7 +69,7 @@ int main(int argc, char* argv[]) {
 
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
-      uint8_t pixel_bgra[4] = {0, y * 16, x * 16, 0};
+      uint8_t pixel_bgra[4] = {0, y, x, 0};
       bmp[y * w + x] = *(uint32_t*)pixel_bgra;
     }
   }
