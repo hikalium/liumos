@@ -10,7 +10,7 @@
 #define EXIT_FAILURE 1
 
 #define O_RDWR 2
-#define O_CREAT   (1 << 6)
+#define O_CREAT (1 << 6)
 #define AF_INET 2      // Internet IP protocol
 #define SOCK_STREAM 1  // for TCP
 #define SOCK_DGRAM 2   // for UDP
@@ -119,7 +119,7 @@ void* mmap(void* addr,
 int msync(void* addr, size_t length, int flags);
 
 // Standard library functions.
-void bzero(void *s, size_t n);
+void bzero(void* s, size_t n);
 size_t strlen(const char* s);
 char* strcpy(char* dest, const char* src);
 char* strcat(char* dest, const char* src);
@@ -138,20 +138,18 @@ uint32_t htonl(uint32_t hostlong);
 uint32_t inet_addr(const char* cp);
 
 // Compilier builtin standard library functions
-void *memchr(const void *, int, unsigned long);
-int memcmp(const void *, const void *, unsigned long);
-char *strncpy(char *, const char *, unsigned long);
-char *strrchr(const char *, int);
-long strtol(const char *, char **, int);
-int sprintf(char *, const char *, ...);
+void* memchr(const void*, int, unsigned long);
+int memcmp(const void*, const void*, unsigned long);
+char* strncpy(char*, const char*, unsigned long);
+char* strrchr(const char*, int);
+long strtol(const char*, char**, int);
+int sprintf(char*, const char*, ...);
 
 // architecture specific, for x86_64
-typedef	long long jmp_buf[8];
-
-
+typedef long long jmp_buf[8];
 
 // liumlib original functions
-void NotImplemented(const char* s);
+void __attribute__((noreturn)) NotImplemented(const char* s);
 void Print(const char* s);
 void Println(const char* s);
 void PrintNum(int v);

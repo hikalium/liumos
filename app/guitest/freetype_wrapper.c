@@ -267,27 +267,30 @@ void ftell() {
 void fclose() {
   NotImplemented(__FUNCTION__);
 }
-void *memchr(const void *, int, unsigned long){
+
+void* memchr(const void*a, int b, unsigned long c) {
   NotImplemented(__FUNCTION__);
 }
-long strtol(const char *, char **, int) {
+int memcmp(const void* a, const void* b, unsigned long c) {
   NotImplemented(__FUNCTION__);
 }
-char *strncpy(char *, const char *, unsigned long) {
+char* strncpy(char* a, const char* b, unsigned long c) {
   NotImplemented(__FUNCTION__);
 }
-char *strrchr(const char *, int) {
+char* strrchr(const char* a, int b) {
   NotImplemented(__FUNCTION__);
+}
+long strtol(const char* a, char** b, int c) {
+  NotImplemented(__FUNCTION__);
+}
+int sprintf(char* a, const char* b, ...) {
+  NotImplemented(__FUNCTION__);
+}
+
+int setjmp(long long *buf) {
+  //NotImplemented(__FUNCTION__);
+  return __builtin_setjmp((void**)buf);
 }
 void longjmp() {
   NotImplemented(__FUNCTION__);
-}
-int sprintf(char *, const char *, ...) {
-  NotImplemented(__FUNCTION__);
-}
-int memcmp(const void *, const void *, unsigned long) {
-  NotImplemented(__FUNCTION__);
-}
-int setjmp(long long *buf) {
-  return __builtin_setjmp((void **)buf);
 }
