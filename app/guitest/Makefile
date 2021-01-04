@@ -6,7 +6,7 @@ default: $(TARGET)
 
 include ../../common.mk
 
-OBJS=$(TARGET_OBJS) ../liumlib/liumlib.o ../liumlib/syscall.o ../liumlib/entry.o
+OBJS=$(TARGET_OBJS) ../liumlib/liumlib.o ../liumlib/syscall.o ../liumlib/entry.o ../liumlib/setjmp.o
 
 %.o : %.c Makefile
 	$(LLVM_CC) -target x86_64-unknown-none-elf -static -nostdlib \

@@ -47,11 +47,9 @@ typedef uint32_t in_addr_t;
 typedef unsigned long size_t;
 typedef _Bool bool;
 typedef uint64_t off_t;
+intptr_t buf[5];
 
 typedef uint32_t socklen_t;
-
-int malloc_size;
-char malloc_array[MALLOC_MAX_SIZE];
 
 // c.f.
 // https://elixir.bootlin.com/linux/v4.15/source/include/uapi/linux/in.h#L85

@@ -1,8 +1,25 @@
 #include "liumlib.h"
 
+void NotImplemented(const char* s) {
+  Print("Not Implemented: ");
+  Println(s);
+  exit(1);
+}
+
+char *strstr(const char *haystack, const char *needle) {
+  int needle_len = strlen(needle); 
+  while(*haystack) {
+    if(strncmp(haystack, needle, needle_len) == 0) {
+      return (char *)haystack;
+    }
+    haystack++;
+  }
+  return NULL;
+}
+
 void bzero(void* s, size_t n) {
-  for(size_t i = 0; i < n; i++){
-    ((uint8_t *)s)[i] = 0;
+  for (size_t i = 0; i < n; i++) {
+    ((uint8_t*)s)[i] = 0;
   }
 }
 
@@ -87,6 +104,9 @@ char* strtok(char* str, const char* delim) {
   return start;
 }
 
+int malloc_size;
+uint8_t malloc_array[MALLOC_MAX_SIZE];
+
 void* malloc(unsigned long n) {
   if (sizeof(malloc_array) < (malloc_size + n)) {
     write(1, "fail: malloc\n", 13);
@@ -99,6 +119,23 @@ void* malloc(unsigned long n) {
   return ptr;
 }
 
+void* realloc(void* ptr, size_t size) {
+  // TODO: Free old region
+  if (!ptr || size == 0) {
+    NotImplemented(__FUNCTION__);
+  }
+  if((uint64_t)ptr < (uint64_t)malloc_array || (malloc_array + malloc_size) <= malloc_array) {
+    return NULL;
+  }
+  size_t copy_size = size;
+  if(copy_size > ((uint64_t)malloc_array + malloc_size) - (uint64_t)ptr) {
+    copy_size = ((uint64_t)malloc_array + malloc_size) - (uint64_t)ptr;
+  }
+  void *new_ptr = malloc(size);
+  memcpy(new_ptr, ptr, copy_size);
+  return new_ptr;
+}
+
 void* memset(void* s, int c, size_t n) {
   char* dest = (char*)s;
   while (n > 0) {
@@ -107,6 +144,16 @@ void* memset(void* s, int c, size_t n) {
     n--;
   }
   return s;
+}
+
+void *memmove(void *dest, const void *src, size_t n) {
+  int64_t diff = (int64_t)dest - (int64_t)src;
+  if(diff < 0) diff = -diff;
+  if(diff < n && (uint64_t)dest >= (uint64_t)src) {
+    panic("memmove: overlapped");
+  }
+  memcpy(dest, src, n);
+  return dest;
 }
 
 void* memcpy(void* dest, const void* src, size_t n) {
