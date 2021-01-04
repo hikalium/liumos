@@ -51,14 +51,12 @@ OBJS=$(TARGET_OBJS) \
 
 %.o : %.c Makefile
 	$(LLVM_CC) -target x86_64-unknown-none-elf -static -nostdlib \
-		-fPIE \
 		-I$(CLANG_SYSTEM_INC_PATH) \
 		-I../../src/third_party_root/include/ \
 		-c -o $@ $*.c
 
 freetype_wrapper.o : freetype_wrapper.c Makefile
 	$(LLVM_CC) -target x86_64-unknown-none-elf -static -nostdlib \
-		-fPIE \
 		-I$(CLANG_SYSTEM_INC_PATH) \
 		-Ifreetype-2.10.4/include \
 		-Ifreetype_support/include/ \
@@ -66,7 +64,7 @@ freetype_wrapper.o : freetype_wrapper.c Makefile
 		-c -o $@ freetype_wrapper.c
 
 %.o : %.S Makefile
-	$(LLVM_CC) -target x86_64-unknown-none-elf -static -nostdlib -mcmodel=small -fPIE -B/usr/local/opt/llvm/bin/ -c -o $@ $*.S
+	$(LLVM_CC) -target x86_64-unknown-none-elf -static -nostdlib -mcmodel=small -B/usr/local/opt/llvm/bin/ -c -o $@ $*.S
 
 $(TARGET) : $(OBJS) Makefile
 	$(LLVM_LD_LLD) -static \
