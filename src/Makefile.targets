@@ -181,7 +181,7 @@ BOOTX64.EFI : $(LOADER_OBJS) Makefile
 
 LIUMOS.ELF : $(KERNEL_OBJS) kernel.ld Makefile
 	$(LLVM_LD_LLD) $(LDFLAGS_KERNEL) \
-		-o LIUMOS.ELF -e KernelEntry -T kernel.ld $(KERNEL_OBJS)
+		-o LIUMOS.ELF -e KernelEntry -T kernel.ld --no-rosegment $(KERNEL_OBJS)
 
 unittest: \
 	test_rect \

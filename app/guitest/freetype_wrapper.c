@@ -1,9 +1,5 @@
 #include <stdint.h>
-
-/* from liumlib */
-void Print(const char* s);
-void Println(const char* s);
-void NotImplemented(const char* s);
+#include "../liumlib/liumlib.h"
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -166,12 +162,6 @@ void inflateReset() {
 void __longjmp_chk() {
   NotImplemented(__FUNCTION__);
 }
-void memchr() {
-  NotImplemented(__FUNCTION__);
-}
-void memcmp() {
-  NotImplemented(__FUNCTION__);
-}
 void __memcpy_chk() {
   NotImplemented(__FUNCTION__);
 }
@@ -256,21 +246,48 @@ void __sprintf_chk() {
 void __stack_chk_fail() {
   NotImplemented(__FUNCTION__);
 }
-void strncpy() {
-  NotImplemented(__FUNCTION__);
-}
-void strrchr() {
-  NotImplemented(__FUNCTION__);
-}
-void strtol() {
-  NotImplemented(__FUNCTION__);
-}
 void fstat() {
+  NotImplemented(__FUNCTION__);
+}
+void fread() {
+  NotImplemented(__FUNCTION__);
+}
+void fopen() {
+  NotImplemented(__FUNCTION__);
+}
+void fsync() {
+  NotImplemented(__FUNCTION__);
+}
+void fseek() {
+  NotImplemented(__FUNCTION__);
+}
+void ftell() {
+  NotImplemented(__FUNCTION__);
+}
+void fclose() {
+  NotImplemented(__FUNCTION__);
+}
+void *memchr(const void *, int, unsigned long){
+  NotImplemented(__FUNCTION__);
+}
+long strtol(const char *, char **, int) {
+  NotImplemented(__FUNCTION__);
+}
+char *strncpy(char *, const char *, unsigned long) {
+  NotImplemented(__FUNCTION__);
+}
+char *strrchr(const char *, int) {
   NotImplemented(__FUNCTION__);
 }
 void longjmp() {
   NotImplemented(__FUNCTION__);
 }
-void sprintf() {
+int sprintf(char *, const char *, ...) {
   NotImplemented(__FUNCTION__);
+}
+int memcmp(const void *, const void *, unsigned long) {
+  NotImplemented(__FUNCTION__);
+}
+int setjmp(long long *buf) {
+  return __builtin_setjmp((void **)buf);
 }

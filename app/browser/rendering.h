@@ -5,6 +5,6 @@
 
 void Render(char *html);
 
-bool first_line;
+extern bool first_line;
 
 #endif // APP_BROWSER_RENDERING_H

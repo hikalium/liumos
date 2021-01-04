@@ -90,6 +90,7 @@ static const Elf64_Ehdr* ParseProgramHeader(EFIFile& file,
         buf + ehdr->e_phoff + ehdr->e_phentsize * i);
     if (phdr->p_type != PT_LOAD)
       continue;
+    PutStringAndHex("LOAD program header idx", i);
 
     assert(IsAlignedToPageSize(phdr->p_align));
 

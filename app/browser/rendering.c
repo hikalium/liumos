@@ -1,4 +1,5 @@
 #include "rendering.h"
+bool first_line;
 
 #include "tokenize.h"
 #include "parse.h"
