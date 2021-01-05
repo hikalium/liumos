@@ -11,11 +11,11 @@ export CFLAGS="-fno-stack-protector \
 	-g -std=c99 --target=x86_64-pc-linux-elf  \
 	-fuse-ld=/usr/local/opt/llvm/bin/ld.lld  \
 	-nostdlib -I${TOP_DIR}/freetype_support/include/"
-export CC='/usr/local/opt/llvm/bin/clang-11'
-export LLD='/usr/local/opt/llvm/bin/ld.lld'
-export LD='/usr/local/opt/llvm/bin/ld.lld'
-export AR='/usr/local/opt/llvm/bin/llvm-ar'
-export RANLIB='/usr/local/opt/llvm/bin/llvm-ranlib'
+export CC="${CC}"
+export LLD="${LLD}"
+export LD="${LLD}"
+export AR="${AR}"
+export RANLIB="${RANLIB}"
 ./configure \
 	--prefix="${TOP_DIR}/freetype_root" \
 	--build=x86_64-pc-linux-gnu \
