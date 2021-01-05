@@ -19,7 +19,7 @@ OBJS=$(TARGET_OBJS) \
 freetype_wrapper.o : freetype_wrapper.c Makefile
 	$(LLVM_CC) -target x86_64-unknown-none-elf -static -nostdlib -nostdinc \
 		-I$(CLANG_SYSTEM_INC_PATH) \
-		-I../../third_party/freetype_root/include/freetype2/ \
+		-I../../third_party/out/root_for_app/include/freetype2/ \
 		-I../../third_party/freetype_support/include/ \
 		-Wno-macro-redefined \
 		-fno-builtin \
@@ -31,7 +31,7 @@ freetype_wrapper.o : freetype_wrapper.c Makefile
 $(TARGET) : $(OBJS) Makefile
 	$(LLVM_LD_LLD) -static -v \
 		--no-rosegment -e entry \
-		-L../../third_party/freetype_root/lib/ -lfreetype \
+		-L../../third_party/out/root_for_app/lib/ -lfreetype \
 		-o $@ \
 		$(OBJS)
 

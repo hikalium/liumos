@@ -1,4 +1,3 @@
-*.tar.xz*
-*_root/
-
-freetype-*
+build/
+src/
+out/
