@@ -1,5 +1,7 @@
 default:
 	make newlib
+	make libcxxabi
+	make libcxx
 	make freetype
 
 include ../common.mk
