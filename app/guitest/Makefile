@@ -1,6 +1,6 @@
 NAME=guitest
 TARGET=$(NAME).bin
-TARGET_OBJS=$(NAME).o freetype_wrapper.o source_code_pro_medium_ttf.o
+TARGET_OBJS=$(NAME).o freetype_wrapper.o source_code_pro_medium_ttf.o koruri_regular_subset_ttf.o
 
 default: $(TARGET)
 
