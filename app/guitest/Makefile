@@ -17,10 +17,10 @@ OBJS=$(TARGET_OBJS) \
 		-c -o $@ $*.c
 
 freetype_wrapper.o : freetype_wrapper.c Makefile
-	$(LLVM_CC) -target x86_64-unknown-none-elf -static -nostdlib \
+	$(LLVM_CC) -target x86_64-unknown-none-elf -static -nostdlib -nostdinc \
 		-I$(CLANG_SYSTEM_INC_PATH) \
-		-Ifreetype-2.10.4/include \
-		-Ifreetype_support/include/ \
+		-I../../third_party/freetype_root/include/freetype2/ \
+		-I../../third_party/freetype_support/include/ \
 		-Wno-macro-redefined \
 		-fno-builtin \
 		-c -o $@ freetype_wrapper.c
@@ -31,7 +31,7 @@ freetype_wrapper.o : freetype_wrapper.c Makefile
 $(TARGET) : $(OBJS) Makefile
 	$(LLVM_LD_LLD) -static -v \
 		--no-rosegment -e entry \
-		-Lfreetype_root/lib/ -lfreetype \
+		-L../../third_party/freetype_root/lib/ -lfreetype \
 		-o $@ \
 		$(OBJS)
 
