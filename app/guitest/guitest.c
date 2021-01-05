@@ -29,6 +29,12 @@ void InitFreeType();
 
 /* freetype_wrapper.c */
 void DrawFirstChar(uint32_t *bmp, int w, int x, int y, uint32_t col, const char *s);
+void DrawString(uint32_t* bmp,
+                int w,
+                int x,
+                int y,
+                uint32_t col,
+                const char* s);
 
 int main(int argc, char* argv[]) {
   InitFreeType();
@@ -82,18 +88,8 @@ int main(int argc, char* argv[]) {
   }
   int px = 100;
   int py = 100;
-  DrawFirstChar(bmp, w, px + 0, py + 0, 0xFFFFFF, "l");
-  DrawFirstChar(bmp, w, px + 16, py + 0, 0xFFFFFF, "i");
-  DrawFirstChar(bmp, w, px + 32, py + 0, 0xFFFFFF, "u");
-  DrawFirstChar(bmp, w, px + 60, py + 0, 0xFFFFFF, "m");
-  DrawFirstChar(bmp, w, px + 90, py + 0, 0xFFFFFF, "O");
-  DrawFirstChar(bmp, w, px + 106, py + 0, 0xFFFFFF, "S");
-  DrawFirstChar(bmp, w, px + 130, py + 0, 0xFFFFFF, "へ");
-  DrawFirstChar(bmp, w, px + 96+32*0, py + 32, 0xFFFFFF, "よ");
-  DrawFirstChar(bmp, w, px + 96+32*1, py + 32, 0xFFFFFF, "う");
-  DrawFirstChar(bmp, w, px + 96+32*2, py + 32, 0xFFFFFF, "こ");
-  DrawFirstChar(bmp, w, px + 96+32*3, py + 32, 0xFFFFFF, "そ");
-  DrawFirstChar(bmp, w, px + 96+32*4, py + 32, 0xFFFFFF, "！");
+  DrawString(bmp, w, 32, 64, 0xFFFFFF, "Welcome to liumOS!");
+  DrawString(bmp, w, 32, 96, 0xFFFFFF, "liumOSへようこそ！");
 
   msync(buf, file_size, MS_SYNC);
 

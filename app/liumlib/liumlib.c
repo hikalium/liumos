@@ -150,7 +150,11 @@ void *memmove(void *dest, const void *src, size_t n) {
   int64_t diff = (int64_t)dest - (int64_t)src;
   if(diff < 0) diff = -diff;
   if(diff < n && (uint64_t)dest >= (uint64_t)src) {
-    panic("memmove: overlapped");
+    char* src_char = (char*)src;
+    char* dest_char = (char*)dest;
+    for (int i = n-1; i >= 0; i--) {
+      dest_char[i] = src_char[i];
+    }
   }
   memcpy(dest, src, n);
   return dest;

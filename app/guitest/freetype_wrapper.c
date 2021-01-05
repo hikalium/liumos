@@ -129,12 +129,13 @@ uint32_t CHNLIB_UTF8_GetNextUnicodeOfCharacter(const char ss[],
   return 0;
 }
 
-void DrawChar(uint32_t* bmp,
-              int w,
-              int px,
-              int py,
-              uint32_t color,
-              int unicode) {
+int DrawChar(uint32_t* bmp,
+             int w,
+             int px,
+             int py,
+             uint32_t color,
+             int unicode) {
+  // returns glyph width
   int err;
   err = FT_Load_Char(face, unicode, 0);
   if (err) {
@@ -142,14 +143,19 @@ void DrawChar(uint32_t* bmp,
     exit(1);
   }
   err = FT_Render_Glyph(face->glyph, FT_RENDER_MODE_MONO);
+  // face->glyph: FT_GlyphSlotRec
+  // https://www.freetype.org/freetype2/docs/reference/ft2-base_interface.html#ft_glyphslotrec
   if (err) {
     Print("Failed to render glyph");
     exit(1);
   }
   FT_Bitmap* bm = &face->glyph->bitmap;
+  if (unicode == ' ') {
+    return bm->width;
+  }
   int row, col, bit, c;
-  int y_adjust = (32 - bm->rows) / 2;
-  int x_adjust = (32 - (bm->pitch) * 8) / 2;
+  int y_adjust = -face->glyph->bitmap_top;
+  int x_adjust = face->glyph->bitmap_left;
   for (row = 0; row < bm->rows; row++) {
     int x = 0;
     for (col = 0; col < bm->pitch; col++) {
@@ -162,6 +168,7 @@ void DrawChar(uint32_t* bmp,
       }
     }
   }
+  return bm->width;
 }
 
 void DrawFirstChar(uint32_t* bmp,
@@ -172,6 +179,22 @@ void DrawFirstChar(uint32_t* bmp,
                    const char* s) {
   uint32_t unicode = CHNLIB_UTF8_GetNextUnicodeOfCharacter(s, NULL);
   DrawChar(bmp, w, x, y, col, unicode);
+}
+
+void DrawString(uint32_t* bmp,
+                int w,
+                int x,
+                int y,
+                uint32_t col,
+                const char* s) {
+  while (*s) {
+    uint32_t unicode = CHNLIB_UTF8_GetNextUnicodeOfCharacter(s, &s);
+    if (!unicode) {
+      break;
+    }
+    x += DrawChar(bmp, w, x, y, col, unicode);
+    x += 10;
+  }
 }
 
 char* getenv() {
