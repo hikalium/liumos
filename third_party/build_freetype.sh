@@ -1,0 +1,27 @@
+#!/bin/bash -xe
+cd `dirname $0`
+
+FT_VERSION=freetype-2.10.4
+
+TOP_DIR=`pwd`
+wget https://download.savannah.gnu.org/releases/freetype/${FT_VERSION}.tar.xz
+tar -xvf ${FT_VERSION}.tar.xz
+cd ${FT_VERSION}
+export CFLAGS="-fno-stack-protector \
+	-g -std=c99 --target=x86_64-pc-linux-elf  \
+	-fuse-ld=/usr/local/opt/llvm/bin/ld.lld  \
+	-nostdlib -I${TOP_DIR}/freetype_support/include/"
+export CC='/usr/local/opt/llvm/bin/clang-11'
+export LLD='/usr/local/opt/llvm/bin/ld.lld'
+export LD='/usr/local/opt/llvm/bin/ld.lld'
+export AR='/usr/local/opt/llvm/bin/llvm-ar'
+export RANLIB='/usr/local/opt/llvm/bin/llvm-ranlib'
+./configure \
+	--prefix="${TOP_DIR}/freetype_root" \
+	--build=x86_64-pc-linux-gnu \
+	--host=x86_64-linuxelf \
+	--enable-shared=no \
+	--without-zlib
+make
+make install
+
