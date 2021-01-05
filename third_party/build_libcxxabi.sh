@@ -9,10 +9,11 @@ tar -xvf src/llvmorg-${ARCHIVE_VERSION}.tar.gz -C src/
 
 THIRD_PARTY_DIR=`pwd`
 INSTALL_PREFIX=`pwd`/out/root_for_kernel
+LLVM_PROJ_PATH=${THIRD_PARTY_DIR}/src/llvm-project-llvmorg-${ARCHIVE_VERSION}
 BUILD_DIR=${THIRD_PARTY_DIR}/build/llvm-project-llvmorg-${ARCHIVE_VERSION}/libcxxabi
 SRC_DIR=${THIRD_PARTY_DIR}/src/llvm-project-llvmorg-${ARCHIVE_VERSION}/libcxxabi
 NEWLIB_INC_PATH=${INSTALL_PREFIX}/include
-LLVM_PROJ_PATH=${THIRD_PARTY_DIR}/src/llvm-project-llvmorg-${ARCHIVE_VERSION}
+
 LIBCXX_INC_PATH=${LLVM_PROJ_PATH}/libcxx/include
 
 echo BUILD_DIR=${BUILD_DIR}

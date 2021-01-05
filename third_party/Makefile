@@ -6,13 +6,6 @@ default:
 
 include ../common.mk
 
-freetype:
-	CC="$(LLVM_CC)" \
-	   LLD="$(LLVM_LD_LLD)" \
-	   AR="$(LLVM_AR)" \
-	   RANLIB="$(LLVM_RANLIB)" \
-	   ./build_freetype.sh
-
 newlib:
 	CC=$(LLVM_CC) AR=$(LLVM_AR) RANLIB=$(LLVM_RANLIB) ./build_newlib.sh
 
@@ -31,6 +24,13 @@ libcxx:
 	   AR=$(LLVM_AR) \
 	   RANLIB=$(LLVM_RANLIB) \
 	   ./build_libcxx.sh
+
+freetype:
+	CC="$(LLVM_CC)" \
+	   LLD="$(LLVM_LD_LLD)" \
+	   AR="$(LLVM_AR)" \
+	   RANLIB="$(LLVM_RANLIB)" \
+	   ./build_freetype.sh
 
 clean:
 	-rm -rf ./build ./out
