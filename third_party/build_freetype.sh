@@ -9,7 +9,7 @@ tar -xvf ${FT_VERSION}.tar.xz
 cd ${FT_VERSION}
 export CFLAGS="-fno-stack-protector \
 	-g -std=c99 --target=x86_64-pc-linux-elf  \
-	-fuse-ld=/usr/local/opt/llvm/bin/ld.lld  \
+	-fuse-ld=${LLD}  \
 	-nostdlib -I${TOP_DIR}/freetype_support/include/"
 export CC="${CC}"
 export LLD="${LLD}"
