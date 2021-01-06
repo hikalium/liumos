@@ -7,7 +7,6 @@ SECTIONS
 .rodata : {
   *(.rodata)
 }
-. += 0x10000;
 .data ALIGN(0x1000): {
   *(.data)
 }

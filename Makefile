@@ -127,6 +127,10 @@ run_user_headless : files pmem.img .FORCE
 	( echo 'change vnc password $(VNC_PASSWORD)' | while ! nc localhost $(PORT_MONITOR) ; do sleep 1 ; done ) &
 	$(QEMU) $(QEMU_ARGS_COMMON) $(QEMU_ARGS_USER_NET_LINUX) -vnc 0.0.0.0:$(PORT_VNC),password 
 
+run_user_headless_gdb : files pmem.img .FORCE
+	( echo 'change vnc password $(VNC_PASSWORD)' | while ! nc localhost $(PORT_MONITOR) ; do sleep 1 ; done ) &
+	$(QEMU) $(QEMU_ARGS_COMMON) $(QEMU_ARGS_USER_NET_LINUX) -vnc 0.0.0.0:$(PORT_VNC),password -gdb tcp::1192 -S
+
 run_gdb_root : files pmem.img .FORCE
 	$(QEMU) $(QEMU_ARGS_PMEM) -gdb tcp::1192 -S || reset
 

@@ -22,7 +22,7 @@ static void PrintInterruptInfo(PanicPrinter& pp,
   pp.PrintLineWithHex("RBP   ", info->greg.rbp);
   pp.PrintLineWithHex("CR3   ", ReadCR3());
   uint64_t rbp = info->greg.rbp;
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < 16; i++) {
     if (rbp < liumos->cpu_features->kernel_phys_page_map_begin) {
       break;
     }

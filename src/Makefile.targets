@@ -75,6 +75,7 @@ CFLAGS_KERNEL= \
 			   -fno-stack-protector -fno-exceptions -fshort-wchar \
 			   -mno-red-zone \
 			   -nostdlib -nostdinc\
+			   -g \
 			   $(CLANG_WARNINGS) $(C_STD)
 
 # -Wno-gnu-include-next: avoid warning from third_party/newlib-cygwin_dest/include/limits.h:132:3
@@ -89,6 +90,7 @@ CXXFLAGS_KERNEL= \
 				 -I$(CLANG_SYSTEM_INC_PATH) \
 				 $(CLANG_WARNINGS) \
 				 -Wno-gnu-include-next \
+				 -g \
 				 $(CXX_STD)
 
 

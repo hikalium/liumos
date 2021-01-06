@@ -14,14 +14,14 @@
 #include "virtio_net.h"
 #include "xhci.h"
 
+// TODO(hikalium): Consider moving those vars into KernelEntry
+// since the initializers will be called during the kernel initialization
 LiumOS* liumos;
-
 GDT gdt_;
 KeyboardController keyboard_ctrl_;
 LiumOS liumos_;
 Sheet virtual_vram_;
 Sheet virtual_screen_;
-Console virtual_console_;
 LocalAPIC bsp_local_apic_;
 CPUFeatureSet cpu_features_;
 SerialPort com1_;
@@ -233,6 +233,9 @@ KernelPhysPageAllocator& GetKernelPhysPageAllocator() {
 void SubTask();  // @subtask.cc
 
 extern "C" void KernelEntry(LiumOS* liumos_passed, LoaderInfo& loader_info) {
+  // These local vars will not being freed until the OS stops.
+  Console virtual_console_;
+
   loader_info_ = &loader_info;
   liumos_ = *liumos_passed;
   liumos = &liumos_;
@@ -264,6 +267,7 @@ extern "C" void KernelEntry(LiumOS* liumos_passed, LoaderInfo& loader_info) {
 
   new (&virtual_console_) Console();
   virtual_console_.SetSheet(liumos->screen_sheet);
+  PutStringAndHex("screen_sheet", liumos->screen_sheet);
   auto [cursor_x, cursor_y] = liumos->main_console->GetCursorPosition();
   virtual_console_.SetCursorPosition(cursor_x, cursor_y);
   liumos->main_console = &virtual_console_;
