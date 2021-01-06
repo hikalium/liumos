@@ -75,6 +75,9 @@ src/LIUMOS.ELF : .FORCE
 tools : .FORCE
 	make -C tools
 
+prebuilt : .FORCE
+	./scripts/deploy_prebuilt.sh
+
 pmem.img :
 	qemu-img create $@ 2G
 

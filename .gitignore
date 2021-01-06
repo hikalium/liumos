@@ -11,3 +11,4 @@ mnt/
 *.dat
 *.log
 cc_cache.gen.mk
+prebuilt/
