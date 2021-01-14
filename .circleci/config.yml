@@ -2,13 +2,9 @@ version: 2
 jobs:
     build:
         docker:
-            - image: hikalium/ubuntu-for-compilium:latest
+            - image: hikalium/liumos-builder:v20210115_022730
         steps:
             - checkout
-            - run:
-                name: Install build tools
-                command: >
-                    apt update && apt install -y git build-essential wget clang-8 lld-8 libc++-8-dev libc++abi-8-dev
             - run:
                 name: Run unit test
                 command: make test
