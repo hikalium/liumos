@@ -6,5 +6,11 @@ jobs:
         steps:
             - checkout
             - run:
+                name: Deploy prebuilt
+                command: make prebuilt
+            - run:
                 name: Run unit test
                 command: make test
+            - run:
+                name: Build LIUMOS.ELF
+                command: make
