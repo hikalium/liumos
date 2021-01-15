@@ -17,10 +17,10 @@ git -C /liumos_host/ ls-files --full-name -o --exclude-standard | \
 		--exclude='tools/' \
 		--exclude='.git/' \
 		--files-from=- /liumos_host/ /liumos/
-echo "Syncing third_party_root..."
-rsync -avh /prebuilt/liumos/src/third_party_root/ /liumos/src/third_party_root/
 echo "Syncing tools..."
 rsync -avh /prebuilt/liumos/tools/ /liumos/tools/
+echo "Deploying prebuilt..."
+make prebuilt
 echo "Start building..."
 cd /liumos # move to the mounted host src dir
 make clean

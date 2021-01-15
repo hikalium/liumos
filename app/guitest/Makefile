@@ -10,9 +10,9 @@ OBJS=$(TARGET_OBJS) \
 	 ../liumlib/liumlib.o ../liumlib/syscall.o ../liumlib/entry.o ../liumlib/setjmp.o
 
 %.o : %.c Makefile
-	$(LLVM_CC) -target x86_64-unknown-none-elf -static -nostdlib \
+	$(LLVM_CC) -target x86_64-unknown-none-elf -static -nostdlib -nostdinc \
+		-Wno-macro-redefined \
 		-I$(CLANG_SYSTEM_INC_PATH) \
-		-I../../src/third_party_root/include/ \
 		-fno-builtin \
 		-c -o $@ $*.c
 
@@ -21,8 +21,8 @@ freetype_wrapper.o : freetype_wrapper.c Makefile
 		-I$(CLANG_SYSTEM_INC_PATH) \
 		-I../../third_party/out/root_for_app/include/freetype2/ \
 		-I../../third_party/freetype_support/include/ \
-		-Wno-macro-redefined \
 		-fno-builtin \
+		-Wno-macro-redefined \
 		-c -o $@ freetype_wrapper.c
 
 %.o : %.S Makefile

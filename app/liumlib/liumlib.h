@@ -1,7 +1,7 @@
 #ifndef LIB_H
 #define LIB_H
 
-#include "stdint.h"
+#include <stdint.h>
 
 #define NULL 0
 #define true 1
@@ -27,7 +27,7 @@
 
 #define INADDR_ANY ((unsigned long int)0x00000000)
 
-#define __bswap_16(x) ((__uint16_t)((((x) >> 8) & 0xff) | (((x)&0xff) << 8)))
+#define __bswap_16(x) ((uint16_t)((((x) >> 8) & 0xff) | (((x)&0xff) << 8)))
 
 #define __bswap_32(x)                                   \
   ((((x)&0xff000000) >> 24) | (((x)&0x00ff0000) >> 8) | \

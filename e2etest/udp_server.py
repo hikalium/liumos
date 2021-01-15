@@ -3,11 +3,7 @@ import time
 import sys
 import test_util
 
-if __name__ == "__main__":
-    qemu_mon_conn = test_util.launch_liumos_on_docker()
-    time.sleep(2)
-    liumos_serial_conn = test_util.connect_to_liumos_serial()
-    liumos_builder_conn = test_util.connect_to_liumos_builder()
+def udp_server(qemu_mon_conn, liumos_serial_conn, liumos_builder_conn):
     test_util.expect_liumos_command_result(
         liumos_serial_conn,
         "udpserver.bin 8889",
@@ -20,5 +16,7 @@ if __name__ == "__main__":
         liumos_serial_conn,
         "",
         "LIUMOS_E2E_TEST_MESSAGE", 5);
-    sys.exit(0)
 
+if __name__ == "__main__":
+    test_util.launch_test(udp_server);
+    sys.exit(0)
