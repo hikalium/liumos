@@ -6,7 +6,7 @@ import test_util
 def udp_client(qemu_mon_conn, liumos_serial_conn, liumos_builder_conn):
     test_util.expect_liumos_command_result(
         liumos_builder_conn,
-        "/liumos/app/udpserver/udpserver.bin 8888",
+        "app/udpserver/udpserver.bin 8888",
         "Listening port: 8888", 5);
     test_util.expect_liumos_command_result(
         liumos_serial_conn,

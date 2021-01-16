@@ -10,7 +10,7 @@ def udp_server(qemu_mon_conn, liumos_serial_conn, liumos_builder_conn):
         "Listening port: 8889", 5);
     test_util.expect_liumos_command_result(
         liumos_builder_conn,
-        "/liumos/app/udpclient/udpclient.bin 127.0.0.1 8889 LIUMOS_E2E_TEST_MESSAGE",
+        "app/udpclient/udpclient.bin 127.0.0.1 8889 LIUMOS_E2E_TEST_MESSAGE",
         "Sent size: 23", 5);
     test_util.expect_liumos_command_result(
         liumos_serial_conn,

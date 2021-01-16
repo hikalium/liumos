@@ -121,7 +121,7 @@ run_user : files pmem.img .FORCE
 	$(QEMU) $(QEMU_ARGS_COMMON) $(QEMU_ARGS_USER_NET_LINUX)
 
 run_for_e2e_test : files pmem.img .FORCE
-	$(QEMU) $(QEMU_ARGS) -nographic
+	$(QEMU) $(QEMU_ARGS_COMMON) $(QEMU_ARGS_USER_NET_LINUX) -nographic
 
 run_user_headless : files pmem.img .FORCE
 	( echo 'change vnc password $(VNC_PASSWORD)' | while ! nc localhost $(PORT_MONITOR) ; do sleep 1 ; done ) &
