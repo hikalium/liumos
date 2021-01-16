@@ -142,7 +142,7 @@ void PrintARPPacket(Net::ARPPacket& arp) {
     default:
       break;
   }
-  PutString("Recieved ARP with invalid Operation\n");
+  PutString("Received ARP with invalid Operation\n");
 }
 
 using InternetChecksum = Net::InternetChecksum;

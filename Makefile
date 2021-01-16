@@ -182,6 +182,7 @@ vnc :
 	open vnc://localhost:5900
 
 test :
+	make spellcheck
 	make -C src test
 	make -C app/liumlib test
 
@@ -199,6 +200,9 @@ clean :
 
 format :
 	make -C src format
+
+spellcheck :
+	@scripts/spellcheck.sh recieve receive
 
 commit_root : format test 
 	git add .

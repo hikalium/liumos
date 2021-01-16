@@ -7,7 +7,7 @@ def test_ping_to_router_on_qemu(qemu_mon_conn, liumos_serial_conn, liumos_builde
     test_util.expect_liumos_command_result(
         liumos_serial_conn,
         "ping.bin 10.0.2.2",
-        "ICMP packet recieved from 10.0.2.2 ICMP Type = 0", 5)
+        "ICMP packet received from 10.0.2.2 ICMP Type = 0", 5)
 
 
 if __name__ == "__main__":

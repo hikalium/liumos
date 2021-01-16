@@ -83,7 +83,7 @@ int main(int argc, char** argv) {
   if (recv_size == -1) {
     panic("error: recvfrom returned -1\n");
   }
-  Print("Recieved size: ");
+  Print("Received size: ");
   PrintNum(recv_size);
   Print("\n");
 

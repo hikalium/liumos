@@ -27,22 +27,22 @@ int main(int argc, char** argv) {
   PrintNum(port);
   Print("\n");
 
-  // Recieve loop
+  // Receive loop
   struct sockaddr_in client_address;
   socklen_t client_addr_len = sizeof(client_address);
   char buf[4096];
-  ssize_t recieved_size;
+  ssize_t received_size;
   for (;;) {
-    recieved_size =
+    received_size =
         recvfrom(socket_fd, (char*)buf, sizeof(buf), 0,
                  (struct sockaddr*)&client_address, &client_addr_len);
-    if (recieved_size == -1) {
+    if (received_size == -1) {
       panic("error: recvfrom returned -1\n");
     }
-    Print("Recieved size: ");
-    PrintNum(recieved_size);
+    Print("Received size: ");
+    PrintNum(received_size);
     Print("\n");
-    write(1, buf, recieved_size);
+    write(1, buf, received_size);
     Print("\n");
   }
 }
