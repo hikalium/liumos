@@ -1,1 +1,4 @@
 *.bmp
+freetype-*
+freetype-*/
+freetype_root/

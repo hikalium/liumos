@@ -4,6 +4,7 @@ SHELL ["/bin/bash", "-c"]
 # To avoid being asked about tzdata
 ARG DEBIAN_FRONTEND=noninteractive
 # Install dependencies
+# gcc-multilib for bits/libc-header-start.h
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
 	build-essential \
@@ -25,13 +26,18 @@ RUN apt-get update \
 	qemu-system-x86 \
 	qemu-utils \
 	rsync \
-	wget
+	wget \
+	gcc-multilib \
+	python3-pip \
+	telnet
 # Install rust toolchain
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
 	sh -s -- -y --default-toolchain=nightly
 ENV PATH $PATH:/root/.cargo/bin
 RUN rustup component add rust-src && \
 	cargo install cargo-xbuild
+
+RUN pip3 install pexpect
 
 WORKDIR /prebuilt
 RUN git clone https://github.com/hikalium/liumos.git

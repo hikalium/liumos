@@ -6,6 +6,8 @@ Dockerfile for building & testing liumOS.
 docker build .
 docker build --no-cache .
 docker run -it <image id>
-docker tag <image id> hikalium/liumos-builder:latest
-docker push hikalium/liumos-builder:latest
+
+export IMAGE_TAG=v`date +%Y%m%d_%H%M%S` && echo ${IMAGE_TAG}
+docke tag <image id> hikalium/liumos-builder:${IMAGE_TAG}
+docker push hikalium/liumos-builder:${IMAGE_TAG}
 ```

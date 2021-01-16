@@ -2,13 +2,18 @@ version: 2
 jobs:
     build:
         docker:
-            - image: hikalium/ubuntu-for-compilium:latest
+            - image: hikalium/liumos-builder:v20210116_204733
         steps:
             - checkout
             - run:
-                name: Install build tools
-                command: >
-                    apt update && apt install -y git build-essential wget clang-8 lld-8 libc++-8-dev libc++abi-8-dev
+                name: Deploy prebuilt
+                command: make prebuilt
             - run:
                 name: Run unit test
                 command: make test
+            - run:
+                name: Build LIUMOS.ELF
+                command: make
+            - run:
+                name: Run End-to-end tests
+                command: export LIUMOS_RUN_TEST_WITHOUT_DOCKER=1 && make e2etest

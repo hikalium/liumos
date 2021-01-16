@@ -49,8 +49,9 @@ CLANG_WARNINGS = \
 C_STD = -std=c11
 CXX_STD = -std=c++17
 
-LIBCXX_FOR_KERNEL_INC_PATH=third_party_root/include/c++/v1
-LIBCXX_FOR_KERNEL_LIB_PATH=third_party_root/lib
+THIRD_PARTY_INC_PATH=../third_party/out/root_for_kernel/include
+THIRD_PARTY_LIB_PATH=../third_party/out/root_for_kernel/lib
+LIBCXX_FOR_KERNEL_INC_PATH=../third_party/out/root_for_kernel/include/c++/v1
 
 CFLAGS_LOADER= \
 			   -target x86_64-pc-win32-coff \
@@ -58,7 +59,7 @@ CFLAGS_LOADER= \
 			   -mno-red-zone \
 			   -nostdlibinc \
 			   $(CLANG_WARNINGS) $(C_STD) \
-			   -Ithird_party_root/include
+			   -I${THIRD_PARTY_INC_PATH}
 
 CXXFLAGS_LOADER= \
 				 -DLIUMOS_LOADER \
@@ -66,7 +67,7 @@ CXXFLAGS_LOADER= \
 				 -fno-stack-protector -fno-exceptions -fshort-wchar -fno-rtti \
 				 -mno-red-zone \
 				 -nostdlibinc -nostdlib \
-				 -D_LIBCPP_HAS_NO_THREADS -D_LIBCPP_OBJECT_FORMAT_COFF -Ithird_party_root/include \
+				 -D_LIBCPP_HAS_NO_THREADS -D_LIBCPP_OBJECT_FORMAT_COFF -I${THIRD_PARTY_INC_PATH} \
 				 $(CLANG_WARNINGS) $(CXX_STD)
 
 CFLAGS_KERNEL= \
@@ -74,6 +75,7 @@ CFLAGS_KERNEL= \
 			   -fno-stack-protector -fno-exceptions -fshort-wchar \
 			   -mno-red-zone \
 			   -nostdlib -nostdinc\
+			   -g \
 			   $(CLANG_WARNINGS) $(C_STD)
 
 # -Wno-gnu-include-next: avoid warning from third_party/newlib-cygwin_dest/include/limits.h:132:3
@@ -84,16 +86,16 @@ CXXFLAGS_KERNEL= \
 				 -nostdlibinc \
 				 -D__ELF__ -D_LDBL_EQ_DBL \
 				 -I$(LIBCXX_FOR_KERNEL_INC_PATH) \
-				 -Ithird_party_root/include/ \
+				 -I${THIRD_PARTY_INC_PATH} \
 				 -I$(CLANG_SYSTEM_INC_PATH) \
 				 $(CLANG_WARNINGS) \
 				 -Wno-gnu-include-next \
+				 -g \
 				 $(CXX_STD)
 
 
 LDFLAGS_KERNEL= \
-				-L$(LIBCXX_FOR_KERNEL_LIB_PATH) -lc++ -lc++abi -lm \
-				-Lthird_party_root/lib -lc \
+				-L$(THIRD_PARTY_LIB_PATH) -lc++ -lc++abi -lm -lc \
 				-static # --verbose
 
 CXXFLAGS_FOR_TEST= \
@@ -181,7 +183,7 @@ BOOTX64.EFI : $(LOADER_OBJS) Makefile
 
 LIUMOS.ELF : $(KERNEL_OBJS) kernel.ld Makefile
 	$(LLVM_LD_LLD) $(LDFLAGS_KERNEL) \
-		-o LIUMOS.ELF -e KernelEntry -T kernel.ld $(KERNEL_OBJS)
+		-o LIUMOS.ELF -e KernelEntry -T kernel.ld --no-rosegment $(KERNEL_OBJS)
 
 unittest: \
 	test_rect \

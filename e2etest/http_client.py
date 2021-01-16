@@ -3,7 +3,6 @@ import sys
 import test_util
 
 def test_http_client(qemu_mon_conn, liumos_serial_conn, liumos_builder_conn):
-    # returns connection to qemu monitor
     test_util.expect_liumos_command_result(
         liumos_builder_conn,
         "app/httpserver/httpserver.bin --port 8888",

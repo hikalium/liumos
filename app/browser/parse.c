@@ -2,6 +2,9 @@
 // https://html.spec.whatwg.org/multipage/parsing.html#tree-construction
 
 #include "parse.h"
+Node *root_node;
+Node *stack_of_open_elements[100];
+int stack_index;
 
 #include "../liumlib/liumlib.h"
 #include "tokenize.h"

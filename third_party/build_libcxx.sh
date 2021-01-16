@@ -1,14 +1,15 @@
 #!/bin/bash -e
 cd `dirname $0`
 
-PWD=`pwd`
-LIUMOS_THIRDPARTY_PATH=`pwd`/third_party
-INSTALL_PREFIX=`pwd`/third_party_root
+ARCHIVE_VERSION=8.0.1
+# Source is downloaded by build_libcxxabi.sh, so do nothing here.
+
+THIRD_PARTY_DIR=`pwd`
+INSTALL_PREFIX=`pwd`/out/root_for_kernel
+LLVM_PROJ_PATH=${THIRD_PARTY_DIR}/src/llvm-project-llvmorg-${ARCHIVE_VERSION}
+BUILD_DIR=${THIRD_PARTY_DIR}/build/llvm-project-llvmorg-${ARCHIVE_VERSION}/libcxx
+SRC_DIR=${THIRD_PARTY_DIR}/src/llvm-project-llvmorg-${ARCHIVE_VERSION}/libcxx
 NEWLIB_INC_PATH=${INSTALL_PREFIX}/include
-LLVM_PROJ_PATH=${LIUMOS_THIRDPARTY_PATH}/llvm-project-llvmorg-8.0.1
-LIBCXX_INC_PATH=$LLVM_PROJ_PATH/libcxx/include
-BUILD_DIR=${PWD}/third_party_build/llvm-project-llvmorg-8.0.1/libcxx
-SRC_DIR=${PWD}/third_party/llvm-project-llvmorg-8.0.1/libcxx
 
 echo BUILD_DIR=${BUILD_DIR}
 echo SRC_DIR=${SRC_DIR}

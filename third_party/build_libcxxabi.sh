@@ -4,17 +4,17 @@ cd `dirname $0`
 # Download and extract llvm sources
 ARCHIVE_VERSION=8.0.1
 ARCHIVE_URL=https://github.com/llvm/llvm-project/archive/llvmorg-${ARCHIVE_VERSION}.tar.gz
-wget -N ${ARCHIVE_URL} -P third_party/
-tar -xvf third_party/llvmorg-${ARCHIVE_VERSION}.tar.gz -C third_party/
+wget -N ${ARCHIVE_URL} -P src/
+tar -xvf src/llvmorg-${ARCHIVE_VERSION}.tar.gz -C src/
 
-PWD=`pwd`
-LIUMOS_THIRDPARTY_PATH=`pwd`/third_party
-INSTALL_PREFIX=`pwd`/third_party_root
-BUILD_DIR=${PWD}/third_party_build/llvm-project-llvmorg-8.0.1/libcxxabi
-SRC_DIR=${PWD}/third_party/llvm-project-llvmorg-8.0.1/libcxxabi
+THIRD_PARTY_DIR=`pwd`
+INSTALL_PREFIX=`pwd`/out/root_for_kernel
+LLVM_PROJ_PATH=${THIRD_PARTY_DIR}/src/llvm-project-llvmorg-${ARCHIVE_VERSION}
+BUILD_DIR=${THIRD_PARTY_DIR}/build/llvm-project-llvmorg-${ARCHIVE_VERSION}/libcxxabi
+SRC_DIR=${THIRD_PARTY_DIR}/src/llvm-project-llvmorg-${ARCHIVE_VERSION}/libcxxabi
 NEWLIB_INC_PATH=${INSTALL_PREFIX}/include
-LLVM_PROJ_PATH=${LIUMOS_THIRDPARTY_PATH}/llvm-project-llvmorg-8.0.1
-LIBCXX_INC_PATH=$LLVM_PROJ_PATH/libcxx/include
+
+LIBCXX_INC_PATH=${LLVM_PROJ_PATH}/libcxx/include
 
 echo BUILD_DIR=${BUILD_DIR}
 echo SRC_DIR=${SRC_DIR}

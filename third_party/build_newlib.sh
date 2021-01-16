@@ -2,24 +2,24 @@
 cd `dirname $0`
 NEWLIB_NAME=newlib-3.1.0
 
-PWD=`pwd`
-NEWLIB_BUILD_DIR=${PWD}/third_party_build/${NEWLIB_NAME}
-NEWLIB_SRC_DIR=${PWD}/third_party/${NEWLIB_NAME}
-BUILD_ROOT=${PWD}/third_party_root/
+THIRD_PARTY_DIR=`pwd`
+NEWLIB_BUILD_DIR=${THIRD_PARTY_DIR}/build/${NEWLIB_NAME}
+NEWLIB_SRC_DIR=${THIRD_PARTY_DIR}/src/${NEWLIB_NAME}
+BUILD_ROOT=${THIRD_PARTY_DIR}/out/root_for_kernel
 
 echo NEWLIB_BUILD_DIR=${NEWLIB_BUILD_DIR}
 echo NEWLIB_SRC_DIR=${NEWLIB_SRC_DIR}
 echo BUILD_ROOT=${BUILD_ROOT}
 
-wget -N http://sourceware.org/pub/newlib/${NEWLIB_NAME}.tar.gz -P third_party/
-tar -xvf third_party/${NEWLIB_NAME}.tar.gz -C third_party/
-mkdir -p ${NEWLIB_BUILD_DIR}
+mkdir -p src
+wget -N http://sourceware.org/pub/newlib/${NEWLIB_NAME}.tar.gz -P src/
+tar -xvf src/${NEWLIB_NAME}.tar.gz -C src/
 
 echo CC=${CC}
 echo AR=${AR}
 echo RANLIB=${RANLIB}
 echo CFLAGS=${RANLIB}
-
+mkdir -p ${NEWLIB_BUILD_DIR}
 cd ${NEWLIB_BUILD_DIR}
 ${NEWLIB_SRC_DIR}/newlib/configure \
 --target=x86_64-elf --disable-multilib \

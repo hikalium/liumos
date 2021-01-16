@@ -385,12 +385,6 @@ static ssize_t sys_sendto(int sockfd,
   return -1;
 }
 
-struct FileDescriptor {
-  uint64_t window_fb_map_size;
-};
-
-std::map<std::pair<Process::PID, int>, FileDescriptor> fd_table;
-
 __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
   // This function will be called under exceptions are masked
   // with Kernel Stack
@@ -428,21 +422,14 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     return;
   }
   if (idx == kSyscallIndex_sys_mmap) {
+    uint64_t size = args[2];
     uint64_t fd = args[5];
     if (fd != 5) {
       kprintf("fd != 5\n");
       args[0] = static_cast<uint64_t>(-1);
       return;
     }
-    Process::PID pid = liumos->scheduler->GetCurrentProcess().GetID();
-    std::pair<Process::PID, uint64_t> key = {pid, fd};
-    const auto& fd_info_iter = fd_table.find(key);
-    if (fd_info_iter == fd_table.end()) {
-      kprintf("fd info not found\n");
-      args[0] = static_cast<uint64_t>(-1);
-      return;
-    }
-    uint64_t map_size = fd_info_iter->second.window_fb_map_size;
+    uint64_t map_size = size;
     kprintf("window_fb_map_size = %d\n", map_size);
     uint8_t* buf_kernel = AllocKernelMemory<uint8_t*>(map_size);
     uint64_t phys_addr = v2p(buf_kernel);
@@ -504,9 +491,6 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
       args[0] = -1;
       return;
     }
-    Process::PID pid = liumos->scheduler->GetCurrentProcess().GetID();
-    std::pair<Process::PID, uint64_t> key = {pid, fd};
-    fd_table[key] = {size};
     args[0] = 0;
     return;
   }

@@ -1,7 +1,7 @@
 #ifndef LIB_H
 #define LIB_H
 
-#include "stdint.h"
+#include <stdint.h>
 
 #define NULL 0
 #define true 1
@@ -10,7 +10,7 @@
 #define EXIT_FAILURE 1
 
 #define O_RDWR 2
-#define O_CREAT   (1 << 6)
+#define O_CREAT (1 << 6)
 #define AF_INET 2      // Internet IP protocol
 #define SOCK_STREAM 1  // for TCP
 #define SOCK_DGRAM 2   // for UDP
@@ -27,7 +27,7 @@
 
 #define INADDR_ANY ((unsigned long int)0x00000000)
 
-#define __bswap_16(x) ((__uint16_t)((((x) >> 8) & 0xff) | (((x)&0xff) << 8)))
+#define __bswap_16(x) ((uint16_t)((((x) >> 8) & 0xff) | (((x)&0xff) << 8)))
 
 #define __bswap_32(x)                                   \
   ((((x)&0xff000000) >> 24) | (((x)&0x00ff0000) >> 8) | \
@@ -49,9 +49,6 @@ typedef _Bool bool;
 typedef uint64_t off_t;
 
 typedef uint32_t socklen_t;
-
-int malloc_size;
-char malloc_array[MALLOC_MAX_SIZE];
 
 // c.f.
 // https://elixir.bootlin.com/linux/v4.15/source/include/uapi/linux/in.h#L85
@@ -112,7 +109,7 @@ int setsockopt(int sockfd,
                int optname,
                const void* optval,
                socklen_t optlen);
-void exit(int);
+void exit(int) __attribute__((noreturn));
 void* mmap(void* addr,
            size_t length,
            int prot,
@@ -122,7 +119,7 @@ void* mmap(void* addr,
 int msync(void* addr, size_t length, int flags);
 
 // Standard library functions.
-void bzero(void *s, size_t n);
+void bzero(void* s, size_t n);
 size_t strlen(const char* s);
 char* strcpy(char* dest, const char* src);
 char* strcat(char* dest, const char* src);
@@ -140,7 +137,19 @@ uint32_t htonl(uint32_t hostlong);
 // into binary data in network byte order.
 uint32_t inet_addr(const char* cp);
 
+// Compilier builtin standard library functions
+void* memchr(const void*, int, unsigned long);
+int memcmp(const void*, const void*, unsigned long);
+char* strncpy(char*, const char*, unsigned long);
+char* strrchr(const char*, int);
+long strtol(const char*, char**, int);
+int sprintf(char*, const char*, ...);
+
+// architecture specific, for x86_64
+typedef long long jmp_buf[8];
+
 // liumlib original functions
+void __attribute__((noreturn)) NotImplemented(const char* s);
 void Print(const char* s);
 void Println(const char* s);
 void PrintNum(int v);

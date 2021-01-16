@@ -25,8 +25,21 @@ struct __attribute__((packed)) BMPInfoV3Header {
   uint32_t b_mask;
 };
 
+void InitFreeType();
+
+/* freetype_wrapper.c */
+void DrawFirstChar(uint32_t *bmp, int w, int x, int y, uint32_t col, const char *s);
+void DrawString(uint32_t* bmp,
+                int w,
+                int x,
+                int y,
+                uint32_t col,
+                const char* s);
+
 int main(int argc, char* argv[]) {
-  const int w = 256;
+  InitFreeType();
+
+  const int w = 512;
   const int h = 256;
   uint32_t header_size_with_padding =
       (sizeof(struct BMPFileHeader) + sizeof(struct BMPInfoV3Header) + 0xF) &
@@ -69,10 +82,14 @@ int main(int argc, char* argv[]) {
 
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
-      uint8_t pixel_bgra[4] = {0, y, x, 0};
+      uint8_t pixel_bgra[4] = {0, y, x/2, 0};
       bmp[y * w + x] = *(uint32_t*)pixel_bgra;
     }
   }
+  int px = 100;
+  int py = 100;
+  DrawString(bmp, w, 32, 64, 0xFFFFFF, "Welcome to liumOS!");
+  DrawString(bmp, w, 32, 96, 0xFFFFFF, "liumOSへようこそ！");
 
   msync(buf, file_size, MS_SYNC);
 
