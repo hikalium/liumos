@@ -2,7 +2,7 @@ version: 2
 jobs:
     build:
         docker:
-            - image: hikalium/liumos-builder:v20210115_022730
+            - image: hikalium/liumos-builder:v20210116_204733
         steps:
             - checkout
             - run:
@@ -14,3 +14,6 @@ jobs:
             - run:
                 name: Build LIUMOS.ELF
                 command: make
+            - run:
+                name: Run End-to-end tests
+                command: export LIUMOS_RUN_TEST_WITHOUT_DOCKER=1 && make e2etest
