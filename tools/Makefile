@@ -6,7 +6,7 @@ default: fontmaker
 include ../common.mk
 
 fontmaker: Makefile fontmaker.c
-	$(LLVM_CC) -o $@ fontmaker.c
+	$(HOST_CC) -o $@ fontmaker.c
 
 clean:
 	-rm fontmaker

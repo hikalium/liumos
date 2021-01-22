@@ -8,6 +8,7 @@ if [ ! -f "${FILE}" ]; then
 fi
 echo "LLVM_CC:=`which clang-8`"
 echo "LLVM_CXX:=`which clang++-8`"
+echo "HOST_CC:=`which clang-8`"
 echo "HOST_CXX:=`which clang++-8`"
 echo "LLVM_LLD_LINK:=`which lld-link-8`"
 echo "LLVM_LD_LLD:=`which ld.lld-8`"
