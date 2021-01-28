@@ -24,9 +24,8 @@ cargo 1.46.0 (149022b1d 2020-07-17)
 Then, install nightly toolchain and cargo-xbuild for cross compiling.
 
 ```
-rustup toolchain install nightly && rustup default nightly
+rustup toolchain install nightly-x86_64-unknown-linux-gnu
 rustup component add rust-src
-cargo install cargo-xbuild
 ```
 
 ### macOS
