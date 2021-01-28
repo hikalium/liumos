@@ -8,6 +8,6 @@ docker build --no-cache .
 docker run -it <image id>
 
 export IMAGE_TAG=v`date +%Y%m%d_%H%M%S` && echo ${IMAGE_TAG}
-docke tag <image id> hikalium/liumos-builder:${IMAGE_TAG}
+docker tag <image id> hikalium/liumos-builder:${IMAGE_TAG}
 docker push hikalium/liumos-builder:${IMAGE_TAG}
 ```

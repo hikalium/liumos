@@ -18,7 +18,7 @@ def launch_liumos():
 def launch_liumos_on_docker():
     # returns connection to qemu monitor
     p = pexpect.spawn("make run_docker")
-    p.expect(r"\(qemu\)")
+    p.expect(r"\(qemu\)", timeout=60)
     print('Reached to qemu monitor on docker', file=sys.stderr, flush=True)
     return p
 

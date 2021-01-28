@@ -8,6 +8,7 @@ APPS=\
 	 pi/pi.bin \
 	 ping/ping.bin \
 	 readtest/readtest.bin \
+	 rusttest/rusttest.bin \
 	 udpserver/udpserver.bin \
 	 udpclient/udpclient.bin \
 	 browser/browser.bin \

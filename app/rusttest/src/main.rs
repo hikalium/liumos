@@ -4,8 +4,6 @@
 use core::convert::TryInto;
 use core::panic::PanicInfo;
 
-extern crate libc;
-
 #[link(name = "liumos", kind = "static")]
 extern "C" {
     fn sys_write(fp: i32, str: *const u8, len: u64);

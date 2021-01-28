@@ -32,24 +32,11 @@ RUN apt-get update \
 	telnet
 # Install rust toolchain
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
-	sh -s -- -y --default-toolchain=nightly
+	sh -s -- -y --default-toolchain=nightly-x86_64-unknown-linux-gnu
 ENV PATH $PATH:/root/.cargo/bin
-RUN rustup component add rust-src && \
-	cargo install cargo-xbuild
+RUN rustup component add rust-src
 
 RUN pip3 install pexpect
-
-WORKDIR /prebuilt
-RUN git clone https://github.com/hikalium/liumos.git
-WORKDIR /prebuilt/liumos
-RUN make tools
-WORKDIR /prebuilt/liumos/src
-RUN make newlib && make libcxxabi && make libcxx
-
-# Ensure liumOS is buildable
-WORKDIR /prebuilt/liumos
-RUN make
-RUN make -C app/rusttest
 
 # Finalize the workdir and prompt
 WORKDIR /liumos/

@@ -9,5 +9,5 @@ docker run --rm -ti -v `echo $PWD`:/liumos_host \
 	-p 0.0.0.0:8889:8889/udp \
 	-p 0.0.0.0:1235:1235/tcp \
 	--name liumos-builder0 \
-	hikalium/liumos-builder:latest \
+	hikalium/liumos-builder:v20210129_021600 \
 	/liumos_host/scripts/for_docker/run.sh

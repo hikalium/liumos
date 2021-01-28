@@ -81,8 +81,8 @@ prebuilt : .FORCE
 pmem.img :
 	qemu-img create $@ 2G
 
-app/% : .FORCE
-	make -C $(dir $@)
+apps : .FORCE
+	make -C app/
 
 deploy_apps : .FORCE
 	make -C app/ deploy
