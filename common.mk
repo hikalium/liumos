@@ -24,6 +24,9 @@ commit :
 run :
 	make -C $(THIS_DIR) run_root
 
+run_rust :
+	make -C $(THIS_DIR) common_run_rust
+
 run_docker :
 	make -C $(THIS_DIR) run_docker_root
 

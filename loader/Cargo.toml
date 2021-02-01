@@ -1,0 +1,13 @@
+[package]
+name = "loader"
+version = "0.1.0"
+authors = ["hikalium <hikalium@hikalium.com>"]
+edition = "2018"
+
+[dependencies]
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"

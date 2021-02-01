@@ -105,6 +105,10 @@ LLDB_ARGS = -o 'settings set interpreter.prompt-on-quit false' \
 			-o 'process launch' \
 			-o 'process handle -s false SIGUSR1 SIGUSR2'
 
+common_run_rust : files .FORCE
+	make -C loader install
+	$(QEMU) $(QEMU_ARGS_PMEM)
+
 run_xhci_gdb : files .FORCE
 	lldb $(LLDB_ARGS) -- $(QEMU) $(QEMU_ARGS_XHCI) $(QEMU_ARGS)
 	
