@@ -1,6 +1,9 @@
 #![no_std]
 #![no_main]
 #![feature(asm)]
+#![feature(custom_test_frameworks)]
+#![test_runner(crate::test_runner)]
+#![reexport_test_harness_main = "test_main"]
 
 use core::convert::TryInto;
 use core::fmt;
@@ -73,8 +76,23 @@ impl fmt::Write for Writer {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u32)]
+pub enum QemuExitCode {
+    Success = 0x1, // QEMU will exit with status 3
+    Failed = 0x2,  // QEMU will exit with status 5
+}
+
+pub fn exit_qemu(exit_code: QemuExitCode) {
+    // https://github.com/qemu/qemu/blob/master/hw/misc/debugexit.c
+    write_io_port(0xf4, exit_code as u8)
+}
+
 #[no_mangle]
 pub extern "C" fn efi_entry() -> ! {
+    #[cfg(test)]
+    test_main();
+
     use core::fmt::Write;
     com_initialize(IO_ADDR_COM2);
     let mut writer = Writer {};
@@ -83,4 +101,22 @@ pub extern "C" fn efi_entry() -> ! {
         write!(writer, "liumOS loader! n = {}\n\r", n).unwrap();
         n += 1;
     }
+}
+
+#[cfg(test)]
+fn test_runner(tests: &[&dyn Fn()]) {
+    use core::fmt::Write;
+    com_initialize(IO_ADDR_COM2);
+    let mut writer = Writer {};
+    write!(writer, "Running {} tests...", tests.len());
+    for test in tests {
+        test();
+    }
+    write!(writer, "Done!");
+    exit_qemu(QemuExitCode::Success)
+}
+
+#[test_case]
+fn trivial_assertion() {
+    assert_eq!(1, 1);
 }

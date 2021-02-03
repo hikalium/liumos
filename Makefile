@@ -6,6 +6,20 @@ OVMF=ovmf/bios64.bin
 QEMU=qemu-system-x86_64
 OSNAME=${shell uname -s}
 
+QEMU_ARGS_LOADER_TEST=\
+		  -device qemu-xhci -device usb-mouse \
+		  -bios $(OVMF) \
+		  -machine q35,nvdimm -cpu qemu64 -smp 4 \
+		  -m 2G,slots=2,maxmem=4G \
+		  -drive format=raw,file=fat:rw:mnt -net none \
+		  -rtc base=localtime \
+			-device isa-debug-exit,iobase=0xf4,iosize=0x01 \
+			-chardev stdio,id=char0,mux=on \
+			-monitor none \
+			-serial chardev:char0 \
+			-serial chardev:char0 \
+			-nographic
+
 QEMU_ARGS_COMMON=\
 		  -device qemu-xhci -device usb-mouse \
 		  -bios $(OVMF) \
@@ -15,7 +29,6 @@ QEMU_ARGS_COMMON=\
 		  -m 2G,slots=2,maxmem=4G \
 		  -drive format=raw,file=fat:rw:mnt -net none \
 		  -rtc base=localtime \
-		  -d cpu_reset \
 		  -serial tcp::1234,server,nowait \
 		  -serial tcp::1235,server,nowait
 
@@ -97,6 +110,24 @@ files : src/BOOTX64.EFI src/LIUMOS.ELF .FORCE
 	cp src/LIUMOS.ELF mnt/LIUMOS.ELF
 	mkdir -p mnt/EFI/EFI/
 	echo 'FS0:\\EFI\\BOOT\\BOOTX64.EFI' > mnt/startup.nsh
+
+.PHONY : internal_run_loader_test
+
+internal_run_loader_test :
+	@echo Using ${LOADER_TEST_EFI} as a loader...
+	mkdir -p mnt/
+	-rm -rf mnt/*
+	mkdir -p mnt/EFI/BOOT
+	cp ${LOADER_TEST_EFI} mnt/EFI/BOOT/BOOTX64.EFI
+	$(QEMU) $(QEMU_ARGS_LOADER_TEST) ; \
+		RETCODE=$$? ; \
+		if [ $$RETCODE -eq 3 ]; then \
+			echo "\nPASS" ; \
+			exit 0 ; \
+		else \
+			echo "\nFAIL: QEMU returned $$RETCODE" ; \
+			exit 1 ; \
+		fi
 
 run_nopmem : files .FORCE
 	$(QEMU) $(QEMU_ARGS)
@@ -189,6 +220,7 @@ test :
 	make spellcheck
 	make -C src test
 	make -C app/liumlib test
+	make -C loader test
 
 e2etest_root :
 	make -C e2etest test

@@ -5,9 +5,8 @@ include ../common.mk
 .PHONY: build clean
 
 build :
-	cargo build -vv --target=x86_64-none-efi.json --release \
-		-Z build-std=core,alloc \
-		-Z build-std-features=compiler-builtins-mem
+	cargo build -vv --release
+
 clean:
 	-rm -r target
 
@@ -16,3 +15,6 @@ install:
 
 check:
 	cargo clippy
+
+test:
+	cargo test
