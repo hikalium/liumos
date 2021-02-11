@@ -4,7 +4,7 @@
 #![feature(custom_test_frameworks)]
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
-
+#![allow(clippy::zero_ptr)]
 use core::convert::TryInto;
 use core::fmt;
 use core::panic::PanicInfo;
@@ -169,8 +169,30 @@ pub struct EFITableHeader {
     reserved: u32,
 }
 
-pub type EFIStatus = u64;
+#[repr(C)]
+pub struct EFI_GUID {
+    data0: u32,
+    data1: u16,
+    data2: u16,
+    data3: [u8; 8],
+}
+
 pub type EFIHandle = u64;
+pub type EFIVoid = u8;
+
+const EFI_SYSTEM_TABLE_SIGNATURE: u64 = 0x5453595320494249;
+const EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID: EFI_GUID = EFI_GUID {
+    data0: 0x9042a9de,
+    data1: 0x23dc,
+    data2: 0x4a38,
+    data3: [0x96, 0xfb, 0x7a, 0xde, 0xd0, 0x80, 0x51, 0x6a],
+};
+
+#[repr(i64)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum EFIStatus {
+    SUCCESS = 0,
+}
 
 #[repr(C)]
 pub struct EFISimpleTextOutputProtocol {
@@ -184,6 +206,29 @@ pub struct EFISimpleTextOutputProtocol {
     clear_screen: extern "win64" fn(this: *const EFISimpleTextOutputProtocol) -> EFIStatus,
 }
 
+pub union EFIBootServicesTableLocateProtocolVariants {
+    locate_graphics_output_protocol: extern "win64" fn(
+        protocol: *const EFI_GUID,
+        registration: *const EFIVoid,
+        interface: *mut *mut EFIGraphicsOutputProtocol,
+    ) -> EFIStatus,
+}
+
+#[repr(C)]
+pub struct EFIBootServicesTable {
+    header: EFITableHeader,
+    padding0: [u64; 4],
+    get_memory_map: EFIHandle,
+    padding1: [u64; 11],
+    handle_protocol: EFIHandle,
+    padding2: [u64; 9],
+    exit_boot_services: EFIHandle,
+    padding3: [u64; 5],
+    open_protocol: EFIHandle,
+    padding4: [u64; 4],
+    locate_protocol: EFIBootServicesTableLocateProtocolVariants,
+}
+
 #[repr(C)]
 pub struct EFISystemTable<'a> {
     header: EFITableHeader,
@@ -193,9 +238,43 @@ pub struct EFISystemTable<'a> {
     con_in: EFIHandle,
     console_out_handle: EFIHandle,
     con_out: &'a EFISimpleTextOutputProtocol,
+    standard_error_handle: EFIHandle,
+    std_err: &'a EFISimpleTextOutputProtocol,
+    runtime_services: EFIHandle,
+    boot_services: &'a EFIBootServicesTable,
 }
 
-const EFI_SYSTEM_TABLE_SIGNATURE: u64 = 0x5453595320494249;
+#[repr(C)]
+#[derive(Debug)]
+pub struct EFIGraphicsOutputProtocolPixelInfo {
+    version: u32,
+    horizontal_resolution: u32,
+    vertical_resolution: u32,
+    pixel_format: u32,
+    red_mask: u32,
+    green_mask: u32,
+    blue_mask: u32,
+    reserved_mask: u32,
+    pixels_per_scan_line: u32,
+}
+
+#[repr(C)]
+#[derive(Debug)]
+pub struct EFIGraphicsOutputProtocolMode<'a> {
+    max_mode: u32,
+    mode: u32,
+    info: &'a EFIGraphicsOutputProtocolPixelInfo,
+    size_of_info: u64,
+    frame_buffer_base: u64,
+    frame_buffer_size: u64,
+}
+
+#[repr(C)]
+#[derive(Debug)]
+pub struct EFIGraphicsOutputProtocol<'a> {
+    reserved: [u64; 3],
+    mode: &'a EFIGraphicsOutputProtocolMode<'a>,
+}
 
 pub struct EFISimpleTextOutputProtocolWriter<'a> {
     protocol: &'a EFISimpleTextOutputProtocol,
@@ -242,6 +321,35 @@ pub extern "win64" fn efi_entry(
         protocol: &efi_system_table.con_out,
     };
     writeln!(efi_writer, "Loading liumOS...").unwrap();
+
+    let mut graphics_output_protocol: *mut EFIGraphicsOutputProtocol =
+        0 as *mut EFIGraphicsOutputProtocol;
+    unsafe {
+        let status = (efi_system_table
+            .boot_services
+            .locate_protocol
+            .locate_graphics_output_protocol)(
+            &EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID,
+            0 as *mut EFIVoid,
+            &mut graphics_output_protocol,
+        );
+        assert_eq!(status, EFIStatus::SUCCESS);
+        writeln!(efi_writer, "{:?}", *graphics_output_protocol).unwrap();
+    }
+
+    unsafe {
+        let vram: *mut u32 = (*(*graphics_output_protocol).mode).frame_buffer_base as *mut u32;
+        let pixels_per_scan_line = (*(*(*graphics_output_protocol).mode).info).pixels_per_scan_line;
+        let xsize = (*(*(*graphics_output_protocol).mode).info).horizontal_resolution;
+        let ysize = (*(*(*graphics_output_protocol).mode).info).vertical_resolution;
+        for y in 0..ysize {
+            for x in 0..xsize {
+                *vram.add((pixels_per_scan_line * y + x) as usize) = (y << 8) | x;
+            }
+        }
+    }
+    writeln!(efi_writer, "VRAM acquired").unwrap();
+
     loop {
         hlt();
     }
