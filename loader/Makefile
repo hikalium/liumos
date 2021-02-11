@@ -10,7 +10,7 @@ build :
 clean:
 	-rm -r target
 
-install:
+install: build
 	cp target/x86_64-none-efi/release/loader.efi ../mnt/EFI/BOOT/BOOTX64.EFI
 
 check:
@@ -18,3 +18,6 @@ check:
 
 test:
 	cargo test
+
+watch_serial:
+		while ! telnet localhost 1235 ; do sleep 1 ; done ;

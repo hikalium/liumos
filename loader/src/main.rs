@@ -9,9 +9,72 @@ use core::convert::TryInto;
 use core::fmt;
 use core::panic::PanicInfo;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct CStrPtr16 {
+    ptr: *const u16,
+}
+impl CStrPtr16 {
+    #[cfg(test)]
+    fn from_ptr(p: *const u16) -> CStrPtr16 {
+        CStrPtr16 { ptr: p }
+    }
+}
+
+pub fn strlen_char16(strp: CStrPtr16) -> usize {
+    let mut len: usize = 0;
+    unsafe {
+        loop {
+            if *strp.ptr.add(len) == 0 {
+                break;
+            }
+            len += 1;
+        }
+    }
+    len
+}
+
+impl fmt::Display for CStrPtr16 {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        unsafe {
+            let mut index = 0;
+            loop {
+                let c = *self.ptr.offset(index);
+                if c == 0 {
+                    break;
+                }
+                let bytes = c.to_be_bytes();
+                let result = write!(f, "{}", bytes[1] as char);
+                if result.is_err() {
+                    return result;
+                }
+                index += 1;
+            }
+        }
+        Result::Ok(())
+    }
+}
+
+#[cfg(test)]
+fn test_panic(info: &PanicInfo) {
+    use core::fmt::Write;
+    com_initialize(IO_ADDR_COM2);
+    let mut writer = Writer {};
+    writeln!(writer, "[FAIL]");
+    write!(writer, "{}", info);
+    exit_qemu(QemuExitCode::Fail)
+}
+
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
+    #[cfg(test)]
+    test_panic(_info);
+
     loop {}
+}
+
+fn hlt() {
+    unsafe { asm!("hlt") }
 }
 
 // https://doc.rust-lang.org/beta/unstable-book/library-features/asm.html
@@ -80,37 +143,89 @@ impl fmt::Write for Writer {
 #[repr(u32)]
 pub enum QemuExitCode {
     Success = 0x1, // QEMU will exit with status 3
-    Failed = 0x2,  // QEMU will exit with status 5
+    Fail = 0x2,    // QEMU will exit with status 5
 }
 
-pub fn exit_qemu(exit_code: QemuExitCode) {
+pub fn exit_qemu(exit_code: QemuExitCode) -> ! {
     // https://github.com/qemu/qemu/blob/master/hw/misc/debugexit.c
-    write_io_port(0xf4, exit_code as u8)
+    write_io_port(0xf4, exit_code as u8);
+    loop {
+        hlt();
+    }
 }
+
+#[repr(C)]
+pub struct EFITableHeader {
+    signature: u64,
+    revision: u32,
+    header_size: u32,
+    crc32: u32,
+    reserved: u32,
+}
+
+#[repr(C)]
+pub struct EFISimpleTextOutputProtocol {
+    header: EFITableHeader,
+}
+
+#[repr(C)]
+pub struct EFISystemTable<'a> {
+    header: EFITableHeader,
+    firmware_vendor: CStrPtr16,
+    firmware_revision: u32,
+    console_in_handle: EFIHandle,
+    con_in: &'a EFISimpleTextOutputProtocol,
+}
+
+pub struct EFIHandle {}
+
+const EFI_SYSTEM_TABLE_SIGNATURE: u64 = 0x5453595320494249;
 
 #[no_mangle]
-pub extern "C" fn efi_entry() -> ! {
+pub extern "win64" fn efi_entry(_image_handle: &EFIHandle, efi_system_table: &EFISystemTable) -> ! {
     #[cfg(test)]
     test_main();
 
     use core::fmt::Write;
     com_initialize(IO_ADDR_COM2);
     let mut writer = Writer {};
-    let mut n = 0;
+    writeln!(writer, "liumOS loader starting...").unwrap();
+    assert_eq!(
+        efi_system_table.header.signature,
+        EFI_SYSTEM_TABLE_SIGNATURE
+    );
+    writeln!(writer, "vendor: {}", efi_system_table.firmware_vendor).unwrap();
     loop {
-        write!(writer, "liumOS loader! n = {}\n\r", n).unwrap();
-        n += 1;
+        hlt();
+    }
+}
+
+pub trait Testable {
+    fn run(&self);
+}
+
+impl<T> Testable for T
+where
+    T: Fn(),
+{
+    fn run(&self) {
+        use core::fmt::Write;
+        com_initialize(IO_ADDR_COM2);
+        let mut writer = Writer {};
+        write!(writer, "{}...\t", core::any::type_name::<T>()).unwrap();
+        self();
+        writeln!(writer, "[PASS]").unwrap();
     }
 }
 
 #[cfg(test)]
-fn test_runner(tests: &[&dyn Fn()]) {
+fn test_runner(tests: &[&dyn Testable]) -> ! {
     use core::fmt::Write;
     com_initialize(IO_ADDR_COM2);
     let mut writer = Writer {};
-    write!(writer, "Running {} tests...", tests.len());
+    writeln!(writer, "Running {} tests...", tests.len());
     for test in tests {
-        test();
+        test.run();
     }
     write!(writer, "Done!");
     exit_qemu(QemuExitCode::Success)
@@ -119,4 +234,14 @@ fn test_runner(tests: &[&dyn Fn()]) {
 #[test_case]
 fn trivial_assertion() {
     assert_eq!(1, 1);
+}
+#[test_case]
+fn strlen_char16_returns_valid_len() {
+    assert_eq!(
+        strlen_char16(CStrPtr16::from_ptr(
+            // "hello" contains 5 chars
+            "h\0e\0l\0l\0o\0\0\0".as_ptr().cast::<u16>()
+        )),
+        5
+    );
 }
