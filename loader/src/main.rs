@@ -59,16 +59,22 @@ impl fmt::Display for CStrPtr16 {
 fn test_panic(info: &PanicInfo) {
     use core::fmt::Write;
     com_initialize(IO_ADDR_COM2);
-    let mut writer = Writer {};
+    let mut writer = SerialConsoleWriter {};
     writeln!(writer, "[FAIL]");
     write!(writer, "{}", info);
     exit_qemu(QemuExitCode::Fail)
 }
 
 #[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
+fn panic(info: &PanicInfo) -> ! {
     #[cfg(test)]
-    test_panic(_info);
+    test_panic(info);
+
+    use core::fmt::Write;
+    com_initialize(IO_ADDR_COM2);
+    let mut writer = SerialConsoleWriter {};
+    writeln!(writer, "PANIC!!!").unwrap();
+    writeln!(writer, "{}", info).unwrap();
 
     loop {}
 }
@@ -124,15 +130,15 @@ fn com_send_str(base_io_addr: u16, s: &str) {
     }
 }
 
-pub struct Writer {}
+pub struct SerialConsoleWriter {}
 
-impl Writer {
+impl SerialConsoleWriter {
     pub fn write_str(&mut self, s: &str) {
         com_send_str(IO_ADDR_COM2, s);
     }
 }
 
-impl fmt::Write for Writer {
+impl fmt::Write for SerialConsoleWriter {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         com_send_str(IO_ADDR_COM2, s);
         Ok(())
@@ -163,9 +169,19 @@ pub struct EFITableHeader {
     reserved: u32,
 }
 
+pub type EFIStatus = u64;
+pub type EFIHandle = u64;
+
 #[repr(C)]
 pub struct EFISimpleTextOutputProtocol {
-    header: EFITableHeader,
+    reset: EFIHandle,
+    output_string:
+        extern "win64" fn(this: *const EFISimpleTextOutputProtocol, str: *const u16) -> EFIStatus,
+    test_string: EFIHandle,
+    query_mode: EFIHandle,
+    set_mode: EFIHandle,
+    set_attribute: EFIHandle,
+    clear_screen: extern "win64" fn(this: *const EFISimpleTextOutputProtocol) -> EFIStatus,
 }
 
 #[repr(C)]
@@ -174,27 +190,58 @@ pub struct EFISystemTable<'a> {
     firmware_vendor: CStrPtr16,
     firmware_revision: u32,
     console_in_handle: EFIHandle,
-    con_in: &'a EFISimpleTextOutputProtocol,
+    con_in: EFIHandle,
+    console_out_handle: EFIHandle,
+    con_out: &'a EFISimpleTextOutputProtocol,
 }
-
-pub struct EFIHandle {}
 
 const EFI_SYSTEM_TABLE_SIGNATURE: u64 = 0x5453595320494249;
 
+pub struct EFISimpleTextOutputProtocolWriter<'a> {
+    protocol: &'a EFISimpleTextOutputProtocol,
+}
+
+impl EFISimpleTextOutputProtocolWriter<'_> {
+    pub fn write_char(&mut self, c: u8) {
+        let cbuf: [u16; 2] = [c.into(), 0];
+        (self.protocol.output_string)(self.protocol, cbuf.as_ptr());
+    }
+    pub fn write_str(&mut self, s: &str) {
+        for c in s.bytes() {
+            if c == b'\n' {
+                self.write_char(b'\r');
+            }
+            self.write_char(c);
+        }
+    }
+}
+
+impl fmt::Write for EFISimpleTextOutputProtocolWriter<'_> {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.write_str(s);
+        Ok(())
+    }
+}
+
 #[no_mangle]
-pub extern "win64" fn efi_entry(_image_handle: &EFIHandle, efi_system_table: &EFISystemTable) -> ! {
+pub extern "win64" fn efi_entry(
+    _image_handle: *const EFIHandle,
+    efi_system_table: &EFISystemTable,
+) -> ! {
     #[cfg(test)]
     test_main();
 
-    use core::fmt::Write;
-    com_initialize(IO_ADDR_COM2);
-    let mut writer = Writer {};
-    writeln!(writer, "liumOS loader starting...").unwrap();
     assert_eq!(
         efi_system_table.header.signature,
         EFI_SYSTEM_TABLE_SIGNATURE
     );
-    writeln!(writer, "vendor: {}", efi_system_table.firmware_vendor).unwrap();
+
+    use core::fmt::Write;
+    (efi_system_table.con_out.clear_screen)(efi_system_table.con_out);
+    let mut efi_writer = EFISimpleTextOutputProtocolWriter {
+        protocol: &efi_system_table.con_out,
+    };
+    writeln!(efi_writer, "Loading liumOS...").unwrap();
     loop {
         hlt();
     }
@@ -211,7 +258,7 @@ where
     fn run(&self) {
         use core::fmt::Write;
         com_initialize(IO_ADDR_COM2);
-        let mut writer = Writer {};
+        let mut writer = SerialConsoleWriter {};
         write!(writer, "{}...\t", core::any::type_name::<T>()).unwrap();
         self();
         writeln!(writer, "[PASS]").unwrap();
@@ -222,7 +269,7 @@ where
 fn test_runner(tests: &[&dyn Testable]) -> ! {
     use core::fmt::Write;
     com_initialize(IO_ADDR_COM2);
-    let mut writer = Writer {};
+    let mut writer = SerialConsoleWriter {};
     writeln!(writer, "Running {} tests...", tests.len());
     for test in tests {
         test.run();
