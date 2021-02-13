@@ -7,6 +7,7 @@
 #![allow(clippy::zero_ptr)]
 use core::convert::TryInto;
 use core::fmt;
+use core::mem;
 use core::panic::PanicInfo;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -15,7 +16,6 @@ pub struct CStrPtr16 {
     ptr: *const u16,
 }
 impl CStrPtr16 {
-    #[cfg(test)]
     fn from_ptr(p: *const u16) -> CStrPtr16 {
         CStrPtr16 { ptr: p }
     }
@@ -187,6 +187,24 @@ const EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID: EFI_GUID = EFI_GUID {
     data2: 0x4a38,
     data3: [0x96, 0xfb, 0x7a, 0xde, 0xd0, 0x80, 0x51, 0x6a],
 };
+const EFI_LOADED_IMAGE_PROTOCOL_GUID: EFI_GUID = EFI_GUID {
+    data0: 0x5B1B31A1,
+    data1: 0x9562,
+    data2: 0x11d2,
+    data3: [0x8E, 0x3F, 0x00, 0xA0, 0xC9, 0x69, 0x72, 0x3B],
+};
+const EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID: EFI_GUID = EFI_GUID {
+    data0: 0x0964e5b22,
+    data1: 0x6459,
+    data2: 0x11d2,
+    data3: [0x8e, 0x39, 0x00, 0xa0, 0xc9, 0x69, 0x72, 0x3b],
+};
+const EFI_FILE_SYSTEM_INFO_GUID: EFI_GUID = EFI_GUID {
+    data0: 0x09576e93,
+    data1: 0x6d3f,
+    data2: 0x11d2,
+    data3: [0x8e, 0x39, 0x00, 0xa0, 0xc9, 0x69, 0x72, 0x3b],
+};
 
 #[repr(i64)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -213,6 +231,18 @@ pub union EFIBootServicesTableLocateProtocolVariants {
         interface: *mut *mut EFIGraphicsOutputProtocol,
     ) -> EFIStatus,
 }
+pub union EFIBootServicesTableHandleProtocolVariants {
+    handle_loaded_image_protocol: extern "win64" fn(
+        handle: EFIHandle,
+        protocol: *const EFI_GUID,
+        interface: *mut *mut EFILoadedImageProtocol,
+    ) -> EFIStatus,
+    handle_simple_file_system_protocol: extern "win64" fn(
+        handle: EFIHandle,
+        protocol: *const EFI_GUID,
+        interface: *mut *mut EFISimpleFileSystemProtocol,
+    ) -> EFIStatus,
+}
 
 #[repr(C)]
 pub struct EFIBootServicesTable {
@@ -220,7 +250,7 @@ pub struct EFIBootServicesTable {
     padding0: [u64; 4],
     get_memory_map: EFIHandle,
     padding1: [u64; 11],
-    handle_protocol: EFIHandle,
+    handle_protocol: EFIBootServicesTableHandleProtocolVariants,
     padding2: [u64; 9],
     exit_boot_services: EFIHandle,
     padding3: [u64; 5],
@@ -276,6 +306,61 @@ pub struct EFIGraphicsOutputProtocol<'a> {
     mode: &'a EFIGraphicsOutputProtocolMode<'a>,
 }
 
+#[repr(C)]
+#[derive(Default)]
+pub struct EFIFileSystemInfo {
+    size: u64,
+    readonly: u8,
+    volume_size: u64,
+    free_space: u64,
+    block_size: u32,
+    volume_label: [u16; 32],
+}
+
+#[repr(C)]
+pub struct EFIFileProtocol {
+    revision: u64,
+    reserved: [u64; 7],
+    get_info: extern "win64" fn(
+        this: *const EFIFileProtocol,
+        information_type: *const EFI_GUID,
+        buffer_size: &mut u64,
+        buffer: &mut EFIFileSystemInfo,
+    ) -> EFIStatus,
+}
+
+#[repr(C)]
+pub struct EFILoadedImageProtocol<'a> {
+    revision: u32,
+    parent_handle: EFIHandle,
+    system_table: &'a EFISystemTable<'a>,
+    device_handle: EFIHandle,
+}
+
+#[repr(C)]
+pub struct FileProtocol {
+    revision: u64,
+    open: extern "win64" fn(
+        this: *const EFISimpleFileSystemProtocol,
+        root: *mut *mut EFIFileProtocol,
+    ) -> EFIStatus,
+    close: EFIHandle,
+    delete: EFIHandle,
+    read: extern "win64" fn(
+        this: *const EFISimpleFileSystemProtocol,
+        root: *mut *mut EFIFileProtocol,
+    ) -> EFIStatus,
+}
+
+#[repr(C)]
+pub struct EFISimpleFileSystemProtocol {
+    revision: u64,
+    open_volume: extern "win64" fn(
+        this: *const EFISimpleFileSystemProtocol,
+        root: *mut *mut EFIFileProtocol,
+    ) -> EFIStatus,
+}
+
 pub struct EFISimpleTextOutputProtocolWriter<'a> {
     protocol: &'a EFISimpleTextOutputProtocol,
 }
@@ -303,10 +388,7 @@ impl fmt::Write for EFISimpleTextOutputProtocolWriter<'_> {
 }
 
 #[no_mangle]
-pub extern "win64" fn efi_entry(
-    _image_handle: *const EFIHandle,
-    efi_system_table: &EFISystemTable,
-) -> ! {
+pub extern "win64" fn efi_entry(image_handle: EFIHandle, efi_system_table: &EFISystemTable) -> ! {
     #[cfg(test)]
     test_main();
 
@@ -321,6 +403,7 @@ pub extern "win64" fn efi_entry(
         protocol: &efi_system_table.con_out,
     };
     writeln!(efi_writer, "Loading liumOS...").unwrap();
+    writeln!(efi_writer, "{:#p}", &efi_system_table).unwrap();
 
     let mut graphics_output_protocol: *mut EFIGraphicsOutputProtocol =
         0 as *mut EFIGraphicsOutputProtocol;
@@ -334,7 +417,6 @@ pub extern "win64" fn efi_entry(
             &mut graphics_output_protocol,
         );
         assert_eq!(status, EFIStatus::SUCCESS);
-        writeln!(efi_writer, "{:?}", *graphics_output_protocol).unwrap();
     }
 
     unsafe {
@@ -349,6 +431,79 @@ pub extern "win64" fn efi_entry(
         }
     }
     writeln!(efi_writer, "VRAM acquired").unwrap();
+
+    let mut loaded_image_protocol: *mut EFILoadedImageProtocol = 0 as *mut EFILoadedImageProtocol;
+    unsafe {
+        let status = (efi_system_table
+            .boot_services
+            .handle_protocol
+            .handle_loaded_image_protocol)(
+            image_handle,
+            &EFI_LOADED_IMAGE_PROTOCOL_GUID,
+            &mut loaded_image_protocol,
+        );
+        assert_eq!(status, EFIStatus::SUCCESS);
+        writeln!(
+            efi_writer,
+            "Got LoadedImageProtocol. Revision: {:#X} system_table: {:#p}",
+            (*loaded_image_protocol).revision,
+            (*loaded_image_protocol).system_table
+        )
+        .unwrap();
+    }
+
+    let mut simple_file_system_protocol: *mut EFISimpleFileSystemProtocol =
+        0 as *mut EFISimpleFileSystemProtocol;
+    unsafe {
+        let status = (efi_system_table
+            .boot_services
+            .handle_protocol
+            .handle_simple_file_system_protocol)(
+            (*loaded_image_protocol).device_handle,
+            &EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID,
+            &mut simple_file_system_protocol,
+        );
+        assert_eq!(status, EFIStatus::SUCCESS);
+        writeln!(
+            efi_writer,
+            "Got SimpleFileSystemProtocol. revision: {:#X}",
+            (*simple_file_system_protocol).revision
+        )
+        .unwrap();
+    }
+
+    let mut root_file: *mut EFIFileProtocol = 0 as *mut EFIFileProtocol;
+    unsafe {
+        let status = ((*simple_file_system_protocol).open_volume)(
+            simple_file_system_protocol,
+            &mut root_file,
+        );
+        assert_eq!(status, EFIStatus::SUCCESS);
+        writeln!(
+            efi_writer,
+            "Got FileProtocol of the root file. revision: {:#X}",
+            (*root_file).revision
+        )
+        .unwrap();
+    }
+
+    let mut root_file_info: EFIFileSystemInfo = EFIFileSystemInfo::default();
+    let mut root_file_info_size: u64 = mem::size_of::<EFIFileSystemInfo>().try_into().unwrap();
+    unsafe {
+        let status = ((*root_file).get_info)(
+            root_file,
+            &EFI_FILE_SYSTEM_INFO_GUID,
+            &mut root_file_info_size,
+            &mut root_file_info,
+        );
+        assert_eq!(status, EFIStatus::SUCCESS);
+        writeln!(
+            efi_writer,
+            "Got root_file_info. volume label: {}",
+            CStrPtr16::from_ptr(root_file_info.volume_label.as_ptr())
+        )
+        .unwrap();
+    }
 
     loop {
         hlt();
