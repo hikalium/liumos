@@ -320,7 +320,13 @@ pub struct EFIFileSystemInfo {
 #[repr(C)]
 pub struct EFIFileProtocol {
     revision: u64,
-    reserved: [u64; 7],
+    reserved0: [u64; 3],
+    read: extern "win64" fn(
+        this: *const EFIFileProtocol,
+        buffer_size: &mut u64,
+        buffer: &mut EFIFileInfo,
+    ) -> EFIStatus,
+    reserved1: [u64; 3],
     get_info: extern "win64" fn(
         this: *const EFIFileProtocol,
         information_type: *const EFI_GUID,
@@ -337,18 +343,45 @@ pub struct EFILoadedImageProtocol<'a> {
     device_handle: EFIHandle,
 }
 
+#[allow(dead_code)]
+#[derive(Default)]
+pub struct EFITime {
+    year: u16,  // 1900 – 9999
+    month: u8,  // 1 – 12
+    day: u8,    // 1 – 31
+    hour: u8,   // 0 – 23
+    minute: u8, // 0 – 59
+    second: u8, // 0 – 59
+    pad1: u8,
+    nanosecond: u32, // 0 – 999,999,999
+    time_zone: u16,  // -1440 to 1440 or 2047
+    daylight: u8,
+    pad2: u8,
+}
+
+#[repr(C)]
+#[derive(Default)]
+pub struct EFIFileInfo {
+    size: u64,
+    file_size: u64,
+    physical_size: u64,
+    create_time: EFITime,
+    last_access_time: EFITime,
+    modification_time: EFITime,
+    attr: u64,
+    file_name: [u16; 32],
+}
+
 #[repr(C)]
 pub struct FileProtocol {
     revision: u64,
-    open: extern "win64" fn(
-        this: *const EFISimpleFileSystemProtocol,
-        root: *mut *mut EFIFileProtocol,
-    ) -> EFIStatus,
+    open: EFIHandle,
     close: EFIHandle,
     delete: EFIHandle,
     read: extern "win64" fn(
         this: *const EFISimpleFileSystemProtocol,
-        root: *mut *mut EFIFileProtocol,
+        buffer_size: &mut u64,
+        buffer: &mut EFIFileInfo,
     ) -> EFIStatus,
 }
 
@@ -487,22 +520,42 @@ pub extern "win64" fn efi_entry(image_handle: EFIHandle, efi_system_table: &EFIS
         .unwrap();
     }
 
-    let mut root_file_info: EFIFileSystemInfo = EFIFileSystemInfo::default();
-    let mut root_file_info_size: u64 = mem::size_of::<EFIFileSystemInfo>().try_into().unwrap();
+    let mut root_fs_info: EFIFileSystemInfo = EFIFileSystemInfo::default();
+    let mut root_fs_info_size: u64 = mem::size_of::<EFIFileSystemInfo>().try_into().unwrap();
     unsafe {
         let status = ((*root_file).get_info)(
             root_file,
             &EFI_FILE_SYSTEM_INFO_GUID,
-            &mut root_file_info_size,
-            &mut root_file_info,
+            &mut root_fs_info_size,
+            &mut root_fs_info,
         );
         assert_eq!(status, EFIStatus::SUCCESS);
         writeln!(
             efi_writer,
-            "Got root_file_info. volume label: {}",
-            CStrPtr16::from_ptr(root_file_info.volume_label.as_ptr())
+            "Got root fs. volume label: {}",
+            CStrPtr16::from_ptr(root_fs_info.volume_label.as_ptr())
         )
         .unwrap();
+    }
+
+    // List all files under root dir
+    loop {
+        let mut file_info: EFIFileInfo = EFIFileInfo::default();
+        let mut file_info_size;
+        unsafe {
+            file_info_size = mem::size_of::<EFIFileInfo>().try_into().unwrap();
+            let status = ((*root_file).read)(root_file, &mut file_info_size, &mut file_info);
+            assert_eq!(status, EFIStatus::SUCCESS);
+            if file_info_size == 0 {
+                break;
+            }
+            writeln!(
+                efi_writer,
+                "FILE: {}",
+                CStrPtr16::from_ptr(file_info.file_name.as_ptr())
+            )
+            .unwrap();
+        }
     }
 
     loop {
