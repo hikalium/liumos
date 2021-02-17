@@ -46,8 +46,7 @@ Move to the root of this source tree. Then:
 
 ```
 make tools
-cd src
-make newlib && make libcxxabi && make libcxx
+make prebuilt
 ```
 
 ## How to build
