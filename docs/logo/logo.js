@@ -1,5 +1,9 @@
 const iconSize = 1024;
-var draw = SVG().addTo('#logo').size(iconSize, iconSize);
+const withName = true;
+const width = withName ? iconSize * 2 : iconSize;
+const height = iconSize;
+
+var draw = SVG().addTo('#logo').size(width, height);
 
 const drawArc =
     (draw, r, w, cx, cy, rad0, rad1, isBiggerArc, isClockwise, color) => {
@@ -58,8 +62,129 @@ const arcList = [
 ];
 for (a of arcList) {
   drawArc(
-      draw, a.r * iconSize / 2, 32, iconSize / 2, iconSize / 2, a.rad0, a.rad1,
-      a.isBiggerArc, a.isClockwise, a.color);
+      draw, a.r * iconSize / 2, iconSize / 32, iconSize / 2, iconSize / 2,
+      a.rad0, a.rad1, a.isBiggerArc, a.isClockwise, a.color);
+}
+
+if (withName) {
+  const w = iconSize / 32 * 2 / 3;
+  const bx = width / 32 * 16;
+  const cdx = width / 24;
+  {
+    // l
+    const x = bx + cdx * 0;
+    const y = height / 2;
+    const len = height / 4;
+    draw.path(`M ${x} ${y - len / 2} l 0 ${len}`).css({
+      stroke: '#202020',
+      fill: 'transparent',
+      'stroke-width': w,
+      'stroke-linecap': 'round',
+      'stroke-linejoin': 'bevel'
+    });
+  };
+  {
+    // i
+    const x = bx + cdx * 1;
+    const y = height / 2;
+    const len = height / 4;
+    draw.path(`M ${x} ${y - len / 2} l 0 ${len / 8} m 0 ${len / 8 * 2} l 0 ${
+                  len / 8 * 5}`)
+        .css({
+          stroke: '#202020',
+          fill: 'transparent',
+          'stroke-width': w,
+          'stroke-linecap': 'round',
+          'stroke-linejoin': 'bevel'
+        });
+  };
+  {
+    // u
+    const x = bx + cdx * 2;
+    const y = height / 2;
+    const len = height / 4;
+    const dx = width / 16 * 2 / 3;
+    draw.path([
+          `M ${x} ${y - len / 2} m 0 ${len / 8 * 3}`,
+          `l 0 ${len / 8 * 5}`,
+          `l ${dx} 0`,
+          `l 0 -${len / 8 * 5}`,
+        ].join(' '))
+        .css({
+          stroke: '#202020',
+          fill: 'transparent',
+          'stroke-width': w,
+          'stroke-linecap': 'round',
+          'stroke-linejoin': 'round'
+        });
+  };
+  {
+    // m
+    const x = bx + cdx * 4;
+    const y = height / 2;
+    const len = height / 4;
+    const dx = width / 16 * 2 / 3;
+    draw.path([
+          `M ${x} ${y - len / 2} m 0 ${len / 8 * 3}`,
+          `l 0 ${len / 8 * 5}`,
+          `M ${x} ${y - len / 2} m 0 ${len / 8 * 3}`,
+          `l ${dx} 0`,
+          `l 0 ${len / 8 * 5}`,
+          `m 0 -${len / 8 * 5}`,
+          `l ${dx} 0`,
+          `l 0 ${len / 8 * 5}`,
+        ].join(' '))
+        .css({
+          stroke: '#202020',
+          fill: 'transparent',
+          'stroke-width': w,
+          'stroke-linecap': 'round',
+          'stroke-linejoin': 'round'
+        });
+  };
+  {
+    // O
+    const x = bx + cdx * 7;
+    const y = height / 2;
+    const len = height / 4;
+    const dx = width / 16;
+    draw.path([
+          `M ${x} ${y - len / 2}`,
+          `l 0 ${len}`,
+          `l ${dx} ${0}`,
+          `l 0 -${len}`,
+          `l -${dx} ${0}`,
+        ].join(' '))
+        .css({
+          stroke: '#202020',
+          fill: 'transparent',
+          'stroke-width': w,
+          'stroke-linecap': 'round',
+          'stroke-linejoin': 'round'
+        });
+  };
+  {
+    // S
+    const x = bx + cdx * 9.5;
+    const y = height / 2;
+    const len = height / 4;
+    const dx = width / 16;
+    draw.path([
+          `M ${x + dx} ${y - len / 2}`,
+          `l -${dx} 0`,
+          `l 0 ${len/2}`,
+          `l ${dx} 0`,
+          `l 0 ${len/2}`,
+          `l -${dx} 0`,
+        ].join(' '))
+        .css({
+          stroke: '#202020',
+          fill: 'transparent',
+          'stroke-width': w,
+          'stroke-linecap': 'round',
+          'stroke-linejoin': 'round'
+        });
+  };
 }
 
 const download = () => {
