@@ -179,6 +179,7 @@ pub struct EFI_GUID {
 
 pub type EFIHandle = u64;
 pub type EFIVoid = u8;
+pub type EFINativeUInt = u64;
 
 const EFI_SYSTEM_TABLE_SIGNATURE: u64 = 0x5453595320494249;
 const EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID: EFI_GUID = EFI_GUID {
@@ -205,6 +206,7 @@ const EFI_FILE_SYSTEM_INFO_GUID: EFI_GUID = EFI_GUID {
     data2: 0x11d2,
     data3: [0x8e, 0x39, 0x00, 0xa0, 0xc9, 0x69, 0x72, 0x3b],
 };
+const MEMORY_MAP_BUFFER_SIZE: usize = 0x8000;
 
 #[repr(i64)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -248,7 +250,13 @@ pub union EFIBootServicesTableHandleProtocolVariants {
 pub struct EFIBootServicesTable {
     header: EFITableHeader,
     padding0: [u64; 4],
-    get_memory_map: EFIHandle,
+    get_memory_map: extern "win64" fn(
+        memory_map_size: *mut EFINativeUInt,
+        memory_map: *mut u8,
+        map_key: *mut EFINativeUInt,
+        descriptor_size: *mut EFINativeUInt,
+        descriptor_version: *mut u32,
+    ) -> EFIStatus,
     padding1: [u64; 11],
     handle_protocol: EFIBootServicesTableHandleProtocolVariants,
     padding2: [u64; 9],
@@ -557,6 +565,24 @@ pub extern "win64" fn efi_entry(image_handle: EFIHandle, efi_system_table: &EFIS
             .unwrap();
         }
     }
+
+    // Get a memory map and exit boot services
+    let mut memory_map_buffer: [u8; MEMORY_MAP_BUFFER_SIZE] = [0; MEMORY_MAP_BUFFER_SIZE];
+    let mut memory_map_size: EFINativeUInt = MEMORY_MAP_BUFFER_SIZE as EFINativeUInt;
+    let mut map_key: EFINativeUInt = 0;
+    let mut descriptor_size: EFINativeUInt = 0;
+    let mut descriptor_version: u32 = 0;
+    let status = (efi_system_table.boot_services.get_memory_map)(
+        &mut memory_map_size,
+        memory_map_buffer.as_mut_ptr(),
+        &mut map_key,
+        &mut descriptor_size,
+        &mut descriptor_version,
+    );
+    assert_eq!(status, EFIStatus::SUCCESS);
+    writeln!(efi_writer, "memory_map_size: {}", memory_map_size).unwrap();
+    writeln!(efi_writer, "descriptor_size: {}", descriptor_size).unwrap();
+    writeln!(efi_writer, "map_key: {:X}", map_key).unwrap();
 
     loop {
         hlt();
