@@ -260,7 +260,8 @@ pub struct EFIBootServicesTable {
     padding1: [u64; 11],
     handle_protocol: EFIBootServicesTableHandleProtocolVariants,
     padding2: [u64; 9],
-    exit_boot_services: EFIHandle,
+    exit_boot_services:
+        extern "win64" fn(image_handle: EFIHandle, map_key: EFINativeUInt) -> EFIStatus,
     padding3: [u64; 5],
     open_protocol: EFIHandle,
     padding4: [u64; 4],
@@ -446,6 +447,9 @@ pub extern "win64" fn efi_entry(image_handle: EFIHandle, efi_system_table: &EFIS
     writeln!(efi_writer, "Loading liumOS...").unwrap();
     writeln!(efi_writer, "{:#p}", &efi_system_table).unwrap();
 
+    com_initialize(IO_ADDR_COM2);
+    let mut serial_writer = SerialConsoleWriter {};
+
     let mut graphics_output_protocol: *mut EFIGraphicsOutputProtocol =
         0 as *mut EFIGraphicsOutputProtocol;
     unsafe {
@@ -584,8 +588,28 @@ pub extern "win64" fn efi_entry(image_handle: EFIHandle, efi_system_table: &EFIS
     writeln!(efi_writer, "descriptor_size: {}", descriptor_size).unwrap();
     writeln!(efi_writer, "map_key: {:X}", map_key).unwrap();
 
+    let status = (efi_system_table.boot_services.exit_boot_services)(image_handle, map_key);
+    assert_eq!(status, EFIStatus::SUCCESS);
+
+    writeln!(serial_writer, "Exited from EFI Boot Services").unwrap();
+
+    let mut z: u8 = 0;
     loop {
-        hlt();
+        unsafe {
+            let vram: *mut u32 = (*(*graphics_output_protocol).mode).frame_buffer_base as *mut u32;
+            let pixels_per_scan_line =
+                (*(*(*graphics_output_protocol).mode).info).pixels_per_scan_line;
+            let xsize = (*(*(*graphics_output_protocol).mode).info).horizontal_resolution;
+            let ysize = (*(*(*graphics_output_protocol).mode).info).vertical_resolution;
+            for y in 0..ysize {
+                for x in 0..xsize {
+                    *vram.add((pixels_per_scan_line * y + x) as usize) =
+                        ((z as u32) * 16 << 16) | (((y & 0xFF) * 16) << 8) | ((x & 0xFF) * 16);
+                    asm!("pause");
+                }
+            }
+        }
+        z += 1;
     }
 }
 
