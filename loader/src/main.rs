@@ -28,7 +28,7 @@ fn panic(info: &PanicInfo) -> ! {
 }
 
 #[no_mangle]
-pub extern "win64" fn efi_entry(
+pub extern "win64" fn efi_main(
     image_handle: efi::EFIHandle,
     efi_system_table: &efi::EFISystemTable,
 ) -> ! {
