@@ -6,7 +6,6 @@
 #![reexport_test_harness_main = "test_main"]
 #![allow(clippy::zero_ptr)]
 #![deny(unused_must_use)]
-#![feature(lang_items, box_syntax, start)]
 
 use core::convert::TryInto;
 use core::fmt;
