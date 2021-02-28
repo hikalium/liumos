@@ -17,7 +17,7 @@ check:
 	cargo clippy
 
 test:
-	cargo test
+	cargo test --verbose
 
 watch_serial:
 		while ! telnet localhost 1235 ; do sleep 1 ; done ;
