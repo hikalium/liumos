@@ -7,7 +7,7 @@
 #![allow(clippy::zero_ptr)]
 #![deny(unused_must_use)]
 
-use core::convert::TryInto;
+use core::fmt;
 use core::mem;
 use core::panic::PanicInfo;
 
@@ -26,12 +26,22 @@ fn panic(info: &PanicInfo) -> ! {
 
     loop {}
 }
-
 #[no_mangle]
 pub extern "win64" fn efi_main(
     image_handle: efi::EFIHandle,
     efi_system_table: &efi::EFISystemTable,
 ) -> ! {
+    main_with_boot_services(image_handle, efi_system_table).unwrap();
+    main_without_boot_services().unwrap();
+    loop {
+        x86::hlt();
+    }
+}
+
+fn main_with_boot_services(
+    image_handle: efi::EFIHandle,
+    efi_system_table: &efi::EFISystemTable,
+) -> fmt::Result {
     #[cfg(test)]
     test_main();
 
@@ -45,8 +55,8 @@ pub extern "win64" fn efi_main(
     let mut efi_writer = efi::EFISimpleTextOutputProtocolWriter {
         protocol: &efi_system_table.con_out,
     };
-    writeln!(efi_writer, "Loading liumOS...").unwrap();
-    writeln!(efi_writer, "{:#p}", &efi_system_table).unwrap();
+    writeln!(efi_writer, "Loading liumOS...")?;
+    writeln!(efi_writer, "{:#p}", &efi_system_table)?;
 
     serial::com_initialize(serial::IO_ADDR_COM2);
     let mut serial_writer = serial::SerialConsoleWriter {};
@@ -76,7 +86,7 @@ pub extern "win64" fn efi_main(
             }
         }
     }
-    writeln!(efi_writer, "VRAM acquired").unwrap();
+    writeln!(efi_writer, "VRAM acquired")?;
 
     let mut loaded_image_protocol: *mut efi::EFILoadedImageProtocol =
         0 as *mut efi::EFILoadedImageProtocol;
@@ -95,8 +105,7 @@ pub extern "win64" fn efi_main(
             "Got LoadedImageProtocol. Revision: {:#X} system_table: {:#p}",
             (*loaded_image_protocol).revision,
             (*loaded_image_protocol).system_table
-        )
-        .unwrap();
+        )?;
     }
 
     let mut simple_file_system_protocol: *mut efi::EFISimpleFileSystemProtocol =
@@ -115,8 +124,7 @@ pub extern "win64" fn efi_main(
             efi_writer,
             "Got SimpleFileSystemProtocol. revision: {:#X}",
             (*simple_file_system_protocol).revision
-        )
-        .unwrap();
+        )?;
     }
 
     let mut root_file: *mut efi::EFIFileProtocol = 0 as *mut efi::EFIFileProtocol;
@@ -130,12 +138,11 @@ pub extern "win64" fn efi_main(
             efi_writer,
             "Got FileProtocol of the root file. revision: {:#X}",
             (*root_file).revision
-        )
-        .unwrap();
+        )?;
     }
 
     let mut root_fs_info: efi::EFIFileSystemInfo = efi::EFIFileSystemInfo::default();
-    let mut root_fs_info_size: u64 = mem::size_of::<efi::EFIFileSystemInfo>().try_into().unwrap();
+    let mut root_fs_info_size: efi::EFINativeUInt = mem::size_of::<efi::EFIFileSystemInfo>();
     unsafe {
         let status = ((*root_file).get_info)(
             root_file,
@@ -148,8 +155,7 @@ pub extern "win64" fn efi_main(
             efi_writer,
             "Got root fs. volume label: {}",
             efi::CStrPtr16::from_ptr(root_fs_info.volume_label.as_ptr())
-        )
-        .unwrap();
+        )?;
     }
 
     // List all files under root dir
@@ -157,7 +163,7 @@ pub extern "win64" fn efi_main(
         let mut file_info: efi::EFIFileInfo = efi::EFIFileInfo::default();
         let mut file_info_size;
         unsafe {
-            file_info_size = mem::size_of::<efi::EFIFileInfo>().try_into().unwrap();
+            file_info_size = mem::size_of::<efi::EFIFileInfo>();
             let status = ((*root_file).read)(root_file, &mut file_info_size, &mut file_info);
             assert_eq!(status, efi::EFIStatus::SUCCESS);
             if file_info_size == 0 {
@@ -167,8 +173,7 @@ pub extern "win64" fn efi_main(
                 efi_writer,
                 "FILE: {}",
                 efi::CStrPtr16::from_ptr(file_info.file_name.as_ptr())
-            )
-            .unwrap();
+            )?;
         }
     }
 
@@ -186,9 +191,9 @@ pub extern "win64" fn efi_main(
         &mut descriptor_version,
     );
     assert_eq!(status, efi::EFIStatus::SUCCESS);
-    writeln!(efi_writer, "memory_map_size: {}", memory_map_size).unwrap();
-    writeln!(efi_writer, "descriptor_size: {}", descriptor_size).unwrap();
-    writeln!(efi_writer, "map_key: {:X}", map_key).unwrap();
+    writeln!(efi_writer, "memory_map_size: {}", memory_map_size)?;
+    writeln!(efi_writer, "descriptor_size: {}", descriptor_size)?;
+    writeln!(efi_writer, "map_key: {:X}", map_key)?;
 
     let mut total_conventional_memory_size = 0;
     let mut ofs = 0;
@@ -196,7 +201,7 @@ pub extern "win64" fn efi_main(
         let ent: &efi::EFIMemoryDescriptor = unsafe {
             &*(memory_map_buffer.as_ptr().add(ofs as usize) as *const efi::EFIMemoryDescriptor)
         };
-        writeln!(efi_writer, "{:#?}", ent).unwrap();
+        writeln!(efi_writer, "{:#?}", ent)?;
         if ent.memory_type == efi::EFIMemoryType::CONVENTIONAL_MEMORY {
             total_conventional_memory_size += ent.number_of_pages * 4096;
         }
@@ -206,31 +211,24 @@ pub extern "win64" fn efi_main(
         efi_writer,
         "total_conventional_memory_size: {}",
         total_conventional_memory_size
-    )
-    .unwrap();
+    )?;
 
     let status = (efi_system_table.boot_services.exit_boot_services)(image_handle, map_key);
     assert_eq!(status, efi::EFIStatus::SUCCESS);
 
-    writeln!(serial_writer, "Exited from EFI Boot Services").unwrap();
+    writeln!(serial_writer, "Exited from EFI Boot Services")?;
 
-    let mut z: u8 = 0;
+    Ok(())
+}
+
+fn main_without_boot_services() -> fmt::Result {
+    use core::fmt::Write;
+
+    serial::com_initialize(serial::IO_ADDR_COM2);
+    let mut serial_writer = serial::SerialConsoleWriter {};
+    writeln!(serial_writer, "Entring main_without_boot_services...")?;
     loop {
-        unsafe {
-            let vram: *mut u32 = (*(*graphics_output_protocol).mode).frame_buffer_base as *mut u32;
-            let pixels_per_scan_line =
-                (*(*(*graphics_output_protocol).mode).info).pixels_per_scan_line;
-            let xsize = (*(*(*graphics_output_protocol).mode).info).horizontal_resolution;
-            let ysize = (*(*(*graphics_output_protocol).mode).info).vertical_resolution;
-            for y in 0..ysize {
-                for x in 0..xsize {
-                    *vram.add((pixels_per_scan_line * y + x) as usize) =
-                        (((z as u32) * 16) << 16) | (((y & 0xFF) * 16) << 8) | ((x & 0xFF) * 16);
-                    asm!("pause");
-                }
-            }
-        }
-        z += 1;
+        x86::hlt();
     }
 }
 

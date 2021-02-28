@@ -64,7 +64,7 @@ pub struct EFI_GUID {
 
 pub type EFIHandle = u64;
 pub type EFIVoid = u8;
-pub type EFINativeUInt = u64;
+pub type EFINativeUInt = usize;
 
 pub const EFI_SYSTEM_TABLE_SIGNATURE: u64 = 0x5453595320494249;
 pub const EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID: EFI_GUID = EFI_GUID {
@@ -218,14 +218,14 @@ pub struct EFIFileProtocol {
     reserved0: [u64; 3],
     pub read: extern "win64" fn(
         this: *const EFIFileProtocol,
-        buffer_size: &mut u64,
+        buffer_size: &mut EFINativeUInt,
         buffer: &mut EFIFileInfo,
     ) -> EFIStatus,
     reserved1: [u64; 3],
     pub get_info: extern "win64" fn(
         this: *const EFIFileProtocol,
         information_type: *const EFI_GUID,
-        buffer_size: &mut u64,
+        buffer_size: &mut EFINativeUInt,
         buffer: &mut EFIFileSystemInfo,
     ) -> EFIStatus,
 }

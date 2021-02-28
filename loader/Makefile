@@ -11,7 +11,7 @@ clean:
 	-rm -r target
 
 install: build
-	cp target/x86_64-none-efi/release/loader.efi ../mnt/EFI/BOOT/BOOTX64.EFI
+	cp target/x86_64-unknown-uefi/release/loader.efi ../mnt/EFI/BOOT/BOOTX64.EFI
 
 check:
 	cargo clippy
