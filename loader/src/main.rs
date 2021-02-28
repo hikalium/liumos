@@ -190,6 +190,25 @@ pub extern "win64" fn efi_entry(
     writeln!(efi_writer, "descriptor_size: {}", descriptor_size).unwrap();
     writeln!(efi_writer, "map_key: {:X}", map_key).unwrap();
 
+    let mut total_conventional_memory_size = 0;
+    let mut ofs = 0;
+    while ofs < memory_map_size {
+        let ent: &efi::EFIMemoryDescriptor = unsafe {
+            &*(memory_map_buffer.as_ptr().add(ofs as usize) as *const efi::EFIMemoryDescriptor)
+        };
+        writeln!(efi_writer, "{:#?}", ent).unwrap();
+        if ent.memory_type == efi::EFIMemoryType::CONVENTIONAL_MEMORY {
+            total_conventional_memory_size += ent.number_of_pages * 4096;
+        }
+        ofs += descriptor_size;
+    }
+    writeln!(
+        efi_writer,
+        "total_conventional_memory_size: {}",
+        total_conventional_memory_size
+    )
+    .unwrap();
+
     let status = (efi_system_table.boot_services.exit_boot_services)(image_handle, map_key);
     assert_eq!(status, efi::EFIStatus::SUCCESS);
 

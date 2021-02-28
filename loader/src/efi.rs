@@ -95,6 +95,7 @@ pub const MEMORY_MAP_BUFFER_SIZE: usize = 0x8000;
 
 #[repr(i64)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(non_camel_case_types)]
 pub enum EFIStatus {
     SUCCESS = 0,
 }
@@ -235,6 +236,52 @@ pub struct EFILoadedImageProtocol<'a> {
     pub parent_handle: EFIHandle,
     pub system_table: &'a EFISystemTable<'a>,
     pub device_handle: EFIHandle,
+}
+
+#[repr(i64)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(non_camel_case_types)]
+pub enum EFIMemoryType {
+    RESERVED = 0,
+    LOADER_CODE,
+    LOADER_DATA,
+    BOOT_SERVICES_CODE,
+    BOOT_SERVICES_DATA,
+    RUNTIME_SERVICES_CODE,
+    RUNTIME_SERVICES_DATA,
+    CONVENTIONAL_MEMORY,
+    UNUSABLE_MEMORY,
+    ACPI_RECLAIM_MEMORY,
+    ACPI_MEMORY_NVS,
+    MEMORY_MAPPED_IO,
+    MEMORY_MAPPED_IO_PORT_SPACE,
+    PAL_CODE,
+    PERSISTENT_MEMORY,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct EFIMemoryDescriptor {
+    pub memory_type: EFIMemoryType,
+    pub physical_start: u64,
+    pub virtual_start: u64,
+    pub number_of_pages: u64,
+    pub attribute: u64,
+}
+
+impl fmt::Debug for EFIMemoryDescriptor {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "EFIMemoryDescriptor {{ ")?;
+        write!(
+            f,
+            "phys: [{:#018X}-{:#018X})",
+            self.physical_start,
+            self.physical_start + self.number_of_pages * 4096
+        )?;
+        write!(f, " attr: {:#018X}", self.attribute)?;
+        write!(f, " {:#?}", self.memory_type)?;
+        write!(f, " }}")
+    }
 }
 
 #[allow(dead_code)]
