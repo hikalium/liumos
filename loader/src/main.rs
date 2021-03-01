@@ -227,6 +227,9 @@ fn main_without_boot_services() -> fmt::Result {
     serial::com_initialize(serial::IO_ADDR_COM2);
     let mut serial_writer = serial::SerialConsoleWriter {};
     writeln!(serial_writer, "Entring main_without_boot_services...")?;
+    let cr3: &mut x86::PML4 = unsafe { &mut *x86::read_cr3() };
+    writeln!(serial_writer, "cr3 = {:#p}", x86::read_cr3())?;
+    writeln!(serial_writer, "cr3 = {}", &cr3)?;
     loop {
         x86::hlt();
     }
