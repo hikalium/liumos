@@ -229,7 +229,11 @@ fn main_without_boot_services() -> fmt::Result {
     writeln!(serial_writer, "Entring main_without_boot_services...")?;
     let cr3: &mut x86::PML4 = unsafe { &mut *x86::read_cr3() };
     writeln!(serial_writer, "cr3 = {:#p}", x86::read_cr3())?;
-    writeln!(serial_writer, "cr3 = {}", &cr3)?;
+    writeln!(serial_writer, "{}", &cr3)?;
+    let pdpt = x86::get_pdpt(&cr3.entry[0]);
+    writeln!(serial_writer, "{}", pdpt)?;
+    let pd = x86::get_pd(&pdpt.entry[0]);
+    writeln!(serial_writer, "{}", pd)?;
     loop {
         x86::hlt();
     }
