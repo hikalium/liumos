@@ -8,6 +8,7 @@
 #![deny(unused_must_use)]
 
 use core::fmt;
+use core::iter::Iterator;
 use core::mem;
 use core::panic::PanicInfo;
 
@@ -31,16 +32,73 @@ pub extern "win64" fn efi_main(
     image_handle: efi::EFIHandle,
     efi_system_table: &efi::EFISystemTable,
 ) -> ! {
-    main_with_boot_services(image_handle, efi_system_table).unwrap();
-    main_without_boot_services().unwrap();
+    let mut memory_map = MemoryMapHolder::new();
+    main_with_boot_services(image_handle, efi_system_table, &mut memory_map).unwrap();
+    main_without_boot_services(&mut memory_map).unwrap();
     loop {
         x86::hlt();
     }
 }
 
+struct MemoryMapHolder {
+    memory_map_buffer: [u8; efi::MEMORY_MAP_BUFFER_SIZE],
+    memory_map_size: efi::EFINativeUInt,
+    map_key: efi::EFINativeUInt,
+    descriptor_size: efi::EFINativeUInt,
+    descriptor_version: u32,
+}
+struct MemoryMapIterator<'a> {
+    map: &'a MemoryMapHolder,
+    ofs: efi::EFINativeUInt,
+}
+impl<'a> Iterator for MemoryMapIterator<'a> {
+    type Item = &'a efi::EFIMemoryDescriptor;
+    fn next(&mut self) -> Option<&'a efi::EFIMemoryDescriptor> {
+        if self.ofs >= self.map.memory_map_size {
+            None
+        } else {
+            let e: &efi::EFIMemoryDescriptor = unsafe {
+                &*(self.map.memory_map_buffer.as_ptr().add(self.ofs as usize)
+                    as *const efi::EFIMemoryDescriptor)
+            };
+            self.ofs += self.map.descriptor_size;
+            Some(e)
+        }
+    }
+}
+
+impl MemoryMapHolder {
+    fn new() -> MemoryMapHolder {
+        MemoryMapHolder {
+            memory_map_buffer: [0; efi::MEMORY_MAP_BUFFER_SIZE],
+            memory_map_size: efi::MEMORY_MAP_BUFFER_SIZE as efi::EFINativeUInt,
+            map_key: 0,
+            descriptor_size: 0,
+            descriptor_version: 0,
+        }
+    }
+    fn iter(&self) -> MemoryMapIterator {
+        MemoryMapIterator { map: &self, ofs: 0 }
+    }
+}
+
+fn get_memory_map(
+    efi_system_table: &efi::EFISystemTable,
+    map: &mut MemoryMapHolder,
+) -> efi::EFIStatus {
+    (efi_system_table.boot_services.get_memory_map)(
+        &mut map.memory_map_size,
+        map.memory_map_buffer.as_mut_ptr(),
+        &mut map.map_key,
+        &mut map.descriptor_size,
+        &mut map.descriptor_version,
+    )
+}
+
 fn main_with_boot_services(
     image_handle: efi::EFIHandle,
     efi_system_table: &efi::EFISystemTable,
+    memory_map: &mut MemoryMapHolder,
 ) -> fmt::Result {
     #[cfg(test)]
     test_main();
@@ -178,42 +236,22 @@ fn main_with_boot_services(
     }
 
     // Get a memory map and exit boot services
-    let mut memory_map_buffer: [u8; efi::MEMORY_MAP_BUFFER_SIZE] = [0; efi::MEMORY_MAP_BUFFER_SIZE];
-    let mut memory_map_size: efi::EFINativeUInt = efi::MEMORY_MAP_BUFFER_SIZE as efi::EFINativeUInt;
-    let mut map_key: efi::EFINativeUInt = 0;
-    let mut descriptor_size: efi::EFINativeUInt = 0;
-    let mut descriptor_version: u32 = 0;
-    let status = (efi_system_table.boot_services.get_memory_map)(
-        &mut memory_map_size,
-        memory_map_buffer.as_mut_ptr(),
-        &mut map_key,
-        &mut descriptor_size,
-        &mut descriptor_version,
-    );
+    let status = get_memory_map(&efi_system_table, memory_map);
     assert_eq!(status, efi::EFIStatus::SUCCESS);
-    writeln!(efi_writer, "memory_map_size: {}", memory_map_size)?;
-    writeln!(efi_writer, "descriptor_size: {}", descriptor_size)?;
-    writeln!(efi_writer, "map_key: {:X}", map_key)?;
-
-    let mut total_conventional_memory_size = 0;
-    let mut ofs = 0;
-    while ofs < memory_map_size {
-        let ent: &efi::EFIMemoryDescriptor = unsafe {
-            &*(memory_map_buffer.as_ptr().add(ofs as usize) as *const efi::EFIMemoryDescriptor)
-        };
-        writeln!(efi_writer, "{:#?}", ent)?;
-        if ent.memory_type == efi::EFIMemoryType::CONVENTIONAL_MEMORY {
-            total_conventional_memory_size += ent.number_of_pages * 4096;
-        }
-        ofs += descriptor_size;
-    }
     writeln!(
         efi_writer,
-        "total_conventional_memory_size: {}",
-        total_conventional_memory_size
+        "memory_map_size: {}",
+        memory_map.memory_map_size
     )?;
+    writeln!(
+        efi_writer,
+        "descriptor_size: {}",
+        memory_map.descriptor_size
+    )?;
+    writeln!(efi_writer, "map_key: {:X}", memory_map.map_key)?;
 
-    let status = (efi_system_table.boot_services.exit_boot_services)(image_handle, map_key);
+    let status =
+        (efi_system_table.boot_services.exit_boot_services)(image_handle, memory_map.map_key);
     assert_eq!(status, efi::EFIStatus::SUCCESS);
 
     writeln!(serial_writer, "Exited from EFI Boot Services")?;
@@ -221,7 +259,7 @@ fn main_with_boot_services(
     Ok(())
 }
 
-fn main_without_boot_services() -> fmt::Result {
+fn main_without_boot_services(memory_map: &mut MemoryMapHolder) -> fmt::Result {
     use core::fmt::Write;
 
     serial::com_initialize(serial::IO_ADDR_COM2);
@@ -234,6 +272,20 @@ fn main_without_boot_services() -> fmt::Result {
     writeln!(serial_writer, "{}", pdpt)?;
     let pd = x86::get_pd(&pdpt.entry[0]);
     writeln!(serial_writer, "{}", pd)?;
+
+    let mut total_conventional_memory_size = 0;
+    for e in memory_map.iter() {
+        if e.memory_type == efi::EFIMemoryType::CONVENTIONAL_MEMORY {
+            writeln!(serial_writer, "{:#?}", e)?;
+            total_conventional_memory_size += e.number_of_pages * 4096;
+        }
+    }
+    writeln!(
+        serial_writer,
+        "total_conventional_memory_size: {}",
+        total_conventional_memory_size
+    )?;
+
     loop {
         x86::hlt();
     }
