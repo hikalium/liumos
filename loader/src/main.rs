@@ -10,6 +10,7 @@
 use core::fmt;
 use core::iter::Iterator;
 use core::mem;
+use core::option::Option;
 use core::panic::PanicInfo;
 
 pub mod debug_exit;
@@ -259,6 +260,62 @@ fn main_with_boot_services(
     Ok(())
 }
 
+mod physical_page_allocator {
+    use core::fmt;
+    use core::mem;
+    pub struct RegionHeader<'a> {
+        number_of_pages: usize,
+        number_of_free_pages: usize,
+        next_region: Option<&'a mut RegionHeader<'a>>,
+    }
+    impl<'a> RegionHeader<'a> {
+        pub fn init(&mut self, number_of_pages: usize) {
+            self.number_of_pages = number_of_pages;
+            self.next_region = None;
+            let header_size_with_bitmap = mem::size_of::<Self>() + number_of_pages / 8;
+            self.number_of_free_pages = number_of_pages - ((header_size_with_bitmap + 0xFFF) >> 12);
+        }
+        pub fn set_next(&mut self, next: &'a mut RegionHeader<'a>) {
+            assert!(self.next_region.is_none());
+            self.next_region = Some(next);
+        }
+        pub fn iter(&'a self) -> RegionHeaderIterator {
+            RegionHeaderIterator {
+                current: Some(&self),
+            }
+        }
+    }
+    impl<'a> fmt::Debug for RegionHeader<'a> {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "RegionHeader {{ ")?;
+            write!(
+                f,
+                "phys: [{:#018X}-{:#018X}), free_pages: {}",
+                self as *const Self as usize,
+                self as *const Self as usize + self.number_of_pages * 4096,
+                self.number_of_free_pages,
+            )?;
+            write!(f, " }}")
+        }
+    }
+    #[derive(Debug)]
+    pub struct RegionHeaderIterator<'a> {
+        current: Option<&'a RegionHeader<'a>>,
+    }
+    impl<'a> Iterator for RegionHeaderIterator<'a> {
+        type Item = &'a RegionHeader<'a>;
+        fn next(&mut self) -> Option<&'a RegionHeader<'a>> {
+            match self.current {
+                Some(current) => {
+                    self.current = current.next_region.as_ref().map(|x| x as _);
+                    Some(current)
+                }
+                None => None,
+            }
+        }
+    }
+}
+
 fn main_without_boot_services(memory_map: &mut MemoryMapHolder) -> fmt::Result {
     use core::fmt::Write;
 
@@ -274,11 +331,26 @@ fn main_without_boot_services(memory_map: &mut MemoryMapHolder) -> fmt::Result {
     writeln!(serial_writer, "{}", pd)?;
 
     let mut total_conventional_memory_size = 0;
+    let mut prev_header: Option<&mut physical_page_allocator::RegionHeader> = None;
     for e in memory_map.iter() {
-        if e.memory_type == efi::EFIMemoryType::CONVENTIONAL_MEMORY {
-            writeln!(serial_writer, "{:#?}", e)?;
-            total_conventional_memory_size += e.number_of_pages * 4096;
+        if e.memory_type != efi::EFIMemoryType::CONVENTIONAL_MEMORY {
+            continue;
         }
+        writeln!(serial_writer, "{:#?}", e)?;
+        total_conventional_memory_size += e.number_of_pages * 4096;
+        let header =
+            unsafe { &mut *(e.physical_start as *mut physical_page_allocator::RegionHeader) };
+        header.init(e.number_of_pages as usize);
+        writeln!(serial_writer, "{:#?}", header)?;
+        if let Some(prev) = prev_header {
+            header.set_next(prev)
+        }
+        prev_header = Some(header);
+    }
+    writeln!(serial_writer, "{:?}", prev_header)?;
+    writeln!(serial_writer, "{:?}", prev_header.iter())?;
+    for h in prev_header.unwrap().iter() {
+        writeln!(serial_writer, "iter: {:?}", h)?;
     }
     writeln!(
         serial_writer,
