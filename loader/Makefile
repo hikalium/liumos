@@ -19,8 +19,21 @@ install: build
 check:
 	cargo clippy
 
+format:
+	cargo fmt
+
 test:
 	cargo test --verbose
 
 watch_serial:
 		while ! telnet localhost 1235 ; do sleep 1 ; done ;
+
+commit :
+	make -C .. spellcheck
+	make format
+	make check
+	git add .
+	../scripts/ensure_objs_are_not_under_git_control.sh
+	git diff HEAD --color=always | less -R
+	make test
+	git commit

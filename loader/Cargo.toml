@@ -9,3 +9,10 @@ edition = "2018"
 [profile.dev]
 
 [profile.release]
+
+[[test]]
+name = "should_panic"
+harness = false
+
+[lib]
+test=false

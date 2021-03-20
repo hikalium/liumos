@@ -5,5 +5,8 @@ build-std-features = ["compiler-builtins-mem"]
 [build]
 target = "x86_64-unknown-uefi"
 
+[lib]
+target = "x86_64-unknown-uefi"
+
 [target.'cfg(target_os = "uefi")']
 runner = "scripts/test_runner.sh"
