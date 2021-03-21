@@ -8,13 +8,15 @@
 #![deny(unused_must_use)]
 
 use core::fmt;
-use core::iter::Iterator;
 use core::mem;
 use core::option::Option;
 use core::panic::PanicInfo;
+use memory_map_holder::MemoryMapHolder;
 
 pub mod debug_exit;
 pub mod efi;
+pub mod efi_support;
+pub mod memory_map_holder;
 pub mod physical_page_allocator;
 pub mod serial;
 pub mod x86;
@@ -42,61 +44,6 @@ pub extern "win64" fn efi_main(
     }
 }
 
-struct MemoryMapHolder {
-    memory_map_buffer: [u8; efi::MEMORY_MAP_BUFFER_SIZE],
-    memory_map_size: efi::EFINativeUInt,
-    map_key: efi::EFINativeUInt,
-    descriptor_size: efi::EFINativeUInt,
-    descriptor_version: u32,
-}
-struct MemoryMapIterator<'a> {
-    map: &'a MemoryMapHolder,
-    ofs: efi::EFINativeUInt,
-}
-impl<'a> Iterator for MemoryMapIterator<'a> {
-    type Item = &'a efi::EFIMemoryDescriptor;
-    fn next(&mut self) -> Option<&'a efi::EFIMemoryDescriptor> {
-        if self.ofs >= self.map.memory_map_size {
-            None
-        } else {
-            let e: &efi::EFIMemoryDescriptor = unsafe {
-                &*(self.map.memory_map_buffer.as_ptr().add(self.ofs as usize)
-                    as *const efi::EFIMemoryDescriptor)
-            };
-            self.ofs += self.map.descriptor_size;
-            Some(e)
-        }
-    }
-}
-
-impl MemoryMapHolder {
-    fn new() -> MemoryMapHolder {
-        MemoryMapHolder {
-            memory_map_buffer: [0; efi::MEMORY_MAP_BUFFER_SIZE],
-            memory_map_size: efi::MEMORY_MAP_BUFFER_SIZE as efi::EFINativeUInt,
-            map_key: 0,
-            descriptor_size: 0,
-            descriptor_version: 0,
-        }
-    }
-    fn iter(&self) -> MemoryMapIterator {
-        MemoryMapIterator { map: &self, ofs: 0 }
-    }
-}
-
-fn get_memory_map(
-    efi_system_table: &efi::EFISystemTable,
-    map: &mut MemoryMapHolder,
-) -> efi::EFIStatus {
-    (efi_system_table.boot_services.get_memory_map)(
-        &mut map.memory_map_size,
-        map.memory_map_buffer.as_mut_ptr(),
-        &mut map.map_key,
-        &mut map.descriptor_size,
-        &mut map.descriptor_version,
-    )
-}
-
 fn main_with_boot_services(
     image_handle: efi::EFIHandle,
     efi_system_table: &efi::EFISystemTable,
@@ -104,6 +51,8 @@ fn main_with_boot_services(
 ) -> fmt::Result {
     #[cfg(test)]
     test_main();
+
+    serial::com_initialize(serial::IO_ADDR_COM2);
 
     assert_eq!(
         efi_system_table.header.signature,
@@ -117,9 +66,6 @@ fn main_with_boot_services(
     };
     writeln!(efi_writer, "Loading liumOS...")?;
     writeln!(efi_writer, "{:#p}", &efi_system_table)?;
-
-    serial::com_initialize(serial::IO_ADDR_COM2);
-    let mut serial_writer = serial::SerialConsoleWriter {};
 
     let mut graphics_output_protocol: *mut efi::EFIGraphicsOutputProtocol =
         0 as *mut efi::EFIGraphicsOutputProtocol;
@@ -238,25 +184,7 @@ fn main_with_boot_services(
     }
 
     // Get a memory map and exit boot services
-    let status = get_memory_map(&efi_system_table, memory_map);
-    assert_eq!(status, efi::EFIStatus::SUCCESS);
-    writeln!(
-        efi_writer,
-        "memory_map_size: {}",
-        memory_map.memory_map_size
-    )?;
-    writeln!(
-        efi_writer,
-        "descriptor_size: {}",
-        memory_map.descriptor_size
-    )?;
-    writeln!(efi_writer, "map_key: {:X}", memory_map.map_key)?;
-
-    let status =
-        (efi_system_table.boot_services.exit_boot_services)(image_handle, memory_map.map_key);
-    assert_eq!(status, efi::EFIStatus::SUCCESS);
-
-    writeln!(serial_writer, "Exited from EFI Boot Services")?;
+    efi_support::exit_from_efi_boot_services(image_handle, &efi_system_table, memory_map);
 
     Ok(())
 }

@@ -4,6 +4,7 @@ use core::mem;
 pub struct RegionHeader<'a> {
     number_of_pages: usize,
     number_of_pages_used: usize,
+    next_possible_free_index: usize,
     next_region: Option<&'a mut RegionHeader<'a>>,
 }
 impl<'a> RegionHeader<'a> {
@@ -16,6 +17,11 @@ impl<'a> RegionHeader<'a> {
             // Mark header and bitmap pages as used
             self.write_allocation_bitmap(index, true);
         }
+        for index in self.number_of_pages_used..self.number_of_pages {
+            // Mark header and bitmap pages as used
+            self.write_allocation_bitmap(index, false);
+        }
+        self.next_possible_free_index = 0;
     }
     pub fn set_next(&mut self, next: &'a mut RegionHeader<'a>) {
         assert!(self.next_region.is_none());
@@ -54,11 +60,23 @@ impl<'a> RegionHeader<'a> {
             }
         } else {
             let mut free_index: Option<usize> = None;
-            for index in 0..self.number_of_pages {
+            assert!(self.next_possible_free_index <= self.number_of_pages);
+            for index in self.next_possible_free_index..self.number_of_pages {
                 if !self.read_allocation_bitmap(index) {
                     self.write_allocation_bitmap(index, true);
                     free_index = Some(index);
+                    self.next_possible_free_index = index + 1;
                     break;
+                }
+            }
+            if free_index.is_none() {
+                for index in 0..self.next_possible_free_index {
+                    if !self.read_allocation_bitmap(index) {
+                        self.write_allocation_bitmap(index, true);
+                        free_index = Some(index);
+                        self.next_possible_free_index = index + 1;
+                        break;
+                    }
                 }
             }
             assert!(free_index.is_some());
