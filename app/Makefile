@@ -9,6 +9,7 @@ APPS=\
 	 ping/ping.bin \
 	 readtest/readtest.bin \
 	 rusttest/rusttest.bin \
+	 shelium/shelium.bin \
 	 udpserver/udpserver.bin \
 	 udpclient/udpclient.bin \
 	 browser/browser.bin \
