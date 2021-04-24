@@ -10,7 +10,7 @@ fn get_object_name(s: &str) -> String {
 }
 
 fn main() {
-    let srcs = ["hello.c", "syscall.S"];
+    let srcs = ["syscall.S"];
     let out_dir = env::var("OUT_DIR").unwrap();
     let llvm_cc_path = env::var("LLVM_CC").unwrap();
     let llvm_ar_path = env::var("LLVM_AR").unwrap();
@@ -36,7 +36,7 @@ fn main() {
         }
     }
     if !Command::new(llvm_ar_path)
-        .args(&["crs", "libliumos.a", "hello.o", "syscall.o"])
+        .args(&["crs", "libliumos.a", "syscall.o"])
         .current_dir(&Path::new(&out_dir))
         .status()
         .expect("process failed to execute")
