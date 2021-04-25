@@ -4,16 +4,27 @@ default: $(TARGET_BIN)
 
 include ../../common.mk
 
-.FORCE : 
-$(TARGET_BIN) : .FORCE
+$(TARGET_BIN) :
 	export LLVM_CC="$(LLVM_CC)" && \
 		export LLVM_AR="$(LLVM_AR)" && \
-		cargo build -vv --target=x86_64-unknown-elf.json --release \
+		cargo build \
+		-vv --target=x86_64-unknown-elf.json --release \
 		-Z build-std=core,alloc \
 		-Z build-std-features=compiler-builtins-mem
 	cp target/x86_64-unknown-elf/release/$(TARGET) $(TARGET_BIN)
+
+.PHONY : install clean dump clippy
+
 install: $(TARGET_BIN)
 clean:
 	-rm -r target
+	-rm *.bin
 dump: $(TARGET_BIN)
 	objdump -d target/x86_64-unknown-elf/release/$(TARGET)
+clippy :
+	export LLVM_CC="$(LLVM_CC)" && \
+		export LLVM_AR="$(LLVM_AR)" && \
+		cargo clippy \
+		-vv --target=x86_64-unknown-elf.json --release \
+		-Z build-std=core,alloc \
+		-Z build-std-features=compiler-builtins-mem

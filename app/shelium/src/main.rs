@@ -3,7 +3,6 @@
 #![feature(alloc_error_handler)]
 
 use alloc::vec::Vec;
-use core::convert::TryInto;
 use core::fmt;
 use core::mem::size_of;
 use core::panic::PanicInfo;
@@ -35,7 +34,7 @@ fn getchar() -> u8 {
 }
 fn print_string(s: &str) {
     unsafe {
-        sys_write(1, s.as_ptr(), s.len().try_into().unwrap());
+        sys_write(1, s.as_ptr(), s.len());
     }
 }
 fn putchar(c: u8) {
@@ -117,9 +116,7 @@ impl MutableAllocator for WaterMarkAllocator {
             return null_mut();
         }
         println!("alloc: Allocated {:?}, used: {}", layout, self.used_bytes);
-        unsafe {
-            return self.buf.as_mut_ptr().add(self.used_bytes - layout.size());
-        }
+        unsafe { self.buf.as_mut_ptr().add(self.used_bytes - layout.size()) }
     }
     fn dealloc(&mut self, _ptr: *mut u8, layout: Layout) {
         println!("dealloc: Freed {:?}", layout);
@@ -127,7 +124,7 @@ impl MutableAllocator for WaterMarkAllocator {
 }
 unsafe impl GlobalAlloc for GlobalAllocatorWrapper {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        return ALLOCATOR.allocator.alloc(layout);
+        ALLOCATOR.allocator.alloc(layout)
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
@@ -141,15 +138,15 @@ fn main() {
     let mut buf_used = 0;
 
     let mut v: Vec<i32> = Vec::new();
-    v.push(3);
-    v.push(1);
-    v.push(4);
+    for i in 0..10 {
+        v.push(i);
+    }
     println!("{:?}", v);
 
     loop {
         let c = getchar();
         putchar(c);
-        if c == 'q' as u8 {
+        if c == b'q' {
             break;
         }
         if buf_used < buf.len() - 1 {
@@ -157,7 +154,7 @@ fn main() {
             buf_used += 1;
             buf[buf_used] = 0;
         }
-        if c == '\n' as u8 {
+        if c == b'\n' {
             let s = str::from_utf8(&buf).unwrap();
             println!("{:?}", s);
             buf_used = 0;
