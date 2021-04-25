@@ -1,11 +1,15 @@
 #![no_std]
 #![no_main]
+#![feature(alloc_error_handler)]
 
+use alloc::vec::Vec;
 use core::convert::TryInto;
 use core::fmt;
 use core::mem::size_of;
 use core::panic::PanicInfo;
 use core::str;
+
+extern crate alloc;
 
 #[link(name = "liumos", kind = "static")]
 extern "C" {
@@ -16,8 +20,10 @@ extern "C" {
 }
 
 #[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    loop {}
+fn panic(info: &PanicInfo) -> ! {
+    println!("PANIC!!!");
+    println!("{}", info);
+    unsafe { sys_exit(1) }
 }
 
 fn getchar() -> u8 {
@@ -69,10 +75,40 @@ pub fn _print(args: fmt::Arguments) {
     fmt::write(&mut writer, args).unwrap();
 }
 
+use alloc::alloc::{GlobalAlloc, Layout};
+use core::ptr::null_mut;
+
+pub struct Dummy;
+
+#[global_allocator]
+static ALLOCATOR: Dummy = Dummy;
+
+#[alloc_error_handler]
+fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
+    panic!("allocation error: {:?}", layout)
+}
+
+unsafe impl GlobalAlloc for Dummy {
+    unsafe fn alloc(&self, _layout: Layout) -> *mut u8 {
+        null_mut()
+    }
+
+    unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {
+        panic!("dealloc should be never called")
+    }
+}
+
 fn main() {
     println!("Welcome to shelium, a simple shell for liumOS written in Rust!");
     let mut buf: [u8; 32] = [0; 32];
     let mut buf_used = 0;
+
+    let mut v: Vec<i32> = Vec::new();
+    v.push(3);
+    v.push(1);
+    v.push(4);
+    println!("{:?}", v);
+
     loop {
         let c = getchar();
         putchar(c);
