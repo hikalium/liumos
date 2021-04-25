@@ -24,6 +24,12 @@ sys_write:
 	syscall
 	ret
 
+.global sys_open
+sys_open:
+	mov rax, 2
+	syscall
+	ret
+
 .global sys_exit
 sys_exit:
 	mov rax, 60

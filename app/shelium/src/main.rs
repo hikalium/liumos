@@ -11,6 +11,7 @@ use core::str;
 extern "C" {
     fn sys_read(fp: i32, str: *mut u8, len: usize);
     fn sys_write(fp: i32, str: *const u8, len: usize);
+    fn sys_open(filename: *const u8, flags: u32, mode: u32) -> u64;
     fn sys_exit(code: i32) -> !;
 }
 
