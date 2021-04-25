@@ -78,23 +78,60 @@ pub fn _print(args: fmt::Arguments) {
 use alloc::alloc::{GlobalAlloc, Layout};
 use core::ptr::null_mut;
 
-pub struct Dummy;
+trait MutableAllocator {
+    fn alloc(&mut self, layout: Layout) -> *mut u8;
+    fn dealloc(&mut self, _ptr: *mut u8, _layout: Layout);
+}
+
+const ALLOCATOR_BUF_SIZE: usize = 0x100;
+pub struct WaterMarkAllocator {
+    buf: [u8; ALLOCATOR_BUF_SIZE],
+    used_bytes: usize,
+}
+
+pub struct GlobalAllocatorWrapper {
+    allocator: WaterMarkAllocator,
+}
 
 #[global_allocator]
-static ALLOCATOR: Dummy = Dummy;
+static mut ALLOCATOR: GlobalAllocatorWrapper = GlobalAllocatorWrapper {
+    allocator: WaterMarkAllocator {
+        buf: [0; ALLOCATOR_BUF_SIZE],
+        used_bytes: 0,
+    },
+};
 
 #[alloc_error_handler]
 fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
     panic!("allocation error: {:?}", layout)
 }
 
-unsafe impl GlobalAlloc for Dummy {
-    unsafe fn alloc(&self, _layout: Layout) -> *mut u8 {
-        null_mut()
+impl MutableAllocator for WaterMarkAllocator {
+    fn alloc(&mut self, layout: Layout) -> *mut u8 {
+        if self.used_bytes > ALLOCATOR_BUF_SIZE {
+            return null_mut();
+        }
+        self.used_bytes = (self.used_bytes + layout.align() - 1) / layout.align() * layout.align();
+        self.used_bytes += layout.size();
+        if self.used_bytes > ALLOCATOR_BUF_SIZE {
+            return null_mut();
+        }
+        println!("alloc: Allocated {:?}, used: {}", layout, self.used_bytes);
+        unsafe {
+            return self.buf.as_mut_ptr().add(self.used_bytes - layout.size());
+        }
+    }
+    fn dealloc(&mut self, _ptr: *mut u8, layout: Layout) {
+        println!("dealloc: Freed {:?}", layout);
+    }
+}
+unsafe impl GlobalAlloc for GlobalAllocatorWrapper {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        return ALLOCATOR.allocator.alloc(layout);
     }
 
-    unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {
-        panic!("dealloc should be never called")
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        ALLOCATOR.allocator.dealloc(ptr, layout);
     }
 }
 
