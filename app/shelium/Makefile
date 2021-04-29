@@ -4,16 +4,16 @@ default: $(TARGET_BIN)
 
 include ../../common.mk
 
-$(TARGET_BIN) :
+$(TARGET_BIN) : .FORCE
 	export LLVM_CC="$(LLVM_CC)" && \
 		export LLVM_AR="$(LLVM_AR)" && \
 		cargo build \
-		-vv --target=x86_64-unknown-elf.json --release \
+		-vv --target=../liumlib/x86_64-unknown-elf.json --release \
 		-Z build-std=core,alloc \
 		-Z build-std-features=compiler-builtins-mem
 	cp target/x86_64-unknown-elf/release/$(TARGET) $(TARGET_BIN)
 
-.PHONY : install clean dump clippy
+.PHONY : install clean dump clippy .FORCE
 
 install: $(TARGET_BIN)
 clean:

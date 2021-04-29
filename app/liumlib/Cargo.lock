@@ -3,10 +3,3 @@
 [[package]]
 name = "liumlib"
 version = "0.1.0"
-
-[[package]]
-name = "shelium"
-version = "0.1.0"
-dependencies = [
- "liumlib",
-]
