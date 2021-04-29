@@ -197,6 +197,11 @@ const download = () => {
   var ctx = canvas.getContext('2d');
   var image = new Image;
   image.onload = function() {
+    ctx.beginPath();
+    ctx.rect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "white";
+    ctx.fill();
+    ctx.drawImage(image, 0, 0);
     ctx.drawImage(image, 0, 0);
     var a = document.createElement('a');
     a.href = canvas.toDataURL('image/png');
