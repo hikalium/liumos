@@ -4,7 +4,7 @@
 [![CircleCI](https://circleci.com/gh/hikalium/liumos.svg?style=svg)](https://circleci.com/gh/hikalium/liumos)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-![Screenshot](docs/2019-11-24.png)
+![Screenshot](docs/2021-04-30.png)
 
 
 A toy operating system which supports NVDIMM natively.
