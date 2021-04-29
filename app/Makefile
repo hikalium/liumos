@@ -1,7 +1,9 @@
 APPS=\
 	 argstest/argstest.bin \
+	 browser/browser.bin \
 	 dig/dig.bin \
 	 fizzbuzz/fizzbuzz.bin \
+	 guitest/guitest.bin \
 	 hello/hello.bin \
 	 httpclient/httpclient.bin \
 	 httpserver/httpserver.bin \
@@ -10,10 +12,8 @@ APPS=\
 	 readtest/readtest.bin \
 	 rusttest/rusttest.bin \
 	 shelium/shelium.bin \
-	 udpserver/udpserver.bin \
 	 udpclient/udpclient.bin \
-	 browser/browser.bin \
-	 guitest/guitest.bin \
+	 udpserver/udpserver.bin \
 	 # dummy line
 
 default: $(APPS)
