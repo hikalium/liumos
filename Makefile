@@ -21,6 +21,7 @@ pmem.img :
 	qemu-img create $@ 2G
 
 apps : .FORCE
+	git submodule update --init --recursive
 	make -C app/
 
 deploy_apps : .FORCE
@@ -163,6 +164,7 @@ spellcheck :
 	@scripts/spellcheck.sh recieve receive
 
 commit_root : format test 
+	git submodule update
 	git add .
 	./scripts/ensure_objs_are_not_under_git_control.sh
 	git diff HEAD --color=always | less -R

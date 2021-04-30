@@ -10,6 +10,7 @@ APPS=\
 	 pi/pi.bin \
 	 ping/ping.bin \
 	 readtest/readtest.bin \
+	 relly/relly.bin \
 	 rusttest/rusttest.bin \
 	 shelium/shelium.bin \
 	 udpclient/udpclient.bin \
