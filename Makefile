@@ -24,7 +24,7 @@ apps : .FORCE
 	git submodule update --init --recursive
 	make -C app/
 
-deploy_apps : .FORCE
+deploy_apps : apps .FORCE
 	make -C app/ deploy
 
 files : src/BOOTX64.EFI src/LIUMOS.ELF .FORCE
