@@ -4,6 +4,7 @@
 extern crate alloc;
 
 use alloc::string::String;
+use alloc::vec::Vec;
 use core::mem::size_of;
 use liumlib::*;
 
@@ -30,12 +31,24 @@ fn run_command(line: &str) {
             return;
         }
         let mut cur = 0;
+        let mut files = Vec::new();
+        struct FileNameAndId {
+            name: String,
+            id: u64,
+        }
         while cur < bytes_read as usize {
             let de: &DirectoryEntry = unsafe { &*(p.add(cur) as *mut DirectoryEntry) };
             let file_name_bytes = &buf[(size_of::<DirectoryEntry>() + cur)..(de.size() + cur)];
             let file_name = String::from_utf8(file_name_bytes.to_vec()).unwrap();
-            println!("{:8} {}", de.inode(), file_name);
             cur += de.size();
+            files.push(FileNameAndId {
+                name: file_name,
+                id: de.inode(),
+            })
+        }
+        files.sort_by(|l, r| l.name.cmp(&r.name));
+        for f in files {
+            println!("{:8} {}", f.id, f.name);
         }
     }
 }
