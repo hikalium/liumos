@@ -1,16 +1,36 @@
 #![no_std]
 #![feature(alloc_error_handler)]
 
+use alloc::string::String;
 use core::fmt;
 use core::mem::size_of;
 use core::panic::PanicInfo;
+
+#[repr(packed)]
+#[allow(dead_code)]
+pub struct DirectoryEntry {
+    inode: u64,
+    next_offset: u64,
+    this_size: u16,
+    d_type: u8,
+}
+
+impl DirectoryEntry {
+    pub fn inode(&self) -> u64 {
+        self.inode
+    }
+    pub fn size(&self) -> usize {
+        self.this_size as usize
+    }
+}
 
 #[link(name = "liumos", kind = "static")]
 extern "C" {
     fn sys_read(fp: i32, str: *mut u8, len: usize);
     fn sys_write(fp: i32, str: *const u8, len: usize);
-    // fn sys_open(filename: *const u8, flags: u32, mode: u32) -> u64;
+    fn sys_open(filename: *const u8, flags: u32, mode: u32) -> i32;
     fn sys_exit(code: i32) -> !;
+    pub fn sys_getdents64(fd: u32, buf: *mut u8, buf_size: usize) -> i32;
 }
 
 pub fn getchar() -> u8 {
@@ -29,6 +49,11 @@ pub fn putchar(c: u8) {
     unsafe {
         sys_write(1, &c as *const u8, size_of::<u8>());
     }
+}
+pub fn open(filename: &str, flags: u32, mode: u32) -> i32 {
+    let mut filename_terminated = String::from(filename);
+    filename_terminated.push('\0');
+    unsafe { sys_open(filename_terminated.as_ptr(), flags, mode) }
 }
 pub fn exit(code: i32) -> ! {
     unsafe {
@@ -87,7 +112,7 @@ trait MutableAllocator {
     fn dealloc(&mut self, _ptr: *mut u8, _layout: Layout);
 }
 
-const ALLOCATOR_BUF_SIZE: usize = 0x100;
+const ALLOCATOR_BUF_SIZE: usize = 0x1000;
 pub struct WaterMarkAllocator {
     buf: [u8; ALLOCATOR_BUF_SIZE],
     used_bytes: usize,
@@ -120,12 +145,9 @@ impl MutableAllocator for WaterMarkAllocator {
         if self.used_bytes > ALLOCATOR_BUF_SIZE {
             return null_mut();
         }
-        println!("alloc: Allocated {:?}, used: {}", layout, self.used_bytes);
         unsafe { self.buf.as_mut_ptr().add(self.used_bytes - layout.size()) }
     }
-    fn dealloc(&mut self, _ptr: *mut u8, layout: Layout) {
-        println!("dealloc: Freed {:?}", layout);
-    }
+    fn dealloc(&mut self, _ptr: *mut u8, _layout: Layout) {}
 }
 unsafe impl GlobalAlloc for GlobalAllocatorWrapper {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {

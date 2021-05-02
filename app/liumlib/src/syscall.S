@@ -35,3 +35,8 @@ sys_exit:
 	mov rax, 60
 	syscall
 
+.global sys_getdents64
+sys_getdents64:
+	mov rax, 0xd9
+	syscall
+  ret
