@@ -999,6 +999,10 @@ void Run(TextBox& tbox) {
     liumos->scheduler->RegisterProcess(proc);
     while (proc.GetStatus() != Process::Status::kStopped) {
       uint16_t keyid = liumos->main_console->GetCharWithoutBlocking();
+      if (keyid == KeyID::kNoInput) {
+        Sleep();
+        continue;
+      }
       if (KeyID::IsWithCtrl(keyid) && KeyID::IsChar(keyid, 'c')) {
         // Ctrl-C
         proc.Kill();
@@ -1006,7 +1010,9 @@ void Run(TextBox& tbox) {
         PutString("\nkilled.\n");
         break;
       }
-      Sleep();
+      if (!KeyID::IsBreak(keyid)) {
+        proc.GetStdIn().Push(keyid);
+      }
     }
   }
 }

@@ -3,6 +3,7 @@
 #include "execution_context.h"
 #include "generic.h"
 #include "kernel_virtual_heap_allocator.h"
+#include "ring_buffer.h"
 
 class Process {
  public:
@@ -61,6 +62,8 @@ class Process {
     time_consumed_in_ctx_save_femto_sec_ += fs;
   }
   void PrintStatistics();
+  RingBuffer<uint8_t, 16>& GetStdIn() { return stdin_buffer_; }
+
   friend class ProcessController;
 
  private:
@@ -86,6 +89,7 @@ class Process {
   uint64_t copied_bytes_in_ctx_sw_;
   uint64_t num_of_clflush_issued_in_ctx_sw_;
   uint64_t time_consumed_in_ctx_save_femto_sec_;
+  RingBuffer<uint8_t, 16> stdin_buffer_;
 };
 
 class ProcessController {

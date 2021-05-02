@@ -75,6 +75,9 @@ constexpr bool IsWithCtrl(uint16_t k) {
 constexpr bool IsChar(uint16_t k, char c) {
   return !(k & kMaskExtended) && ((k & kMaskCode) == c);
 }
+constexpr bool IsBreak(uint16_t k) {
+  return k & kMaskBreak;
+}
 constexpr uint16_t WithoutAttr(uint16_t k) {
   return k & ~kMaskAttr;
 }

@@ -247,13 +247,11 @@ static ssize_t sys_read(int fd, void* buf, size_t count) {
   }
   if (count < 1)
     return ErrorNumber::kInvalid;
-  uint16_t keyid;
-  while ((keyid = liumos->main_console->GetCharWithoutBlocking()) ==
-             KeyID::kNoInput ||
-         (keyid & KeyID::kMaskBreak)) {
+  auto& proc_stdin = liumos->scheduler->GetCurrentProcess().GetStdIn();
+  while (proc_stdin.IsEmpty()) {
     StoreIntFlagAndHalt();
   }
-  reinterpret_cast<uint8_t*>(buf)[0] = keyid;
+  reinterpret_cast<uint8_t*>(buf)[0] = proc_stdin.Pop();
   return 1;
 }
 
