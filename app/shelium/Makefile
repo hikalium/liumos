@@ -5,7 +5,8 @@ default: $(TARGET_BIN)
 include ../../common.mk
 
 $(TARGET_BIN) : .FORCE
-	export LLVM_CC="$(LLVM_CC)" && \
+	export GIT_HASH=`./githash.sh` && \
+		export LLVM_CC="$(LLVM_CC)" && \
 		export LLVM_AR="$(LLVM_AR)" && \
 		cargo build \
 		-vv --target=../liumlib/x86_64-unknown-elf.json --release \
@@ -22,7 +23,8 @@ clean:
 dump: $(TARGET_BIN)
 	objdump -d target/x86_64-unknown-elf/release/$(TARGET)
 clippy :
-	export LLVM_CC="$(LLVM_CC)" && \
+	export GIT_HASH=`./githash.sh` && \
+		export LLVM_CC="$(LLVM_CC)" && \
 		export LLVM_AR="$(LLVM_AR)" && \
 		cargo clippy \
 		-vv --target=x86_64-unknown-elf.json --release \
