@@ -24,11 +24,24 @@ impl DirectoryEntry {
     }
 }
 
+pub struct FileDescriptor {
+    fd: i32,
+}
+
+impl Drop for FileDescriptor {
+    fn drop(&mut self) {
+        unsafe {
+            sys_close(self.fd);
+        }
+    }
+}
+
 #[link(name = "liumos", kind = "static")]
 extern "C" {
     fn sys_read(fp: i32, str: *mut u8, len: usize);
     fn sys_write(fp: i32, str: *const u8, len: usize);
     fn sys_open(filename: *const u8, flags: u32, mode: u32) -> i32;
+    fn sys_close(fp: i32) -> i32;
     fn sys_exit(code: i32) -> !;
     pub fn sys_getdents64(fd: u32, buf: *mut u8, buf_size: usize) -> i32;
 }
@@ -50,15 +63,26 @@ pub fn putchar(c: u8) {
         sys_write(1, &c as *const u8, size_of::<u8>());
     }
 }
-pub fn open(filename: &str, flags: u32, mode: u32) -> i32 {
+pub fn open(filename: &str, flags: u32, mode: u32) -> Option<FileDescriptor> {
     let mut filename_terminated = String::from(filename);
     filename_terminated.push('\0');
-    unsafe { sys_open(filename_terminated.as_ptr(), flags, mode) }
+    let fd = unsafe { sys_open(filename_terminated.as_ptr(), flags, mode) };
+    if fd < 0 {
+        None
+    } else {
+        Some(FileDescriptor { fd })
+    }
+}
+pub fn close(fd: i32) -> i32 {
+    unsafe { sys_close(fd) }
 }
 pub fn exit(code: i32) -> ! {
     unsafe {
         sys_exit(code);
     }
+}
+pub fn getdents64(fd: &FileDescriptor, buf: &mut [u8]) -> i32 {
+    unsafe { sys_getdents64(fd.fd as u32, buf.as_mut_ptr(), buf.len()) }
 }
 
 pub struct StdIoWriter {}

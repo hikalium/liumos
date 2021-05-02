@@ -18,10 +18,11 @@ fn run_command(line: &str) {
     }
     if line == "ls" {
         let fd = open(".", 0, 0);
-        if fd < 0 {
-            println!("open failed: {}", fd);
+        if fd.is_none() {
+            println!("open failed");
             return;
         }
+        let fd = fd.unwrap();
         let mut buf = [0; 512];
         let p = buf.as_mut_ptr();
         let mut files = Vec::new();
@@ -30,7 +31,7 @@ fn run_command(line: &str) {
             id: u64,
         }
         loop {
-            let bytes_read = unsafe { sys_getdents64(fd as u32, p, buf.len()) };
+            let bytes_read = getdents64(&fd, &mut buf);
             if bytes_read < 0 {
                 println!("getdents failed");
                 return;

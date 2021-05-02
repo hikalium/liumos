@@ -30,6 +30,12 @@ sys_open:
 	syscall
 	ret
 
+.global sys_close
+sys_close:
+	mov rax, 3
+	syscall
+	ret
+
 .global sys_exit
 sys_exit:
 	mov rax, 60
