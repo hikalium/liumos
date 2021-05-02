@@ -4,14 +4,17 @@ default: $(TARGET_BIN)
 
 include ../../common.mk
 
-$(TARGET_BIN) : .FORCE
-	export GIT_HASH=`./githash.sh` && \
-		export LLVM_CC="$(LLVM_CC)" && \
-		export LLVM_AR="$(LLVM_AR)" && \
-		cargo build \
-		-vv --target=../liumlib/x86_64-unknown-elf.json --release \
+CARGO:= export GIT_HASH='$(shell ./githash.sh)' && \
+	export LLVM_CC="$(LLVM_CC)" && \
+	export LLVM_AR="$(LLVM_AR)" && \
+	cargo
+
+CARGO_ARGS:= -vv --target=../liumlib/x86_64-unknown-elf.json --release \
 		-Z build-std=core,alloc \
 		-Z build-std-features=compiler-builtins-mem
+
+$(TARGET_BIN) : .FORCE
+	$(CARGO) build $(CARGO_ARGS)
 	cp target/x86_64-unknown-elf/release/$(TARGET) $(TARGET_BIN)
 
 .PHONY : install clean dump clippy .FORCE
@@ -23,10 +26,4 @@ clean:
 dump: $(TARGET_BIN)
 	objdump -d target/x86_64-unknown-elf/release/$(TARGET)
 clippy :
-	export GIT_HASH=`./githash.sh` && \
-		export LLVM_CC="$(LLVM_CC)" && \
-		export LLVM_AR="$(LLVM_AR)" && \
-		cargo clippy \
-		-vv --target=x86_64-unknown-elf.json --release \
-		-Z build-std=core,alloc \
-		-Z build-std-features=compiler-builtins-mem
+	$(CARGO) clippy $(CARGO_ARGS)
