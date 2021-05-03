@@ -3,6 +3,7 @@ default: test
 include ../common.mk
 
 test: .FORCE stop_docker
+	cargo run
 	make -C ..
 	make -C .. apps
 	./http_client.py
