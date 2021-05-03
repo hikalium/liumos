@@ -36,6 +36,19 @@ sys_close:
 	syscall
 	ret
 
+.global sys_mmap
+sys_mmap:
+  mov r10, rcx  // 4th arg
+	mov rax, 9
+	syscall
+	ret
+
+.global sys_munmap
+sys_munmap:
+	mov rax, 11
+	syscall
+	ret
+
 .global sys_exit
 sys_exit:
 	mov rax, 60

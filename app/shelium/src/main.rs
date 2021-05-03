@@ -63,7 +63,17 @@ fn run_command(line: &str) {
         for f in files {
             println!("{:8} {}", f.id, f.name);
         }
+        return;
     }
+    if line == "test_mmap" {
+        let addr = alloc_page();
+        assert!(addr != core::ptr::null_mut::<u8>());
+        println!("allocated: {:?}", addr);
+        assert!(free_page(addr) == 0);
+        println!("freed: {:?}", addr);
+        return;
+    }
+    println!("Not a command or a file: {}", line);
 }
 
 fn main() {

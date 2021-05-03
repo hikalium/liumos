@@ -42,6 +42,9 @@ extern "C" {
     fn sys_write(fp: i32, str: *const u8, len: usize);
     fn sys_open(filename: *const u8, flags: u32, mode: u32) -> i32;
     fn sys_close(fp: i32) -> i32;
+    fn sys_mmap(addr: *mut u8, size: usize, prot: u32, flags: u32, fd: i32, offset: u32)
+        -> *mut u8;
+    fn sys_munmap(addr: *mut u8, size: usize) -> i32;
     fn sys_exit(code: i32) -> !;
     pub fn sys_getdents64(fd: u32, buf: *mut u8, buf_size: usize) -> i32;
 }
@@ -75,6 +78,27 @@ pub fn open(filename: &str, flags: u32, mode: u32) -> Option<FileDescriptor> {
 }
 pub fn close(fd: i32) -> i32 {
     unsafe { sys_close(fd) }
+}
+const PROT_READ: u32 = 0x01;
+const PROT_WRITE: u32 = 0x02;
+const MAP_PRIVATE: u32 = 0x02;
+const MAP_ANONYMOUS: u32 = 0x20;
+/// Returns allocated memory addr or NULL if failed.
+pub fn alloc_page() -> *mut u8 {
+    unsafe {
+        sys_mmap(
+            core::ptr::null_mut::<u8>(),
+            4096,
+            PROT_READ | PROT_WRITE,
+            MAP_PRIVATE | MAP_ANONYMOUS,
+            -1,
+            0,
+        )
+    }
+}
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+pub fn free_page(addr: *mut u8) -> i32 {
+    unsafe { sys_munmap(addr, 4096) }
 }
 pub fn exit(code: i32) -> ! {
     unsafe {
