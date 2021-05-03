@@ -1,5 +1,7 @@
 extern crate rexpect;
 
+use clap::App;
+use clap::Arg;
 use rexpect::errors::*;
 use rexpect::session::PtySession;
 use rexpect::spawn;
@@ -60,20 +62,30 @@ fn expect_liumos_command_result(liumos_serial_conn: &mut PtySession, input: &str
 }
 
 fn run_end_to_end_tests() -> Result<()> {
+    let matches = App::new("e2etest")
+        .version(env!("CARGO_PKG_VERSION"))
+        .about("liumOS End-to-end test runner")
+        .arg(
+            Arg::new("use-docker")
+                .required(false)
+                .takes_value(false)
+                .about("Run tests with Docker (mainly for macOS hosts)"),
+        )
+        .get_matches();
+
     let exec_path_str = std::env::current_exe().unwrap();
     let liumos_root_dir = get_liumos_root_path(&exec_path_str);
     println!("liumOS root dir: {}", liumos_root_dir);
 
-    let mut qemu_mon_conn = match std::env::var("LIUMOS_RUN_TEST_WITHOUT_DOCKER") {
-        Ok(_) => {
-            std::process::Command::new("make")
-                .args(&["stop_docker"])
-                .output()
-                .unwrap();
-            println!("LIUMOS_RUN_TEST_WITHOUT_DOCKER is specified. Running tests without Docker.");
-            launch_liumos(&liumos_root_dir)
-        }
-        Err(_) => launch_liumos_on_docker(&liumos_root_dir),
+    let use_docker = matches.is_present("use-docker");
+    let mut qemu_mon_conn = if use_docker {
+        launch_liumos_on_docker(&liumos_root_dir)
+    } else {
+        std::process::Command::new("make")
+            .args(&["stop_docker"])
+            .output()
+            .unwrap();
+        launch_liumos(&liumos_root_dir)
     };
 
     qemu_mon_conn.send_line("info version")?;

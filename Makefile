@@ -21,7 +21,7 @@ pmem.img :
 	qemu-img create $@ 2G
 
 apps : .FORCE
-	git submodule update --init --recursive
+	-git submodule update --init --recursive
 	make -C app/
 
 deploy_apps : apps .FORCE
