@@ -164,6 +164,7 @@ spellcheck :
 	@scripts/spellcheck.sh recieve receive
 
 commit_root : format test 
+	make -C e2etest presubmit
 	git submodule update
 	git add .
 	./scripts/ensure_objs_are_not_under_git_control.sh

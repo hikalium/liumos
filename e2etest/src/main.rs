@@ -1,5 +1,8 @@
 extern crate rexpect;
 
+use retry::delay::Fixed;
+use retry::retry_with_index;
+
 use clap::App;
 use clap::Arg;
 use rexpect::errors::*;
@@ -28,11 +31,41 @@ fn get_liumos_root_path(exec_path_str: &Path) -> String {
 
 fn launch_liumos(liumos_root_dir: &str) -> PtySession {
     let cmd = format!("make -C {} run_for_e2e_test", liumos_root_dir);
-    let mut p = spawn(&cmd, Some(TIMEOUT_MILLISECONDS))
-        .unwrap_or_else(|e| panic!("Failed to launch QEMU: {}", e));
-    p.exp_regex("\\(qemu\\)").unwrap();
-    println!("QEMU launched");
-    p
+    let result = retry_with_index(Fixed::from_millis(1000).take(3), |current_try| match spawn(
+        &cmd,
+        Some(TIMEOUT_MILLISECONDS),
+    ) {
+        Err(e) => {
+            println!(
+                "Failed to launch QEMU: {:?}, Failed {} times",
+                e,
+                current_try + 1
+            );
+            std::process::Command::new("killall")
+                .args(&["qemu-system-x86_64"])
+                .output()
+                .unwrap();
+            Err(e)
+        }
+        Ok(mut p) => match p.exp_regex("\\(qemu\\)") {
+            Err(e) => {
+                println!(
+                    "Failed to launch QEMU: {:?}, Failed {} times",
+                    e,
+                    current_try + 1
+                );
+                Err(e)
+            }
+            Ok(_) => {
+                println!("QEMU launched");
+                Ok(p)
+            }
+        },
+    });
+    if result.is_err() {
+        panic!("Failed to launch liumOS");
+    }
+    result.unwrap()
 }
 
 fn launch_liumos_on_docker(liumos_root_dir: &str) -> PtySession {
@@ -94,11 +127,6 @@ fn run_end_to_end_tests() -> Result<()> {
 
     std::process::Command::new("make")
         .args(&["stop_docker"])
-        .output()
-        .unwrap();
-
-    std::process::Command::new("killall")
-        .args(&["qemu-system-x86_64"])
         .output()
         .unwrap();
 

@@ -2,7 +2,12 @@ default: test
 
 include ../common.mk
 
-test: .FORCE stop_docker
+.PHONY: presubmit test
+
+presubmit:
+	cargo run
+
+test:
 	cargo run
 	make -C ..
 	make -C .. apps
@@ -13,4 +18,3 @@ test: .FORCE stop_docker
 	./udp_server.py
 	echo "All End-to-end tests PASSed"
 
-.PHONY: .FORCE
