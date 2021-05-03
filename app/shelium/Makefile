@@ -27,3 +27,6 @@ dump: $(TARGET_BIN)
 	objdump -d target/x86_64-unknown-elf/release/$(TARGET)
 clippy :
 	$(CARGO) clippy $(CARGO_ARGS)
+
+test:
+	make

@@ -1,3 +1,5 @@
+include ../common.mk
+
 APPS=\
 	 argstest/argstest.bin \
 	 browser/browser.bin \
@@ -10,7 +12,6 @@ APPS=\
 	 pi/pi.bin \
 	 ping/ping.bin \
 	 readtest/readtest.bin \
-	 relly/relly.bin \
 	 rusttest/rusttest.bin \
 	 shelium/shelium.bin \
 	 udpclient/udpclient.bin \
@@ -19,22 +20,21 @@ APPS=\
 
 default: $(APPS)
 
-.FORCE :
-
-deploy : $(APPS) .FORCE
-	cp $(APPS) ../mnt/
-
 %.bin : .FORCE
 	make -C $(dir $@)
 
 %_clean : .FORCE
 	make -C $(dir $*) clean
 
+%_test : .FORCE
+	make -C $(dir $*) test
+
+.PHONY : .FORCE clean deply test
+
 clean: $(addsuffix _clean, $(APPS))
 
-test: .FORCE
-	# check if all apps can be built successfully
-	make clean
-	make
+deploy : $(APPS)
+	cp $(APPS) ../mnt/
 
-
+test: $(addsuffix _test, $(APPS))
+	@echo "All app test PASSed."

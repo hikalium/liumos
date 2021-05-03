@@ -16,3 +16,5 @@ $(TARGET) : $(OBJS) Makefile
 
 clean:
 	rm *.o *.bin ; true
+test:
+	make

@@ -11,8 +11,13 @@ OBJS=$(TARGET_OBJS) ../liumlib/liumlib.o ../liumlib/syscall.o ../liumlib/entry.o
 $(TARGET) : $(OBJS) Makefile $(TARGET_DEPS)
 	$(LLVM_LD_LLD) -static --no-rosegment -e entry -o $@ $(OBJS)
 
+.PHONY :  clean format test
+
 clean:
 	rm *.o *.bin ; true
 
 format :
 	-clang-format -i *.c
+
+# Each apps should implement following targets:
+# test

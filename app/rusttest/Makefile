@@ -16,3 +16,6 @@ clean:
 	-rm -r target
 dump: $(TARGET_BIN)
 	objdump -d target/x86_64-unknown-elf/release/rusttest
+
+test :
+	make

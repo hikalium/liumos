@@ -141,9 +141,9 @@ vnc :
 
 test :
 	make spellcheck
-	make -C src test
-	make -C app/liumlib test
+	make -C app test
 	make -C loader test
+	make -C src test
 
 e2etest_root :
 	make -C e2etest test

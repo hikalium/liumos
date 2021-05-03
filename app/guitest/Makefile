@@ -40,3 +40,6 @@ clean:
 
 format :
 	-clang-format -i *.c
+
+test :
+	make

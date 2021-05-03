@@ -7,4 +7,4 @@ default: $(TARGET)
 include ../liumlib/common.mk
 
 test : ${TARGET}
-	./test.sh
+	make
