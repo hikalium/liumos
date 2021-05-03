@@ -589,7 +589,7 @@ void Time() {
 }
 
 void Version() {
-  kprintf("\nliumOS version: %s\n\n", GetVersionStr());
+  kprintf("liumOS version: %s\n", GetVersionStr());
 }
 
 static void ListPCIDevices() {
