@@ -1,0 +1,8 @@
+[package]
+name = "browser-rs"
+version = "0.1.0"
+authors = ["Asami Doi"]
+edition = "2018"
+
+[dependencies]
+liumlib = { path = "../liumlib" }
