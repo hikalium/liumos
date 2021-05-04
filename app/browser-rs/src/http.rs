@@ -8,6 +8,14 @@ pub enum Method {
     Get,
 }
 
+impl Method {
+    fn name(&self) -> String {
+        match self {
+            Method::Get => String::from("GET"),
+        }
+    }
+}
+
 #[derive(Debug)]
 struct Header {
     key: String,
@@ -24,7 +32,7 @@ pub struct HTTPRequest {
 }
 
 impl HTTPRequest {
-    pub fn new(method: Method, url: ParsedUrl) -> Self {
+    pub fn new(method: Method, url: &ParsedUrl) -> Self {
         Self {
             method,
             path: String::from(&url.path),
@@ -32,5 +40,10 @@ impl HTTPRequest {
             headers: Vec::new(),
             body: String::from("Hello world"),
         }
+    }
+
+    pub fn string(&self) -> String {
+        let mut request = String::from(self.method.name());
+        request
     }
 }

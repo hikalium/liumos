@@ -36,15 +36,49 @@ impl Drop for FileDescriptor {
     }
 }
 
+#[repr(C)]
+pub struct SockAddr {
+    sin_family: u16,
+    sin_port: u16,
+    in_addr: u32,
+}
+
+impl SockAddr {
+    pub fn new(sin_family: u16, sin_port: u16, in_addr: u32) -> Self {
+        Self {
+            sin_family,
+            sin_port,
+            in_addr,
+        }
+    }
+}
+
 #[link(name = "liumos", kind = "static")]
 extern "C" {
     fn sys_read(fp: i32, str: *mut u8, len: usize);
     fn sys_write(fp: i32, str: *const u8, len: usize);
     fn sys_open(filename: *const u8, flags: u32, mode: u32) -> i32;
-    fn sys_close(fp: i32) -> i32;
+    pub fn sys_close(fp: i32) -> i32;
     fn sys_mmap(addr: *mut u8, size: usize, prot: u32, flags: u32, fd: i32, offset: u32)
         -> *mut u8;
     fn sys_munmap(addr: *mut u8, size: usize) -> i32;
+    fn sys_socket(domain: u32, socket_type: u32, protocol: u32) -> i32;
+    fn sys_sendto(
+        sockfd: u32,
+        buf: *mut u8,
+        len: usize,
+        flags: u32,
+        dest_addr: &SockAddr,
+        addrlen: usize,
+    ) -> usize;
+    fn sys_recvfrom(
+        sockfd: u32,
+        buf: *mut u8,
+        len: usize,
+        flags: u32,
+        src_addr: &mut SockAddr,
+        addrlen: usize,
+    ) -> usize;
     fn sys_exit(code: i32) -> !;
     pub fn sys_getdents64(fd: u32, buf: *mut u8, buf_size: usize) -> i32;
 }
@@ -76,9 +110,11 @@ pub fn open(filename: &str, flags: u32, mode: u32) -> Option<FileDescriptor> {
         Some(FileDescriptor { fd })
     }
 }
-pub fn close(fd: i32) -> i32 {
-    unsafe { sys_close(fd) }
+
+pub fn close(fd: &FileDescriptor) -> i32 {
+    unsafe { sys_close(fd.fd) }
 }
+
 const PROT_READ: u32 = 0x01;
 const PROT_WRITE: u32 = 0x02;
 const MAP_PRIVATE: u32 = 0x02;
@@ -100,11 +136,35 @@ pub fn alloc_page() -> *mut u8 {
 pub fn free_page(addr: *mut u8) -> i32 {
     unsafe { sys_munmap(addr, 4096) }
 }
+
+pub fn socket(domain: u32, socket_type: u32, protocol: u32) -> Option<FileDescriptor> {
+    let fd = unsafe {sys_socket(domain, socket_type, protocol) };
+    if fd < 0 {
+        None
+    } else {
+        Some(FileDescriptor { fd })
+    }
+}
+
+pub fn sendto(sockfd: &FileDescriptor, buf: &mut String, flags: u32, dest_addr: &SockAddr) -> usize {
+    unsafe {
+        sys_sendto(sockfd.fd as u32, buf.as_bytes_mut().as_mut_ptr(), buf.len(), flags, dest_addr, 0)
+    }
+}
+
+fn recvfrom(sockfd: &FileDescriptor, buf: &mut String, flags: u32, src_addr: &mut SockAddr) -> usize {
+    let len = buf.len();
+    unsafe {
+        sys_recvfrom(sockfd.fd as u32, buf.as_bytes_mut().as_mut_ptr(), len, flags, src_addr, 0)
+    }
+}
+
 pub fn exit(code: i32) -> ! {
     unsafe {
         sys_exit(code);
     }
 }
+
 pub fn getdents64(fd: &FileDescriptor, buf: &mut [u8]) -> i32 {
     unsafe { sys_getdents64(fd.fd as u32, buf.as_mut_ptr(), buf.len()) }
 }

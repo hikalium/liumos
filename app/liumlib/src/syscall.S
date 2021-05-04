@@ -49,6 +49,39 @@ sys_munmap:
 	syscall
 	ret
 
+.global sys_socket
+sys_socket:
+	// arg[1]: rdi = rdi
+	// arg[2]: rsi = rsi
+	// arg[3]: rdx = rdx
+	mov rax, 41
+	syscall
+	ret
+
+.global sys_sendto
+sys_sendto:
+	mov rax, 44
+	// arg[1]: rdi = rdi
+	// arg[2]: rsi = rsi
+	// arg[3]: rdx = rdx
+	mov r10, rcx
+	// arg[5]: r8 = r8
+	// arg[6]: r9 = r9
+	syscall
+	ret
+
+.global sys_recvfrom
+sys_recvfrom:
+	mov rax, 45
+	// arg[1]: rdi = rdi
+	// arg[2]: rsi = rsi
+	// arg[3]: rdx = rdx
+	mov r10, rcx
+	// arg[5]: r8 = r8
+	// arg[6]: r9 = r9
+	syscall
+	ret
+
 .global sys_exit
 sys_exit:
 	mov rax, 60
@@ -58,4 +91,4 @@ sys_exit:
 sys_getdents64:
 	mov rax, 0xd9
 	syscall
-  ret
+    ret
