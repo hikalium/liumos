@@ -3,6 +3,7 @@ include ../common.mk
 APPS=\
 	 argstest/argstest.bin \
 	 browser/browser.bin \
+	 browser-rs/browser-rs.bin \
 	 dig/dig.bin \
 	 fizzbuzz/fizzbuzz.bin \
 	 guitest/guitest.bin \
