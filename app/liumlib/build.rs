@@ -8,11 +8,12 @@ fn get_object_name(s: &str) -> String {
     let mut v: Vec<&str> = s.split('.').collect();
     v.pop();
     v.push("o");
-    return String::from(v.join("."));
+    v.join(".")
 }
 
 fn main() {
-    let srcs = ["syscall.S"];
+    let srcs = ["entry.S", "syscall.S"];
+    let objs = srcs.map(|e| get_object_name(e)).to_vec();
     let out_dir = env::var("OUT_DIR").unwrap();
     let llvm_cc_path = env::var("LLVM_CC").unwrap();
     let llvm_ar_path = env::var("LLVM_AR").unwrap();
@@ -39,8 +40,12 @@ fn main() {
         }
     }
     // Create libliumos.a to be included at compile time.
+    let mut ar_args = vec![String::from("crs"), String::from("libliumos.a")];
+    for obj in objs {
+        ar_args.push(obj);
+    }
     if !Command::new(llvm_ar_path)
-        .args(&["crs", "libliumos.a", "syscall.o"])
+        .args(&ar_args)
         .current_dir(&Path::new(&out_dir))
         .status()
         .expect("process failed to execute")

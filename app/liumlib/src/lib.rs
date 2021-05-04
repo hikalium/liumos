@@ -2,6 +2,7 @@
 #![feature(alloc_error_handler)]
 
 use alloc::string::String;
+use alloc::vec::Vec;
 use core::fmt;
 use core::mem::size_of;
 use core::panic::PanicInfo;
@@ -265,4 +266,56 @@ unsafe impl GlobalAlloc for GlobalAllocatorWrapper {
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         ALLOCATOR.allocator.dealloc(ptr, layout);
     }
+}
+
+unsafe fn strlen(s: *const u8) -> usize {
+    let mut count = 0;
+    loop {
+        if *s.add(count) == 0 {
+            break;
+        }
+        count += 1;
+    }
+    count
+}
+
+static mut ARGS: Vec<&str> = Vec::new();
+
+pub mod env {
+    use alloc::vec::Vec;
+    pub fn args() -> &'static Vec<&'static str> {
+        unsafe { &super::ARGS }
+    }
+}
+
+/// # Safety
+///
+/// This function should be called only from entry_point function
+pub unsafe fn setup_liumlib(argc: usize, argv: *const *const u8) {
+    for i in 0..argc {
+        let p = argv.add(i);
+        let s = core::slice::from_raw_parts(*p, strlen(*p));
+        let s = core::str::from_utf8(s);
+        match s {
+            Ok(s) => ARGS.push(&s),
+            Err(e) => panic!("Failed to convert argv to utf8 str: {}", e),
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! entry_point {
+    // c.f. https://docs.rs/bootloader/0.6.4/bootloader/macro.entry_point.html
+    ($path:path) => {
+        #[no_mangle]
+        pub unsafe extern "C" fn _start_rs(argc: usize, argv: *const *const u8) -> ! {
+            // validate the signature of the program entry point
+            let f: fn() -> () = $path;
+            unsafe {
+                setup_liumlib(argc, argv);
+            }
+            f();
+            exit(0);
+        }
+    };
 }

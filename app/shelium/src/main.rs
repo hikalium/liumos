@@ -3,6 +3,7 @@
 
 extern crate alloc;
 
+use crate::alloc::string::ToString;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::mem::size_of;
@@ -67,7 +68,7 @@ fn run_command(line: &str) {
     }
     if line == "test_mmap" {
         let addr = alloc_page();
-        assert!(addr != core::ptr::null_mut::<u8>());
+        assert!(!addr.is_null());
         println!("allocated: {:?}", addr);
         assert!(free_page(addr) == 0);
         println!("freed: {:?}", addr);
@@ -76,7 +77,16 @@ fn run_command(line: &str) {
     println!("Not a command or a file: {}", line);
 }
 
+entry_point!(main);
 fn main() {
+    let arg_version = "-v".to_string();
+    for arg in env::args() {
+        if arg_version == *arg {
+            run_command("version");
+            exit(0);
+        }
+    }
+
     println!("Welcome to shelium, a simple shell for liumOS written in Rust!");
     let mut line = String::with_capacity(32);
 
@@ -94,10 +104,4 @@ fn main() {
         }
         line.push(c as char);
     }
-}
-
-#[no_mangle]
-pub extern "C" fn _start() -> ! {
-    main();
-    exit(1);
 }
