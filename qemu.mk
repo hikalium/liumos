@@ -6,31 +6,29 @@ PORT_MONITOR=2222
 # PORT_VNC=N => port 5900 + N
 PORT_VNC=5
 
+QEMU_ARGS_COMMON_HW_CONFIG=\
+		-machine q35,nvdimm -cpu qemu64 -smp 4 \
+		-bios $(OVMF) \
+		-device qemu-xhci -device usb-mouse \
+		-m 2G,slots=2,maxmem=4G \
+		-drive format=raw,file=fat:rw:mnt -net none \
+		-rtc base=localtime \
+
 QEMU_ARGS_LOADER_TEST=\
-		  -device qemu-xhci -device usb-mouse \
-		  -bios $(OVMF) \
-		  -machine q35,nvdimm -cpu qemu64 -smp 4 \
-		  -m 2G,slots=2,maxmem=4G \
-		  -drive format=raw,file=fat:rw:mnt -net none \
-		  -rtc base=localtime \
-			-device isa-debug-exit,iobase=0xf4,iosize=0x01 \
-			-chardev stdio,id=char0,mux=on \
-			-monitor none \
-			-serial chardev:char0 \
-			-serial chardev:char0 \
-			-nographic
+	    $(QEMU_ARGS_COMMON_HW_CONFIG) \
+		-device isa-debug-exit,iobase=0xf4,iosize=0x01 \
+		-chardev stdio,id=char0,mux=on \
+		-monitor none \
+		-serial chardev:char0 \
+		-serial chardev:char0 \
+		-nographic
 
 QEMU_ARGS_COMMON=\
-		  -device qemu-xhci -device usb-mouse \
-		  -bios $(OVMF) \
-		  -machine q35,nvdimm -cpu qemu64 -smp 4 \
-		  -monitor stdio \
-		  -monitor telnet:0.0.0.0:$(PORT_MONITOR),server,nowait \
-		  -m 2G,slots=2,maxmem=4G \
-		  -drive format=raw,file=fat:rw:mnt -net none \
-		  -rtc base=localtime \
-		  -serial tcp::1234,server,nowait \
-		  -serial tcp::1235,server,nowait
+	    $(QEMU_ARGS_COMMON_HW_CONFIG) \
+		-monitor stdio \
+		-monitor telnet:0.0.0.0:$(PORT_MONITOR),server,nowait \
+		-serial tcp::1234,server,nowait \
+		-serial tcp::1235,server,nowait
 
 QEMU_ARGS_NET_MACOS=\
 		-nic user,id=u1,model=virtio,hostfwd=tcp::10023-:23 \
@@ -56,24 +54,24 @@ QEMU_ARGS_USER_NET_LINUX=\
 OSNAME=${shell uname -s}
 ifeq ($(OSNAME),Darwin)
 QEMU_ARGS=\
-					$(QEMU_ARGS_COMMON) \
-					$(QEMU_ARGS_NET_MACOS)
+		$(QEMU_ARGS_COMMON) \
+		$(QEMU_ARGS_NET_MACOS)
 else
 QEMU_ARGS=\
-					--enable-kvm \
-					$(QEMU_ARGS_COMMON) \
-					$(QEMU_ARGS_NET_LINUX)
+		--enable-kvm \
+		$(QEMU_ARGS_COMMON) \
+		$(QEMU_ARGS_NET_LINUX)
 endif
 
 QEMU_ARGS_PMEM=\
-					 $(QEMU_ARGS) \
-					 -object memory-backend-file,id=mem1,share=on,mem-path=pmem.img,size=2G \
-					 -device nvdimm,id=nvdimm1,memdev=mem1
+		$(QEMU_ARGS) \
+		-object memory-backend-file,id=mem1,share=on,mem-path=pmem.img,size=2G \
+		-device nvdimm,id=nvdimm1,memdev=mem1
 
 ifdef SSH_CONNECTION
 QEMU_ARGS+= -vnc 0.0.0.0:$(PORT_VNC),password
 endif
-	
+
 common_run_rust :
 	make -C ${PROJECT_ROOT}/loader install
 	cd ${PROJECT_ROOT} && $(QEMU) $(QEMU_ARGS_PMEM)
