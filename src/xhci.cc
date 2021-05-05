@@ -500,16 +500,18 @@ void Controller::RequestDeviceDescriptor(int slot,
   NotifyDeviceContextDoorbell(slot, 1);
 }
 
-void Controller::RequestConfigDescriptor(int slot) {
+void Controller::RequestConfigDescriptor(int slot, uint8_t desc_idx) {
+  // 9.4.3 Get Descriptor
   auto& slot_info = slot_info_[slot];
   assert(slot_info.ctrl_ep_tring);
   auto& tring = *slot_info.ctrl_ep_tring;
   int desc_size = kSizeOfDescriptorBuffer;
   SetupStageTRB& setup = *tring.GetNextEnqueueEntry<SetupStageTRB*>();
-  setup.SetParams(SetupStageTRB::kReqTypeBitDirectionDeviceToHost,
-                  SetupStageTRB::kReqGetDescriptor,
-                  (static_cast<uint16_t>(kDescriptorTypeConfig) << 8) | 0, 0,
-                  desc_size, false);
+  setup.SetParams(
+      SetupStageTRB::kReqTypeBitDirectionDeviceToHost,
+      SetupStageTRB::kReqGetDescriptor,
+      (static_cast<uint16_t>(kDescriptorTypeConfig) << 8) | desc_idx, 0,
+      desc_size, false);
   tring.Push();
   PutDataStageTD(tring, v2p(descriptor_buffers_[slot]), desc_size, true);
   StatusStageTRB& status = *tring.GetNextEnqueueEntry<StatusStageTRB*>();
@@ -697,18 +699,61 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
     }
     return;
   }
+  auto& si = slot_info_[slot];
   switch (slot_info_[slot].state) {
     case SlotInfo::kWaitingForDeviceDescriptor: {
       DeviceDescriptor& device_desc =
           *reinterpret_cast<DeviceDescriptor*>(descriptor_buffers_[slot]);
-      auto& si = slot_info_[slot];
       si.device_class = device_desc.device_class;
       si.device_subclass = device_desc.device_subclass;
       si.device_protocol = device_desc.device_protocol;
+      si.num_of_config = device_desc.num_of_config;
+      si.num_of_config_retrieved = 0;
       kprintf(
           "USB Device detected: (class, subclass, protocol) = "
           "(%02X, %02X, %02X)\n",
           si.device_class, si.device_subclass, si.device_protocol);
+      RequestConfigDescriptor(slot, si.num_of_config_retrieved);
+      si.state = SlotInfo::kWaitingForConfigDescriptor;
+    } break;
+    case SlotInfo::kWaitingForConfigDescriptor: {
+      kprintf("Reading ConfigDescriptor[%d]\n", si.num_of_config_retrieved);
+      ConfigDescriptor& config_desc =
+          *reinterpret_cast<ConfigDescriptor*>(descriptor_buffers_[slot]);
+      auto& config_and_interfaces =
+          si.config_descriptors[si.num_of_config_retrieved++];
+      config_and_interfaces.config = config_desc;
+      config_and_interfaces.num_of_interfaces = 0;
+      // Read interface descriptors
+      assert(config_desc.total_length <= kSizeOfDescriptorBuffer);
+      int ofs = config_desc.length;
+      while (ofs < config_desc.total_length) {
+        const uint8_t length =
+            RefWithOffset<uint8_t*>(descriptor_buffers_[slot], ofs)[0];
+        const uint8_t type =
+            RefWithOffset<uint8_t*>(descriptor_buffers_[slot], ofs)[1];
+        if (type == kDescriptorTypeInterface) {
+          InterfaceDescriptor& interface_desc =
+              *RefWithOffset<InterfaceDescriptor*>(descriptor_buffers_[slot],
+                                                   ofs);
+          config_and_interfaces
+              .interfaces[config_and_interfaces.num_of_interfaces++] =
+              interface_desc;
+        }
+        ofs += length;
+      }
+      /*
+      assert(config_desc.num_of_interfaces ==
+             config_and_interfaces.num_of_interfaces);
+             */
+      // Request next config descriptor
+      if (si.num_of_config_retrieved < si.num_of_config) {
+        kprintf("Continue reading ConfigDescriptor[%d/%d]\n",
+                si.num_of_config_retrieved, si.num_of_config);
+        RequestConfigDescriptor(slot, si.num_of_config_retrieved);
+        si.state = SlotInfo::kWaitingForConfigDescriptor;
+        break;
+      }
       si.state = SlotInfo::kAvailable;
     } break;
     case SlotInfo::kCheckingIfHIDClass: {
@@ -716,7 +761,6 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
       PutStringAndHex("  Slot ID", slot);
       DeviceDescriptor& device_desc =
           *reinterpret_cast<DeviceDescriptor*>(descriptor_buffers_[slot]);
-      auto& si = slot_info_[slot];
       PutString("DeviceDescriptor\n");
       PutStringAndHex("  length", device_desc.length);
       PutStringAndHex("  type", device_desc.type);
@@ -735,7 +779,7 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
         return;
       }
       PutString("  This is an HID Class Device\n");
-      RequestConfigDescriptor(slot);
+      RequestConfigDescriptor(slot, 0);
     } break;
     case SlotInfo::kCheckingConfigDescriptor: {
       PutString("TransferEvent\n");
@@ -1018,6 +1062,7 @@ void Controller::PrintUSBDevices() {
     if (info.state == SlotInfo::kUndefined)
       continue;
     kprintf("Slot 0x%X (on port 0x%X):\n", slot, info.port);
+    kprintf("  num_of_config               = %d (%s)\n", info.num_of_config);
     kprintf("  state                       = %d (%s)\n", info.state,
             info.GetSlotStateStr());
     kprintf("  (class, subclass, protocol) = (0x%02X, 0x%02X, 0x%02X)\n",
@@ -1027,6 +1072,18 @@ void Controller::PrintUSBDevices() {
     const char* speed_str = GetSpeedNameFromPORTSCPortSpeed(port_speed);
     if (speed_str) {
       kprintf("  Port Speed                  = %s\n", speed_str);
+    }
+    for (int i = 0; i < info.num_of_config_retrieved; i++) {
+      auto& cd = info.config_descriptors[i];
+      kprintf("  Config[%d]:\n", i);
+      for (int ii = 0; ii < cd.num_of_interfaces; ii++) {
+        kprintf("    Interface[%d]:\n", ii);
+        auto& interface_desc = cd.interfaces[ii];
+        kprintf("      Class=0x%02X SubClass=0x%02X Protocol=0x%02X\n",
+                interface_desc.interface_class,
+                interface_desc.interface_subclass,
+                interface_desc.interface_protocol);
+      }
     }
   }
 }

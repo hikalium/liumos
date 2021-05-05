@@ -9,7 +9,8 @@ PORT_VNC=5
 QEMU_ARGS_COMMON_HW_CONFIG=\
 		-machine q35,nvdimm -cpu qemu64 -smp 4 \
 		-bios $(OVMF) \
-		-device qemu-xhci -device usb-mouse -device usb-net \
+		-device qemu-xhci -device usb-mouse \
+		-netdev user,id=usbnet0 -device usb-net,netdev=usbnet0 \
 		-m 2G,slots=2,maxmem=4G \
 		-drive format=raw,file=fat:rw:mnt -net none \
 		-rtc base=localtime \

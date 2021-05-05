@@ -186,11 +186,19 @@ class Controller {
   };
   static_assert(sizeof(EndpointDescriptor) == 7);
 
+  struct ConfigDescriptorAndInterfaceDescriptors {
+    ConfigDescriptor config;
+    uint8_t num_of_interfaces;
+    static const int kMaxNumOfInterfaceDescriptors = 8;
+    InterfaceDescriptor interfaces[kMaxNumOfInterfaceDescriptors];
+  };
+
   struct SlotInfo {
     enum SlotState {
       kUndefined,
       kWaitingForSecondAddressDeviceCommandCompletion,
       kWaitingForDeviceDescriptor,
+      kWaitingForConfigDescriptor,
       kAvailable,
       kCheckingIfHIDClass,
       kCheckingConfigDescriptor,
@@ -211,7 +219,11 @@ class Controller {
     uint8_t device_class;
     uint8_t device_subclass;
     uint8_t device_protocol;
-    uint32_t port_speed;
+    uint8_t num_of_config;
+    uint8_t num_of_config_retrieved;
+    static const int kMaxNumOfConfigDescriptors = 8;
+    ConfigDescriptorAndInterfaceDescriptors
+        config_descriptors[kMaxNumOfConfigDescriptors];
     //
     const char* GetSlotStateStr();
   };
@@ -238,7 +250,7 @@ class Controller {
   void HandleKeyInput(int slot, uint8_t data[8]);
   void HandleAddressDeviceCompleted(int slot);
   void RequestDeviceDescriptor(int slot, SlotInfo::SlotState);
-  void RequestConfigDescriptor(int slot);
+  void RequestConfigDescriptor(int slot, uint8_t desc_idx);
   void SetConfig(int slot, uint8_t config_value);
   void SetHIDBootProtocol(int slot);
   void GetHIDProtocol(int slot);
