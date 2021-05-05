@@ -32,6 +32,7 @@ KERNEL_SRCS= $(COMMON_SRCS) \
 			 rtl81xx.cc \
 			 scheduler.cc subtask.cc \
 			 sleep_handler.S syscall.cc syscall_handler.S \
+			 usb_manager.cc \
 			 virtio_net.cc \
 			 xhci.cc
 

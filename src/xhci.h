@@ -190,6 +190,8 @@ class Controller {
     enum SlotState {
       kUndefined,
       kWaitingForSecondAddressDeviceCommandCompletion,
+      kWaitingForDeviceDescriptor,
+      kAvailable,
       kCheckingIfHIDClass,
       kCheckingConfigDescriptor,
       kSettingConfiguration,
@@ -205,6 +207,13 @@ class Controller {
     CtrlEPTRing* ctrl_ep_tring;
     IntEPTRing* int_ep_tring;
     int max_packet_size;
+    //
+    uint8_t device_class;
+    uint8_t device_subclass;
+    uint8_t device_protocol;
+    uint32_t port_speed;
+    //
+    const char* GetSlotStateStr();
   };
 
   void ResetHostController();

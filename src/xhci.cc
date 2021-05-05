@@ -37,10 +37,6 @@ class Controller::EventRing {
           trbs_size);
     erst_[0].ring_segment_base_address = GetTRBSPhysAddr();
     erst_[0].ring_segment_size = num_of_trb_;
-    PutStringAndHex("erst phys", GetERSTPhysAddr());
-    PutStringAndHex("erst[0].ring_segment_base_address",
-                    erst_[0].ring_segment_base_address);
-    PutStringAndHex("erst[0].ring_segment_size", erst_[0].ring_segment_size);
 
     irs_.erst_size = 1;
     irs_.erdp = GetTRBSPhysAddr();
@@ -115,9 +111,6 @@ void Controller::InitCommandRing() {
   volatile uint64_t& crcr = op_regs_->cmd_ring_ctrl;
   crcr = (crcr & kOPREGCRCRMaskRsvdP) |
          (cmd_ring_phys_addr_ & kOPREGCRCRMaskRingPtr) | 1;
-  PutStringAndHex("CmdRing(Virt)", cmd_ring_);
-  PutStringAndHex("CmdRing(Phys)", cmd_ring_phys_addr_);
-  PutStringAndHex("CRCR", crcr);
 }
 
 void Controller::NotifyHostControllerDoorbell() {
@@ -140,9 +133,6 @@ static std::optional<PCI::DeviceLocation> FindXHCIController() {
   for (auto& it : PCI::GetInstance().GetDeviceList()) {
     if (!it.first.HasID(0x1B36, 0x000D) && !it.first.HasID(0x8086, 0x31A8))
       continue;
-    PutString("XHCI Controller Found: ");
-    PutString(PCI::GetDeviceName(it.first));
-    PutString("\n");
     return it.second;
   }
   PutString("XHCI Controller Not Found\n");
@@ -163,8 +153,6 @@ void Controller::ResetPort(int port) {
   while ((ReadPORTSC(port) & kPortSCBitPortReset)) {
     // wait
   }
-  PutStringAndHex("ResetPort: done. port", port);
-  PutStringAndHex("  PORTSC", ReadPORTSC(port));
   port_state_[port] = kNeedsSlotAssignment;
   port_is_initializing_[port] = true;
 }
@@ -174,30 +162,6 @@ void Controller::DisablePort(int port) {
   WritePORTSC(port, 2);
   port_state_[port] = kDisabled;
   port_is_initializing_[port] = false;
-}
-
-void Controller::HandlePortStatusChange(int port) {
-  uint32_t portsc = ReadPORTSC(port);
-  PutStringAndHex("XHCI Port Status Changed", port);
-  PutStringAndHex("  Port ID", port);
-  PutStringAndHex("  PORTSC", portsc);
-  if (portsc & kPortSCBitConnectStatusChange) {
-    PutString("  Connect Status: ");
-    PutString((portsc & 1) ? "Connected\n" : "Disconnected\n");
-  }
-  if (portsc & kPortSCBitEnableStatusChange) {
-    PutString("  Enable Status: ");
-    PutString((portsc & 0b10) ? "Enabled\n" : "Disabled\n");
-  }
-  if (portsc & kPortSCBitPortResetChange) {
-    PutString("  PortReset: ");
-    PutString((portsc & 0b1000) ? "Ongoing\n" : "Done\n");
-  }
-  if (portsc & kPortSCBitPortLinkStateChange) {
-    PutString("  LinkState: 0x");
-    PutHex64(GetBits<8, 5>(portsc));
-    PutString("\n");
-  }
 }
 
 class Controller::EndpointContext {
@@ -370,8 +334,6 @@ static const char* GetSpeedNameFromPORTSCPortSpeed(uint32_t port_speed) {
     return "High-speed";
   if (port_speed == kPortSpeedSS)
     return "SuperSpeed Gen1 x1";
-  PutString("GetSpeedNameFromPORTSCPortSpeed: Not supported speed\n");
-  PutStringAndHex("  port_speed", port_speed);
   return nullptr;
 }
 
@@ -399,14 +361,12 @@ void Controller::SendAddressDeviceCommand(int slot) {
   uint32_t portsc = ReadPORTSC(port);
   uint32_t port_speed = GetBits<13, 10>(portsc);
   dctx.SetPortSpeed(port_speed);
-  PutString("  Port Speed: ");
   const char* speed_str = GetSpeedNameFromPORTSCPortSpeed(port_speed);
   if (!speed_str) {
+    kprintf("Not supported port speed: 0x%X\n", port_speed);
     DisablePort(port);
     return;
   }
-  PutString(speed_str);
-  PutString("\n");
   EndpointContext& ep0 = dctx.GetEndpointContext(DeviceContext::kDCIEPContext0);
   ep0.SetEPType(DeviceContext::kEPTypeControl);
   ep0.SetTRDequeuePointer(ctrl_ep_tring_phys_addr);
@@ -435,12 +395,8 @@ void Controller::SendAddressDeviceCommand(int slot) {
   trb.data = v2p(&ctx);
   trb.option = 0;
   trb.control = (BasicTRB::kTRBTypeAddressDeviceCommand << 10) | (slot << 24);
-  PutStringAndHex("AddressDeviceCommand Enqueued to",
-                  cmd_ring_->GetNextEnqueueIndex());
-  PutStringAndHex("  phys addr", v2p(&trb));
   cmd_ring_->Push();
   NotifyHostControllerDoorbell();
-  PrintUSBSTS();
   slot_info.state = SlotInfo::kWaitingForSecondAddressDeviceCommandCompletion;
 }
 
@@ -490,7 +446,6 @@ void Controller::SendConfigureEndpointCommand(int slot) {
                   cmd_ring_->GetNextEnqueueIndex());
   cmd_ring_->Push();
   NotifyHostControllerDoorbell();
-  PrintUSBSTS();
 }
 
 void Controller::HandleEnableSlotCompleted(int slot, int port) {
@@ -498,8 +453,6 @@ void Controller::HandleEnableSlotCompleted(int slot, int port) {
 
   auto& slot_info = slot_info_[slot];
   slot_info.port = port;
-  PutStringAndHex("EnableSlotCommand completed.. Slot ID", slot);
-  PutStringAndHex("  With RootPort ID", port);
 
   slot_info.input_ctx = &InputContext::Alloc(DeviceContext::kDCIEPContext1Out);
   new (slot_info.output_ctx) DeviceContext(DeviceContext::kDCIEPContext1Out);
@@ -524,6 +477,8 @@ static void PutDataStageTD(XHCI::Controller::CtrlEPTRing& tring,
 
 void Controller::RequestDeviceDescriptor(int slot,
                                          SlotInfo::SlotState next_state) {
+  // [USB2.0]9.4.3 Get Descriptor says:
+  // "All devices must provide a device descriptor"
   auto& slot_info = slot_info_[slot];
   assert(slot_info.ctrl_ep_tring);
   auto& tring = *slot_info.ctrl_ep_tring;
@@ -543,7 +498,6 @@ void Controller::RequestDeviceDescriptor(int slot,
 
   slot_info_[slot].state = next_state;
   NotifyDeviceContextDoorbell(slot, 1);
-  PutStringAndHex("DeviceDescriptor requested for slot", slot);
 }
 
 void Controller::RequestConfigDescriptor(int slot) {
@@ -639,11 +593,10 @@ void Controller::GetHIDReport(int slot) {
 }
 
 void Controller::HandleAddressDeviceCompleted(int slot) {
-  PutStringAndHex("Address Device Completed. Slot ID", slot);
   uint8_t* buf = AllocMemoryForMappedIO<uint8_t*>(kSizeOfDescriptorBuffer);
   descriptor_buffers_[slot] = buf;
   port_is_initializing_[slot_info_[slot].port] = false;
-  RequestDeviceDescriptor(slot, SlotInfo::kCheckingIfHIDClass);
+  RequestDeviceDescriptor(slot, SlotInfo::kWaitingForDeviceDescriptor);
 }
 
 void Controller::PressKey(int hid_idx, uint8_t) {
@@ -745,23 +698,40 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
     return;
   }
   switch (slot_info_[slot].state) {
+    case SlotInfo::kWaitingForDeviceDescriptor: {
+      DeviceDescriptor& device_desc =
+          *reinterpret_cast<DeviceDescriptor*>(descriptor_buffers_[slot]);
+      auto& si = slot_info_[slot];
+      si.device_class = device_desc.device_class;
+      si.device_subclass = device_desc.device_subclass;
+      si.device_protocol = device_desc.device_protocol;
+      kprintf(
+          "USB Device detected: (class, subclass, protocol) = "
+          "(%02X, %02X, %02X)\n",
+          si.device_class, si.device_subclass, si.device_protocol);
+      si.state = SlotInfo::kAvailable;
+    } break;
     case SlotInfo::kCheckingIfHIDClass: {
       PutString("TransferEvent\n");
       PutStringAndHex("  Slot ID", slot);
       DeviceDescriptor& device_desc =
           *reinterpret_cast<DeviceDescriptor*>(descriptor_buffers_[slot]);
+      auto& si = slot_info_[slot];
       PutString("DeviceDescriptor\n");
       PutStringAndHex("  length", device_desc.length);
       PutStringAndHex("  type", device_desc.type);
       PutStringAndHex("  device_class", device_desc.device_class);
       PutStringAndHex("  device_subclass", device_desc.device_subclass);
       PutStringAndHex("  device_protocol", device_desc.device_protocol);
+      si.device_class = device_desc.device_class;
+      si.device_subclass = device_desc.device_subclass;
+      si.device_protocol = device_desc.device_protocol;
       PutStringAndHex("  max_packet_size", device_desc.max_packet_size);
       PutStringAndHex("  num_of_config", device_desc.num_of_config);
       if (device_desc.device_class != 0) {
         PutStringAndHex("  Not supported device class",
                         device_desc.device_class);
-        slot_info_[slot].state = SlotInfo::kNotSupportedDevice;
+        si.state = SlotInfo::kNotSupportedDevice;
         return;
       }
       PutString("  This is an HID Class Device\n");
@@ -938,10 +908,6 @@ void Controller::CheckPortAndInitiateProcess() {
       port_state_[i] = kWaitingForSlotAssignment;
       // 4.3.2 Device Slot Assignment
       // 4.6.3 Enable Slot
-      PrintUSBSTS();
-      PutStringAndHex("Send EnableSlotCommand for port", i);
-      uint32_t portsc = ReadPORTSC(i);
-      PutStringAndHex("  PORTSC", portsc);
       BasicTRB& enable_slot_trb = *cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
       slot_request_for_port_.insert({v2p(&enable_slot_trb), i});
       enable_slot_trb.data = 0;
@@ -965,22 +931,16 @@ void Controller::CheckPortAndInitiateProcess() {
 }
 
 void Controller::PollEvents() {
-  if (!initialized_)
+  if (!initialized_) {
     return;
-  static int counter = 0;
+  }
   if (controller_reset_requested_) {
     Init();
     return;
   }
   CheckPortAndInitiateProcess();
-  if (!primary_event_ring_)
+  if (!primary_event_ring_) {
     return;
-  counter++;
-  if (counter > 1000) {
-    counter = 0;
-    if (op_regs_->status & kUSBSTSBitHCHalted) {
-      PrintUSBSTS();
-    }
   }
   if (primary_event_ring_->HasNextEvent()) {
     BasicTRB& e = primary_event_ring_->PeekEvent();
@@ -1006,9 +966,6 @@ void Controller::PollEvents() {
                           cmd_trb.GetTRBType());
           break;
         }
-        PutString("CommandCompletionEvent\n");
-        e.PrintCompletionCode();
-        PutStringAndHex("  data", e.data);
         DisablePort(slot_info_[e.GetSlotID()].port);
         {
           const uint32_t status = op_regs_->status;
@@ -1019,13 +976,7 @@ void Controller::PollEvents() {
         }
         break;
       case BasicTRB::kTRBTypePortStatusChangeEvent:
-        if (e.IsCompletedWithSuccess()) {
-          HandlePortStatusChange(static_cast<int>(GetBits<31, 24>(e.data)));
-          break;
-        }
-        PutString("PortStatusChangeEvent\n");
-        e.PrintCompletionCode();
-        PutStringAndHex("  Slot ID", GetBits<31, 24>(e.data));
+        // Do nothing
         break;
       case BasicTRB::kTRBTypeTransferEvent:
         HandleTransferEvent(e);
@@ -1045,46 +996,42 @@ void Controller::PollEvents() {
     if (port_state_[port] == kDisconnected &&
         (portsc & kPortSCBitCurrentConnectStatus)) {
       port_state_[port] = kAttached;
-      PutStringAndHex("Device attached. port", port);
-      PutStringAndHex("  PORTSC", portsc);
     }
     if (port_state_[port] == kAttached &&
         !(portsc & kPortSCBitPortEnableDisable) &&
         !(portsc & kPortSCBitPortReset) && ReadPORTSCLinkState(port) == 7) {
       port_state_[port] = kAttachedUSB2;
-      PutStringAndHex("USB2 Device attached. port", port);
-      PutStringAndHex("  PORTSC", portsc);
     }
   }
 }
 
-void Controller::PrintUSBDevices() {
-  for (int port = 0; port < kMaxNumOfPorts; port++) {
-    if (!port_state_[port] && !port_is_initializing_[port])
-      continue;
-    PutStringAndHex("port", port);
-    PutStringAndHex("  state", port_state_[port]);
-    if (port_is_initializing_[port])
-      PutString("  Initializing...");
+const char* Controller::SlotInfo::GetSlotStateStr() {
+  if (this->state == Controller::SlotInfo::SlotState::kAvailable) {
+    return "Available";
   }
+  return "?";
+}
+
+void Controller::PrintUSBDevices() {
   for (int slot = 1; slot <= num_of_slots_enabled_; slot++) {
     auto& info = slot_info_[slot];
     if (info.state == SlotInfo::kUndefined)
       continue;
-    PutStringAndHex("slot", slot);
-    PutStringAndHex("  state", info.state);
-  }
-  for (int slot = 1; slot <= num_of_slots_enabled_; slot++) {
-    if (!device_context_base_array_[slot])
-      continue;
-    PutStringAndHex("device_context_base_array_ index", slot);
-    PutStringAndHex("  paddr", device_context_base_array_[slot]);
+    kprintf("Slot 0x%X (on port 0x%X):\n", slot, info.port);
+    kprintf("  state                       = %d (%s)\n", info.state,
+            info.GetSlotStateStr());
+    kprintf("  (class, subclass, protocol) = (0x%02X, 0x%02X, 0x%02X)\n",
+            info.device_class, info.device_subclass, info.device_protocol);
+    uint32_t portsc = ReadPORTSC(info.port);
+    uint32_t port_speed = GetBits<13, 10>(portsc);
+    const char* speed_str = GetSpeedNameFromPORTSCPortSpeed(port_speed);
+    if (speed_str) {
+      kprintf("  Port Speed                  = %s\n", speed_str);
+    }
   }
 }
 
 void Controller::Init() {
-  PutString("XHCI::Init()\n");
-
   if (auto dev = FindXHCIController()) {
     dev_ = *dev;
   } else {
@@ -1113,8 +1060,6 @@ void Controller::Init() {
   InitSlotsAndContexts();
   InitCommandRing();
 
-  PutStringAndHex("max_num_of_scratch_pad_buf_entries_",
-                  max_num_of_scratch_pad_buf_entries_);
   if (max_num_of_scratch_pad_buf_entries_) {
     // 4.20 Scratchpad Buffers
     scratchpad_buffer_array_ = AllocMemoryForMappedIO<uint64_t*>(
@@ -1143,6 +1088,7 @@ void Controller::Init() {
 
   NotifyHostControllerDoorbell();
   initialized_ = true;
+  kprintf("xHCI Driver initialized.\n");
 }
 
 }  // namespace XHCI

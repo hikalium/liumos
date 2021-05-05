@@ -230,7 +230,8 @@ KernelPhysPageAllocator& GetKernelPhysPageAllocator() {
       GetKernelStraightMappingBase());
 }
 
-void SubTask();  // @subtask.cc
+void SubTask();     // @subtask.cc
+void USBManager();  // @usb_manager.cc
 
 extern "C" void KernelEntry(LiumOS* liumos_passed, LoaderInfo& loader_info) {
   // These local vars will not being freed until the OS stops.
@@ -363,10 +364,9 @@ extern "C" void KernelEntry(LiumOS* liumos_passed, LoaderInfo& loader_info) {
   // CreateAndLaunchKernelTask(SubTask);
   CreateAndLaunchKernelTask(NetworkManager);
   CreateAndLaunchKernelTask(MouseManager);
+  CreateAndLaunchKernelTask(USBManager);
 
   EnableSyscall();
-
-  // XHCI::Controller::GetInstance().Init();
   Virtio::Net::GetInstance().Init();
   RTL81::GetInstance().Init();
 

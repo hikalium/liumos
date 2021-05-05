@@ -1024,7 +1024,6 @@ void WaitAndProcess(TextBox& tbox) {
     uint16_t keyid;
     while ((keyid = liumos->main_console->GetCharWithoutBlocking()) ==
            KeyID::kNoInput) {
-      XHCI::Controller::GetInstance().PollEvents();
       StoreIntFlagAndHalt();
     }
     if (keyid == '\n') {
