@@ -25,9 +25,6 @@ format:
 test:
 	cargo test --verbose
 
-watch_serial:
-	while ! telnet localhost 1235 ; do sleep 1 ; done ;
-
 commit :
 	make -C .. spellcheck
 	make format

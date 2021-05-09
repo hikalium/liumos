@@ -63,6 +63,8 @@ def launch_test_with_docker(test_body_func):
     qemu_mon_conn = launch_liumos_on_docker();
     liumos_serial_conn = connect_to_liumos_serial();
     liumos_builder_conn = connect_to_liumos_builder();
+    print("Sleeping 10 seconds for stability...");
+    time.sleep(10);
     test_body_func(qemu_mon_conn, liumos_serial_conn, liumos_builder_conn);
     print("---- PASS ", test_body_func.__name__);
     try:
@@ -80,6 +82,8 @@ def launch_test_without_docker(test_body_func):
     qemu_mon_conn = launch_liumos();
     liumos_serial_conn = connect_to_liumos_serial();
     liumos_builder_conn = connect_to_local_shell();
+    print("Sleeping 10 seconds for stability...");
+    time.sleep(10);
     test_body_func(qemu_mon_conn, liumos_serial_conn, liumos_builder_conn);
     print("---- PASS ", test_body_func.__name__);
     return
