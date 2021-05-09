@@ -10,6 +10,7 @@ use rexpect::session::PtySession;
 use rexpect::spawn;
 use rexpect::ReadUntil;
 use std::path::Path;
+use std::thread;
 
 const TIMEOUT_MILLISECONDS: u64 = 300_000;
 
@@ -31,24 +32,12 @@ fn get_liumos_root_path(exec_path_str: &Path) -> String {
 
 fn launch_liumos(liumos_root_dir: &str) -> PtySession {
     let cmd = format!("make -C {} run_for_e2e_test", liumos_root_dir);
-    let result = retry_with_index(Fixed::from_millis(1000).take(3), |current_try| match spawn(
-        &cmd,
-        Some(TIMEOUT_MILLISECONDS),
-    ) {
-        Err(e) => {
-            println!(
-                "Failed to launch QEMU: {:?}, Failed {} times",
-                e,
-                current_try + 1
-            );
-            std::process::Command::new("killall")
-                .args(&["qemu-system-x86_64"])
-                .output()
-                .unwrap();
-            Err(e)
-        }
-        Ok(mut p) => match p.exp_regex("\\(qemu\\)") {
-            Err(e) => {
+    let result = retry_with_index(Fixed::from_millis(1000).take(3), |current_try| {
+        let result = spawn(&cmd, Some(TIMEOUT_MILLISECONDS))
+            .and_then(|mut p| p.exp_regex("\\(qemu\\)").map(|_| p))
+            .and_then(|p| Ok(p));
+        match result {
+            Err(ref e) => {
                 println!(
                     "Failed to launch QEMU: {:?}, Failed {} times",
                     e,
@@ -58,13 +47,10 @@ fn launch_liumos(liumos_root_dir: &str) -> PtySession {
                     .args(&["qemu-system-x86_64"])
                     .output()
                     .unwrap();
-                Err(e)
+                result
             }
-            Ok(_) => {
-                println!("QEMU launched");
-                Ok(p)
-            }
-        },
+            Ok(_) => result,
+        }
     });
     if result.is_err() {
         panic!("Failed to launch liumOS");
@@ -174,6 +160,9 @@ fn run_end_to_end_tests() -> Result<()> {
         ])
         .unwrap();
     println!("liumos_builder_conn uname: {}", result);
+
+    println!("Waiting 10 seconds for stabilization...");
+    thread::sleep(std::time::Duration::from_secs(10));
 
     expect_liumos_command_result(
         &mut liumos_serial_conn,
