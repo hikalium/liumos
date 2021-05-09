@@ -13,11 +13,17 @@ With this port:
 
 */
 
+static void InitDrivers(XHCI::Controller& xhc) {
+  (void)xhc;
+}
+
 void USBManager() {
   kprintf("USBManager started\n");
-  XHCI::Controller::GetInstance().Init();
+  auto& xhc = XHCI::Controller::GetInstance();
+  xhc.Init();
   for (;;) {
-    XHCI::Controller::GetInstance().PollEvents();
+    xhc.PollEvents();
+    InitDrivers(xhc);
     Sleep();
   }
 }

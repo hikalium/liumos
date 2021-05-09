@@ -1097,6 +1097,8 @@ void Controller::Init() {
   PCI::EnsureBusMasterEnabled(dev_);
   PCI::BAR64 bar0 = PCI::GetBAR64(dev_);
 
+  lock_.Lock();
+
   cap_regs_ = MapMemoryForIO<CapabilityRegisters*>(bar0.phys_addr, bar0.size);
 
   const uint32_t kHCSPARAMS1 = cap_regs_->params[0];
@@ -1146,6 +1148,7 @@ void Controller::Init() {
   NotifyHostControllerDoorbell();
   initialized_ = true;
   kprintf("xHCI Driver initialized.\n");
+  lock_.Unlock();
 }
 
 }  // namespace XHCI

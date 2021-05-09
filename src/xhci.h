@@ -4,6 +4,7 @@
 
 #include "liumos.h"
 #include "pci.h"
+#include "process_lock.h"
 #include "ring_buffer.h"
 #include "xhci_trb.h"
 #include "xhci_trbring.h"
@@ -258,6 +259,7 @@ class Controller {
   void HandleTransferEvent(BasicTRB& e);
   void CheckPortAndInitiateProcess();
 
+  ProcessLock lock_;
   bool initialized_ = false;
   static Controller* xhci_;
   PCI::DeviceLocation dev_;

@@ -54,6 +54,10 @@ fn launch_liumos(liumos_root_dir: &str) -> PtySession {
                     e,
                     current_try + 1
                 );
+                std::process::Command::new("killall")
+                    .args(&["qemu-system-x86_64"])
+                    .output()
+                    .unwrap();
                 Err(e)
             }
             Ok(_) => {
