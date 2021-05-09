@@ -500,6 +500,26 @@ void Controller::RequestDeviceDescriptor(int slot,
   NotifyDeviceContextDoorbell(slot, 1);
 }
 
+void Controller::RequestDescriptor(int slot, uint8_t descriptor_type) {
+  // 9.4.3 Get Descriptor
+  auto& slot_info = slot_info_[slot];
+  assert(slot_info.ctrl_ep_tring);
+  auto& tring = *slot_info.ctrl_ep_tring;
+  int desc_size = kSizeOfDescriptorBuffer;
+  SetupStageTRB& setup = *tring.GetNextEnqueueEntry<SetupStageTRB*>();
+  setup.SetParams(SetupStageTRB::kReqTypeBitDirectionDeviceToHost,
+                  SetupStageTRB::kReqGetDescriptor,
+                  (static_cast<uint16_t>(descriptor_type) << 8), 0, desc_size,
+                  false);
+  tring.Push();
+  PutDataStageTD(tring, v2p(descriptor_buffers_[slot]), desc_size, true);
+  StatusStageTRB& status = *tring.GetNextEnqueueEntry<StatusStageTRB*>();
+  status.SetParams(false, false);
+  tring.Push();
+
+  NotifyDeviceContextDoorbell(slot, 1);
+}
+
 void Controller::RequestConfigDescriptor(int slot, uint8_t desc_idx) {
   // 9.4.3 Get Descriptor
   auto& slot_info = slot_info_[slot];

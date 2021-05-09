@@ -69,6 +69,18 @@ class USBCommunicationClassDriver : public USBClassDriver {
               config_value_ = config_desc->config_value;
             }
           }
+          if (type == 0x24 /* CS_INTERFACE */) {
+            const uint8_t(*cs_hdr)[3] =
+                xhc.ReadDescriptorBuffer<uint8_t[3]>(slot_, ofs);
+            const uint8_t subtype = (*cs_hdr)[2];
+            kprintf("CS_INTERFACE desc: subtype = 0x%02X\n", subtype);
+            if (subtype ==
+                0x0F /* Ethernet Networking Functional Descriptor */) {
+              const EthNetFuncDescriptor* eth_func_desc =
+                  xhc.ReadDescriptorBuffer<EthNetFuncDescriptor>(slot_, ofs);
+              mac_addr_string_idx_ = eth_func_desc->mac_addr_string_index;
+            }
+          }
           ofs += length;
         }
         if (state_ != kCheckingConfigDescriptor) {
@@ -121,6 +133,29 @@ class USBCommunicationClassDriver : public USBClassDriver {
           return;
         }
         kprintf("slot %d: Configure done.\n", slot_);
+        xhc.RequestStringDescriptor(slot_, mac_addr_string_idx_);
+        state_ = kWaitingForMACAddrStringDesc;
+      } break;
+      case kWaitingForMACAddrStringDesc: {
+        auto e = xhc.PopSlotEvent(slot_);
+        if (!e.has_value()) {
+          return;
+        }
+        if (*e != XHCI::Controller::SlotEvent::kTransferSucceeded) {
+          kprintf("Failed to get string descriptor\n");
+          state_ = kFailed;
+          return;
+        }
+        StringDescriptor* string_desc =
+            xhc.ReadDescriptorBuffer<StringDescriptor>(slot_, 0);
+        assert(string_desc);
+        const char* s = xhc.ReadDescriptorBuffer<char>(slot_, 2);
+        kprintf("MAC Addr: len = %d, \"", string_desc->length);
+        for (int i = 0; i < string_desc->length - 2; i += 2) {
+          kprintf("%c", s[i]);
+        }
+        kprintf("\"\n");
+        kprintbuf("string desc", string_desc, 0, string_desc->length);
         state_ = kFailed;
       } break;
       case kFailed: {
@@ -133,6 +168,7 @@ class USBCommunicationClassDriver : public USBClassDriver {
   int config_desc_idx_;
   int config_string_idx_;
   int config_value_;
+  int mac_addr_string_idx_;
   int slot_;
   enum {
     kDriverAttached,
@@ -140,6 +176,7 @@ class USBCommunicationClassDriver : public USBClassDriver {
     kFoundECMConfig,
     kWaitingForConfigStringDesc,
     kWaitingForConfigCompletion,
+    kWaitingForMACAddrStringDesc,
     kFailed,
   } state_;
 };

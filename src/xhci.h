@@ -69,6 +69,14 @@ packed_struct StringDescriptor {
 };
 static_assert(sizeof(StringDescriptor) == 2);
 
+/* ECM120 5.4 */
+packed_struct EthNetFuncDescriptor {
+  uint8_t length;
+  uint8_t type;
+  uint8_t subtype;
+  uint8_t mac_addr_string_index;
+};
+
 namespace XHCI {
 
 class Controller {
@@ -82,6 +90,7 @@ class Controller {
   void PrintUSBSTS();
   void PrintUSBDevices();
   uint16_t ReadKeyboardInput();
+  void RequestDescriptor(int slot, uint8_t descriptor_type);
   void RequestConfigDescriptor(int slot, uint8_t desc_idx);
   void RequestStringDescriptor(int slot, uint8_t desc_idx);
   void SetConfig(int slot, uint8_t config_value);
