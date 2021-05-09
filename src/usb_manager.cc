@@ -47,8 +47,6 @@ class USBCommunicationClassDriver : public USBClassDriver {
         ConfigDescriptor* config_desc =
             xhc.ReadDescriptorBuffer<ConfigDescriptor>(slot_, 0);
         assert(config_desc);
-        kprintf("slot %d: config value = %d, index = %d\n", slot_,
-                config_desc->config_value, config_desc->config_index);
         // Read interface descriptors
         int ofs = config_desc->length;
         while (ofs < config_desc->total_length) {
@@ -67,6 +65,8 @@ class USBCommunicationClassDriver : public USBClassDriver {
                 interface_desc->interface_subclass == 0x06 &&
                 interface_desc->interface_protocol == 0x00) {
               state_ = kFoundECMConfig;
+              config_string_idx_ = config_desc->config_string_index;
+              config_value_ = config_desc->config_value;
             }
           }
           ofs += length;
@@ -83,6 +83,44 @@ class USBCommunicationClassDriver : public USBClassDriver {
       } break;
       case kFoundECMConfig: {
         kprintf("slot %d: ECM config found\n", slot_);
+        kprintf("slot %d: config_string_idx_ = %d\n", slot_,
+                config_string_idx_);
+        xhc.RequestStringDescriptor(slot_, config_string_idx_);
+        state_ = kWaitingForConfigStringDesc;
+      } break;
+      case kWaitingForConfigStringDesc: {
+        auto e = xhc.PopSlotEvent(slot_);
+        if (!e.has_value()) {
+          return;
+        }
+        if (*e != XHCI::Controller::SlotEvent::kTransferSucceeded) {
+          kprintf("Failed to get string descriptor\n");
+          state_ = kFailed;
+          return;
+        }
+        StringDescriptor* string_desc =
+            xhc.ReadDescriptorBuffer<StringDescriptor>(slot_, 0);
+        assert(string_desc);
+        const char* s = xhc.ReadDescriptorBuffer<char>(slot_, 2);
+        kprintf("Selecting Config value = %d \"", config_value_);
+        for (int i = 0; i < string_desc->length - 2; i += 2) {
+          kprintf("%c", s[i]);
+        }
+        kprintf("\"...\n");
+        xhc.SetConfig(slot_, config_value_);
+        state_ = kWaitingForConfigCompletion;
+      } break;
+      case kWaitingForConfigCompletion: {
+        auto e = xhc.PopSlotEvent(slot_);
+        if (!e.has_value()) {
+          return;
+        }
+        if (*e != XHCI::Controller::SlotEvent::kTransferSucceeded) {
+          kprintf("Failed to set config value\n");
+          state_ = kFailed;
+          return;
+        }
+        kprintf("slot %d: Configure done.\n", slot_);
         state_ = kFailed;
       } break;
       case kFailed: {
@@ -93,11 +131,15 @@ class USBCommunicationClassDriver : public USBClassDriver {
 
  private:
   int config_desc_idx_;
+  int config_string_idx_;
+  int config_value_;
   int slot_;
   enum {
     kDriverAttached,
     kCheckingConfigDescriptor,
     kFoundECMConfig,
+    kWaitingForConfigStringDesc,
+    kWaitingForConfigCompletion,
     kFailed,
   } state_;
 };

@@ -12,8 +12,27 @@
 
 static constexpr uint8_t kDescriptorTypeDevice = 1;
 static constexpr uint8_t kDescriptorTypeConfig = 2;
+static constexpr uint8_t kDescriptorTypeString = 3;
 static constexpr uint8_t kDescriptorTypeInterface = 4;
 static constexpr uint8_t kDescriptorTypeEndpoint = 5;
+
+struct DeviceDescriptor {
+  uint8_t length;
+  uint8_t type;
+  uint16_t version;
+  uint8_t device_class;
+  uint8_t device_subclass;
+  uint8_t device_protocol;
+  uint8_t max_packet_size;
+  uint16_t vendor_id;
+  uint16_t product_id;
+  uint16_t device_version;
+  uint8_t manufacturer_idx;
+  uint8_t product_idx;
+  uint8_t serial_idx;
+  uint8_t num_of_config;
+};
+static_assert(sizeof(DeviceDescriptor) == 18);
 
 packed_struct ConfigDescriptor {
   uint8_t length;
@@ -21,7 +40,7 @@ packed_struct ConfigDescriptor {
   uint16_t total_length;
   uint8_t num_of_interfaces;
   uint8_t config_value;
-  uint8_t config_index;
+  uint8_t config_string_index;
   uint8_t attribute;
   uint8_t max_power;
 };
@@ -44,6 +63,12 @@ packed_struct InterfaceDescriptor {
 };
 static_assert(sizeof(InterfaceDescriptor) == 9);
 
+packed_struct StringDescriptor {
+  uint8_t length;
+  uint8_t type;
+};
+static_assert(sizeof(StringDescriptor) == 2);
+
 namespace XHCI {
 
 class Controller {
@@ -58,6 +83,8 @@ class Controller {
   void PrintUSBDevices();
   uint16_t ReadKeyboardInput();
   void RequestConfigDescriptor(int slot, uint8_t desc_idx);
+  void RequestStringDescriptor(int slot, uint8_t desc_idx);
+  void SetConfig(int slot, uint8_t config_value);
   enum class SlotEvent : uint8_t {
     kTransferSucceeded,
     kTransferFailed,
@@ -90,6 +117,10 @@ class Controller {
     return -1;
   }
   int GetNumOfConfigs(int slot) { return slot_info_[slot].num_of_config; }
+  int GetProductManufacturerIndex(int slot) {
+    return slot_info_[slot].manufacturer_idx;
+  }
+  int GetProductStringIndex(int slot) { return slot_info_[slot].product_idx; }
 
   static Controller& GetInstance() {
     if (!xhci_) {
@@ -193,24 +224,6 @@ class Controller {
   static constexpr uint32_t kUSBSTSBitHCError = 1 << 12;
   static constexpr uint32_t kUSBSTSBitHSError = 1 << 2;
 
-  struct DeviceDescriptor {
-    uint8_t length;
-    uint8_t type;
-    uint16_t version;
-    uint8_t device_class;
-    uint8_t device_subclass;
-    uint8_t device_protocol;
-    uint8_t max_packet_size;
-    uint16_t vendor_id;
-    uint16_t product_id;
-    uint16_t device_version;
-    uint8_t manufacturer_idx;
-    uint8_t product_idx;
-    uint8_t serial_idx;
-    uint8_t num_of_config;
-  };
-  static_assert(sizeof(DeviceDescriptor) == 18);
-
   packed_struct EndpointDescriptor {
     uint8_t length;
     uint8_t type;
@@ -254,6 +267,8 @@ class Controller {
     uint8_t device_class;
     uint8_t device_subclass;
     uint8_t device_protocol;
+    uint8_t manufacturer_idx;
+    uint8_t product_idx;
     uint8_t num_of_config;
     uint8_t num_of_config_retrieved;
     static const int kMaxNumOfConfigDescriptors = 8;
@@ -286,7 +301,6 @@ class Controller {
   void HandleKeyInput(int slot, uint8_t data[8]);
   void HandleAddressDeviceCompleted(int slot);
   void RequestDeviceDescriptor(int slot, SlotInfo::SlotState);
-  void SetConfig(int slot, uint8_t config_value);
   void SetHIDBootProtocol(int slot);
   void GetHIDProtocol(int slot);
   void GetHIDReport(int slot);

@@ -521,6 +521,27 @@ void Controller::RequestConfigDescriptor(int slot, uint8_t desc_idx) {
   NotifyDeviceContextDoorbell(slot, 1);
 }
 
+void Controller::RequestStringDescriptor(int slot, uint8_t desc_idx) {
+  // 9.4.3 Get Descriptor
+  auto& slot_info = slot_info_[slot];
+  assert(slot_info.ctrl_ep_tring);
+  auto& tring = *slot_info.ctrl_ep_tring;
+  int desc_size = kSizeOfDescriptorBuffer;
+  SetupStageTRB& setup = *tring.GetNextEnqueueEntry<SetupStageTRB*>();
+  setup.SetParams(
+      SetupStageTRB::kReqTypeBitDirectionDeviceToHost,
+      SetupStageTRB::kReqGetDescriptor,
+      (static_cast<uint16_t>(kDescriptorTypeString) << 8) | desc_idx, 0,
+      desc_size, false);
+  tring.Push();
+  PutDataStageTD(tring, v2p(descriptor_buffers_[slot]), desc_size, true);
+  StatusStageTRB& status = *tring.GetNextEnqueueEntry<StatusStageTRB*>();
+  status.SetParams(false, false);
+  tring.Push();
+
+  NotifyDeviceContextDoorbell(slot, 1);
+}
+
 void Controller::SetConfig(int slot, uint8_t config_value) {
   auto& slot_info = slot_info_[slot];
   assert(slot_info.ctrl_ep_tring);
@@ -533,7 +554,6 @@ void Controller::SetConfig(int slot, uint8_t config_value) {
   status.SetParams(true, true);
   tring.Push();
 
-  slot_info_[slot].state = SlotInfo::kSettingConfiguration;
   NotifyDeviceContextDoorbell(slot, 1);
 }
 
@@ -709,6 +729,8 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
       si.device_class = device_desc.device_class;
       si.device_subclass = device_desc.device_subclass;
       si.device_protocol = device_desc.device_protocol;
+      si.manufacturer_idx = device_desc.manufacturer_idx;
+      si.product_idx = device_desc.product_idx;
       si.num_of_config = device_desc.num_of_config;
       si.num_of_config_retrieved = 0;
       kprintf(
