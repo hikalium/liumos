@@ -518,7 +518,6 @@ void Controller::RequestConfigDescriptor(int slot, uint8_t desc_idx) {
   status.SetParams(false, false);
   tring.Push();
 
-  slot_info_[slot].state = SlotInfo::kCheckingConfigDescriptor;
   NotifyDeviceContextDoorbell(slot, 1);
 }
 
@@ -690,6 +689,7 @@ uint16_t Controller::ReadKeyboardInput() {
 
 void Controller::HandleTransferEvent(BasicTRB& e) {
   const int slot = e.GetSlotID();
+  auto& si = slot_info_[slot];
   if (!e.IsCompletedWithSuccess() && !e.IsCompletedWithShortPacket()) {
     PutString("TransferEvent\n");
     PutStringAndHex("  Slot ID", slot);
@@ -697,10 +697,12 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
     if (e.GetCompletionCode() == 6) {
       PutString("  = Stall Error\n");
     }
+    if (si.state == SlotInfo::kAvailable) {
+      si.event_queue.Push(SlotEvent::kTransferFailed);
+    }
     return;
   }
-  auto& si = slot_info_[slot];
-  switch (slot_info_[slot].state) {
+  switch (si.state) {
     case SlotInfo::kWaitingForDeviceDescriptor: {
       DeviceDescriptor& device_desc =
           *reinterpret_cast<DeviceDescriptor*>(descriptor_buffers_[slot]);
@@ -713,185 +715,10 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
           "USB Device detected: (class, subclass, protocol) = "
           "(%02X, %02X, %02X)\n",
           si.device_class, si.device_subclass, si.device_protocol);
-      RequestConfigDescriptor(slot, si.num_of_config_retrieved);
-      si.state = SlotInfo::kWaitingForConfigDescriptor;
-    } break;
-    case SlotInfo::kWaitingForConfigDescriptor: {
-      kprintf("Reading ConfigDescriptor[%d]\n", si.num_of_config_retrieved);
-      ConfigDescriptor& config_desc =
-          *reinterpret_cast<ConfigDescriptor*>(descriptor_buffers_[slot]);
-      auto& config_and_interfaces =
-          si.config_descriptors[si.num_of_config_retrieved++];
-      config_and_interfaces.config = config_desc;
-      config_and_interfaces.num_of_interfaces = 0;
-      // Read interface descriptors
-      assert(config_desc.total_length <= kSizeOfDescriptorBuffer);
-      int ofs = config_desc.length;
-      while (ofs < config_desc.total_length) {
-        const uint8_t length =
-            RefWithOffset<uint8_t*>(descriptor_buffers_[slot], ofs)[0];
-        const uint8_t type =
-            RefWithOffset<uint8_t*>(descriptor_buffers_[slot], ofs)[1];
-        if (type == kDescriptorTypeInterface) {
-          InterfaceDescriptor& interface_desc =
-              *RefWithOffset<InterfaceDescriptor*>(descriptor_buffers_[slot],
-                                                   ofs);
-          config_and_interfaces
-              .interfaces[config_and_interfaces.num_of_interfaces++] =
-              interface_desc;
-        }
-        ofs += length;
-      }
-      /*
-      assert(config_desc.num_of_interfaces ==
-             config_and_interfaces.num_of_interfaces);
-             */
-      // Request next config descriptor
-      if (si.num_of_config_retrieved < si.num_of_config) {
-        kprintf("Continue reading ConfigDescriptor[%d/%d]\n",
-                si.num_of_config_retrieved, si.num_of_config);
-        RequestConfigDescriptor(slot, si.num_of_config_retrieved);
-        si.state = SlotInfo::kWaitingForConfigDescriptor;
-        break;
-      }
       si.state = SlotInfo::kAvailable;
     } break;
-    case SlotInfo::kCheckingIfHIDClass: {
-      PutString("TransferEvent\n");
-      PutStringAndHex("  Slot ID", slot);
-      DeviceDescriptor& device_desc =
-          *reinterpret_cast<DeviceDescriptor*>(descriptor_buffers_[slot]);
-      PutString("DeviceDescriptor\n");
-      PutStringAndHex("  length", device_desc.length);
-      PutStringAndHex("  type", device_desc.type);
-      PutStringAndHex("  device_class", device_desc.device_class);
-      PutStringAndHex("  device_subclass", device_desc.device_subclass);
-      PutStringAndHex("  device_protocol", device_desc.device_protocol);
-      si.device_class = device_desc.device_class;
-      si.device_subclass = device_desc.device_subclass;
-      si.device_protocol = device_desc.device_protocol;
-      PutStringAndHex("  max_packet_size", device_desc.max_packet_size);
-      PutStringAndHex("  num_of_config", device_desc.num_of_config);
-      if (device_desc.device_class != 0) {
-        PutStringAndHex("  Not supported device class",
-                        device_desc.device_class);
-        si.state = SlotInfo::kNotSupportedDevice;
-        return;
-      }
-      PutString("  This is an HID Class Device\n");
-      RequestConfigDescriptor(slot, 0);
-    } break;
-    case SlotInfo::kCheckingConfigDescriptor: {
-      PutString("TransferEvent\n");
-      PutStringAndHex("  Slot ID", slot);
-      ConfigDescriptor& config_desc =
-          *reinterpret_cast<ConfigDescriptor*>(descriptor_buffers_[slot]);
-      PutString("ConfigurationDescriptor\n");
-      for (int i = 0; i < kSizeOfDescriptorBuffer - e.GetTransferSizeResidue();
-           i++) {
-        PutHex8ZeroFilled(descriptor_buffers_[slot][i]);
-        if ((i & 0b1111) == 0b1111)
-          PutChar('\n');
-        else
-          PutChar(' ');
-      }
-      PutChar('\n');
-      PutStringAndHex("  total length", config_desc.total_length);
-      assert(config_desc.total_length <= kSizeOfDescriptorBuffer);
-      PutStringAndHex("  Num of Interfaces", config_desc.num_of_interfaces);
-      int ofs = config_desc.length;
-      InterfaceDescriptor* boot_interface_desc = nullptr;
-      EndpointDescriptor* boot_endpoint_desc = nullptr;
-      while (ofs < config_desc.total_length) {
-        const uint8_t length =
-            RefWithOffset<uint8_t*>(descriptor_buffers_[slot], ofs)[0];
-        const uint8_t type =
-            RefWithOffset<uint8_t*>(descriptor_buffers_[slot], ofs)[1];
-        PutStringAndHex("Descriptor type", type);
-        PutStringAndHex("Descriptor length", length);
-        if (type == kDescriptorTypeInterface) {
-          if (boot_interface_desc && !boot_endpoint_desc) {
-            boot_interface_desc = nullptr;
-          }
-          InterfaceDescriptor& interface_desc =
-              *RefWithOffset<InterfaceDescriptor*>(descriptor_buffers_[slot],
-                                                   ofs);
-          PutStringAndHex("Interface #       ",
-                          interface_desc.interface_number);
-          PutStringAndHex("Num of endpoints", interface_desc.num_of_endpoints);
-          {
-            char s[128];
-            snprintf(s, sizeof(s),
-                     "  Class=0x%02X SubClass=0x%02X Protocol=0x%02X\n",
-                     interface_desc.interface_class,
-                     interface_desc.interface_subclass,
-                     interface_desc.interface_protocol);
-            PutString(s);
-          }
-          if (interface_desc.interface_class ==
-                  InterfaceDescriptor::kClassHID &&
-              interface_desc.interface_subclass ==
-                  InterfaceDescriptor::kSubClassSupportBootProtocol &&
-              interface_desc.interface_protocol ==
-                  InterfaceDescriptor::kProtocolKeyboard) {
-            boot_interface_desc = &interface_desc;
-          }
-        } else if (type == kDescriptorTypeEndpoint) {
-          if (boot_interface_desc && !boot_endpoint_desc) {
-            boot_endpoint_desc = RefWithOffset<EndpointDescriptor*>(
-                descriptor_buffers_[slot], ofs);
-          }
-        }
-        ofs += length;
-      }
-      if (boot_interface_desc && boot_endpoint_desc) {
-        PutStringAndHex(
-            "Found USB HID Keyboard (with boot protocol). Interface#",
-            boot_interface_desc->interface_number);
-        PutStringAndHex("  EP address", boot_endpoint_desc->endpoint_address);
-        PutStringAndHex("  EP attr", boot_endpoint_desc->attributes);
-        PutStringAndHex("  Max Packet Size",
-                        boot_endpoint_desc->max_packet_size);
-        PutStringAndHex("  Interval", boot_endpoint_desc->interval_ms);
-        SetConfig(slot, config_desc.config_value);
-        return;
-      }
-      PutString("No supported interface found\n");
-      slot_info_[slot].state = SlotInfo::kNotSupportedDevice;
-    } break;
-    case SlotInfo::kSettingConfiguration:
-      PutString("TransferEvent\n");
-      PutStringAndHex("  Slot ID", slot);
-      PutString("Configuration done\n");
-      SetHIDBootProtocol(slot);
-      break;
-    case SlotInfo::kSettingBootProtocol:
-      PutString("TransferEvent\n");
-      PutStringAndHex("  Slot ID", slot);
-      PutString("Setting Boot Protocol done\n");
-      PutString("Start running USB Keyboard\n");
-      bzero(key_buffers_[slot], sizeof(key_buffers_[0]));
-      SendConfigureEndpointCommand(slot);
-      // GetHIDReport(slot);
-      break;
-    case SlotInfo::kCheckingProtocol: {
-      PutString("TransferEvent\n");
-      PutStringAndHex("  Slot ID", slot);
-      PutString("Checking Protocol Received Data:\n");
-      for (int i = 0; i < 1; i++) {
-        PutHex8ZeroFilled(descriptor_buffers_[slot][i]);
-        if ((i & 0b1111) == 0b1111)
-          PutChar('\n');
-        else
-          PutChar(' ');
-      }
-      PutChar('\n');
-      // slot_info_[slot].state = SlotInfo::kNotSupportedDevice;
-    } break;
-    case SlotInfo::kGettingReport: {
-      assert(e.GetTransferSizeResidue() == 0);
-      HandleKeyInput(slot, descriptor_buffers_[slot]);
-      // GetHIDReport(slot);
+    case SlotInfo::kAvailable: {
+      si.event_queue.Push(SlotEvent::kTransferSucceeded);
     } break;
     default: {
       PutString("TransferEvent\n");

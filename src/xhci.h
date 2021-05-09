@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <unordered_map>
 
 #include "liumos.h"
@@ -8,6 +9,40 @@
 #include "ring_buffer.h"
 #include "xhci_trb.h"
 #include "xhci_trbring.h"
+
+static constexpr uint8_t kDescriptorTypeDevice = 1;
+static constexpr uint8_t kDescriptorTypeConfig = 2;
+static constexpr uint8_t kDescriptorTypeInterface = 4;
+static constexpr uint8_t kDescriptorTypeEndpoint = 5;
+
+packed_struct ConfigDescriptor {
+  uint8_t length;
+  uint8_t type;
+  uint16_t total_length;
+  uint8_t num_of_interfaces;
+  uint8_t config_value;
+  uint8_t config_index;
+  uint8_t attribute;
+  uint8_t max_power;
+};
+static_assert(sizeof(ConfigDescriptor) == 9);
+
+packed_struct InterfaceDescriptor {
+  uint8_t length;
+  uint8_t type;
+  uint8_t interface_number;
+  uint8_t alt_setting;
+  uint8_t num_of_endpoints;
+  uint8_t interface_class;
+  uint8_t interface_subclass;
+  uint8_t interface_protocol;
+  uint8_t interface_index;
+
+  static constexpr uint8_t kClassHID = 3;
+  static constexpr uint8_t kSubClassSupportBootProtocol = 1;
+  static constexpr uint8_t kProtocolKeyboard = 1;
+};
+static_assert(sizeof(InterfaceDescriptor) == 9);
 
 namespace XHCI {
 
@@ -22,6 +57,39 @@ class Controller {
   void PrintUSBSTS();
   void PrintUSBDevices();
   uint16_t ReadKeyboardInput();
+  void RequestConfigDescriptor(int slot, uint8_t desc_idx);
+  enum class SlotEvent : uint8_t {
+    kTransferSucceeded,
+    kTransferFailed,
+  };
+  std::optional<SlotEvent> PopSlotEvent(int slot) {
+    auto& si = slot_info_[slot];
+    if (si.event_queue.IsEmpty()) {
+      return std::nullopt;
+    }
+    return si.event_queue.Pop();
+  };
+  template <typename T>
+  T* ReadDescriptorBuffer(int slot, int ofs) {
+    if (ofs < 0 || ofs + sizeof(T) >= kSizeOfDescriptorBuffer) {
+      return nullptr;
+    }
+    return RefWithOffset<T*>(descriptor_buffers_[slot], ofs);
+  }
+  int FindSlotIndexWithDeviceClass(uint8_t device_class) {
+    // returns -1 if there is no such device
+    for (int slot = 1; slot <= num_of_slots_enabled_; slot++) {
+      auto& info = slot_info_[slot];
+      if (info.state != SlotInfo::kAvailable) {
+        continue;
+      }
+      if (info.device_class == device_class) {
+        return slot;
+      }
+    }
+    return -1;
+  }
+  int GetNumOfConfigs(int slot) { return slot_info_[slot].num_of_config; }
 
   static Controller& GetInstance() {
     if (!xhci_) {
@@ -93,9 +161,6 @@ class Controller {
   static constexpr int kNumOfIntEPRingEntries = 32;
   using IntEPTRing = TransferRequestBlockRing<kNumOfIntEPRingEntries>;
 
- private:
-  class EventRing;
-
   static constexpr int kNumOfCmdTRBRingEntries = 128;
   static constexpr int kNumOfERSForEventRing = 1;
   static constexpr int kNumOfTRBForEventRing = 128;
@@ -103,10 +168,8 @@ class Controller {
   static constexpr int kMaxNumOfPorts = 256;
   static constexpr int kSizeOfDescriptorBuffer = 1024;
 
-  static constexpr uint8_t kDescriptorTypeDevice = 1;
-  static constexpr uint8_t kDescriptorTypeConfig = 2;
-  static constexpr uint8_t kDescriptorTypeInterface = 4;
-  static constexpr uint8_t kDescriptorTypeEndpoint = 5;
+ private:
+  class EventRing;
 
   static constexpr int kKeyBufModifierIndex = 32;
 
@@ -147,35 +210,6 @@ class Controller {
     uint8_t num_of_config;
   };
   static_assert(sizeof(DeviceDescriptor) == 18);
-
-  packed_struct ConfigDescriptor {
-    uint8_t length;
-    uint8_t type;
-    uint16_t total_length;
-    uint8_t num_of_interfaces;
-    uint8_t config_value;
-    uint8_t config_index;
-    uint8_t attribute;
-    uint8_t max_power;
-  };
-  static_assert(sizeof(ConfigDescriptor) == 9);
-
-  packed_struct InterfaceDescriptor {
-    uint8_t length;
-    uint8_t type;
-    uint8_t interface_number;
-    uint8_t alt_setting;
-    uint8_t num_of_endpoints;
-    uint8_t interface_class;
-    uint8_t interface_subclass;
-    uint8_t interface_protocol;
-    uint8_t interface_index;
-
-    static constexpr uint8_t kClassHID = 3;
-    static constexpr uint8_t kSubClassSupportBootProtocol = 1;
-    static constexpr uint8_t kProtocolKeyboard = 1;
-  };
-  static_assert(sizeof(InterfaceDescriptor) == 9);
 
   packed_struct EndpointDescriptor {
     uint8_t length;
@@ -226,6 +260,7 @@ class Controller {
     ConfigDescriptorAndInterfaceDescriptors
         config_descriptors[kMaxNumOfConfigDescriptors];
     //
+    RingBuffer<SlotEvent, 16> event_queue;
     const char* GetSlotStateStr();
   };
 
@@ -251,7 +286,6 @@ class Controller {
   void HandleKeyInput(int slot, uint8_t data[8]);
   void HandleAddressDeviceCompleted(int slot);
   void RequestDeviceDescriptor(int slot, SlotInfo::SlotState);
-  void RequestConfigDescriptor(int slot, uint8_t desc_idx);
   void SetConfig(int slot, uint8_t config_value);
   void SetHIDBootProtocol(int slot);
   void GetHIDProtocol(int slot);
