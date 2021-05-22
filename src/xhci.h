@@ -69,6 +69,16 @@ packed_struct StringDescriptor {
 };
 static_assert(sizeof(StringDescriptor) == 2);
 
+packed_struct EndpointDescriptor {
+  uint8_t length;
+  uint8_t type;
+  uint8_t endpoint_address;
+  uint8_t attributes;
+  uint16_t max_packet_size;
+  uint8_t interval_ms;
+};
+static_assert(sizeof(EndpointDescriptor) == 7);
+
 /* ECM120 5.4 */
 packed_struct EthNetFuncDescriptor {
   uint8_t length;
@@ -94,6 +104,7 @@ class Controller {
   void RequestConfigDescriptor(int slot, uint8_t desc_idx);
   void RequestStringDescriptor(int slot, uint8_t desc_idx);
   void SetConfig(int slot, uint8_t config_value);
+  void SetInterface(int slot, uint8_t interface_number, uint8_t alt_setting);
   enum class SlotEvent : uint8_t {
     kTransferSucceeded,
     kTransferFailed,
@@ -232,16 +243,6 @@ class Controller {
   static constexpr uint32_t kUSBSTSBitHCHalted = 0b1;
   static constexpr uint32_t kUSBSTSBitHCError = 1 << 12;
   static constexpr uint32_t kUSBSTSBitHSError = 1 << 2;
-
-  packed_struct EndpointDescriptor {
-    uint8_t length;
-    uint8_t type;
-    uint8_t endpoint_address;
-    uint8_t attributes;
-    uint16_t max_packet_size;
-    uint8_t interval_ms;
-  };
-  static_assert(sizeof(EndpointDescriptor) == 7);
 
   struct ConfigDescriptorAndInterfaceDescriptors {
     ConfigDescriptor config;

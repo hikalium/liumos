@@ -577,6 +577,23 @@ void Controller::SetConfig(int slot, uint8_t config_value) {
   NotifyDeviceContextDoorbell(slot, 1);
 }
 
+void Controller::SetInterface(int slot,
+                              uint8_t interface_number,
+                              uint8_t alt_setting) {
+  auto& slot_info = slot_info_[slot];
+  assert(slot_info.ctrl_ep_tring);
+  auto& tring = *slot_info.ctrl_ep_tring;
+  SetupStageTRB& setup = *tring.GetNextEnqueueEntry<SetupStageTRB*>();
+  setup.SetParams(0b1, SetupStageTRB::kReqSetInterface, alt_setting,
+                  interface_number, 0, false);
+  tring.Push();
+  StatusStageTRB& status = *tring.GetNextEnqueueEntry<StatusStageTRB*>();
+  status.SetParams(true, true);
+  tring.Push();
+
+  NotifyDeviceContextDoorbell(slot, 1);
+}
+
 void Controller::SetHIDBootProtocol(int slot) {
   auto& slot_info = slot_info_[slot];
   assert(slot_info.ctrl_ep_tring);

@@ -7,7 +7,7 @@ PORT_MONITOR=2222
 PORT_VNC=5
 
 QEMU_ARGS_COMMON_HW_CONFIG=\
-		-machine q35,nvdimm -cpu qemu64 -smp 4 \
+		-machine q35,nvdimm=on -cpu qemu64 -smp 4 \
 		-bios $(OVMF) \
 		-device qemu-xhci -device usb-mouse \
 		-netdev user,id=usbnet0 -device usb-net,netdev=usbnet0 \
@@ -29,8 +29,7 @@ QEMU_ARGS_COMMON=\
 		-monitor stdio \
 		-monitor telnet:0.0.0.0:$(PORT_MONITOR),server,nowait \
 		-serial tcp::1234,server,nowait \
-		-serial tcp::1235,server,nowait \
-		-vnc 0.0.0.0:$(PORT_VNC),password
+		-serial tcp::1235,server,nowait
 
 QEMU_ARGS_NET_MACOS=\
 		-nic user,id=u1,model=virtio,hostfwd=tcp::10023-:23 \
@@ -55,6 +54,10 @@ QEMU_ARGS_USER_NET=\
 QEMU_ARGS=\
 		$(QEMU_ARGS_COMMON) \
 		$(QEMU_ARGS_USER_NET)
+
+ifdef SSH_CONNECTION
+QEMU_ARGS+= -vnc 0.0.0.0:$(PORT_VNC),password
+endif
 
 QEMU_ARGS_PMEM=\
 		$(QEMU_ARGS) \

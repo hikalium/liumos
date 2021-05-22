@@ -368,7 +368,7 @@ extern "C" void KernelEntry(LiumOS* liumos_passed, LoaderInfo& loader_info) {
 
   EnableSyscall();
   Virtio::Net::GetInstance().Init();
-  RTL81::GetInstance().Init();
+  // RTL81::GetInstance().Init();
 
   StoreIntFlag();
 

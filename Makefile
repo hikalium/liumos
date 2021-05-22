@@ -64,7 +64,7 @@ LLDB_ARGS = -o 'settings set interpreter.prompt-on-quit false' \
 			-o 'process handle -s false SIGUSR1 SIGUSR2'
 
 run_root : files pmem.img .FORCE
-	$(QEMU) $(QEMU_ARGS_PMEM)
+	$(QEMU) $(QEMU_ARGS_PMEM) -vga std
 
 run_rtl : files pmem.img .FORCE
 	$(QEMU) $(QEMU_ARGS_COMMON) $(QEMU_ARGS_NET_MACOS_RTL)

@@ -80,6 +80,7 @@ struct SetupStageTRB {
 
   static constexpr uint8_t kReqGetDescriptor = 6;
   static constexpr uint8_t kReqSetConfiguration = 9;
+  static constexpr uint8_t kReqSetInterface = 11;
 
   static constexpr uint32_t kControlBitImmediateData = 1 << 6;
 
