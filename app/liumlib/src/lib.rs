@@ -25,6 +25,7 @@ impl DirectoryEntry {
     }
 }
 
+#[derive(Debug)]
 pub struct FileDescriptor {
     fd: i32,
 }
@@ -38,18 +39,32 @@ impl Drop for FileDescriptor {
 }
 
 #[repr(C)]
+#[derive(Debug)]
+struct InAddr {
+    /// IP address with big endian
+    s_addr: u32
+}
+
+impl InAddr {
+    fn new(s_addr: u32) -> Self {
+        Self { s_addr }
+    }
+}
+
+#[repr(C)]
+#[derive(Debug)]
 pub struct SockAddr {
     sin_family: u16,
     sin_port: u16,
-    in_addr: u32,
+    in_addr: InAddr,
 }
 
 impl SockAddr {
-    pub fn new(sin_family: u16, sin_port: u16, in_addr: u32) -> Self {
+    pub fn new(sin_family: u16, sin_port: u16, s_addr: u32) -> Self {
         Self {
             sin_family,
             sin_port,
-            in_addr,
+            in_addr: InAddr::new(s_addr),
         }
     }
 }

@@ -44,6 +44,13 @@ impl HTTPRequest {
 
     pub fn string(&self) -> String {
         let mut request = String::from(self.method.name());
+        request.push(' ');
+        request.push_str(&self.path);
+        request.push(' ');
+        request.push_str(&self.version);
+        request.push('\n');
+        request.push('\n');
+        request.push_str(&self.body);
         request
     }
 }
