@@ -28,13 +28,47 @@ pub struct ParsedUrl {
 }
 
 impl ParsedUrl {
-    fn new(_url: String) -> Self {
+    fn new(u: String) -> Self {
+        let url;
+        let supported_protocol = "http://";
+        if u.starts_with(supported_protocol) {
+            url = u.split_at(supported_protocol.len()).1.to_string();
+        } else {
+            url = u;
+        }
+
+        let host;
+        let path;
+        {
+            let v: Vec<&str> = url.splitn(2, '/').collect();
+            if v.len() == 2 {
+                host = v[0];
+                path = v[1];
+            } else if v.len() == 1 {
+                host = v[0];
+                path = "index.html";
+            } else {
+                panic!("invalid url {}", url);
+            }
+        }
+
+        let port;
+        {
+            let v: Vec<&str> = host.splitn(2, ':').collect();
+            if v.len() == 2 {
+                port = v[1].parse::<u16>().unwrap();
+            } else if v.len() == 1 {
+                port = 8888;
+            } else {
+                panic!("invalid host in url {}", host);
+            }
+        }
+
         Self {
             scheme: String::from("http"),
-            host: String::from("127.0.0.1:8888"),
-            //host: String::from("10.0.0.2:8888"),
-            port: 8888,
-            path: String::from("index.html"),
+            host: host.to_string(),
+            port: port,
+            path: path.to_string(),
         }
     }
 }
