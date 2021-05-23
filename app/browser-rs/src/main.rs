@@ -15,7 +15,7 @@ use crate::http::{HTTPRequest, Method};
 const AF_INET: u32 = 2;
 
 /// For TCP.
-const SOCK_STREAM: u32 = 1;
+const _SOCK_STREAM: u32 = 1;
 /// For UDP.
 const SOCK_DGRAM: u32 = 2;
 
@@ -52,10 +52,13 @@ fn ip_to_int(ip: &str) -> u32 {
 }
 
 fn inet_addr(host: &str) -> u32 {
-    match host.split_once(':') {
-        Some((ip, port)) => ip_to_int(ip),
-        None => ip_to_int(host),
-    }
+    let v: Vec<&str> = host.splitn(2, ':').collect();
+    let ip = if v.len() == 2 || v.len() == 1 {
+        v[0]
+    } else {
+        panic!("invalid host name: {}", host);
+    };
+    ip_to_int(ip)
 }
 
 fn htons(port: u16) -> u16 {
@@ -66,20 +69,31 @@ fn htons(port: u16) -> u16 {
     }
 }
 
+fn help_message() {
+    println!("Usage: browser-rs.bin [ OPTIONS ]");
+    println!("       -u, --url      URL. Default: http://127.0.0.1:8888/index.html");
+    exit(0);
+}
+
 entry_point!(main);
 fn main() {
     let help_flag = "--help".to_string();
     let url_flag = "--url".to_string();
-    let mut url = "http://127.0.0.1:8888/index.html";
+    let url = "http://127.0.0.1:8888/index.html";
     //let mut url = "http://10.0.0.2:8888/index.html";
     for arg in env::args() {
         if help_flag == *arg {
-            println!("HELP!!!!!!!!!!!!!!!!!!");
-            exit(0);
+            help_message();
         }
 
         if url_flag == *arg {
-            url = *arg;
+            println!("arg {} {}", arg, *arg);
+            /*
+            match *arg.next() {
+                Some(u) => url = u,
+                None => help_message(),
+            }
+            */
         }
     }
 

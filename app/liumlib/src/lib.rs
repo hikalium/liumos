@@ -87,7 +87,7 @@ extern "C" {
         dest_addr: &SockAddr,
         addrlen: usize,
     ) -> usize;
-    fn sys_recvfrom(
+    fn _sys_recvfrom(
         sockfd: u32,
         buf: *mut u8,
         len: usize,
@@ -168,10 +168,10 @@ pub fn sendto(sockfd: &FileDescriptor, buf: &mut String, flags: u32, dest_addr: 
     }
 }
 
-fn recvfrom(sockfd: &FileDescriptor, buf: &mut String, flags: u32, src_addr: &mut SockAddr) -> usize {
+fn _recvfrom(sockfd: &FileDescriptor, buf: &mut String, flags: u32, src_addr: &mut SockAddr) -> usize {
     let len = buf.len();
     unsafe {
-        sys_recvfrom(sockfd.fd as u32, buf.as_bytes_mut().as_mut_ptr(), len, flags, src_addr, 0)
+        _sys_recvfrom(sockfd.fd as u32, buf.as_bytes_mut().as_mut_ptr(), len, flags, src_addr, 0)
     }
 }
 
