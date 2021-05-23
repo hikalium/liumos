@@ -77,23 +77,22 @@ fn help_message() {
 
 entry_point!(main);
 fn main() {
+    let mut url = "http://127.0.0.1:8888/index.html";
+
     let help_flag = "--help".to_string();
     let url_flag = "--url".to_string();
-    let url = "http://127.0.0.1:8888/index.html";
-    //let mut url = "http://10.0.0.2:8888/index.html";
-    for arg in env::args() {
-        if help_flag == *arg {
+
+    let args = env::args();
+    for i in 1..args.len() {
+        if help_flag == args[i] {
             help_message();
         }
 
-        if url_flag == *arg {
-            println!("arg {} {}", arg, *arg);
-            /*
-            match *arg.next() {
-                Some(u) => url = u,
-                None => help_message(),
+        if url_flag == args[i] {
+            if i + 1 >= args.len() {
+                help_message();
             }
-            */
+            url = args[i + 1];
         }
     }
 
