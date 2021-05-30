@@ -42,7 +42,7 @@ impl Drop for FileDescriptor {
 #[derive(Debug)]
 struct InAddr {
     /// IP address with big endian
-    s_addr: u32
+    s_addr: u32,
 }
 
 impl InAddr {
@@ -86,15 +86,15 @@ extern "C" {
         flags: u32,
         dest_addr: &SockAddr,
         addrlen: usize,
-    ) -> usize;
-    fn _sys_recvfrom(
+    ) -> i64;
+    fn sys_recvfrom(
         sockfd: u32,
         buf: *mut u8,
         len: usize,
         flags: u32,
         src_addr: &mut SockAddr,
         addrlen: usize,
-    ) -> usize;
+    ) -> i64;
     fn sys_exit(code: i32) -> !;
     pub fn sys_getdents64(fd: u32, buf: *mut u8, buf_size: usize) -> i32;
 }
@@ -154,7 +154,7 @@ pub fn free_page(addr: *mut u8) -> i32 {
 }
 
 pub fn socket(domain: u32, socket_type: u32, protocol: u32) -> Option<FileDescriptor> {
-    let fd = unsafe {sys_socket(domain, socket_type, protocol) };
+    let fd = unsafe { sys_socket(domain, socket_type, protocol) };
     if fd < 0 {
         None
     } else {
@@ -162,16 +162,35 @@ pub fn socket(domain: u32, socket_type: u32, protocol: u32) -> Option<FileDescri
     }
 }
 
-pub fn sendto(sockfd: &FileDescriptor, buf: &mut String, flags: u32, dest_addr: &SockAddr) -> usize {
+pub fn sendto(sockfd: &FileDescriptor, buf: &mut String, flags: u32, dest_addr: &SockAddr) -> i64 {
     unsafe {
-        sys_sendto(sockfd.fd as u32, buf.as_bytes_mut().as_mut_ptr(), buf.len(), flags, dest_addr, 0)
+        sys_sendto(
+            sockfd.fd as u32,
+            buf.as_mut_ptr(),
+            buf.len(),
+            flags,
+            dest_addr,
+            0,
+        )
     }
 }
 
-fn _recvfrom(sockfd: &FileDescriptor, buf: &mut String, flags: u32, src_addr: &mut SockAddr) -> usize {
+pub fn recvfrom(
+    sockfd: &FileDescriptor,
+    buf: &mut [u8],
+    flags: u32,
+    src_addr: &mut SockAddr,
+) -> i64 {
     let len = buf.len();
     unsafe {
-        _sys_recvfrom(sockfd.fd as u32, buf.as_bytes_mut().as_mut_ptr(), len, flags, src_addr, 0)
+        sys_recvfrom(
+            sockfd.fd as u32,
+            buf.as_mut_ptr(),
+            len,
+            flags,
+            src_addr,
+            0,
+        )
     }
 }
 

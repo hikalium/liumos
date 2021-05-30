@@ -46,7 +46,7 @@ impl ParsedUrl {
                 path = v[1];
             } else if v.len() == 1 {
                 host = v[0];
-                path = "index.html";
+                path = "/index.html";
             } else {
                 panic!("invalid url {}", url);
             }
@@ -137,13 +137,32 @@ fn main() {
         Some(fd) => fd,
         None => panic!("can't create a socket file descriptor"),
     };
-    let address = SockAddr::new(
+    let mut address = SockAddr::new(
         AF_INET as u16,
         htons(parsed_url.port),
         inet_addr(&parsed_url.host),
     );
     let mut request = http_request.string();
-    sendto(&socket_fd, &mut request, 0, &address);
+
+    println!("----- sending a request -----");
+    println!("{}", request);
+
+    if sendto(&socket_fd, &mut request, 0, &address) < 0 {
+        panic!("failed to send a request: {:?}", request);
+    }
+
+    let mut buf = [0; 1000];
+    let length = recvfrom(&socket_fd, &mut buf, 0, &mut address);
+    if length < 0 {
+        panic!("failed to receive a response");
+    }
+    let response = match String::from_utf8(buf.to_vec()) {
+        Ok(s) => s,
+        Err(e) => panic!("failed to convert u8 array to string: {}", e),
+    };
+
+    println!("----- receiving a response -----");
+    println!("{}", response);
 
     close(&socket_fd);
 }
