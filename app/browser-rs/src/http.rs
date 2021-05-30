@@ -44,7 +44,7 @@ impl HTTPRequest {
             path: String::from(&url.path),
             version: String::from("HTTP/1.1"),
             headers: Vec::new(),
-            body: String::from("Hello world"),
+            body: String::from("sending a request"),
         };
 
         req.add_header(String::from("Host"), String::from(&url.host));

@@ -37,16 +37,17 @@ impl ParsedUrl {
             url = u;
         }
 
-        let host;
-        let path;
+        let mut host = String::new();
+        let mut path = String::new();
         {
             let v: Vec<&str> = url.splitn(2, '/').collect();
             if v.len() == 2 {
-                host = v[0];
-                path = v[1];
+                host.push_str(v[0]);
+                path.push_str("/");
+                path.push_str(v[1]);
             } else if v.len() == 1 {
-                host = v[0];
-                path = "/index.html";
+                host.push_str(v[0]);
+                path.push_str("/index.html");
             } else {
                 panic!("invalid url {}", url);
             }
@@ -66,9 +67,9 @@ impl ParsedUrl {
 
         Self {
             scheme: String::from("http"),
-            host: host.to_string(),
+            host: host,
             port: port,
-            path: path.to_string(),
+            path: path,
         }
     }
 }
