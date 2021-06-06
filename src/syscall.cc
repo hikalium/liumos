@@ -459,13 +459,14 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
       return;
     }
     ysize = -ysize;
-    Sheet sheet;
-    bzero(&sheet, sizeof(Sheet));
-    sheet.Init(reinterpret_cast<uint32_t*>(addr + offset_to_data), xsize, ysize,
-               xsize, 0, 0);
+    // TODO(hikalium): allocate this backing sheet on fopen.
+    Sheet* sheet = AllocKernelMemory<Sheet*>(sizeof(Sheet));
+    bzero(sheet, sizeof(Sheet));
+    sheet->Init(reinterpret_cast<uint32_t*>(addr + offset_to_data), xsize,
+                ysize, xsize, 0, 0);
     kprintf("vram_sheet is at %p\n", liumos->vram_sheet);
-    sheet.SetParent(liumos->vram_sheet);
-    sheet.Flush(0, 0, xsize, ysize);
+    sheet->SetParent(liumos->vram_sheet);
+    sheet->Flush(0, 0, xsize, ysize);
     args[0] = 0;
     return;
   }

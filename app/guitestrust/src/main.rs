@@ -148,23 +148,26 @@ fn flush_window_buffer(w: &WindowBuffer) {
 }
 
 fn draw_test_pattern<T: BitmapImageBuffer>(buf: &T) {
-    for y in 0..buf.height() {
-        for x in 0..buf.width() {
-            for i in 0..buf.bytes_per_pixel() {
+    let mut i = 0;
+    loop {
+        for y in 0..buf.height() {
+            for x in 0..buf.width() {
                 unsafe {
                     let p = buf
                         .buf()
                         .add((y * buf.pixels_per_line() + x) * buf.bytes_per_pixel());
                     // ARGB
                     // *p.add(3) = alpha;
-                    *p.add(2) = (x * 4) as u8;
-                    *p.add(1) = (y * 4) as u8;
-                    *p.add(0) = (x * x / 32 + y * y / 32) as u8;
+                    *p.add(2) = ((x + i) * 4) as u8;
+                    *p.add(1) = ((y + i) * 4) as u8;
+                    *p.add(0) = 0;
                 }
             }
         }
+        i += 1;
+        println!("i = {}", i);
+        buf.flush();
     }
-    buf.flush();
 }
 
 entry_point!(main);
