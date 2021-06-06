@@ -1,11 +1,28 @@
 #![no_std]
 #![feature(alloc_error_handler)]
 
+extern crate alloc;
+
+use alloc::alloc::{GlobalAlloc, Layout};
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
 use core::mem::size_of;
 use core::panic::PanicInfo;
+use core::ptr::null_mut;
+
+pub const O_RDWR: u32 = 2;
+pub const O_CREAT: u32 = 1 << 6;
+
+pub const PROT_READ: u32 = 0x01;
+pub const PROT_WRITE: u32 = 0x02;
+
+pub const MAP_FAILED: *mut u8 = u64::MAX as *mut u8;
+pub const MAP_SHARED: u32 = 0x01;
+pub const MAP_PRIVATE: u32 = 0x02;
+pub const MAP_ANONYMOUS: u32 = 0x20;
+
+pub const MS_SYNC: i32 = 4;
 
 #[repr(packed)]
 #[allow(dead_code)]
@@ -28,6 +45,12 @@ impl DirectoryEntry {
 #[derive(Debug)]
 pub struct FileDescriptor {
     fd: i32,
+}
+
+impl FileDescriptor {
+    pub fn number(&self) -> i32 {
+        self.fd
+    }
 }
 
 impl Drop for FileDescriptor {
@@ -78,6 +101,7 @@ extern "C" {
     fn sys_mmap(addr: *mut u8, size: usize, prot: u32, flags: u32, fd: i32, offset: u32)
         -> *mut u8;
     fn sys_munmap(addr: *mut u8, size: usize) -> i32;
+    fn sys_msync(addr: *mut u8, size: usize, flags: i32) -> i32;
     fn sys_socket(domain: u32, socket_type: u32, protocol: u32) -> i32;
     fn sys_sendto(
         sockfd: u32,
@@ -96,6 +120,7 @@ extern "C" {
         addrlen: usize,
     ) -> i64;
     fn sys_exit(code: i32) -> !;
+    fn sys_ftruncate(fd: u32, size: usize) -> i32;
     pub fn sys_getdents64(fd: u32, buf: *mut u8, buf_size: usize) -> i32;
 }
 
@@ -116,6 +141,7 @@ pub fn putchar(c: u8) {
         sys_write(1, &c as *const u8, size_of::<u8>());
     }
 }
+
 pub fn open(filename: &str, flags: u32, mode: u32) -> Option<FileDescriptor> {
     let mut filename_terminated = String::from(filename);
     filename_terminated.push('\0');
@@ -130,16 +156,22 @@ pub fn open(filename: &str, flags: u32, mode: u32) -> Option<FileDescriptor> {
 pub fn close(fd: &FileDescriptor) -> i32 {
     unsafe { sys_close(fd.fd) }
 }
+pub fn mmap(
+    addr: *mut u8,
+    size: usize,
+    prot: u32,
+    flags: u32,
+    fd: &FileDescriptor,
+    offset: u32,
+) -> *mut u8 {
+    unsafe { sys_mmap(addr, size, prot, flags, fd.fd, offset) }
+}
 
-const PROT_READ: u32 = 0x01;
-const PROT_WRITE: u32 = 0x02;
-const MAP_PRIVATE: u32 = 0x02;
-const MAP_ANONYMOUS: u32 = 0x20;
 /// Returns allocated memory addr or NULL if failed.
 pub fn alloc_page() -> *mut u8 {
     unsafe {
         sys_mmap(
-            core::ptr::null_mut::<u8>(),
+            null_mut(),
             4096,
             PROT_READ | PROT_WRITE,
             MAP_PRIVATE | MAP_ANONYMOUS,
@@ -151,6 +183,10 @@ pub fn alloc_page() -> *mut u8 {
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub fn free_page(addr: *mut u8) -> i32 {
     unsafe { sys_munmap(addr, 4096) }
+}
+
+pub fn msync(addr: *mut u8, size: usize, flags: i32) -> i32 {
+    unsafe { sys_msync(addr, size, flags) }
 }
 
 pub fn socket(domain: u32, socket_type: u32, protocol: u32) -> Option<FileDescriptor> {
@@ -182,16 +218,11 @@ pub fn recvfrom(
     src_addr: &mut SockAddr,
 ) -> i64 {
     let len = buf.len();
-    unsafe {
-        sys_recvfrom(
-            sockfd.fd as u32,
-            buf.as_mut_ptr(),
-            len,
-            flags,
-            src_addr,
-            0,
-        )
-    }
+    unsafe { sys_recvfrom(sockfd.fd as u32, buf.as_mut_ptr(), len, flags, src_addr, 0) }
+}
+
+pub fn ftruncate(fd: &FileDescriptor, size: usize) -> i32 {
+    unsafe { sys_ftruncate(fd.fd as u32, size) }
 }
 
 pub fn exit(code: i32) -> ! {
@@ -244,11 +275,6 @@ pub fn _print(args: fmt::Arguments) {
     let mut writer = crate::StdIoWriter {};
     fmt::write(&mut writer, args).unwrap();
 }
-
-extern crate alloc;
-
-use alloc::alloc::{GlobalAlloc, Layout};
-use core::ptr::null_mut;
 
 trait MutableAllocator {
     fn alloc(&mut self, layout: Layout) -> *mut u8;

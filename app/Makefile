@@ -2,11 +2,12 @@ include ../common.mk
 
 APPS=\
 	 argstest/argstest.bin \
-	 browser/browser.bin \
 	 browser-rs/browser-rs.bin \
+	 browser/browser.bin \
 	 dig/dig.bin \
 	 fizzbuzz/fizzbuzz.bin \
 	 guitest/guitest.bin \
+	 guitestrust/guitestrust.bin \
 	 hello/hello.bin \
 	 httpclient/httpclient.bin \
 	 httpserver/httpserver.bin \

@@ -49,6 +49,16 @@ sys_munmap:
 	syscall
 	ret
 
+// int msync(void* addr, size_t length, int flags);
+.global sys_msync
+sys_msync:
+	// arg[1]: rdi = rdi
+	// arg[2]: rsi = rsi
+	// arg[3]: rdx = rdx
+	mov rax, 26
+	syscall
+	ret
+
 .global sys_socket
 sys_socket:
 	// arg[1]: rdi = rdi
@@ -86,6 +96,14 @@ sys_recvfrom:
 sys_exit:
 	mov rax, 60
 	syscall
+
+.global sys_ftruncate
+sys_ftruncate:
+	mov rax, 77
+	// arg[1]: rdi = rdi
+	// arg[2]: rsi = rsi
+	syscall
+	ret
 
 .global sys_getdents64
 sys_getdents64:

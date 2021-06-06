@@ -4,8 +4,8 @@
 #![feature(custom_test_frameworks)]
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
-#![allow(clippy::zero_ptr)]
 #![deny(unused_must_use)]
+#![allow(clippy::zero_ptr)]
 
 use core::fmt;
 use core::mem;
