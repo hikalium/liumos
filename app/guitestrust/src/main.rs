@@ -10,34 +10,33 @@ use core::mem::size_of;
 use core::ptr::null_mut;
 
 #[repr(packed)]
-struct BMPFileHeader {
-    signature: [u8; 2],
-    file_size: u32,
-    reserved: u32,
-    offset_to_data: u32, // offset in file to pixels
+pub struct BMPFileHeader {
+    pub signature: [u8; 2],
+    pub file_size: u32,
+    pub reserved: u32,
+    pub offset_to_data: u32, // offset in file to pixels
 }
 
 #[repr(packed)]
-struct BMPInfoV3Header {
-    info_size: u32, // = 0x38 for Size of data follows this header
-    xsize: i32,
-    ysize: i32,
-    planes: u16,            // = 1
-    bpp: u16,               // = 32
-    compression_type: u32,  // = 3: bit field, {B,G,R,A}
-    image_data_size: u32,   // Size of data which follows this header
-    pixel_per_meter_x: u32, // = 0x2E23 = 300 ppi
-    pixel_per_meter_y: u32,
-    padding: u64,
-    r_mask: u32,
-    g_mask: u32,
-    b_mask: u32,
+pub struct BMPInfoV3Header {
+    pub info_size: u32, // = 0x38 for Size of data follows this header
+    pub xsize: i32,
+    pub ysize: i32,
+    pub planes: u16,            // = 1
+    pub bpp: u16,               // = 32
+    pub compression_type: u32,  // = 3: bit field, {B,G,R,A}
+    pub image_data_size: u32,   // Size of data which follows this header
+    pub pixel_per_meter_x: u32, // = 0x2E23 = 300 ppi
+    pub pixel_per_meter_y: u32,
+    pub padding: u64,
+    pub r_mask: u32,
+    pub g_mask: u32,
+    pub b_mask: u32,
 }
 
 use liumlib::*;
 
 struct WindowBuffer {
-    fd: i32,
     file_buf: *mut u8,
     file_size: usize,
     bmp_buf: *mut u8,
@@ -134,7 +133,6 @@ fn create_window_buffer(width: usize, height: usize) -> core::result::Result<Win
     }
 
     Ok(WindowBuffer {
-        fd: fd.number(),
         file_buf: file_buf,
         file_size: file_size,
         bmp_buf: unsafe { file_buf.add(header_size_with_padding) },
@@ -148,8 +146,7 @@ fn flush_window_buffer(w: &WindowBuffer) {
 }
 
 fn draw_test_pattern<T: BitmapImageBuffer>(buf: &T) {
-    let mut i = 0;
-    loop {
+    for i in 0..1000 {
         for y in 0..buf.height() {
             for x in 0..buf.width() {
                 unsafe {
@@ -164,15 +161,13 @@ fn draw_test_pattern<T: BitmapImageBuffer>(buf: &T) {
                 }
             }
         }
-        i += 1;
-        println!("i = {}", i);
         buf.flush();
     }
+    println!("PASS: GUI test from Rust");
 }
 
 entry_point!(main);
 fn main() {
-    println!("Welcome to shelium, a simple shell for liumOS written in Rust!");
     let w = create_window_buffer(512, 256);
     if w.is_err() {
         println!("Failed to create window");

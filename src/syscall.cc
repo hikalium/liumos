@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <map>
+#include <unordered_map>
 
 #include "liumos.h"
 
@@ -43,6 +43,13 @@ struct sockaddr_in {
   // https://elixir.bootlin.com/linux/v4.15/source/include/uapi/linux/in.h#L231
 };
 typedef uint32_t socklen_t;
+
+struct PerProcessSyscallData {
+  Sheet* window_sheet;
+};
+
+std::unordered_map<Process::PID, PerProcessSyscallData>
+    per_process_syscall_data;
 
 extern "C" uint64_t GetCurrentKernelStack(void) {
   ExecutionContext& ctx =
@@ -451,21 +458,26 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     uint32_t offset_to_data = *reinterpret_cast<uint32_t*>(addr + 10);
     int32_t xsize = *reinterpret_cast<uint32_t*>(addr + 18);
     int32_t ysize = *reinterpret_cast<uint32_t*>(addr + 22);
-    kprintf("offset_to_data = %d, xsize = %d, ysize = %d\n", offset_to_data,
-            xsize, ysize);
     if (ysize >= 0) {
       kprintf("ysize should be negative\n");
       args[0] = static_cast<uint64_t>(-1);
       return;
     }
     ysize = -ysize;
-    // TODO(hikalium): allocate this backing sheet on fopen.
-    Sheet* sheet = AllocKernelMemory<Sheet*>(sizeof(Sheet));
-    bzero(sheet, sizeof(Sheet));
-    sheet->Init(reinterpret_cast<uint32_t*>(addr + offset_to_data), xsize,
-                ysize, xsize, 0, 0);
-    kprintf("vram_sheet is at %p\n", liumos->vram_sheet);
-    sheet->SetParent(liumos->vram_sheet);
+    auto pid = liumos->scheduler->GetCurrentProcess().GetID();
+    auto& ppdata = per_process_syscall_data[pid];
+    auto& sheet = ppdata.window_sheet;
+    if (!sheet) {
+      kprintf("offset_to_data = %d, xsize = %d, ysize = %d\n", offset_to_data,
+              xsize, ysize);
+      // TODO(hikalium): allocate this backing sheet on fopen.
+      sheet = AllocKernelMemory<Sheet*>(sizeof(Sheet));
+      bzero(sheet, sizeof(Sheet));
+      sheet->Init(reinterpret_cast<uint32_t*>(addr + offset_to_data), xsize,
+                  ysize, xsize, 0, 0);
+      kprintf("vram_sheet is at %p\n", liumos->vram_sheet);
+      sheet->SetParent(liumos->vram_sheet);
+    }
     sheet->Flush(0, 0, xsize, ysize);
     args[0] = 0;
     return;
