@@ -76,7 +76,7 @@ impl BitmapImageBuffer for WindowBuffer {
 
 fn create_window_buffer(width: usize, height: usize) -> core::result::Result<WindowBuffer, ()> {
     // Open the window file
-    let fd = open("window.bmp", liumlib::O_RDWR | O_CREAT, 0664);
+    let fd = open("window.bmp", liumlib::O_RDWR | O_CREAT, 0o664);
     if fd.is_none() {
         return Err(());
     }
