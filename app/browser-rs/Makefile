@@ -29,4 +29,4 @@ clippy :
 	$(CARGO) clippy $(CARGO_ARGS)
 
 test:
-	make
+	$(CARGO) test $(CARGO_ARGS)

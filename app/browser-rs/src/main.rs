@@ -1,7 +1,19 @@
 #![no_std]
 #![no_main]
+#![feature(custom_test_frameworks)]
+#![test_runner(crate::test_runner)]
+#![reexport_test_harness_main = "test_main"]
+
+#[cfg(test)]
+fn test_runner(tests: &[&dyn Fn()]) {
+    println!("Running {} tests", tests.len());
+    for test in tests {
+        test();
+    }
+}
 
 mod http;
+mod rendering;
 
 extern crate alloc;
 
@@ -11,6 +23,7 @@ use alloc::vec::Vec;
 use liumlib::*;
 
 use crate::http::{HTTPRequest, Method};
+use crate::rendering::render;
 
 const AF_INET: u32 = 2;
 
@@ -104,35 +117,8 @@ fn htons(port: u16) -> u16 {
     }
 }
 
-fn help_message() {
-    println!("Usage: browser-rs.bin [ OPTIONS ]");
-    println!("       -u, --url      URL. Default: http://127.0.0.1:8888/index.html");
-    exit(0);
-}
-
-entry_point!(main);
-fn main() {
-    let mut url = "http://127.0.0.1:8888/index.html";
-
-    let help_flag = "--help".to_string();
-    let url_flag = "--url".to_string();
-
-    let args = env::args();
-    for i in 1..args.len() {
-        if help_flag == args[i] {
-            help_message();
-        }
-
-        if url_flag == args[i] {
-            if i + 1 >= args.len() {
-                help_message();
-            }
-            url = args[i + 1];
-        }
-    }
-
-    let parsed_url = ParsedUrl::new(url.to_string());
-    let http_request = HTTPRequest::new(Method::Get, &parsed_url);
+fn udp_response(parsed_url: &ParsedUrl) -> String {
+    let http_request = HTTPRequest::new(Method::Get, parsed_url);
 
     let socket_fd = match socket(AF_INET, SOCK_DGRAM, 0) {
         Some(fd) => fd,
@@ -157,13 +143,55 @@ fn main() {
     if length < 0 {
         panic!("failed to receive a response");
     }
-    let response = match String::from_utf8(buf.to_vec()) {
+
+    close(&socket_fd);
+
+    match String::from_utf8(buf.to_vec()) {
         Ok(s) => s,
         Err(e) => panic!("failed to convert u8 array to string: {}", e),
-    };
+    }
+}
+
+fn help_message() {
+    println!("Usage: browser-rs.bin [ OPTIONS ]");
+    println!("       -u, --url      URL. Default: http://127.0.0.1:8888/index.html");
+    exit(0);
+}
+
+#[cfg(test)]
+fn main() {
+    println!("test");
+    test_main();
+}
+
+entry_point!(main);
+#[cfg(not(test))]
+fn main() {
+    let mut url = "http://127.0.0.1:8888/index.html";
+
+    let help_flag = "--help".to_string();
+    let url_flag = "--url".to_string();
+
+    let args = env::args();
+    for i in 1..args.len() {
+        if help_flag == args[i] {
+            help_message();
+        }
+
+        if url_flag == args[i] {
+            if i + 1 >= args.len() {
+                help_message();
+            }
+            url = args[i + 1];
+        }
+    }
+
+    let parsed_url = ParsedUrl::new(url.to_string());
+
+    let response = udp_response(&parsed_url);
 
     println!("----- receiving a response -----");
     println!("{}", response);
 
-    close(&socket_fd);
+    render(response);
 }
