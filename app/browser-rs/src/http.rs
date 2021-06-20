@@ -29,7 +29,7 @@ impl Header {
 }
 
 #[derive(Debug)]
-pub struct HTTPRequest {
+pub struct HttpRequest {
     method: Method,
     path: String,
     version: String,
@@ -37,7 +37,7 @@ pub struct HTTPRequest {
     body: String,
 }
 
-impl HTTPRequest {
+impl HttpRequest {
     pub fn new(method: Method, url: &ParsedUrl) -> Self {
         let mut req = Self {
             method,

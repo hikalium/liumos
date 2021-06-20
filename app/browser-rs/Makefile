@@ -14,7 +14,7 @@ CARGO_ARGS:= -vv --target=../liumlib/x86_64-unknown-elf.json --release \
 		-Z build-std-features=compiler-builtins-mem
 
 $(TARGET_BIN) : .FORCE
-	$(CARGO) build $(CARGO_ARGS)
+	$(CARGO) build $(CARGO_ARGS) --bin browser-rs
 	cp target/x86_64-unknown-elf/release/$(TARGET) $(TARGET_BIN)
 
 .PHONY : install clean dump clippy .FORCE
@@ -29,4 +29,4 @@ clippy :
 	$(CARGO) clippy $(CARGO_ARGS)
 
 test:
-	$(CARGO) test $(CARGO_ARGS)
+	$(CARGO) test $(CARGO_ARGS) --tests -- --test-threads=1

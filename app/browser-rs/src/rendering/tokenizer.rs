@@ -3,7 +3,6 @@
 
 use alloc::string::String;
 use alloc::vec::Vec;
-use liumlib::*;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -108,11 +107,4 @@ impl Tokenizer {
             String::new(),
         ));
     }
-}
-
-#[test_case]
-fn basic() {
-    print!("start tokenizer test... ");
-    assert_eq!(1, 1);
-    println!("[ok]");
 }
