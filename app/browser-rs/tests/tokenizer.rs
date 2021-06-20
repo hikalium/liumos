@@ -4,14 +4,36 @@
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
+extern crate alloc;
+
+use alloc::string::String;
+use alloc::vec::Vec;
+
+use browser_rs::rendering::tokenizer::*;
 use liumlib::*;
 
 #[cfg(test)]
-fn test_runner(tests: &[&dyn Fn()]) {
-    println!("Running {} tests in tokenizer.rs", tests.len());
-    for test in tests {
-        test();
+pub trait Testable {
+    fn run(&self) -> ();
+}
+
+#[cfg(test)]
+impl<T> Testable for T
+where
+    T: Fn(),
+{
+    fn run(&self) {
+        print!("{} ...\t", core::any::type_name::<T>());
+        self();
         println!("[ok]");
+    }
+}
+
+#[cfg(test)]
+pub fn test_runner(tests: &[&dyn Testable]) {
+    println!("Running {} tests", tests.len());
+    for test in tests {
+        test.run();
     }
 }
 
@@ -23,7 +45,15 @@ fn main() {
 }
 
 #[test_case]
-fn basic() {
-    print!("basic test ");
-    assert_eq!(1, 1);
+fn no_input() {
+    let mut t = Tokenizer::new(String::new());
+    let mut tokens = Vec::new();
+    tokens.push(Token::new(
+        TokenType::Eof,
+        String::new(),
+        false,
+        String::new(),
+    ));
+
+    assert_eq!(t.tokens(), tokens);
 }

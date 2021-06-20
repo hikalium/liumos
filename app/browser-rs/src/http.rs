@@ -1,7 +1,7 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use crate::ParsedUrl;
+use crate::url::ParsedUrl;
 
 #[derive(Debug)]
 pub enum Method {

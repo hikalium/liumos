@@ -7,6 +7,10 @@ edition = "2018"
 [dependencies]
 liumlib = { path = "../liumlib" }
 
+[lib]
+name = "browser_rs"
+test = false
+
 [[bin]]
 name = "browser-rs"
 test = false

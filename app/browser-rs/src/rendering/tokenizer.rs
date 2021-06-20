@@ -5,8 +5,8 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 #[allow(dead_code)]
-#[derive(Debug, Clone)]
-enum State {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum State {
     Data,
     TagOpen,
     EndTagOpen,
@@ -15,8 +15,8 @@ enum State {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Clone)]
-enum TokenType {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TokenType {
     Doctype,
     StartTag,
     EndTag,
@@ -25,7 +25,7 @@ enum TokenType {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Token {
     token_type: TokenType,
     tag: String,
@@ -34,7 +34,7 @@ pub struct Token {
 }
 
 impl Token {
-    fn new(token_type: TokenType, tag: String, self_closing: bool, data: String) -> Self {
+    pub fn new(token_type: TokenType, tag: String, self_closing: bool, data: String) -> Self {
         Self {
             token_type,
             tag,
@@ -76,7 +76,7 @@ impl Tokenizer {
                     }
                     if self.pos == self.length {
                         self.append_eof();
-                        continue;
+                        return self.tokens.clone();
                     }
                     self.append_char();
                     break;
@@ -90,7 +90,7 @@ impl Tokenizer {
         self.tokens.clone()
     }
 
-    fn append_eof(&mut self) {
+    pub fn append_eof(&mut self) {
         self.tokens.push(Token::new(
             TokenType::Eof,
             String::new(),
