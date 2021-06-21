@@ -448,13 +448,8 @@ void Controller::SendConfigureEndpointCommand(int slot) {
 
 void Controller::HandleEnableSlotCompleted(int slot, int port) {
   port_state_[port] = kSlotAssigned;
-
   auto& slot_info = slot_info_[slot];
   slot_info.port = port;
-
-  slot_info.input_ctx = &InputContext::Alloc(DeviceContext::kDCIEPContext1Out);
-  new (slot_info.output_ctx) DeviceContext(DeviceContext::kDCIEPContext1Out);
-
   SendAddressDeviceCommand(slot);
 }
 
@@ -1019,6 +1014,8 @@ void Controller::Init() {
     auto& slot_info = slot_info_[i];
     slot_info.output_ctx =
         &DeviceContext::Alloc(DeviceContext::kDCIEPContext1Out);
+    slot_info.input_ctx =
+        &InputContext::Alloc(DeviceContext::kDCIEPContext1Out);
     slot_info.ctrl_ep_tring =
         AllocMemoryForMappedIO<CtrlEPTRing*>(sizeof(CtrlEPTRing));
     slot_info.int_ep_tring =
