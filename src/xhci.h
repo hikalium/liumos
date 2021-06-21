@@ -212,6 +212,9 @@ class Controller {
   static constexpr int kNumOfIntEPRingEntries = 32;
   using IntEPTRing = TransferRequestBlockRing<kNumOfIntEPRingEntries>;
 
+  static constexpr int kNumOfDataEPRingEntries = 32;
+  using DataEPTRing = TransferRequestBlockRing<kNumOfDataEPRingEntries>;
+
   static constexpr int kNumOfCmdTRBRingEntries = 128;
   static constexpr int kNumOfERSForEventRing = 1;
   static constexpr int kNumOfTRBForEventRing = 128;
@@ -272,6 +275,8 @@ class Controller {
     DeviceContext* output_ctx;
     CtrlEPTRing* ctrl_ep_tring;
     IntEPTRing* int_ep_tring;
+    DataEPTRing* data_out_ep_tring;
+    DataEPTRing* data_in_ep_tring;
     int max_packet_size;
     //
     uint8_t device_class;

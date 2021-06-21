@@ -350,10 +350,8 @@ void Controller::SendAddressDeviceCommand(int slot) {
   // 3. Initialize the Input Slot Context data structure (6.2.2)
   dctx.SetRootHubPortNumber(port);
   dctx.SetContextEntries(1);
-  // 4. Allocate and initialize the Transfer Ring for the Default Control
-  // Endpoint
-  TransferRequestBlockRing<kNumOfCtrlEPRingEntries>* ctrl_ep_tring =
-      slot_info.ctrl_ep_tring;
+  // 4. Initialize the Transfer Ring for the Default Control Endpoint
+  auto ctrl_ep_tring = slot_info.ctrl_ep_tring;
   assert(ctrl_ep_tring);
   uint64_t ctrl_ep_tring_phys_addr = v2p(ctrl_ep_tring);
   ctrl_ep_tring->Init(ctrl_ep_tring_phys_addr);
@@ -456,10 +454,6 @@ void Controller::HandleEnableSlotCompleted(int slot, int port) {
 
   slot_info.input_ctx = &InputContext::Alloc(DeviceContext::kDCIEPContext1Out);
   new (slot_info.output_ctx) DeviceContext(DeviceContext::kDCIEPContext1Out);
-  slot_info.ctrl_ep_tring =
-      AllocMemoryForMappedIO<CtrlEPTRing*>(sizeof(CtrlEPTRing));
-  slot_info.int_ep_tring =
-      AllocMemoryForMappedIO<IntEPTRing*>(sizeof(IntEPTRing));
 
   SendAddressDeviceCommand(slot);
 }
@@ -1022,8 +1016,17 @@ void Controller::Init() {
   }
   for (int i = 1; i < max_slots_; i++) {
     bzero(&slot_info_[i], sizeof(slot_info_[0]));
-    slot_info_[i].output_ctx =
+    auto& slot_info = slot_info_[i];
+    slot_info.output_ctx =
         &DeviceContext::Alloc(DeviceContext::kDCIEPContext1Out);
+    slot_info.ctrl_ep_tring =
+        AllocMemoryForMappedIO<CtrlEPTRing*>(sizeof(CtrlEPTRing));
+    slot_info.int_ep_tring =
+        AllocMemoryForMappedIO<IntEPTRing*>(sizeof(IntEPTRing));
+    slot_info.data_out_ep_tring =
+        AllocMemoryForMappedIO<DataEPTRing*>(sizeof(DataEPTRing));
+    slot_info.data_in_ep_tring =
+        AllocMemoryForMappedIO<DataEPTRing*>(sizeof(DataEPTRing));
   }
 
   op_regs_->command = op_regs_->command | kUSBCMDMaskRunStop;
