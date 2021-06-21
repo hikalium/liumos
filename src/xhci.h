@@ -139,6 +139,8 @@ class Controller {
   uint16_t ReadKeyboardInput();
   void RequestDescriptor(int slot, uint8_t descriptor_type);
   void RequestConfigDescriptor(int slot, uint8_t desc_idx);
+  void WriteBulkData(int slot, void* buf, uint16_t buf_size);
+  void ReadBulkData(int slot, void* buf, uint16_t buf_size);
   void RequestStringDescriptor(int slot, uint8_t desc_idx);
   void SetConfig(int slot, uint8_t config_value);
   void SetInterface(int slot, uint8_t interface_number, uint8_t alt_setting);
@@ -318,7 +320,9 @@ class Controller {
     CtrlEPTRing* ctrl_ep_tring;
     IntEPTRing* int_ep_tring;
     DataEPTRing* data_out_ep_tring;
+    int data_out_ep_dci;
     DataEPTRing* data_in_ep_tring;
+    int data_in_ep_dci;
     int max_packet_size;
     //
     uint8_t device_class;

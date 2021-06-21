@@ -11,6 +11,7 @@ QEMU_ARGS_COMMON_HW_CONFIG=\
 		-bios $(OVMF) \
 		-device qemu-xhci -device usb-mouse \
 		-netdev user,id=usbnet0 -device usb-net,netdev=usbnet0 \
+		-object filter-dump,id=f2,netdev=usbnet0,file=dump_usb_nic.dat \
 		-m 2G,slots=2,maxmem=4G \
 		-drive format=raw,file=fat:rw:mnt -net none \
 		-rtc base=localtime \

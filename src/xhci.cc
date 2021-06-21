@@ -371,6 +371,7 @@ void Controller::ConfigureEndpointBulkInOut(int slot,
     ep.SetErrorCount(3);
     ep.SetMaxPacketSize(out_max_packet_size);
     ep.DumpEPContext();
+    slot_info.data_out_ep_dci = out_dci;
   }
 
   ctx.SetDropContext(in_dci, true);
@@ -387,6 +388,7 @@ void Controller::ConfigureEndpointBulkInOut(int slot,
     ep.SetErrorCount(3);
     ep.SetMaxPacketSize(in_max_packet_size);
     ep.DumpEPContext();
+    slot_info.data_in_ep_dci = in_dci;
   }
 
   SendConfigureEndpointCommand(slot);
@@ -506,7 +508,7 @@ void Controller::HandleEnableSlotCompleted(int slot, int port) {
 
 static void PutDataStageTD(XHCI::Controller::CtrlEPTRing& tring,
                            uint64_t buf_phys_addr,
-                           int size,
+                           uint16_t size,
                            bool is_data_direction_in) {
   DataStageTRB& data = *tring.GetNextEnqueueEntry<DataStageTRB*>();
   data.buf = buf_phys_addr;
@@ -579,6 +581,22 @@ void Controller::RequestConfigDescriptor(int slot, uint8_t desc_idx) {
   tring.Push();
 
   NotifyDeviceContextDoorbell(slot, 1);
+}
+
+void Controller::WriteBulkData(int slot, void* buf, uint16_t buf_size) {
+  auto& slot_info = slot_info_[slot];
+  auto tring = slot_info.data_out_ep_tring;
+  assert(tring);
+  PutDataStageTD(*tring, v2p(buf), buf_size, false);
+  NotifyDeviceContextDoorbell(slot, slot_info.data_out_ep_dci);
+}
+
+void Controller::ReadBulkData(int slot, void* buf, uint16_t buf_size) {
+  auto& slot_info = slot_info_[slot];
+  auto tring = slot_info.data_in_ep_tring;
+  assert(tring);
+  PutDataStageTD(*tring, v2p(buf), buf_size, true);
+  NotifyDeviceContextDoorbell(slot, slot_info.data_in_ep_dci);
 }
 
 void Controller::RequestStringDescriptor(int slot, uint8_t desc_idx) {

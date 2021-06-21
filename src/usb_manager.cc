@@ -27,8 +27,9 @@ static int EndpointAddressToDeviceContextIndex(uint8_t ep_addr) {
 
 class USBCommunicationClassDriver : public USBClassDriver {
  public:
-  USBCommunicationClassDriver(int slot)
-      : slot_(slot), state_(kDriverAttached){};
+  USBCommunicationClassDriver(int slot) : slot_(slot), state_(kDriverAttached) {
+    send_buf_ = AllocMemoryForMappedIO<uint8_t*>(kPageSize);
+  };
   void tick(XHCI::Controller& xhc) {
     switch (state_) {
       case kDriverAttached: {
@@ -261,11 +262,17 @@ class USBCommunicationClassDriver : public USBClassDriver {
           return;
         }
         if (*e != XHCI::Controller::SlotEvent::kTransferSucceeded) {
-          kprintf("Failed to set config value\n");
+          kprintf("Failed to setup endpoints.\n");
           state_ = kFailed;
           return;
         }
         kprintf("slot %d: Configure endpoint done.\n", slot_);
+        const char* s = "Hello! This is hikalium. Are you there?";
+        size_t len = strlen(s);
+        for (size_t i = 0; i < len; i++) {
+          send_buf_[i] = s[i];
+        }
+        xhc.WriteBulkData(slot_, send_buf_, len);
         state_ = kFailed;
       } break;
       case kFailed: {
@@ -282,6 +289,7 @@ class USBCommunicationClassDriver : public USBClassDriver {
   int data_interface_alt_setting_;
   int mac_addr_string_idx_;
   int slot_;
+  uint8_t* send_buf_;
   static constexpr int kConfigDescCacheSize = 4096;
   uint8_t config_desc_cache_[kConfigDescCacheSize];
   enum {

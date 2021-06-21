@@ -168,3 +168,9 @@ commit_root : format test
 	./scripts/ensure_objs_are_not_under_git_control.sh
 	git diff HEAD --color=always | less -R
 	git commit
+
+dump_usb_net_packets :
+	tcpdump -XX -r dump_usb_nic.dat
+
+dump_virtio_net_packets :
+	tcpdump -XX -r dump.dat
