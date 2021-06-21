@@ -178,6 +178,11 @@ class Controller {
     return slot_info_[slot].manufacturer_idx;
   }
   int GetProductStringIndex(int slot) { return slot_info_[slot].product_idx; }
+  void ConfigureEndpointBulkInOut(int slot,
+                                  int in_dci,
+                                  int in_max_packet_size,
+                                  int out_dci,
+                                  int out_max_packet_size);
 
   static Controller& GetInstance() {
     if (!xhci_) {

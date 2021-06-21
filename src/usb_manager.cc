@@ -21,6 +21,10 @@ class USBClassDriver {
   };
 };
 
+static int EndpointAddressToDeviceContextIndex(uint8_t ep_addr) {
+  return ((ep_addr & 0b111) << 1) | ((ep_addr >> 7) & 1);
+}
+
 class USBCommunicationClassDriver : public USBClassDriver {
  public:
   USBCommunicationClassDriver(int slot)
@@ -55,7 +59,7 @@ class USBCommunicationClassDriver : public USBClassDriver {
         }
         memcpy(config_desc_cache_, config_desc, config_desc->total_length);
         // Read interface descriptors
-        for (auto e : *config_desc) {
+        for (auto e : GetCachedConfigDescriptor()) {
           if (e->type == kDescriptorTypeInterface) {
             InterfaceDescriptor* interface_desc =
                 reinterpret_cast<InterfaceDescriptor*>(e);
@@ -197,6 +201,71 @@ class USBCommunicationClassDriver : public USBClassDriver {
           return;
         }
         kprintf("Interface switched\n");
+
+        // Setup Endpoints
+        auto& config_desc = GetCachedConfigDescriptor();
+        auto it = config_desc.begin();
+        auto end = config_desc.end();
+        int data_ep_in_dci = 0;
+        int data_ep_out_dci = 0;
+        int data_ep_in_max_packet_size = 0;
+        int data_ep_out_max_packet_size = 0;
+
+        for (; it != end; ++it) {
+          if ((*it)->type == kDescriptorTypeInterface) {
+            InterfaceDescriptor* interface_desc =
+                reinterpret_cast<InterfaceDescriptor*>((*it));
+            if (data_interface_alt_setting_ == interface_desc->alt_setting) {
+              ++it;
+              break;
+            }
+          }
+        }
+        for (; it != end; ++it) {
+          if ((*it)->type != kDescriptorTypeEndpoint) {
+            break;
+          }
+          EndpointDescriptor* ep_desc =
+              reinterpret_cast<EndpointDescriptor*>((*it));
+          int dci =
+              EndpointAddressToDeviceContextIndex(ep_desc->endpoint_address);
+          kprintf(
+              "  Endpoint:\n"
+              "    addr = 0x%02X, attr = 0x%02X, dci = %d\n",
+              ep_desc->endpoint_address, ep_desc->attributes, dci);
+          if (ep_desc->endpoint_address & (1 << 7)) {
+            // IN
+            data_ep_in_dci = dci;
+            data_ep_in_max_packet_size = ep_desc->max_packet_size;
+          } else {
+            // OUT
+            data_ep_out_dci = dci;
+            data_ep_out_max_packet_size = ep_desc->max_packet_size;
+          }
+        }
+        if (!data_ep_in_dci || !data_ep_out_dci) {
+          kprintf("Endpoint not found\n");
+          state_ = kFailed;
+          return;
+        }
+        kprintf("data_ep_out_dci = %d, data_ep_in_dci = %d\n", data_ep_out_dci,
+                data_ep_in_dci);
+        xhc.ConfigureEndpointBulkInOut(
+            slot_, data_ep_in_dci, data_ep_in_max_packet_size, data_ep_out_dci,
+            data_ep_out_max_packet_size);
+        state_ = kWaitingForConfigureEndpointCompletion;
+      } break;
+      case kWaitingForConfigureEndpointCompletion: {
+        auto e = xhc.PopSlotEvent(slot_);
+        if (!e.has_value()) {
+          return;
+        }
+        if (*e != XHCI::Controller::SlotEvent::kTransferSucceeded) {
+          kprintf("Failed to set config value\n");
+          state_ = kFailed;
+          return;
+        }
+        kprintf("slot %d: Configure endpoint done.\n", slot_);
         state_ = kFailed;
       } break;
       case kFailed: {
@@ -223,9 +292,14 @@ class USBCommunicationClassDriver : public USBClassDriver {
     kWaitingForConfigCompletion,
     kWaitingForMACAddrStringDesc,
     kWaitingForSetInterfaceCompletion,
+    kWaitingForConfigureEndpointCompletion,
     kFailed,
   } state_;
   Network::EtherAddr mac_addr_;
+
+  ConfigDescriptor& GetCachedConfigDescriptor() {
+    return *reinterpret_cast<ConfigDescriptor*>(&config_desc_cache_);
+  }
 };
 
 struct SlotStatus {

@@ -216,7 +216,10 @@ class Controller::DeviceContext {
   static constexpr int kDCISlotContext = 0;
   static constexpr int kDCIEPContext0 = 1;
   static constexpr int kDCIEPContext1Out = 2;
+
+  static constexpr int kEPTypeBulkOut = 2;
   static constexpr int kEPTypeControl = 4;
+  static constexpr int kEPTypeBulkIn = 6;
 
   uint8_t GetSlotState() { return GetBits<31, 27>(slot_ctx_[3]); }
   void SetContextEntries(uint32_t num_of_ent) {
@@ -275,15 +278,17 @@ class Controller::InputContext {
     new (&ctx.device_ctx_) DeviceContext(max_dci);
     return ctx;
   }
-
   void Clear() { bzero(input_ctrl_ctx_, sizeof(input_ctrl_ctx_)); }
-
+  void SetDropContext(int dci, bool value) {
+    volatile uint32_t& ctx_flags = input_ctrl_ctx_[0];
+    ctx_flags =
+        (~(1 << dci) & ctx_flags) | (static_cast<uint32_t>(value) << dci);
+  }
   void SetAddContext(int dci, bool value) {
     volatile uint32_t& add_ctx_flags = input_ctrl_ctx_[1];
     add_ctx_flags =
         (~(1 << dci) & add_ctx_flags) | (static_cast<uint32_t>(value) << dci);
   }
-
   void DumpInputControlContext() {
     PutString("Input Control Context\n");
     for (int i = 0; i < 8; i++) {
@@ -293,7 +298,6 @@ class Controller::InputContext {
       PutString("\n");
     }
   }
-
   InputContext() = delete;
   DeviceContext& GetDeviceContext() { return device_ctx_; }
 
@@ -335,6 +339,57 @@ static const char* GetSpeedNameFromPORTSCPortSpeed(uint32_t port_speed) {
   if (port_speed == kPortSpeedSS)
     return "SuperSpeed Gen1 x1";
   return nullptr;
+}
+
+void Controller::ConfigureEndpointBulkInOut(int slot,
+                                            int in_dci,
+                                            int in_max_packet_size,
+                                            int out_dci,
+                                            int out_max_packet_size) {
+  auto& slot_info = slot_info_[slot];
+  // int port = slot_info.port;
+  assert(slot_info.input_ctx);
+  InputContext& ctx = *slot_info.input_ctx;
+  ctx.Clear();
+  DeviceContext& dctx = ctx.GetDeviceContext();
+
+  ctx.SetAddContext(0, true);
+  dctx.SetRootHubPortNumber(slot_info.port);
+  dctx.SetContextEntries(3);
+
+  ctx.SetDropContext(out_dci, true);
+  ctx.SetAddContext(out_dci, true);
+  {
+    auto tring = slot_info.data_out_ep_tring;
+    assert(tring);
+    uint64_t phys_addr = v2p(tring);
+    tring->Init(phys_addr);
+    EndpointContext& ep = dctx.GetEndpointContext(out_dci);
+    ep.SetEPType(DeviceContext::kEPTypeBulkOut);
+    ep.SetTRDequeuePointer(phys_addr);
+    ep.SetDequeueCycleState(1);
+    ep.SetErrorCount(3);
+    ep.SetMaxPacketSize(out_max_packet_size);
+    ep.DumpEPContext();
+  }
+
+  ctx.SetDropContext(in_dci, true);
+  ctx.SetAddContext(in_dci, true);
+  {
+    auto tring = slot_info.data_in_ep_tring;
+    assert(tring);
+    uint64_t phys_addr = v2p(tring);
+    tring->Init(phys_addr);
+    EndpointContext& ep = dctx.GetEndpointContext(in_dci);
+    ep.SetEPType(DeviceContext::kEPTypeBulkIn);
+    ep.SetTRDequeuePointer(phys_addr);
+    ep.SetDequeueCycleState(1);
+    ep.SetErrorCount(3);
+    ep.SetMaxPacketSize(in_max_packet_size);
+    ep.DumpEPContext();
+  }
+
+  SendConfigureEndpointCommand(slot);
 }
 
 void Controller::SendAddressDeviceCommand(int slot) {
@@ -406,12 +461,12 @@ static void SetConfigureEndpointCommandTRB(
   //   If the Drop Context flag is ‘0’ and the Add Context flag is ‘1’, the xHC
   //   shall...
   // 6.4.3.5 Configure Endpoint Command TRB
-  constexpr uint32_t kTRBTypeConfigureEndpointCommand = 12;
   const uint64_t input_ctx_paddr = v2p(&input_ctx);
   assert((input_ctx_paddr & 0b1111) == 0);
   trb.data = input_ctx_paddr;
   trb.option = 0;
-  trb.control = (kTRBTypeConfigureEndpointCommand << 10) | (slot << 24);
+  trb.control =
+      (BasicTRB::kTRBTypeConfigureEndpointCommand << 10) | (slot << 24);
   trb.PrintHex();
 }
 
@@ -419,13 +474,9 @@ void Controller::SendConfigureEndpointCommand(int slot) {
   auto& slot_info = slot_info_[slot];
   assert(slot_info.input_ctx);
 
+  // Assume that slot_info.input_ctx is already set up.
   InputContext& ctx = *slot_info.input_ctx;
-  ctx.Clear();
-  ctx.SetAddContext(DeviceContext::kDCIEPContext1Out, true);
 
-  DeviceContext& dctx = ctx.GetDeviceContext();
-  dctx.SetRootHubPortNumber(slot_info.port);
-  dctx.SetContextEntries(1);
   /*
      [xHCI] 6.2.3.2 Configure Endpoint Command Usage
   An Input Endpoint Context is considered “valid” by the Configure Endpoint
@@ -881,10 +932,19 @@ void Controller::PollEvents() {
             HandleAddressDeviceCompleted(e.GetSlotID());
             break;
           }
-          PutStringAndHex("  Not Handled Completion Event(Success)",
+          if (cmd_trb.GetTRBType() ==
+              BasicTRB::kTRBTypeConfigureEndpointCommand) {
+            const int slot = e.GetSlotID();
+            auto& si = slot_info_[slot];
+            si.event_queue.Push(SlotEvent::kTransferSucceeded);
+            break;
+          }
+          PutStringAndHex("Not handled completion event (success)",
                           cmd_trb.GetTRBType());
           break;
         }
+        kprintf("Not handled completion event (failed). completion code = %d\n",
+                e.GetCompletionCode());
         DisablePort(slot_info_[e.GetSlotID()].port);
         {
           const uint32_t status = op_regs_->status;
@@ -1012,10 +1072,8 @@ void Controller::Init() {
   for (int i = 1; i < max_slots_; i++) {
     bzero(&slot_info_[i], sizeof(slot_info_[0]));
     auto& slot_info = slot_info_[i];
-    slot_info.output_ctx =
-        &DeviceContext::Alloc(DeviceContext::kDCIEPContext1Out);
-    slot_info.input_ctx =
-        &InputContext::Alloc(DeviceContext::kDCIEPContext1Out);
+    slot_info.output_ctx = &DeviceContext::Alloc(15);
+    slot_info.input_ctx = &InputContext::Alloc(15);
     slot_info.ctrl_ep_tring =
         AllocMemoryForMappedIO<CtrlEPTRing*>(sizeof(CtrlEPTRing));
     slot_info.int_ep_tring =
