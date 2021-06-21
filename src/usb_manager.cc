@@ -55,15 +55,10 @@ class USBCommunicationClassDriver : public USBClassDriver {
         }
         memcpy(config_desc_cache_, config_desc, config_desc->total_length);
         // Read interface descriptors
-        int ofs = config_desc->length;
-        while (ofs < config_desc->total_length) {
-          const uint8_t(*hdr)[2] =
-              xhc.ReadDescriptorBuffer<uint8_t[2]>(slot_, ofs);
-          const uint8_t length = (*hdr)[0];
-          const uint8_t type = (*hdr)[1];
-          if (type == kDescriptorTypeInterface) {
+        for (auto e : *config_desc) {
+          if (e->type == kDescriptorTypeInterface) {
             InterfaceDescriptor* interface_desc =
-                xhc.ReadDescriptorBuffer<InterfaceDescriptor>(slot_, ofs);
+                reinterpret_cast<InterfaceDescriptor*>(e);
             kprintf(
                 "  Interface:\n"
                 "    Class=0x%02X SubClass=0x%02X Protocol=0x%02X\n"
@@ -91,27 +86,25 @@ class USBCommunicationClassDriver : public USBClassDriver {
               break;
             }
           }
-          if (type == kDescriptorTypeEndpoint) {
+          if (e->type == kDescriptorTypeEndpoint) {
             EndpointDescriptor* ep_desc =
-                xhc.ReadDescriptorBuffer<EndpointDescriptor>(slot_, ofs);
+                reinterpret_cast<EndpointDescriptor*>(e);
             kprintf(
                 "  Endpoint:\n"
                 "    addr = 0x%02X, attr = 0x%02X\n",
                 ep_desc->endpoint_address, ep_desc->attributes);
           }
-          if (type == 0x24 /* CS_INTERFACE */) {
-            const uint8_t(*cs_hdr)[3] =
-                xhc.ReadDescriptorBuffer<uint8_t[3]>(slot_, ofs);
+          if (e->type == 0x24 /* CS_INTERFACE */) {
+            const uint8_t(*cs_hdr)[3] = reinterpret_cast<uint8_t(*)[3]>(e);
             const uint8_t subtype = (*cs_hdr)[2];
             kprintf("  CS_INTERFACE desc: subtype = 0x%02X\n", subtype);
             if (subtype ==
                 0x0F /* Ethernet Networking Functional Descriptor */) {
               const EthNetFuncDescriptor* eth_func_desc =
-                  xhc.ReadDescriptorBuffer<EthNetFuncDescriptor>(slot_, ofs);
+                  reinterpret_cast<EthNetFuncDescriptor*>(e);
               mac_addr_string_idx_ = eth_func_desc->mac_addr_string_index;
             }
           }
-          ofs += length;
         }
         if (state_ != kCheckingConfigDescriptor) {
           break;

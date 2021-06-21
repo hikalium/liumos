@@ -34,6 +34,38 @@ struct DeviceDescriptor {
 };
 static_assert(sizeof(DeviceDescriptor) == 18);
 
+packed_struct DescriptorHeader {
+  uint8_t length;
+  uint8_t type;
+};
+
+class DescriptorIterator {
+ public:
+  DescriptorIterator(void* base, int total_length, int ofs = 0)
+      : base_(reinterpret_cast<uint8_t*>(base)),
+        total_length_(total_length),
+        ofs_(ofs){};
+  void operator++() {
+    if (ofs_ < 0 || total_length_ <= ofs_)
+      return;
+    ofs_ += (**this)->length;
+  }
+  DescriptorHeader* operator*() {
+    if (ofs_ < 0 || total_length_ <= ofs_)
+      return NULL;
+    return reinterpret_cast<DescriptorHeader*>(base_ + ofs_);
+  }
+  friend bool operator!=(const DescriptorIterator& lhs,
+                         const DescriptorIterator& rhs) {
+    return lhs.base_ != rhs.base_ || lhs.ofs_ != rhs.ofs_;
+  }
+
+ private:
+  uint8_t* base_;
+  int total_length_;
+  int ofs_;
+};
+
 packed_struct ConfigDescriptor {
   uint8_t length;
   uint8_t type;
@@ -43,6 +75,11 @@ packed_struct ConfigDescriptor {
   uint8_t config_string_index;
   uint8_t attribute;
   uint8_t max_power;
+
+  DescriptorIterator begin() { return DescriptorIterator(this, total_length); }
+  DescriptorIterator end() {
+    return DescriptorIterator(this, total_length, total_length);
+  }
 };
 static_assert(sizeof(ConfigDescriptor) == 9);
 
