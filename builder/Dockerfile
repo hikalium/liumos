@@ -34,6 +34,8 @@ RUN apt-get update \
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
 	sh -s -- -y --default-toolchain=nightly-x86_64-unknown-linux-gnu
 ENV PATH $PATH:/root/.cargo/bin
+ARG RUST_VERSION_DATE=2021-06-27
+RUN rustup toolchain install nightly-${RUST_VERSION_DATE} && rustup default nightly-${RUST_VERSION_DATE}
 RUN rustup component add rust-src
 
 RUN pip3 install pexpect

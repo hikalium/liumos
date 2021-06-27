@@ -2,7 +2,7 @@ version: 2
 jobs:
     build:
         docker:
-            - image: hikalium/liumos-builder:v20210129_021600
+            - image: hikalium/liumos-builder:v20210627_180133
         steps:
             - checkout
             - run:
