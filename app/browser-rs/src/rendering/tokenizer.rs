@@ -3,6 +3,9 @@
 
 use alloc::string::String;
 use alloc::vec::Vec;
+use core::iter::Iterator;
+#[allow(unused_imports)]
+use liumlib::*;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -16,41 +19,19 @@ pub enum State {
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum TokenType {
+pub enum Token {
     Doctype,
-    StartTag,
-    EndTag,
-    Char,
+    StartTag { tag: String, self_closing: bool },
+    EndTag { tag: String, self_closing: bool },
+    Char(char),
     Eof,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Token {
-    token_type: TokenType,
-    tag: String,
-    self_closing: bool,
-    data: String,
-}
-
-impl Token {
-    pub fn new(token_type: TokenType, tag: String, self_closing: bool, data: String) -> Self {
-        Self {
-            token_type,
-            tag,
-            self_closing,
-            data,
-        }
-    }
-}
-
-#[derive(Debug)]
 pub struct Tokenizer {
     state: State,
     pos: usize,
-    length: usize,
-    html: String,
-    tokens: Vec<Token>,
+    input: Vec<char>,
 }
 
 impl Tokenizer {
@@ -58,53 +39,56 @@ impl Tokenizer {
         Self {
             state: State::Data,
             pos: 0,
-            length: html.len(),
-            html,
-            tokens: Vec::new(),
+            input: html.chars().collect(),
         }
     }
 
-    pub fn tokens(&mut self) -> Vec<Token> {
+    fn switch_to(&mut self, s: State) {
+        self.state = s;
+    }
+
+    /// Consume the next input character.
+    fn consume_next_input(&mut self) -> char {
+        let c = self.input[self.pos];
+        self.pos += 1;
+        c
+    }
+}
+
+impl Iterator for Tokenizer {
+    type Item = Token;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.pos >= self.input.len() {
+            return None;
+        }
+
         loop {
-            // https://html.spec.whatwg.org/multipage/parsing.html#preprocessing-the-input-stream
+            let c = self.consume_next_input();
 
             match self.state {
                 State::Data => {
-                    if self.html[self.pos..].starts_with("<") {
-                        self.state = State::TagOpen;
+                    // https://html.spec.whatwg.org/multipage/parsing.html#data-state
+                    if c == '<' {
+                        self.switch_to(State::TagOpen);
                         continue;
                     }
-                    if self.pos == self.length {
-                        self.append_eof();
-                        return self.tokens.clone();
+
+                    if self.pos > self.input.len() {
+                        return Some(Token::Eof);
                     }
-                    self.append_char();
-                    break;
+
+                    return Some(Token::Char(c));
+                }
+                State::TagOpen => {
+                    // https://html.spec.whatwg.org/multipage/parsing.html#tag-open-state
                 }
                 _ => {}
             }
 
-            self.pos += 1;
+            if self.pos == self.input.len() {
+                return Some(Token::Eof);
+            }
         }
-
-        self.tokens.clone()
-    }
-
-    pub fn append_eof(&mut self) {
-        self.tokens.push(Token::new(
-            TokenType::Eof,
-            String::new(),
-            false,
-            String::new(),
-        ));
-    }
-
-    fn append_char(&mut self) {
-        self.tokens.push(Token::new(
-            TokenType::Char,
-            String::new(),
-            false,
-            String::new(),
-        ));
     }
 }

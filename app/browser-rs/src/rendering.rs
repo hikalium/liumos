@@ -10,6 +10,5 @@ pub fn render(html: String) {
     println!("===== rendering start ===== ");
     println!("{}", html);
 
-    let tokenizer = Tokenizer::new(html).tokens();
-    println!("{:?}", tokenizer);
+    let _tokenizer = Tokenizer::new(html);
 }
