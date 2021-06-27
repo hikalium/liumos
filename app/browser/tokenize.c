@@ -61,7 +61,7 @@ void Tokenize(char *html) {
     }
 
     switch (state) {
-      case DATA:
+        case DATA:
         // https://html.spec.whatwg.org/multipage/parsing.html#data-state
         if (*html == '<') {
           // U+003C LESS-THAN SIGN (<)

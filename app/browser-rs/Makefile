@@ -29,4 +29,4 @@ clippy :
 	$(CARGO) clippy $(CARGO_ARGS)
 
 test:
-	$(CARGO) test $(CARGO_ARGS) --tests -- --test-threads=1
+	$(CARGO) test $(CARGO_ARGS) --tests -- --test-threads=1 --nocapture

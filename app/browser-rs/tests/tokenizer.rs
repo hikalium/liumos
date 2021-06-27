@@ -47,13 +47,34 @@ fn main() {
 #[test_case]
 fn no_input() {
     let mut t = Tokenizer::new(String::new());
-    let mut tokens = Vec::new();
-    tokens.push(Token::new(
-        TokenType::Eof,
-        String::new(),
-        false,
-        String::new(),
-    ));
-
-    assert_eq!(t.tokens(), tokens);
+    assert_eq!(t.next(), None);
 }
+
+#[test_case]
+fn chars() {
+    let mut t = Tokenizer::new(String::from("foo"));
+
+    let mut expected = Vec::new();
+    expected.push(Token::Char('f'));
+    expected.push(Token::Char('o'));
+    expected.push(Token::Char('o'));
+
+    for e in expected {
+        assert_eq!(t.next().expect("toknizer should have a next Token"), e);
+    }
+}
+
+/*
+#[test_case]
+fn body() {
+    let mut t = Tokenizer::new(String::from("<body></body>"));
+
+    let mut expected = Vec::new();
+    expected.push(Token::StartTag({ tag: String::from("body"), self_closing: false }));
+    expected.push(Token::EndTag({ tag: String::from("body"), self_closing: false }));
+
+    for e in expected {
+        assert_eq!(t.next().expect("toknizer should have a next Token"), e);
+    }
+}
+*/
