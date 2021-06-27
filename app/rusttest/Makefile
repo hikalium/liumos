@@ -3,11 +3,11 @@ default: $(TARGET_BIN)
 
 include ../../common.mk
 
-.FORCE : 
+.FORCE :
 $(TARGET_BIN) : .FORCE
 	export LLVM_CC="$(LLVM_CC)" && \
 		export LLVM_AR="$(LLVM_AR)" && \
-		cargo build -vv --target=x86_64-unknown-elf.json --release \
+		cargo build -vv --target=../liumlib/x86_64-unknown-elf.json --release \
 		-Z build-std=core,alloc \
 		-Z build-std-features=compiler-builtins-mem
 	cp target/x86_64-unknown-elf/release/rusttest ./rusttest.bin
