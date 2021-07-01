@@ -9,7 +9,7 @@ PORT_VNC=5
 QEMU_ARGS_COMMON_HW_CONFIG=\
 		-machine q35,nvdimm=on -cpu qemu64 -smp 4 \
 		-bios $(OVMF) \
-		-device qemu-xhci -device usb-mouse \
+		-device qemu-xhci -device usb-mouse,id=usbmouse1 \
 		-netdev user,id=usbnet0 -device usb-net,netdev=usbnet0 \
 		-object filter-dump,id=f2,netdev=usbnet0,file=dump_usb_nic.dat \
 		-m 2G,slots=2,maxmem=4G \

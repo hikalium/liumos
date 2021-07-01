@@ -84,6 +84,9 @@ void HPET::BusyWaitMicroSecond(uint64_t microsec) {
 uint64_t HPET::GetFemtosecondPerCount() {
   return femtosecond_per_count_;
 }
+uint64_t HPET::GetCountPerSecond() {
+  return 1e15 / femtosecond_per_count_;
+}
 
 void HPET::Print() {
   PutStringAndHex("HPET at", registers_);

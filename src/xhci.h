@@ -274,8 +274,11 @@ class Controller {
   static constexpr uint32_t kUSBCMDMaskRunStop = 0b01;
   static constexpr uint32_t kUSBCMDMaskHCReset = 0b10;
 
+  /*
+   * PORTSC values
+   */
   static constexpr uint32_t kPortSCBitCurrentConnectStatus = 1 << 0;
-  static constexpr uint32_t kPortSCBitPortEnableDisable = 1 << 1;
+  static constexpr uint32_t kPortSCBitPortEnableDisable = 1 << 1; // RW1CS
   static constexpr uint32_t kPortSCBitPortReset = 1 << 4;
   static constexpr uint32_t kPortSCBitPortLinkState = 0b111100000;
   static constexpr uint32_t kPortSCPortLinkStateShift = 5;
@@ -404,6 +407,7 @@ class Controller {
   bool controller_reset_requested_ = false;
   int max_num_of_scratch_pad_buf_entries_;
   volatile uint64_t* scratchpad_buffer_array_;
+  uint64_t port_init_deadline_;
 };
 
 }  // namespace XHCI

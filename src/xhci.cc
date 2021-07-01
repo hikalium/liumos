@@ -153,15 +153,14 @@ void Controller::ResetPort(int port) {
   while ((ReadPORTSC(port) & kPortSCBitPortReset)) {
     // wait
   }
-  port_state_[port] = kNeedsSlotAssignment;
-  port_is_initializing_[port] = true;
+  port_state_[port] = kDisabled;
+  port_is_initializing_[port] = false;
 }
 
 void Controller::DisablePort(int port) {
   PutStringAndHex("Disable port", port);
   WritePORTSC(port, 2);
-  port_state_[port] = kDisabled;
-  port_is_initializing_[port] = false;
+  ResetPort(port);
 }
 
 class Controller::EndpointContext {
@@ -712,6 +711,7 @@ void Controller::HandleAddressDeviceCompleted(int slot) {
   uint8_t* buf = AllocMemoryForMappedIO<uint8_t*>(kSizeOfDescriptorBuffer);
   descriptor_buffers_[slot] = buf;
   port_is_initializing_[slot_info_[slot].port] = false;
+  kprintf("AddressDevice for port %d completed\n", slot_info_[slot].port);
   RequestDeviceDescriptor(slot, SlotInfo::kWaitingForDeviceDescriptor);
 }
 
@@ -858,24 +858,25 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
   }
 }
 
+static void PrintPortSCValue(uint32_t portsc) {
+  PutStringAndHex("PORTSC", portsc);
+  PutString("PortSC: ");
+  PutHex64ZeroFilled(portsc);
+  PutString(" (");
+  PutString((portsc & (1 << 9)) ? "1" : "0");
+  PutString((portsc & (1 << 0)) ? "1" : "0");
+  PutString((portsc & (1 << 1)) ? "1" : "0");
+  PutString((portsc & (1 << 4)) ? "1" : "0");
+  PutString(") ");
+  // 7.2.2.1.1 Default USB Speed ID Mapping
+  PutString("Speed=0x");
+  PutHex64(GetBits<13, 10>(portsc));
+  PutString("\n");
+}
 void Controller::PrintPortSC() {
   for (int slot = 1; slot <= num_of_slots_enabled_; slot++) {
-    uint32_t portsc = ReadPORTSC(slot);
     PutStringAndHex("Port", slot);
-    PutStringAndHex("PORTSC", portsc);
-    PutString("PortSC: ");
-    PutHex64ZeroFilled(portsc);
-    PutString(" (");
-    PutString((portsc & (1 << 9)) ? "1" : "0");
-    PutString((portsc & (1 << 0)) ? "1" : "0");
-    PutString((portsc & (1 << 1)) ? "1" : "0");
-    PutString((portsc & (1 << 4)) ? "1" : "0");
-    PutString(") ");
-    // 7.2.2.1.1 Default USB Speed ID Mapping
-    PutString("Speed=0x");
-    PutHex64(GetBits<13, 10>(portsc));
-
-    PutString("\n");
+    PrintPortSCValue(ReadPORTSC(slot));
   }
 }
 void Controller::PrintUSBSTS() {
@@ -891,6 +892,7 @@ void Controller::PrintUSBSTS() {
 }
 
 void Controller::CheckPortAndInitiateProcess() {
+  HPET& hpet = HPET::GetInstance();
   for (int i = 0; i < kMaxNumOfPorts; i++) {
     if (port_state_[i] == kNeedsSlotAssignment) {
       port_state_[i] = kWaitingForSlotAssignment;
@@ -903,16 +905,28 @@ void Controller::CheckPortAndInitiateProcess() {
       enable_slot_trb.control = (BasicTRB::kTRBTypeEnableSlotCommand << 10);
       cmd_ring_->Push();
       NotifyHostControllerDoorbell();
+      kprintf("Sent slot assignment request for port%d\n", i);
       return;
     }
   }
   for (int i = 0; i < kMaxNumOfPorts; i++) {
-    if (port_is_initializing_[i])
-      return;
+    if (!port_is_initializing_[i]) {
+      continue;
+    }
+    if (port_init_deadline_ < hpet.ReadMainCounterValue()) {
+      kprintf("Port init deadline exceeded for port %d\n", i);
+      DisablePort(i);
+    }
+    return;
   }
   for (int i = 0; i < kMaxNumOfPorts; i++) {
     if (port_state_[i] == kAttachedUSB2) {
       ResetPort(i);
+      port_state_[i] = kNeedsSlotAssignment;
+      port_is_initializing_[i] = true;
+      kprintf("Port init deadline for port %d is set.\n", i);
+      port_init_deadline_ =
+          hpet.ReadMainCounterValue() + hpet.GetCountPerSecond();
       return;
     }
   }
@@ -990,13 +1004,27 @@ void Controller::PollEvents() {
   }
   for (int port = 1; port <= max_ports_; port++) {
     uint32_t portsc = ReadPORTSC(port);
+    if (!(portsc & kPortSCBitCurrentConnectStatus)) {
+      // Device is disconnected
+      if (port_state_[port] == kDisconnected) {
+        continue;
+      }
+      DisablePort(port);
+      port_state_[port] = kDisconnected;
+      kprintf("port %d disconnected\n", port);
+      PrintPortSCValue(ReadPORTSC(port));
+      continue;
+    }
     if (port_state_[port] == kDisconnected &&
         (portsc & kPortSCBitCurrentConnectStatus)) {
+      kprintf("port %d connected\n", port);
+      PrintPortSCValue(ReadPORTSC(port));
       port_state_[port] = kAttached;
     }
     if (port_state_[port] == kAttached &&
         !(portsc & kPortSCBitPortEnableDisable) &&
         !(portsc & kPortSCBitPortReset) && ReadPORTSCLinkState(port) == 7) {
+      kprintf("port %d: kAttachedUSB2\n", port);
       port_state_[port] = kAttachedUSB2;
     }
   }
