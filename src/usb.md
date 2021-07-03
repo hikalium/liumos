@@ -13,3 +13,6 @@
       - Endpoint[1]
     - Interface[1]
 ```
+
+## Port & Slot
+PortとSlotは1:1対応する

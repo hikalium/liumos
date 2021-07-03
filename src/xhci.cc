@@ -157,10 +157,17 @@ void Controller::ResetPort(int port) {
   port_is_initializing_[port] = false;
 }
 
+void Controller::MarkSlotAsFailed(int slot) {
+  // The port associated with this slot will also be disabled.
+  auto& slot_info = slot_info_[slot];
+  slot_info.state = SlotInfo::kFailed;
+  DisablePort(slot_info.port);
+}
+
 void Controller::DisablePort(int port) {
-  PutStringAndHex("Disable port", port);
   WritePORTSC(port, 2);
   ResetPort(port);
+  kprintf("Port %d disabled.\n", port);
 }
 
 class Controller::EndpointContext {
@@ -498,13 +505,6 @@ void Controller::SendConfigureEndpointCommand(int slot) {
   NotifyHostControllerDoorbell();
 }
 
-void Controller::HandleEnableSlotCompleted(int slot, int port) {
-  port_state_[port] = kSlotAssigned;
-  auto& slot_info = slot_info_[slot];
-  slot_info.port = port;
-  SendAddressDeviceCommand(slot);
-}
-
 static void PutDataStageTD(XHCI::Controller::CtrlEPTRing& tring,
                            uint64_t buf_phys_addr,
                            uint16_t size,
@@ -705,14 +705,6 @@ void Controller::GetHIDReport(int slot) {
 
   slot_info_[slot].state = SlotInfo::kGettingReport;
   NotifyDeviceContextDoorbell(slot, 1);
-}
-
-void Controller::HandleAddressDeviceCompleted(int slot) {
-  uint8_t* buf = AllocMemoryForMappedIO<uint8_t*>(kSizeOfDescriptorBuffer);
-  descriptor_buffers_[slot] = buf;
-  port_is_initializing_[slot_info_[slot].port] = false;
-  kprintf("AddressDevice for port %d completed\n", slot_info_[slot].port);
-  RequestDeviceDescriptor(slot, SlotInfo::kWaitingForDeviceDescriptor);
 }
 
 void Controller::PressKey(int hid_idx, uint8_t) {
@@ -932,6 +924,52 @@ void Controller::CheckPortAndInitiateProcess() {
   }
 }
 
+void Controller::HandleEnableSlotCommandCompletion(const BasicTRB& e,
+                                                   const BasicTRB& cause) {
+  uint64_t cmd_trb_phys_addr = e.data;
+  auto it = slot_request_for_port_.find(cmd_trb_phys_addr);
+  if (it == slot_request_for_port_.end()) {
+    kprintf("Unexpected command completion event for enable slot command at %p",
+            &cause);
+    return;
+  }
+  slot_request_for_port_.erase(it);
+  int port = it->second;
+  if (!e.IsCompletedWithSuccess()) {
+    kprintf("Enable slot command failed for port %d", it->second);
+    DisablePort(port);
+    return;
+  }
+  int slot = e.GetSlotID();
+  port_state_[port] = kSlotAssigned;
+  slot_info_[slot].port = port;
+  SendAddressDeviceCommand(slot);
+}
+
+void Controller::HandleAddressDeviceCommandCompletion(const BasicTRB& e) {
+  int slot = e.GetSlotID();
+  if (!e.IsCompletedWithSuccess()) {
+    kprintf("Address device command failed for slot %d", slot);
+    MarkSlotAsFailed(slot);
+    return;
+  }
+  uint8_t* buf = AllocMemoryForMappedIO<uint8_t*>(kSizeOfDescriptorBuffer);
+  descriptor_buffers_[slot] = buf;
+  port_is_initializing_[slot_info_[slot].port] = false;
+  kprintf("AddressDevice for port %d completed\n", slot_info_[slot].port);
+  RequestDeviceDescriptor(slot, SlotInfo::kWaitingForDeviceDescriptor);
+}
+
+void Controller::HandleConfigureEndpointCommandCompletion(const BasicTRB& e) {
+  int slot = e.GetSlotID();
+  auto& si = slot_info_[slot];
+  if (!e.IsCompletedWithSuccess()) {
+    si.event_queue.Push(SlotEvent::kTransferFailed);
+    return;
+  }
+  si.event_queue.Push(SlotEvent::kTransferSucceeded);
+}
+
 void Controller::PollEvents() {
   if (!initialized_) {
     return;
@@ -949,43 +987,25 @@ void Controller::PollEvents() {
     uint8_t type = e.GetTRBType();
 
     switch (type) {
-      case BasicTRB::kTRBTypeCommandCompletionEvent:
-        if (e.IsCompletedWithSuccess()) {
-          BasicTRB& cmd_trb = cmd_ring_->GetEntryFromPhysAddr(e.data);
-          if (cmd_trb.GetTRBType() == BasicTRB::kTRBTypeEnableSlotCommand) {
-            uint64_t cmd_trb_phys_addr = e.data;
-            auto it = slot_request_for_port_.find(cmd_trb_phys_addr);
-            assert(it != slot_request_for_port_.end());
-            HandleEnableSlotCompleted(e.GetSlotID(), it->second);
-            slot_request_for_port_.erase(it);
-            break;
-          }
-          if (cmd_trb.GetTRBType() == BasicTRB::kTRBTypeAddressDeviceCommand) {
-            HandleAddressDeviceCompleted(e.GetSlotID());
-            break;
-          }
-          if (cmd_trb.GetTRBType() ==
-              BasicTRB::kTRBTypeConfigureEndpointCommand) {
-            const int slot = e.GetSlotID();
-            auto& si = slot_info_[slot];
-            si.event_queue.Push(SlotEvent::kTransferSucceeded);
-            break;
-          }
-          PutStringAndHex("Not handled completion event (success)",
-                          cmd_trb.GetTRBType());
+      case BasicTRB::kTRBTypeCommandCompletionEvent: {
+        BasicTRB& cmd_trb = cmd_ring_->GetEntryFromPhysAddr(e.data);
+        if (cmd_trb.GetTRBType() == BasicTRB::kTRBTypeEnableSlotCommand) {
+          HandleEnableSlotCommandCompletion(e, cmd_trb);
+          break;
+        }
+        if (cmd_trb.GetTRBType() == BasicTRB::kTRBTypeAddressDeviceCommand) {
+          HandleAddressDeviceCommandCompletion(e);
+          break;
+        }
+        if (cmd_trb.GetTRBType() ==
+            BasicTRB::kTRBTypeConfigureEndpointCommand) {
+          HandleConfigureEndpointCommandCompletion(e);
           break;
         }
         kprintf("Not handled completion event (failed). completion code = %d\n",
                 e.GetCompletionCode());
-        DisablePort(slot_info_[e.GetSlotID()].port);
-        {
-          const uint32_t status = op_regs_->status;
-          if (status & kUSBSTSBitHCError) {
-            PutString(" HC Error Detected! Request resetting controller...\n");
-            controller_reset_requested_ = true;
-          }
-        }
-        break;
+        MarkSlotAsFailed(e.GetSlotID());
+      } break;
       case BasicTRB::kTRBTypePortStatusChangeEvent:
         // Do nothing
         break;
@@ -993,8 +1013,8 @@ void Controller::PollEvents() {
         HandleTransferEvent(e);
         break;
       default:
-        PutString("Event ");
-        PutStringAndHex("type", type);
+        PutString("Unhandled Event:");
+        PutStringAndHex("  type", type);
         PutStringAndHex("  e.data", e.data);
         PutStringAndHex("  e.opt ", e.option);
         PutStringAndHex("  e.ctrl", e.control);
@@ -1038,12 +1058,21 @@ const char* Controller::SlotInfo::GetSlotStateStr() {
 }
 
 void Controller::PrintUSBDevices() {
+  for (int port = 1; port <= max_ports_; port++) {
+    uint32_t portsc = ReadPORTSC(port);
+    if (!(portsc & kPortSCBitCurrentConnectStatus)) {
+      continue;
+    }
+    kprintf("port %d:\n  ", port);
+    PrintPortSCValue(portsc);
+    kprintf("\n");
+  }
   for (int slot = 1; slot <= num_of_slots_enabled_; slot++) {
     auto& info = slot_info_[slot];
     if (info.state == SlotInfo::kUndefined)
       continue;
     kprintf("Slot 0x%X (on port 0x%X):\n", slot, info.port);
-    kprintf("  num_of_config               = %d (%s)\n", info.num_of_config);
+    kprintf("  num_of_config               = %d\n", info.num_of_config);
     kprintf("  state                       = %d (%s)\n", info.state,
             info.GetSlotStateStr());
     kprintf("  (class, subclass, protocol) = (0x%02X, 0x%02X, 0x%02X)\n",

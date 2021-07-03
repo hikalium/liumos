@@ -29,10 +29,10 @@ struct BasicTRB {
   uint8_t GetSlotID() const { return GetBits<31, 24>(control); }
   uint8_t GetCompletionCode() const { return GetBits<31, 24>(option); }
   int GetTransferSizeResidue() const { return GetBits<23, 0>(option); }
-  bool IsCompletedWithSuccess() {
+  bool IsCompletedWithSuccess() const {
     return GetCompletionCode() == kCompletionCodeSuccess;
   }
-  bool IsCompletedWithShortPacket() {
+  bool IsCompletedWithShortPacket() const {
     return GetCompletionCode() == kCompletionCodeShortPacket;
   }
 #ifndef LIUMOS_TEST

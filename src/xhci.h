@@ -278,7 +278,7 @@ class Controller {
    * PORTSC values
    */
   static constexpr uint32_t kPortSCBitCurrentConnectStatus = 1 << 0;
-  static constexpr uint32_t kPortSCBitPortEnableDisable = 1 << 1; // RW1CS
+  static constexpr uint32_t kPortSCBitPortEnableDisable = 1 << 1;  // RW1CS
   static constexpr uint32_t kPortSCBitPortReset = 1 << 4;
   static constexpr uint32_t kPortSCBitPortLinkState = 0b111100000;
   static constexpr uint32_t kPortSCPortLinkStateShift = 5;
@@ -306,16 +306,11 @@ class Controller {
       kUndefined,
       kWaitingForSecondAddressDeviceCommandCompletion,
       kWaitingForDeviceDescriptor,
-      kWaitingForConfigDescriptor,
       kAvailable,
-      kCheckingIfHIDClass,
-      kCheckingConfigDescriptor,
-      kSettingConfiguration,
       kSettingBootProtocol,
       kCheckingProtocol,
-      kWaitingForConfigureEndpointCommandCompletion,
       kGettingReport,
-      kNotSupportedDevice,
+      kFailed,
     } state;
     int port;
     InputContext* input_ctx;
@@ -356,20 +351,23 @@ class Controller {
   };
   void WritePORTSC(int slot, uint32_t data);
   void ResetPort(int port);
+  void MarkSlotAsFailed(int slot);
   void DisablePort(int port);
   void HandlePortStatusChange(int port);
   void SendAddressDeviceCommand(int slot);
   void SendConfigureEndpointCommand(int slot);
-  void HandleEnableSlotCompleted(int slot, int port);
   void PressKey(int hid_idx, uint8_t mod);
   void HandleKeyInput(int slot, uint8_t data[8]);
-  void HandleAddressDeviceCompleted(int slot);
   void RequestDeviceDescriptor(int slot, SlotInfo::SlotState);
   void SetHIDBootProtocol(int slot);
   void GetHIDProtocol(int slot);
   void GetHIDReport(int slot);
   void HandleTransferEvent(BasicTRB& e);
   void CheckPortAndInitiateProcess();
+  void HandleEnableSlotCommandCompletion(const BasicTRB& e,
+                                         const BasicTRB& cause);
+  void HandleAddressDeviceCommandCompletion(const BasicTRB& e);
+  void HandleConfigureEndpointCommandCompletion(const BasicTRB& e);
 
   ProcessLock lock_;
   bool initialized_ = false;
@@ -389,7 +387,8 @@ class Controller {
   int num_of_slots_enabled_;
   uint8_t* descriptor_buffers_[kMaxNumOfSlots];
   uint8_t key_buffers_[kMaxNumOfSlots][33];
-  std::unordered_map<uint64_t, int> slot_request_for_port_;
+  std::unordered_map<uint64_t, int>
+      slot_request_for_port_;  // (req_phys_addr, port)
   struct SlotInfo slot_info_[kMaxNumOfSlots];
   RingBuffer<uint16_t, 16> keyid_buffer_;
   enum PortState {
