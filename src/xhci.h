@@ -278,7 +278,7 @@ class Controller {
    * PORTSC values
    */
   static constexpr uint32_t kPortSCBitCurrentConnectStatus = 1 << 0;
-  static constexpr uint32_t kPortSCBitPortEnableDisable = 1 << 1; // RW1CS
+  static constexpr uint32_t kPortSCBitPortEnableDisable = 1 << 1;  // RW1CS
   static constexpr uint32_t kPortSCBitPortReset = 1 << 4;
   static constexpr uint32_t kPortSCBitPortLinkState = 0b111100000;
   static constexpr uint32_t kPortSCPortLinkStateShift = 5;
@@ -306,16 +306,10 @@ class Controller {
       kUndefined,
       kWaitingForSecondAddressDeviceCommandCompletion,
       kWaitingForDeviceDescriptor,
-      kWaitingForConfigDescriptor,
       kAvailable,
-      kCheckingIfHIDClass,
-      kCheckingConfigDescriptor,
-      kSettingConfiguration,
       kSettingBootProtocol,
       kCheckingProtocol,
-      kWaitingForConfigureEndpointCommandCompletion,
       kGettingReport,
-      kNotSupportedDevice,
     } state;
     int port;
     InputContext* input_ctx;

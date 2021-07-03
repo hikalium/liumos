@@ -1038,12 +1038,21 @@ const char* Controller::SlotInfo::GetSlotStateStr() {
 }
 
 void Controller::PrintUSBDevices() {
+  for (int port = 1; port <= max_ports_; port++) {
+    uint32_t portsc = ReadPORTSC(port);
+    if (!(portsc & kPortSCBitCurrentConnectStatus)) {
+      continue;
+    }
+    kprintf("port %d:\n  ", port);
+    PrintPortSCValue(portsc);
+    kprintf("\n");
+  }
   for (int slot = 1; slot <= num_of_slots_enabled_; slot++) {
     auto& info = slot_info_[slot];
     if (info.state == SlotInfo::kUndefined)
       continue;
     kprintf("Slot 0x%X (on port 0x%X):\n", slot, info.port);
-    kprintf("  num_of_config               = %d (%s)\n", info.num_of_config);
+    kprintf("  num_of_config               = %d\n", info.num_of_config);
     kprintf("  state                       = %d (%s)\n", info.state,
             info.GetSlotStateStr());
     kprintf("  (class, subclass, protocol) = (0x%02X, 0x%02X, 0x%02X)\n",
