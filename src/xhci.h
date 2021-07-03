@@ -310,6 +310,7 @@ class Controller {
       kSettingBootProtocol,
       kCheckingProtocol,
       kGettingReport,
+      kFailed,
     } state;
     int port;
     InputContext* input_ctx;
@@ -350,13 +351,13 @@ class Controller {
   };
   void WritePORTSC(int slot, uint32_t data);
   void ResetPort(int port);
+  void MarkSlotAsFailed(int slot);
   void DisablePort(int port);
   void HandlePortStatusChange(int port);
   void SendAddressDeviceCommand(int slot);
   void SendConfigureEndpointCommand(int slot);
   void PressKey(int hid_idx, uint8_t mod);
   void HandleKeyInput(int slot, uint8_t data[8]);
-  void HandleAddressDeviceCompleted(int slot);
   void RequestDeviceDescriptor(int slot, SlotInfo::SlotState);
   void SetHIDBootProtocol(int slot);
   void GetHIDProtocol(int slot);
@@ -365,6 +366,8 @@ class Controller {
   void CheckPortAndInitiateProcess();
   void HandleEnableSlotCommandCompletion(const BasicTRB& e,
                                          const BasicTRB& cause);
+  void HandleAddressDeviceCommandCompletion(const BasicTRB& e);
+  void HandleConfigureEndpointCommandCompletion(const BasicTRB& e);
 
   ProcessLock lock_;
   bool initialized_ = false;

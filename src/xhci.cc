@@ -157,10 +157,17 @@ void Controller::ResetPort(int port) {
   port_is_initializing_[port] = false;
 }
 
+void Controller::MarkSlotAsFailed(int slot) {
+  // The port associated with this slot will also be disabled.
+  auto& slot_info = slot_info_[slot];
+  slot_info.state = SlotInfo::kFailed;
+  DisablePort(slot_info.port);
+}
+
 void Controller::DisablePort(int port) {
-  PutStringAndHex("Disable port", port);
   WritePORTSC(port, 2);
   ResetPort(port);
+  kprintf("Port %d disabled.\n", port);
 }
 
 class Controller::EndpointContext {
@@ -700,14 +707,6 @@ void Controller::GetHIDReport(int slot) {
   NotifyDeviceContextDoorbell(slot, 1);
 }
 
-void Controller::HandleAddressDeviceCompleted(int slot) {
-  uint8_t* buf = AllocMemoryForMappedIO<uint8_t*>(kSizeOfDescriptorBuffer);
-  descriptor_buffers_[slot] = buf;
-  port_is_initializing_[slot_info_[slot].port] = false;
-  kprintf("AddressDevice for port %d completed\n", slot_info_[slot].port);
-  RequestDeviceDescriptor(slot, SlotInfo::kWaitingForDeviceDescriptor);
-}
-
 void Controller::PressKey(int hid_idx, uint8_t) {
   static uint16_t mapping[256] = {0,
                                   0,
@@ -947,6 +946,30 @@ void Controller::HandleEnableSlotCommandCompletion(const BasicTRB& e,
   SendAddressDeviceCommand(slot);
 }
 
+void Controller::HandleAddressDeviceCommandCompletion(const BasicTRB& e) {
+  int slot = e.GetSlotID();
+  if (!e.IsCompletedWithSuccess()) {
+    kprintf("Address device command failed for slot %d", slot);
+    MarkSlotAsFailed(slot);
+    return;
+  }
+  uint8_t* buf = AllocMemoryForMappedIO<uint8_t*>(kSizeOfDescriptorBuffer);
+  descriptor_buffers_[slot] = buf;
+  port_is_initializing_[slot_info_[slot].port] = false;
+  kprintf("AddressDevice for port %d completed\n", slot_info_[slot].port);
+  RequestDeviceDescriptor(slot, SlotInfo::kWaitingForDeviceDescriptor);
+}
+
+void Controller::HandleConfigureEndpointCommandCompletion(const BasicTRB& e) {
+  int slot = e.GetSlotID();
+  auto& si = slot_info_[slot];
+  if (!e.IsCompletedWithSuccess()) {
+    si.event_queue.Push(SlotEvent::kTransferFailed);
+    return;
+  }
+  si.event_queue.Push(SlotEvent::kTransferSucceeded);
+}
+
 void Controller::PollEvents() {
   if (!initialized_) {
     return;
@@ -970,32 +993,18 @@ void Controller::PollEvents() {
           HandleEnableSlotCommandCompletion(e, cmd_trb);
           break;
         }
-        if (e.IsCompletedWithSuccess()) {
-          if (cmd_trb.GetTRBType() == BasicTRB::kTRBTypeAddressDeviceCommand) {
-            HandleAddressDeviceCompleted(e.GetSlotID());
-            break;
-          }
-          if (cmd_trb.GetTRBType() ==
-              BasicTRB::kTRBTypeConfigureEndpointCommand) {
-            const int slot = e.GetSlotID();
-            auto& si = slot_info_[slot];
-            si.event_queue.Push(SlotEvent::kTransferSucceeded);
-            break;
-          }
-          PutStringAndHex("Not handled completion event (success)",
-                          cmd_trb.GetTRBType());
+        if (cmd_trb.GetTRBType() == BasicTRB::kTRBTypeAddressDeviceCommand) {
+          HandleAddressDeviceCommandCompletion(e);
+          break;
+        }
+        if (cmd_trb.GetTRBType() ==
+            BasicTRB::kTRBTypeConfigureEndpointCommand) {
+          HandleConfigureEndpointCommandCompletion(e);
           break;
         }
         kprintf("Not handled completion event (failed). completion code = %d\n",
                 e.GetCompletionCode());
-        DisablePort(slot_info_[e.GetSlotID()].port);
-        {
-          const uint32_t status = op_regs_->status;
-          if (status & kUSBSTSBitHCError) {
-            PutString(" HC Error Detected! Request resetting controller...\n");
-            controller_reset_requested_ = true;
-          }
-        }
+        MarkSlotAsFailed(e.GetSlotID());
       } break;
       case BasicTRB::kTRBTypePortStatusChangeEvent:
         // Do nothing
@@ -1004,8 +1013,8 @@ void Controller::PollEvents() {
         HandleTransferEvent(e);
         break;
       default:
-        PutString("Event ");
-        PutStringAndHex("type", type);
+        PutString("Unhandled Event:");
+        PutStringAndHex("  type", type);
         PutStringAndHex("  e.data", e.data);
         PutStringAndHex("  e.opt ", e.option);
         PutStringAndHex("  e.ctrl", e.control);
