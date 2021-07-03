@@ -60,21 +60,47 @@ fn chars() {
     expected.push(Token::Char('o'));
 
     for e in expected {
-        assert_eq!(t.next().expect("toknizer should have a next Token"), e);
+        let token = t.next().expect("tokenizer should have a next Token");
+        assert_eq!(token, e, "expected {:?} but got {:?}", e, token);
     }
 }
 
-/*
 #[test_case]
 fn body() {
     let mut t = Tokenizer::new(String::from("<body></body>"));
 
     let mut expected = Vec::new();
-    expected.push(Token::StartTag({ tag: String::from("body"), self_closing: false }));
-    expected.push(Token::EndTag({ tag: String::from("body"), self_closing: false }));
+    expected.push(Token::StartTag {
+        tag: String::from("body"),
+        self_closing: false,
+    });
+    expected.push(Token::EndTag {
+        tag: String::from("body"),
+        self_closing: false,
+    });
 
     for e in expected {
-        assert_eq!(t.next().expect("toknizer should have a next Token"), e);
+        let token = t.next().expect("tokenizer should have a next Token");
+        assert_eq!(token, e, "expected {:?} but got {:?}", e, token);
     }
 }
-*/
+
+#[test_case]
+fn BODY() {
+    let mut t = Tokenizer::new(String::from("<BODY></BODY>"));
+
+    let mut expected = Vec::new();
+    expected.push(Token::StartTag {
+        tag: String::from("body"),
+        self_closing: false,
+    });
+    expected.push(Token::EndTag {
+        tag: String::from("body"),
+        self_closing: false,
+    });
+
+    for e in expected {
+        let token = t.next().expect("tokenizer should have a next Token");
+        assert_eq!(token, e, "expected {:?} but got {:?}", e, token);
+    }
+}
