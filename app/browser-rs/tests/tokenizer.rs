@@ -104,3 +104,29 @@ fn BODY() {
         }
     );
 }
+
+#[test_case]
+fn simple_page() {
+    run_test!(
+        "<html><body>abc</body></html>",
+        Token::StartTag {
+            tag: String::from("html"),
+            self_closing: false,
+        },
+        Token::StartTag {
+            tag: String::from("body"),
+            self_closing: false,
+        },
+        Token::Char('a'),
+        Token::Char('b'),
+        Token::Char('c'),
+        Token::EndTag {
+            tag: String::from("body"),
+            self_closing: false,
+        },
+        Token::EndTag {
+            tag: String::from("html"),
+            self_closing: false,
+        }
+    );
+}
