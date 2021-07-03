@@ -498,13 +498,6 @@ void Controller::SendConfigureEndpointCommand(int slot) {
   NotifyHostControllerDoorbell();
 }
 
-void Controller::HandleEnableSlotCompleted(int slot, int port) {
-  port_state_[port] = kSlotAssigned;
-  auto& slot_info = slot_info_[slot];
-  slot_info.port = port;
-  SendAddressDeviceCommand(slot);
-}
-
 static void PutDataStageTD(XHCI::Controller::CtrlEPTRing& tring,
                            uint64_t buf_phys_addr,
                            uint16_t size,
@@ -932,6 +925,28 @@ void Controller::CheckPortAndInitiateProcess() {
   }
 }
 
+void Controller::HandleEnableSlotCommandCompletion(const BasicTRB& e,
+                                                   const BasicTRB& cause) {
+  uint64_t cmd_trb_phys_addr = e.data;
+  auto it = slot_request_for_port_.find(cmd_trb_phys_addr);
+  if (it == slot_request_for_port_.end()) {
+    kprintf("Unexpected command completion event for enable slot command at %p",
+            &cause);
+    return;
+  }
+  slot_request_for_port_.erase(it);
+  int port = it->second;
+  if (!e.IsCompletedWithSuccess()) {
+    kprintf("Enable slot command failed for port %d", it->second);
+    DisablePort(port);
+    return;
+  }
+  int slot = e.GetSlotID();
+  port_state_[port] = kSlotAssigned;
+  slot_info_[slot].port = port;
+  SendAddressDeviceCommand(slot);
+}
+
 void Controller::PollEvents() {
   if (!initialized_) {
     return;
@@ -949,17 +964,13 @@ void Controller::PollEvents() {
     uint8_t type = e.GetTRBType();
 
     switch (type) {
-      case BasicTRB::kTRBTypeCommandCompletionEvent:
+      case BasicTRB::kTRBTypeCommandCompletionEvent: {
+        BasicTRB& cmd_trb = cmd_ring_->GetEntryFromPhysAddr(e.data);
+        if (cmd_trb.GetTRBType() == BasicTRB::kTRBTypeEnableSlotCommand) {
+          HandleEnableSlotCommandCompletion(e, cmd_trb);
+          break;
+        }
         if (e.IsCompletedWithSuccess()) {
-          BasicTRB& cmd_trb = cmd_ring_->GetEntryFromPhysAddr(e.data);
-          if (cmd_trb.GetTRBType() == BasicTRB::kTRBTypeEnableSlotCommand) {
-            uint64_t cmd_trb_phys_addr = e.data;
-            auto it = slot_request_for_port_.find(cmd_trb_phys_addr);
-            assert(it != slot_request_for_port_.end());
-            HandleEnableSlotCompleted(e.GetSlotID(), it->second);
-            slot_request_for_port_.erase(it);
-            break;
-          }
           if (cmd_trb.GetTRBType() == BasicTRB::kTRBTypeAddressDeviceCommand) {
             HandleAddressDeviceCompleted(e.GetSlotID());
             break;
@@ -985,7 +996,7 @@ void Controller::PollEvents() {
             controller_reset_requested_ = true;
           }
         }
-        break;
+      } break;
       case BasicTRB::kTRBTypePortStatusChangeEvent:
         // Do nothing
         break;
