@@ -44,63 +44,63 @@ fn main() {
     test_main();
 }
 
+#[macro_export]
+macro_rules! run_test {
+    ($html:literal) => {
+        let mut t = Tokenizer::new(String::from($html));
+        assert_eq!(t.next(), None);
+    };
+    ($html:literal, $( $token:expr ),*) => {
+        let mut t = Tokenizer::new(String::from($html));
+
+        let mut expected = Vec::new();
+        $(
+            expected.push($token);
+        )*
+
+        for e in expected {
+            let token = t.next().expect("tokenizer should have a next Token");
+            assert_eq!(token, e, "expected {:?} but got {:?}", e, token);
+        }
+    };
+}
+
 #[test_case]
 fn no_input() {
-    let mut t = Tokenizer::new(String::new());
-    assert_eq!(t.next(), None);
+    run_test!("");
 }
 
 #[test_case]
 fn chars() {
-    let mut t = Tokenizer::new(String::from("foo"));
-
-    let mut expected = Vec::new();
-    expected.push(Token::Char('f'));
-    expected.push(Token::Char('o'));
-    expected.push(Token::Char('o'));
-
-    for e in expected {
-        let token = t.next().expect("tokenizer should have a next Token");
-        assert_eq!(token, e, "expected {:?} but got {:?}", e, token);
-    }
+    run_test!("foo", Token::Char('f'), Token::Char('o'), Token::Char('o'));
 }
 
 #[test_case]
 fn body() {
-    let mut t = Tokenizer::new(String::from("<body></body>"));
-
-    let mut expected = Vec::new();
-    expected.push(Token::StartTag {
-        tag: String::from("body"),
-        self_closing: false,
-    });
-    expected.push(Token::EndTag {
-        tag: String::from("body"),
-        self_closing: false,
-    });
-
-    for e in expected {
-        let token = t.next().expect("tokenizer should have a next Token");
-        assert_eq!(token, e, "expected {:?} but got {:?}", e, token);
-    }
+    run_test!(
+        "<body></body>",
+        Token::StartTag {
+            tag: String::from("body"),
+            self_closing: false,
+        },
+        Token::EndTag {
+            tag: String::from("body"),
+            self_closing: false,
+        }
+    );
 }
 
 #[test_case]
 fn BODY() {
-    let mut t = Tokenizer::new(String::from("<BODY></BODY>"));
-
-    let mut expected = Vec::new();
-    expected.push(Token::StartTag {
-        tag: String::from("body"),
-        self_closing: false,
-    });
-    expected.push(Token::EndTag {
-        tag: String::from("body"),
-        self_closing: false,
-    });
-
-    for e in expected {
-        let token = t.next().expect("tokenizer should have a next Token");
-        assert_eq!(token, e, "expected {:?} but got {:?}", e, token);
-    }
+    run_test!(
+        "<BODY></BODY>",
+        Token::StartTag {
+            tag: String::from("body"),
+            self_closing: false,
+        },
+        Token::EndTag {
+            tag: String::from("body"),
+            self_closing: false
+        }
+    );
 }
