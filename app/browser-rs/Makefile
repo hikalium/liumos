@@ -23,14 +23,15 @@ install: $(TARGET_BIN)
 clean:
 	-rm -r target
 	-rm *.bin
-dump: $(TARGET_BIN)
+dump : $(TARGET_BIN)
 	objdump -d target/x86_64-unknown-elf/release/$(TARGET)
 clippy :
 	$(CARGO) clippy $(CARGO_ARGS)
 
-test:
-	@if [[ "$OSTYPE" == "linux-gnu"* ]]; then \
-		$(CARGO) test $(CARGO_ARGS) --tests -- --test-threads=1 --nocapture ; \
-	else \
-		echo "Skipping test for $(PWD) because we can't run the binary on this host." ; \
-	fi
+ifeq ($(OSNAME),Darwin)
+test :
+	echo "Skipping test for $(PWD) because we can't run the binary on this host." ;
+else
+test :
+	$(CARGO) test $(CARGO_ARGS) --tests -- --test-threads=1 --nocapture ;
+endif
