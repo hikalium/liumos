@@ -14,13 +14,12 @@ Controller* Controller::xhci_;
 void Controller::ResetHostController() {
   op_regs_->command = op_regs_->command & ~kUSBCMDMaskRunStop;
   while (!(op_regs_->status & kUSBSTSBitHCHalted)) {
-    PutString("Waiting for HCHalt...\n");
+    asm volatile("pause;");
   }
   op_regs_->command = op_regs_->command | kUSBCMDMaskHCReset;
   while (op_regs_->command & kUSBCMDMaskHCReset) {
-    PutString("Waiting for HCReset done...\n");
+    asm volatile("pause;");
   }
-  PutString("HCReset done.\n");
 }
 
 class Controller::EventRing {
@@ -376,7 +375,6 @@ void Controller::ConfigureEndpointBulkInOut(int slot,
     ep.SetDequeueCycleState(1);
     ep.SetErrorCount(3);
     ep.SetMaxPacketSize(out_max_packet_size);
-    ep.DumpEPContext();
     slot_info.data_out_ep_dci = out_dci;
   }
 
@@ -393,7 +391,6 @@ void Controller::ConfigureEndpointBulkInOut(int slot,
     ep.SetDequeueCycleState(1);
     ep.SetErrorCount(3);
     ep.SetMaxPacketSize(in_max_packet_size);
-    ep.DumpEPContext();
     slot_info.data_in_ep_dci = in_dci;
   }
 
@@ -475,7 +472,6 @@ static void SetConfigureEndpointCommandTRB(
   trb.option = 0;
   trb.control =
       (BasicTRB::kTRBTypeConfigureEndpointCommand << 10) | (slot << 24);
-  trb.PrintHex();
 }
 
 void Controller::SendConfigureEndpointCommand(int slot) {
@@ -499,8 +495,6 @@ void Controller::SendConfigureEndpointCommand(int slot) {
 
   volatile BasicTRB& trb = *cmd_ring_->GetNextEnqueueEntry<BasicTRB*>();
   SetConfigureEndpointCommandTRB(trb, slot, ctx);
-  PutStringAndHex("ConfigureEndpointCommand Enqueued to",
-                  cmd_ring_->GetNextEnqueueIndex());
   cmd_ring_->Push();
   NotifyHostControllerDoorbell();
 }
@@ -897,7 +891,6 @@ void Controller::CheckPortAndInitiateProcess() {
       enable_slot_trb.control = (BasicTRB::kTRBTypeEnableSlotCommand << 10);
       cmd_ring_->Push();
       NotifyHostControllerDoorbell();
-      kprintf("Sent slot assignment request for port%d\n", i);
       return;
     }
   }
@@ -916,7 +909,6 @@ void Controller::CheckPortAndInitiateProcess() {
       ResetPort(i);
       port_state_[i] = kNeedsSlotAssignment;
       port_is_initializing_[i] = true;
-      kprintf("Port init deadline for port %d is set.\n", i);
       port_init_deadline_ =
           hpet.ReadMainCounterValue() + hpet.GetCountPerSecond();
       return;
@@ -956,7 +948,6 @@ void Controller::HandleAddressDeviceCommandCompletion(const BasicTRB& e) {
   uint8_t* buf = AllocMemoryForMappedIO<uint8_t*>(kSizeOfDescriptorBuffer);
   descriptor_buffers_[slot] = buf;
   port_is_initializing_[slot_info_[slot].port] = false;
-  kprintf("AddressDevice for port %d completed\n", slot_info_[slot].port);
   RequestDeviceDescriptor(slot, SlotInfo::kWaitingForDeviceDescriptor);
 }
 

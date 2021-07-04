@@ -33,7 +33,6 @@ class USBCommunicationClassDriver : public USBClassDriver {
   void tick(XHCI::Controller& xhc) {
     switch (state_) {
       case kDriverAttached: {
-        kprintf("slot %d: Requesting Config Descriptor\n", slot_);
         config_desc_idx_ = 0;
         xhc.RequestConfigDescriptor(slot_, config_desc_idx_);
         state_ = kCheckingConfigDescriptor;
@@ -43,8 +42,6 @@ class USBCommunicationClassDriver : public USBClassDriver {
         if (!e.has_value()) {
           return;
         }
-        kprintf("slot %d: Got Config Descriptor[%d/%d]\n", slot_,
-                config_desc_idx_ + 1, xhc.GetNumOfConfigs(slot_));
         ConfigDescriptor* config_desc =
             xhc.ReadDescriptorBuffer<ConfigDescriptor>(slot_, 0);
         assert(config_desc);
@@ -64,14 +61,6 @@ class USBCommunicationClassDriver : public USBClassDriver {
           if (e->type == kDescriptorTypeInterface) {
             InterfaceDescriptor* interface_desc =
                 reinterpret_cast<InterfaceDescriptor*>(e);
-            kprintf(
-                "  Interface:\n"
-                "    Class=0x%02X SubClass=0x%02X Protocol=0x%02X\n"
-                "    num_of_endpoints=%d alt_setting=%d\n",
-                interface_desc->interface_class,
-                interface_desc->interface_subclass,
-                interface_desc->interface_protocol,
-                interface_desc->num_of_endpoints, interface_desc->alt_setting);
             if (state_ != kFoundECMConfig &&
                 interface_desc->interface_class == 0x02 &&
                 interface_desc->interface_subclass == 0x06 &&
@@ -91,18 +80,9 @@ class USBCommunicationClassDriver : public USBClassDriver {
               break;
             }
           }
-          if (e->type == kDescriptorTypeEndpoint) {
-            EndpointDescriptor* ep_desc =
-                reinterpret_cast<EndpointDescriptor*>(e);
-            kprintf(
-                "  Endpoint:\n"
-                "    addr = 0x%02X, attr = 0x%02X\n",
-                ep_desc->endpoint_address, ep_desc->attributes);
-          }
           if (e->type == 0x24 /* CS_INTERFACE */) {
             const uint8_t(*cs_hdr)[3] = reinterpret_cast<uint8_t(*)[3]>(e);
             const uint8_t subtype = (*cs_hdr)[2];
-            kprintf("  CS_INTERFACE desc: subtype = 0x%02X\n", subtype);
             if (subtype ==
                 0x0F /* Ethernet Networking Functional Descriptor */) {
               const EthNetFuncDescriptor* eth_func_desc =
@@ -122,10 +102,6 @@ class USBCommunicationClassDriver : public USBClassDriver {
         state_ = kFailed;
       } break;
       case kFoundECMConfig: {
-        kprintf(
-            "slot %d: ECM config/interface found (config_value=%d, "
-            "alt_setting)=%d\n",
-            slot_, config_value_, data_interface_alt_setting_);
         xhc.RequestStringDescriptor(slot_, config_string_idx_);
         state_ = kWaitingForConfigStringDesc;
       } break;
@@ -143,11 +119,10 @@ class USBCommunicationClassDriver : public USBClassDriver {
             xhc.ReadDescriptorBuffer<StringDescriptor>(slot_, 0);
         assert(string_desc);
         const char* s = xhc.ReadDescriptorBuffer<char>(slot_, 2);
-        kprintf("Selecting Config value = %d \"", config_value_);
         for (int i = 0; i < string_desc->length - 2; i += 2) {
           kprintf("%c", s[i]);
         }
-        kprintf("\"...\n");
+        kprintf("\n");
         xhc.SetConfig(slot_, config_value_);
         state_ = kWaitingForConfigCompletion;
       } break;
@@ -161,7 +136,6 @@ class USBCommunicationClassDriver : public USBClassDriver {
           state_ = kFailed;
           return;
         }
-        kprintf("slot %d: Configure done.\n", slot_);
         xhc.RequestStringDescriptor(slot_, mac_addr_string_idx_);
         state_ = kWaitingForMACAddrStringDesc;
       } break;
@@ -201,7 +175,6 @@ class USBCommunicationClassDriver : public USBClassDriver {
           state_ = kFailed;
           return;
         }
-        kprintf("Interface switched\n");
 
         // Setup Endpoints
         auto& config_desc = GetCachedConfigDescriptor();
@@ -230,10 +203,6 @@ class USBCommunicationClassDriver : public USBClassDriver {
               reinterpret_cast<EndpointDescriptor*>((*it));
           int dci =
               EndpointAddressToDeviceContextIndex(ep_desc->endpoint_address);
-          kprintf(
-              "  Endpoint:\n"
-              "    addr = 0x%02X, attr = 0x%02X, dci = %d\n",
-              ep_desc->endpoint_address, ep_desc->attributes, dci);
           if (ep_desc->endpoint_address & (1 << 7)) {
             // IN
             data_ep_in_dci = dci;
@@ -249,8 +218,6 @@ class USBCommunicationClassDriver : public USBClassDriver {
           state_ = kFailed;
           return;
         }
-        kprintf("data_ep_out_dci = %d, data_ep_in_dci = %d\n", data_ep_out_dci,
-                data_ep_in_dci);
         xhc.ConfigureEndpointBulkInOut(
             slot_, data_ep_in_dci, data_ep_in_max_packet_size, data_ep_out_dci,
             data_ep_out_max_packet_size);
@@ -266,7 +233,6 @@ class USBCommunicationClassDriver : public USBClassDriver {
           state_ = kFailed;
           return;
         }
-        kprintf("slot %d: Configure endpoint done.\n", slot_);
         const char* s = "Hello! This is hikalium. Are you there?";
         size_t len = strlen(s);
         for (size_t i = 0; i < len; i++) {
@@ -332,8 +298,6 @@ static void InitDrivers(XHCI::Controller& xhc) {
   if (ss.state != SlotStatus::kUninitialized) {
     return;
   }
-  kprintf("Found device_class == %d on slot %d\n", kUSBDeviceClassCommunication,
-          slot);
   ss.driver = new USBCommunicationClassDriver(slot);
   ss.state = SlotStatus::kDriverAttached;
 }

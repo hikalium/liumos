@@ -316,8 +316,6 @@ extern "C" void KernelEntry(LiumOS* liumos_passed, LoaderInfo& loader_info) {
         reinterpret_cast<void (*const*)()>(sh_ctor->sh_addr);
     auto num = sh_ctor->sh_size / sizeof(ctors);
     for (decltype(num) i = 0; i < num; i++) {
-      if (i == 1)
-        continue;
       PutStringAndHex("ctor", reinterpret_cast<const void*>(ctors[i]));
       ctors[i]();
     }
