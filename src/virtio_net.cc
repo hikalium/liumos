@@ -10,8 +10,7 @@ static std::optional<PCI::DeviceLocation> FindVirtioNet() {
   for (auto& it : PCI::GetInstance().GetDeviceList()) {
     if (!it.first.HasID(0x1af4, 0x1000))
       continue;
-    PutString(PCI::GetDeviceName(it.first));
-    PutString("\n");
+    kprintf("virtio-net device found: %s\n", PCI::GetDeviceName(it.first));
     return it.second;
   }
   PutString("Device Not Found\n");

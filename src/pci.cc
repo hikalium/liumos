@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <string>
 
+#include "kernel.h"
 #include "liumos.h"
 
 constexpr uint16_t kIOAddrPCIConfigAddr = 0x0CF8;
@@ -90,6 +91,7 @@ void PCI::DetectDevices() {
 }
 
 void PCI::PrintDevices() {
+  kprintf("device_infos len: %d\n", device_infos.size());
   char s[128];
   for (auto& e : device_list_) {
     const uint16_t vendor_id = e.first.vendor;

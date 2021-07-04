@@ -845,8 +845,7 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
 }
 
 static void PrintPortSCValue(uint32_t portsc) {
-  PutStringAndHex("PORTSC", portsc);
-  PutString("PortSC: ");
+  PutString("PORTSC: ");
   PutHex64ZeroFilled(portsc);
   PutString(" (");
   PutString((portsc & (1 << 9)) ? "1" : "0");

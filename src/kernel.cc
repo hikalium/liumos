@@ -319,7 +319,8 @@ extern "C" void KernelEntry(LiumOS* liumos_passed, LoaderInfo& loader_info) {
     }
   }
 
-  const Elf64_Shdr* sh_init_array = FindSectionHeader(liumos_elf, ".init_array");
+  const Elf64_Shdr* sh_init_array =
+      FindSectionHeader(liumos_elf, ".init_array");
   if (sh_init_array) {
     void (*const* ctors)() =
         reinterpret_cast<void (*const*)()>(sh_init_array->sh_addr);
