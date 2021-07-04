@@ -2,6 +2,7 @@ extern crate alloc;
 extern crate compiler_builtins;
 
 use crate::alloc::string::ToString;
+use alloc::format;
 use compiler_builtins::mem::memcpy;
 use core::mem::size_of;
 use core::ptr::null_mut;
@@ -159,12 +160,13 @@ pub fn draw_rect<T: BitmapImageBuffer>(
     w: i64,
     h: i64,
 ) -> core::result::Result<(), String> {
+    // Returns Err if the rect is not in the window area.
     if !buf.is_in_x_range(px)
-        || !buf.is_in_x_range(px + w)
+        || !buf.is_in_x_range(px + w - 1)
         || !buf.is_in_y_range(py)
-        || !buf.is_in_y_range(py + h)
+        || !buf.is_in_y_range(py + h - 1)
     {
-        return Err("Out of range".to_string());
+        return Err("Out of range (rect)".to_string());
     }
     let r: u8 = (color >> 16) as u8;
     let g: u8 = (color >> 8) as u8;
@@ -181,7 +183,81 @@ pub fn draw_rect<T: BitmapImageBuffer>(
             }
         }
     }
-    buf.flush();
+    Ok(())
+}
+
+pub fn draw_point<T: BitmapImageBuffer>(
+    buf: &T,
+    color: u32,
+    x: i64,
+    y: i64,
+) -> core::result::Result<(), String> {
+    if !buf.is_in_x_range(x) || !buf.is_in_x_range(x) {
+        return Err("Out of range (point)".to_string());
+    }
+    let r: u8 = (color >> 16) as u8;
+    let g: u8 = (color >> 8) as u8;
+    let b: u8 = color as u8;
+    unsafe {
+        let p = buf.pixel_at(x, y);
+        // ARGB
+        // *p.add(3) = alpha;
+        *p.add(2) = r;
+        *p.add(1) = g;
+        *p.add(0) = b;
+    }
+    Ok(())
+}
+
+pub fn draw_line<T: BitmapImageBuffer>(
+    buf: &T,
+    color: u32,
+    x0: i64,
+    y0: i64,
+    x1: i64,
+    y1: i64,
+) -> core::result::Result<(), String> {
+    if !buf.is_in_x_range(x0)
+        || !buf.is_in_x_range(x1)
+        || !buf.is_in_y_range(y0)
+        || !buf.is_in_y_range(y1)
+    {
+        return Err(
+            format!("Out of range (line ({}, {}) => ({}, {}))", x0, y0, x1, y1).to_string(),
+        );
+    }
+
+    if x1 < x0 {
+        return draw_line(buf, color, x1, y1, x0, y0);
+    }
+    if x1 == x0 {
+        if y0 <= y1 {
+            for i in y0..=y1 {
+                draw_point(buf, color, x0, i)?;
+            }
+        } else {
+            for i in y1..=y0 {
+                draw_point(buf, color, x0, i)?;
+            }
+        }
+        return Ok(());
+    }
+    assert!(x0 < x1);
+    let lx = x1 - x0 + 1;
+    const MULTIPLIER: i64 = 1024 * 1024;
+    let a = (y1 - y0) * MULTIPLIER / lx;
+    for i in 0..lx {
+        draw_line(
+            buf,
+            color,
+            x0 + i,
+            y0 + (a * i / MULTIPLIER),
+            x0 + i,
+            y0 + (a * (i + 1) / MULTIPLIER),
+        )?;
+    }
+    draw_point(buf, color, x0, y0)?;
+    draw_point(buf, color, x1, y1)?;
     Ok(())
 }
 
