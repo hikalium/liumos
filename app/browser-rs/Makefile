@@ -29,4 +29,8 @@ clippy :
 	$(CARGO) clippy $(CARGO_ARGS)
 
 test:
-	$(CARGO) test $(CARGO_ARGS) --tests -- --test-threads=1 --nocapture
+	@if [[ "$OSTYPE" == "linux-gnu"* ]]; then \
+		$(CARGO) test $(CARGO_ARGS) --tests -- --test-threads=1 --nocapture ; \
+	else \
+		echo "Skipping test for $(PWD) because we can't run the binary on this host." ; \
+	fi
