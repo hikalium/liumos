@@ -10,9 +10,7 @@ static std::optional<PCI::DeviceLocation> FindVirtioNet() {
   for (auto& it : PCI::GetInstance().GetDeviceList()) {
     if (!it.first.HasID(0x1af4, 0x1000))
       continue;
-    PutString("Device Found: ");
-    PutString(PCI::GetDeviceName(it.first));
-    PutString("\n");
+    kprintf("virtio-net device found: %s\n", PCI::GetDeviceName(it.first));
     return it.second;
   }
   PutString("Device Not Found\n");
@@ -402,27 +400,17 @@ void Net::Init() {
   PCI::EnsureBusMasterEnabled(dev_);
   PCI::BARForIO bar = PCI::GetBARForIO(dev_);
   config_io_addr_base_ = bar.base;
-  PutStringAndHex("bar.base", bar.base);
 
   // PCI: 6.7. Capabilities List
   // 4.1.4 Virtio Structure PCI Capabilities
   uint8_t cap_ofs = static_cast<uint8_t>(PCI::ReadConfigRegister32(dev_, 0x34));
   for (; cap_ofs; cap_ofs = PCI::ReadConfigRegister8(dev_, cap_ofs + 1)) {
     uint8_t cap_id = PCI::ReadConfigRegister8(dev_, cap_ofs);
-    PutStringAndHex("cap_ofs", cap_ofs);
-    PutStringAndHex("id     ", cap_id);
     if (cap_id != 0x09 /* vendor-specific capability */)
       continue;
     uint8_t cap_type = PCI::ReadConfigRegister8(dev_, cap_ofs + 3);
-    PutStringAndHex("type   ", cap_type);
     if (cap_type != 0x01)
       continue;
-    uint8_t bar_idx = PCI::ReadConfigRegister8(dev_, cap_ofs + 4);
-    PutStringAndHex("bar    ", bar_idx);
-    uint32_t common_cfg_ofs = PCI::ReadConfigRegister32(dev_, cap_ofs + 8);
-    PutStringAndHex("common_cfg_ofs ", common_cfg_ofs);
-    uint32_t common_cfg_size = PCI::ReadConfigRegister32(dev_, cap_ofs + 12);
-    PutStringAndHex("common_cfg_size", common_cfg_size);
   }
 
   // http://www.dumais.io/index.php?article=aca38a9a2b065b24dfa1dee728062a12
@@ -441,23 +429,19 @@ void Net::Init() {
     uint16_t queue_size = ReadConfigReg16(12);
     if (!queue_size)
       break;
-    PutStringAndHex("Queue Select(RW)   ", ReadConfigReg16(14));
-    PutStringAndHex("Queue Size(R)      ", queue_size);
     vq_[i].Alloc(queue_size);
     vq_size_[i] = queue_size;
     vq_cursor_[i] = 0;
-    PutStringAndHex("Queue Addr(phys)   ", vq_[i].GetPhysAddr());
     uint64_t vq_pfn = vq_[i].GetPhysAddr() >> kPageSizeExponent;
     assert(vq_pfn == (vq_pfn & 0xFFFF'FFFF));
     WriteConfigReg32(8, static_cast<uint32_t>(vq_pfn));
-    PutStringAndHex("Queue Addr(RW)     ", ReadConfigReg32(8));
   }
 
   WriteDeviceStatus(ReadDeviceStatus() | kDeviceStatusDriverOK);
 
   initialized_ = true;
 
-  PutString("MAC Addr: ");
+  PutString("virtio-net MAC Addr: ");
   for (int i = 0; i < 6; i++) {
     mac_addr_.mac[i] = ReadConfigReg8(0x14 + i);
   }
