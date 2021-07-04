@@ -311,12 +311,20 @@ extern "C" void KernelEntry(LiumOS* liumos_passed, LoaderInfo& loader_info) {
 
   const Elf64_Shdr* sh_ctor = FindSectionHeader(liumos_elf, ".ctors");
   if (sh_ctor) {
-    PutString("Calling .ctors...\n");
     void (*const* ctors)() =
         reinterpret_cast<void (*const*)()>(sh_ctor->sh_addr);
     auto num = sh_ctor->sh_size / sizeof(ctors);
     for (decltype(num) i = 0; i < num; i++) {
-      PutStringAndHex("ctor", reinterpret_cast<const void*>(ctors[i]));
+      ctors[i]();
+    }
+  }
+
+  const Elf64_Shdr* sh_init_array = FindSectionHeader(liumos_elf, ".init_array");
+  if (sh_init_array) {
+    void (*const* ctors)() =
+        reinterpret_cast<void (*const*)()>(sh_init_array->sh_addr);
+    auto num = sh_init_array->sh_size / sizeof(ctors);
+    for (decltype(num) i = 0; i < num; i++) {
       ctors[i]();
     }
   }
