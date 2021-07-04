@@ -1,7 +1,10 @@
 #![no_std]
 #![feature(alloc_error_handler)]
+#![feature(rustc_private)]
 
 extern crate alloc;
+
+pub mod gui;
 
 use alloc::alloc::{GlobalAlloc, Layout};
 use alloc::string::String;
