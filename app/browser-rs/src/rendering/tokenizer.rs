@@ -33,7 +33,7 @@ pub struct Tokenizer {
     state: State,
     pos: usize,
     reconsume: bool,
-    new_token: Option<Token>,
+    latest_token: Option<Token>,
     input: Vec<char>,
 }
 
@@ -43,7 +43,7 @@ impl Tokenizer {
             state: State::Data,
             pos: 0,
             reconsume: false,
-            new_token: None,
+            latest_token: None,
             input: html.chars().collect(),
         }
     }
@@ -65,23 +65,26 @@ impl Tokenizer {
 
     /// Creates a StartTag or EndTag token.
     fn create_tag_open(&mut self, start_tag_token: bool) {
-        assert!(self.new_token.is_none());
+        assert!(self.latest_token.is_none());
 
         if start_tag_token {
-            self.new_token = Some(Token::StartTag {
+            self.latest_token = Some(Token::StartTag {
                 tag: String::new(),
                 self_closing: false,
             });
         } else {
-            self.new_token = Some(Token::EndTag {
+            self.latest_token = Some(Token::EndTag {
                 tag: String::new(),
                 self_closing: false,
             });
         }
     }
 
+    /// Appends a char to the latest created Token `latest_token`.
     fn append_tag_name(&mut self, c: char) {
-        if let Some(t) = self.new_token.as_mut() {
+        assert!(self.latest_token.is_some());
+
+        if let Some(t) = self.latest_token.as_mut() {
             match t {
                 Token::StartTag {
                     ref mut tag,
@@ -91,11 +94,44 @@ impl Tokenizer {
                     ref mut tag,
                     self_closing: _,
                 } => tag.push(c),
-                _ => panic!("`new_token` should be either StartTag or EndTag"),
+                _ => panic!("`latest_token` should be either StartTag or EndTag"),
             }
-        } else {
-            panic!("`new_token` should have a value");
         }
+    }
+
+    /// Sets `self_closing` flag to the `latest_token`.
+    fn set_self_closing_flag(&mut self) {
+        assert!(self.latest_token.is_some());
+
+        if let Some(t) = self.latest_token.as_mut() {
+            match t {
+                Token::StartTag {
+                    tag: _,
+                    ref mut self_closing,
+                }
+                | Token::EndTag {
+                    tag: _,
+                    ref mut self_closing,
+                } => *self_closing = true,
+                _ => panic!("`latest_token` should be either StartTag or EndTag"),
+            }
+        }
+    }
+
+    /// Returns `latest_token` and makes it to None.
+    fn take_latest_token(&mut self) -> Option<Token> {
+        assert!(self.latest_token.is_some());
+
+        let t = self.latest_token.as_ref().and_then(|t| Some(t.clone()));
+        self.latest_token = None;
+        assert!(self.latest_token.is_none());
+
+        t
+    }
+
+    /// Returns true if the current position is larger than the length of input.
+    fn is_eof(&self) -> bool {
+        self.pos > self.input.len()
     }
 }
 
@@ -121,7 +157,7 @@ impl Iterator for Tokenizer {
                         continue;
                     }
 
-                    if self.pos > self.input.len() {
+                    if self.is_eof() {
                         return Some(Token::Eof);
                     }
 
@@ -141,7 +177,7 @@ impl Iterator for Tokenizer {
                         continue;
                     }
 
-                    if self.pos > self.input.len() {
+                    if self.is_eof() {
                         return Some(Token::Eof);
                     }
 
@@ -150,8 +186,8 @@ impl Iterator for Tokenizer {
                 }
                 // https://html.spec.whatwg.org/multipage/parsing.html#end-tag-open-state
                 State::EndTagOpen => {
-                    if self.pos > self.input.len() {
-                        // invalid
+                    if self.is_eof() {
+                        // invalid parse error.
                         return Some(Token::Eof);
                     }
 
@@ -166,9 +202,12 @@ impl Iterator for Tokenizer {
                 State::TagName => {
                     if c == '>' {
                         self.state = State::Data;
-                        let t = self.new_token.as_ref().and_then(|t| Some(t.clone()));
-                        self.new_token = None;
-                        return t;
+                        return self.take_latest_token();
+                    }
+
+                    if c == '/' {
+                        self.state = State::SelfClosingStartTag;
+                        continue;
                     }
 
                     if c.is_ascii_uppercase() {
@@ -176,14 +215,25 @@ impl Iterator for Tokenizer {
                         continue;
                     }
 
-                    if self.pos > self.input.len() {
-                        // invalid
+                    if self.is_eof() {
+                        // invalid parse error.
                         return Some(Token::Eof);
                     }
 
                     self.append_tag_name(c);
                 }
-                _ => {}
+                State::SelfClosingStartTag => {
+                    if c == '>' {
+                        self.set_self_closing_flag();
+                        self.state = State::Data;
+                        return self.take_latest_token();
+                    }
+
+                    if self.is_eof() {
+                        // invalid parse error.
+                        return Some(Token::Eof);
+                    }
+                }
             }
         }
     }

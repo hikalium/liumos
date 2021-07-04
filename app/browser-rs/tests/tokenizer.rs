@@ -106,6 +106,17 @@ fn BODY() {
 }
 
 #[test_case]
+fn br() {
+    run_test!(
+        "<br/>",
+        Token::StartTag {
+            tag: String::from("br"),
+            self_closing: true,
+        }
+    );
+}
+
+#[test_case]
 fn simple_page() {
     run_test!(
         "<html><body>abc</body></html>",
