@@ -31,7 +31,7 @@ where
 
 #[cfg(test)]
 pub fn test_runner(tests: &[&dyn Testable]) {
-    println!("Running {} tests in tokenizer.rs", tests.len());
+    println!("Running {} tests in dom.rs", tests.len());
     for test in tests {
         test.run();
     }
@@ -66,78 +66,12 @@ macro_rules! run_test {
 }
 
 #[test_case]
-fn no_input() {
-    run_test!("");
-}
-
-#[test_case]
-fn chars() {
-    run_test!("foo", Token::Char('f'), Token::Char('o'), Token::Char('o'));
-}
-
-#[test_case]
-fn body() {
-    run_test!(
-        "<body></body>",
-        Token::StartTag {
-            tag: String::from("body"),
-            self_closing: false,
-        },
-        Token::EndTag {
-            tag: String::from("body"),
-            self_closing: false,
-        }
-    );
-}
-
-#[test_case]
-fn BODY() {
-    run_test!(
-        "<BODY></BODY>",
-        Token::StartTag {
-            tag: String::from("body"),
-            self_closing: false,
-        },
-        Token::EndTag {
-            tag: String::from("body"),
-            self_closing: false
-        }
-    );
-}
-
-#[test_case]
 fn br() {
     run_test!(
         "<br/>",
         Token::StartTag {
             tag: String::from("br"),
             self_closing: true,
-        }
-    );
-}
-
-#[test_case]
-fn simple_page() {
-    run_test!(
-        "<html><body>abc</body></html>",
-        Token::StartTag {
-            tag: String::from("html"),
-            self_closing: false,
-        },
-        Token::StartTag {
-            tag: String::from("body"),
-            self_closing: false,
-        },
-        Token::Char('a'),
-        Token::Char('b'),
-        Token::Char('c'),
-        Token::EndTag {
-            tag: String::from("body"),
-            self_closing: false,
-        },
-        Token::EndTag {
-            tag: String::from("html"),
-            self_closing: false,
         }
     );
 }

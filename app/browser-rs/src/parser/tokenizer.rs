@@ -8,7 +8,6 @@ use core::iter::Iterator;
 #[allow(unused_imports)]
 use liumlib::*;
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum State {
     Data,
@@ -222,6 +221,7 @@ impl Iterator for Tokenizer {
 
                     self.append_tag_name(c);
                 }
+                // https://html.spec.whatwg.org/multipage/parsing.html#self-closing-start-tag-state
                 State::SelfClosingStartTag => {
                     if c == '>' {
                         self.set_self_closing_flag();

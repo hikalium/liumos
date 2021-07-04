@@ -1,4 +1,4 @@
-pub mod parser;
+pub mod dom;
 pub mod tokenizer;
 
 use alloc::string::String;
