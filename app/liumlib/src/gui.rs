@@ -1,6 +1,7 @@
 extern crate alloc;
 extern crate compiler_builtins;
 
+use crate::alloc::string::ToString;
 use compiler_builtins::mem::memcpy;
 use core::mem::size_of;
 use core::ptr::null_mut;
@@ -41,32 +42,45 @@ pub struct WindowBuffer {
 }
 
 pub trait BitmapImageBuffer {
-    fn bytes_per_pixel(&self) -> usize;
-    fn pixels_per_line(&self) -> usize;
-    fn width(&self) -> usize;
-    fn height(&self) -> usize;
+    fn bytes_per_pixel(&self) -> i64;
+    fn pixels_per_line(&self) -> i64;
+    fn width(&self) -> i64;
+    fn height(&self) -> i64;
     fn buf(&self) -> *mut u8;
+    unsafe fn pixel_at(&self, x: i64, y: i64) -> *mut u8;
     fn flush(&self);
+    fn is_in_x_range(&self, py: i64) -> bool;
+    fn is_in_y_range(&self, py: i64) -> bool;
 }
 
 impl BitmapImageBuffer for WindowBuffer {
-    fn bytes_per_pixel(&self) -> usize {
+    fn bytes_per_pixel(&self) -> i64 {
         4
     }
-    fn pixels_per_line(&self) -> usize {
-        self.width
+    fn pixels_per_line(&self) -> i64 {
+        self.width as i64
     }
-    fn width(&self) -> usize {
-        self.width
+    fn width(&self) -> i64 {
+        self.width as i64
     }
-    fn height(&self) -> usize {
-        self.height
+    fn height(&self) -> i64 {
+        self.height as i64
     }
     fn buf(&self) -> *mut u8 {
         self.bmp_buf
     }
+    unsafe fn pixel_at(&self, x: i64, y: i64) -> *mut u8 {
+        self.buf()
+            .add(((y * self.pixels_per_line() + x) * self.bytes_per_pixel()) as usize)
+    }
     fn flush(&self) {
         flush_window_buffer(&self);
+    }
+    fn is_in_x_range(&self, px: i64) -> bool {
+        0 <= px && px < self.width as i64
+    }
+    fn is_in_y_range(&self, py: i64) -> bool {
+        0 <= py && py < self.height as i64
     }
 }
 
@@ -135,6 +149,40 @@ pub fn create_window(width: usize, height: usize) -> core::result::Result<Window
         width: width,
         height: height,
     })
+}
+
+pub fn draw_rect<T: BitmapImageBuffer>(
+    buf: &T,
+    color: u32,
+    px: i64,
+    py: i64,
+    w: i64,
+    h: i64,
+) -> core::result::Result<(), String> {
+    if !buf.is_in_x_range(px)
+        || !buf.is_in_x_range(px + w)
+        || !buf.is_in_y_range(py)
+        || !buf.is_in_y_range(py + h)
+    {
+        return Err("Out of range".to_string());
+    }
+    let r: u8 = (color >> 16) as u8;
+    let g: u8 = (color >> 8) as u8;
+    let b: u8 = color as u8;
+    for y in py..py + h {
+        for x in px..px + w {
+            unsafe {
+                let p = buf.pixel_at(x, y);
+                // ARGB
+                // *p.add(3) = alpha;
+                *p.add(2) = r;
+                *p.add(1) = g;
+                *p.add(0) = b;
+            }
+        }
+    }
+    buf.flush();
+    Ok(())
 }
 
 fn flush_window_buffer(w: &WindowBuffer) {

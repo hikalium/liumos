@@ -14,7 +14,7 @@ include $(THIS_DIR)cc_cache.gen.mk
 CLANG_SYSTEM_INC_PATH=$(shell $(THIS_DIR)./scripts/get_clang_builtin_include_dir.sh $(LLVM_CXX))
 LIUM_NCPU?=1
 
-dump_config : 
+dump_config :
 	@ cat $(THIS_DIR)cc_cache.gen.mk
 	@ echo CLANG_SYSTEM_INC_PATH=$(CLANG_SYSTEM_INC_PATH)
 
