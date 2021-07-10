@@ -9,6 +9,7 @@ extern crate alloc;
 use alloc::string::String;
 use alloc::vec::Vec;
 
+use browser_rs::parser::dom::*;
 use browser_rs::parser::tokenizer::*;
 use liumlib::*;
 
@@ -50,28 +51,54 @@ macro_rules! run_test {
         let mut t = Tokenizer::new(String::from($html));
         assert_eq!(t.next(), None);
     };
-    ($html:literal, $( $token:expr ),*) => {
-        let mut t = Tokenizer::new(String::from($html));
+    ($html:literal, $( $node:expr ),*) => {
+        let t = Tokenizer::new(String::from($html));
 
-        let mut expected = Vec::new();
-        $(
-            expected.push($token);
-        )*
+        let mut p = Parser::new(t);
+        let root = p.construct_tree();
 
-        for e in expected {
-            let token = t.next().expect("tokenizer should have a next Token");
-            assert_eq!(token, e, "expected {:?} but got {:?}", e, token);
+        let mut queue = Vec::new();
+
+        queue.push(root);
+        /*
+        let mut sibiling = root.next_sibling();
+
+        while sibiling.is_some() {
+            queue.push(sibiling);
+            sibiling = sibiling.next_sibling();
         }
+
+        // TODO: fix duplicated children
+        let mut child = root.first_child();
+        while child.is_some() {
+            queue.push(child);
+            child = child.next_sibling();
+        }
+        */
+
+        $(
+            let n = queue.remove(0);
+
+            assert_eq!($node, n);
+
+            /*
+            while sibiling.is_some() {
+                queue.push(sibiling);
+                sibiling = sibiling.next_sibling();
+            }
+            */
+
+            // TODO: add children to queue.
+        )*
     };
 }
 
 #[test_case]
-fn br() {
-    run_test!(
-        "<br/>",
-        Token::StartTag {
-            tag: String::from("br"),
-            self_closing: true,
-        }
-    );
+fn no_input() {
+    run_test!("");
+}
+
+#[test_case]
+fn html() {
+    run_test!("<html></html>", HtmlElementImpl::new());
 }
