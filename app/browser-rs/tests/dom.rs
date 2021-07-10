@@ -47,19 +47,15 @@ fn main() {
 
 #[macro_export]
 macro_rules! run_test {
-    ($html:literal) => {
-        let mut t = Tokenizer::new(String::from($html));
-        assert_eq!(t.next(), None);
-    };
     ($html:literal, $( $node:expr ),*) => {
         let t = Tokenizer::new(String::from($html));
 
         let mut p = Parser::new(t);
-        let root = p.construct_tree();
+        let tree = p.construct_tree();
 
         let mut queue = Vec::new();
 
-        queue.push(root);
+        queue.push(tree.root());
         /*
         let mut sibiling = root.next_sibling();
 
@@ -95,10 +91,16 @@ macro_rules! run_test {
 
 #[test_case]
 fn no_input() {
-    run_test!("");
+    run_test!("", Node::Document);
 }
 
+/*
 #[test_case]
 fn html() {
-    run_test!("<html></html>", HtmlElementImpl::new());
+    run_test!(
+        "<html></html>",
+        Node::Document,
+        Node::Element(Element::HtmlElement(HtmlElementImpl::new()))
+    );
 }
+*/

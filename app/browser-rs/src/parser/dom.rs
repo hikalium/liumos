@@ -12,7 +12,7 @@ use core::assert;
 use liumlib::*;
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Node {
     /// https://dom.spec.whatwg.org/#interface-document
     Document,
@@ -21,7 +21,7 @@ pub enum Node {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 /// https://dom.spec.whatwg.org/#interface-element
 pub enum Element {
     /// https://html.spec.whatwg.org/multipage/dom.html#htmlelement
@@ -46,17 +46,18 @@ impl Node {
 }
 
 /// https://html.spec.whatwg.org/multipage/semantics.html#htmlhtmlelement
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct HtmlElementImpl {}
 
 impl HtmlElementImpl {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self {}
     }
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 enum NodeType {
     Element = 1,
     Attr = 2,
@@ -65,7 +66,7 @@ enum NodeType {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum InsertionMode {
     Initial,
     BeforeHtml,
@@ -85,6 +86,26 @@ pub struct Parser {
     t: Tokenizer,
 }
 
+#[allow(dead_code)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct DomTree {
+    root: Node,
+}
+
+impl DomTree {
+    #[allow(dead_code)]
+    fn new() -> Self {
+        Self {
+            root: Node::Document,
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn root(&self) -> Node {
+        self.root
+    }
+}
+
 impl Parser {
     #[allow(dead_code)]
     pub fn new(t: Tokenizer) -> Self {
@@ -95,7 +116,22 @@ impl Parser {
     }
 
     #[allow(dead_code)]
-    pub fn construct_tree(&mut self) -> HtmlElementImpl {
-        HtmlElementImpl::new()
+    pub fn construct_tree(&mut self) -> DomTree {
+        let tree = DomTree::new();
+
+        let _token = match self.t.next() {
+            Some(t) => t,
+            None => return tree,
+        };
+
+        match self.mode {
+            // https://html.spec.whatwg.org/multipage/parsing.html#the-initial-insertion-mode
+            InsertionMode::Initial => self.mode = InsertionMode::BeforeHtml,
+            // https://html.spec.whatwg.org/multipage/parsing.html#the-before-html-insertion-mode
+            InsertionMode::BeforeHtml => {}
+            _ => {}
+        }
+
+        tree
     }
 }
