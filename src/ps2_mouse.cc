@@ -147,6 +147,24 @@ static void MoveMouseCursor(int& px, int& py, int dx, int dy) {
 void MouseManager() {
   auto& mctrl = PS2MouseController::GetInstance();
   int mx = 50, my = 50;
+
+  constexpr int debug_info_width = 128;
+  constexpr int debug_info_height = 64;
+  Sheet* debug_info_sheet = AllocKernelMemory<Sheet*>(sizeof(Sheet));
+  bzero(debug_info_sheet, sizeof(Sheet));
+  uint32_t* debug_info_buf =
+      AllocKernelMemory<uint32_t*>(4 * debug_info_width * debug_info_height);
+  for (int y = 0; y < debug_info_height; y++) {
+    for (int x = 0; x < debug_info_width; x++) {
+      debug_info_buf[y * debug_info_width + x] = 0xffffff;
+    }
+  }
+  debug_info_sheet->Init(debug_info_buf, debug_info_width, debug_info_height,
+                         debug_info_width, 0, 0);
+  debug_info_sheet->SetParent(liumos->vram_sheet);
+  SheetPainter::DrawString(*debug_info_sheet, "mouse:", 8, 16, false);
+  debug_info_sheet->Flush();
+
   DrawMouseCursor(mx, my);
   for (;;) {
     if (mctrl.buffer.IsEmpty()) {
@@ -155,5 +173,12 @@ void MouseManager() {
     }
     auto me = mctrl.buffer.Pop();
     MoveMouseCursor(mx, my, me.dx, me.dy);
+    SheetPainter::DrawCharacter(*debug_info_sheet, me.buttonL ? 'L' : 'l',
+                                8 * 2, 32, false);
+    SheetPainter::DrawCharacter(*debug_info_sheet, me.buttonC ? 'C' : 'c',
+                                8 * 3, 32, false);
+    SheetPainter::DrawCharacter(*debug_info_sheet, me.buttonR ? 'R' : 'r',
+                                8 * 4, 32, false);
+    debug_info_sheet->Flush();
   }
 }

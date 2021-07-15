@@ -42,6 +42,7 @@ class Sheet {
   // Flush fluhes the contents of sheet buf_ to its parent sheet.
   // This function is not recursive.
   void Flush(int px, int py, int w, int h);
+  void Flush() { Flush(0, 0, rect_.xsize, rect_.ysize); };
 
  private:
   bool IsInRectY(int y) { return 0 <= y && y < rect_.ysize; }
