@@ -84,12 +84,9 @@ void Sheet::Flush(int rx, int ry, int rw, int rh) {
   }
 }
 
-/*
 void Sheet::FlushRecursive(int rx, int ry, int rw, int rh) {
   if (!parent_)
     return;
   Flush(rx, ry, rw, rh);
-  parent_.FlushRecursive(rx + ry, )
-
+  parent_->FlushRecursive(rx + rect_.x, ry + rect_.y, rw, rh);
 }
-*/
