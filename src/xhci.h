@@ -411,6 +411,7 @@ class Controller {
     kDisconnected,
     kAttached,
     kAttachedUSB2,
+    kAttachedUSB3,
     //
     kNeedsPortReset,
     kNeedsSlotAssignment,

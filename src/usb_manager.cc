@@ -337,6 +337,22 @@ class USBCommonDriver : public USBClassDriver {
       } break;
       case kDone: {
         kprintf("Got %d config descriptors in total\n", config_desc_idx_);
+        for (int i = 0; i < config_desc_idx_; i++) {
+          auto& config = slot_state[slot_].config_descriptors[i];
+          kprintf("config[%d]:\n", i);
+          for (const auto& e : *config) {
+            if (e->type == kDescriptorTypeInterface) {
+              InterfaceDescriptor& interface_desc =
+                  *reinterpret_cast<InterfaceDescriptor*>(e);
+              kprintf("  interface:\n");
+              kprintf("    class:    0x%02X\n", interface_desc.interface_class);
+              kprintf("    subclass: 0x%02X\n",
+                      interface_desc.interface_subclass);
+              kprintf("    protocol: 0x%02X\n",
+                      interface_desc.interface_protocol);
+            }
+          }
+        }
         state_ = kFailed;
       } break;
       case kFailed: {

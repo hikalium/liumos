@@ -911,6 +911,13 @@ void Controller::CheckPortAndInitiateProcess() {
           hpet.ReadMainCounterValue() + hpet.GetCountPerSecond();
       return;
     }
+    if (port_state_[i] == kAttachedUSB3) {
+      port_state_[i] = kNeedsSlotAssignment;
+      port_is_initializing_[i] = true;
+      port_init_deadline_ =
+          hpet.ReadMainCounterValue() + hpet.GetCountPerSecond();
+      return;
+    }
   }
 }
 
@@ -1029,12 +1036,21 @@ void Controller::PollEvents() {
       kprintf("port %d connected\n", port);
       PrintPortSCValue(ReadPORTSC(port));
       port_state_[port] = kAttached;
+      continue;
     }
     if (port_state_[port] == kAttached &&
         !(portsc & kPortSCBitPortEnableDisable) &&
         !(portsc & kPortSCBitPortReset) && ReadPORTSCLinkState(port) == 7) {
       kprintf("port %d: kAttachedUSB2\n", port);
       port_state_[port] = kAttachedUSB2;
+      continue;
+    }
+    if (port_state_[port] == kAttached &&
+        portsc & kPortSCBitPortEnableDisable &&
+        !(portsc & kPortSCBitPortReset) && ReadPORTSCLinkState(port) == 0) {
+      kprintf("port %d: kAttachedUSB3\n", port);
+      port_state_[port] = kAttachedUSB3;
+      continue;
     }
   }
 }
