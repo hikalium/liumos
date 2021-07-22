@@ -159,7 +159,7 @@ void Controller::ResetPort(int port) {
 void Controller::MarkSlotAsFailed(int slot) {
   // The port associated with this slot will also be disabled.
   auto& slot_info = slot_info_[slot];
-  slot_info.state = SlotInfo::kFailed;
+  slot_info.state = SlotState::kFailed;
   DisablePort(slot_info.port);
 }
 
@@ -455,7 +455,7 @@ void Controller::SendAddressDeviceCommand(int slot) {
   trb.control = (BasicTRB::kTRBTypeAddressDeviceCommand << 10) | (slot << 24);
   cmd_ring_->Push();
   NotifyHostControllerDoorbell();
-  slot_info.state = SlotInfo::kWaitingForSecondAddressDeviceCommandCompletion;
+  slot_info.state = SlotState::kWaitingForSecondAddressDeviceCommandCompletion;
 }
 
 static void SetConfigureEndpointCommandTRB(
@@ -510,8 +510,7 @@ static void PutDataStageTD(XHCI::Controller::CtrlEPTRing& tring,
   tring.Push();
 }
 
-void Controller::RequestDeviceDescriptor(int slot,
-                                         SlotInfo::SlotState next_state) {
+void Controller::RequestDeviceDescriptor(int slot, SlotState next_state) {
   // [USB2.0]9.4.3 Get Descriptor says:
   // "All devices must provide a device descriptor"
   auto& slot_info = slot_info_[slot];
@@ -657,7 +656,7 @@ void Controller::SetHIDBootProtocol(int slot) {
   status.SetParams(true, true);
   tring.Push();
 
-  slot_info_[slot].state = SlotInfo::kSettingBootProtocol;
+  slot_info_[slot].state = SlotState::kSettingBootProtocol;
   NotifyDeviceContextDoorbell(slot, 1);
 }
 void Controller::GetHIDProtocol(int slot) {
@@ -678,7 +677,7 @@ void Controller::GetHIDProtocol(int slot) {
   status.Print();
   tring.Push();
 
-  slot_info_[slot].state = SlotInfo::kCheckingProtocol;
+  slot_info_[slot].state = SlotState::kCheckingProtocol;
   NotifyDeviceContextDoorbell(slot, 1);
 }
 
@@ -697,7 +696,7 @@ void Controller::GetHIDReport(int slot) {
   status.SetParams(false, false);
   tring.Push();
 
-  slot_info_[slot].state = SlotInfo::kGettingReport;
+  slot_info_[slot].state = SlotState::kGettingReport;
   NotifyDeviceContextDoorbell(slot, 1);
 }
 
@@ -798,13 +797,13 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
     if (e.GetCompletionCode() == 6) {
       PutString("  = Stall Error\n");
     }
-    if (si.state == SlotInfo::kAvailable) {
+    if (si.state == SlotState::kAvailable) {
       si.event_queue.Push(SlotEvent::kTransferFailed);
     }
     return;
   }
   switch (si.state) {
-    case SlotInfo::kWaitingForDeviceDescriptor: {
+    case SlotState::kWaitingForDeviceDescriptor: {
       DeviceDescriptor& device_desc =
           *reinterpret_cast<DeviceDescriptor*>(descriptor_buffers_[slot]);
       si.device_class = device_desc.device_class;
@@ -818,9 +817,9 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
           "USB Device detected: (class, subclass, protocol) = "
           "(%02X, %02X, %02X)\n",
           si.device_class, si.device_subclass, si.device_protocol);
-      si.state = SlotInfo::kAvailable;
+      si.state = SlotState::kAvailable;
     } break;
-    case SlotInfo::kAvailable: {
+    case SlotState::kManaged: {
       si.event_queue.Push(SlotEvent::kTransferSucceeded);
     } break;
     default: {
@@ -838,7 +837,7 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
       PutChar('\n');
       */
       PutStringAndHex("Unexpected Transfer Event In Slot State",
-                      slot_info_[slot].state);
+                      static_cast<int>(slot_info_[slot].state));
     }
       return;
   }
@@ -947,7 +946,7 @@ void Controller::HandleAddressDeviceCommandCompletion(const BasicTRB& e) {
   uint8_t* buf = AllocMemoryForMappedIO<uint8_t*>(kSizeOfDescriptorBuffer);
   descriptor_buffers_[slot] = buf;
   port_is_initializing_[slot_info_[slot].port] = false;
-  RequestDeviceDescriptor(slot, SlotInfo::kWaitingForDeviceDescriptor);
+  RequestDeviceDescriptor(slot, SlotState::kWaitingForDeviceDescriptor);
 }
 
 void Controller::HandleConfigureEndpointCommandCompletion(const BasicTRB& e) {
@@ -1041,7 +1040,7 @@ void Controller::PollEvents() {
 }
 
 const char* Controller::SlotInfo::GetSlotStateStr() {
-  if (this->state == Controller::SlotInfo::SlotState::kAvailable) {
+  if (this->state == SlotState::kAvailable) {
     return "Available";
   }
   return "?";
@@ -1059,7 +1058,7 @@ void Controller::PrintUSBDevices() {
   }
   for (int slot = 1; slot <= num_of_slots_enabled_; slot++) {
     auto& info = slot_info_[slot];
-    if (info.state == SlotInfo::kUndefined)
+    if (info.state == SlotState::kUndefined)
       continue;
     kprintf("Slot 0x%X (on port 0x%X):\n", slot, info.port);
     kprintf("  num_of_config               = %d\n", info.num_of_config);
