@@ -4,9 +4,8 @@
 
 class USBClassDriver {
  public:
-  virtual void tick(XHCI::Controller&){
-
-  };
+  virtual ~USBClassDriver(){};
+  virtual void tick(XHCI::Controller&) = 0;
 };
 
 struct SlotStatus {
@@ -33,6 +32,7 @@ class USBCommunicationClassDriver : public USBClassDriver {
   USBCommunicationClassDriver(int slot) : slot_(slot), state_(kDriverAttached) {
     send_buf_ = AllocMemoryForMappedIO<uint8_t*>(kPageSize);
   };
+  ~USBCommunicationClassDriver() {}
   void tick(XHCI::Controller& xhc) {
     switch (state_) {
       case kDriverAttached: {
@@ -242,6 +242,7 @@ class USBCommunicationClassDriver : public USBClassDriver {
           send_buf_[i] = s[i];
         }
         xhc.WriteBulkData(slot_, send_buf_, len);
+        kprintf("packet sent!\n");
         state_ = kFailed;
       } break;
       case kFailed: {
@@ -290,6 +291,7 @@ class USBCommonDriver : public USBClassDriver {
       config_descriptors[i] = nullptr;
     }
   };
+  ~USBCommonDriver() {}
   void tick(XHCI::Controller& xhc) {
     switch (state_) {
       case kDriverAttached: {
@@ -350,6 +352,15 @@ class USBCommonDriver : public USBClassDriver {
                       interface_desc.interface_subclass);
               kprintf("    protocol: 0x%02X\n",
                       interface_desc.interface_protocol);
+              if (interface_desc.interface_class == 0x02 &&
+                  interface_desc.interface_subclass == 0x06 &&
+                  interface_desc.interface_protocol == 0x00) {
+                kprintf("USB CDC Network device found!\n");
+                auto cdc_net_driver = new USBCommunicationClassDriver(slot_);
+                delete slot_state[slot_].driver;
+                slot_state[slot_].driver = cdc_net_driver;
+                return;
+              }
             }
           }
         }

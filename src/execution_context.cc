@@ -55,6 +55,7 @@ void ExecutionContext::AlignStack(int align) {
 void ExecutionContext::ExpandHeap(int64_t diff) {
   uint64_t diff_abs = diff < 0 ? -diff : diff;
   if (diff_abs > map_info_.heap.GetMapSize()) {
+    PutStringAndHex("diff_abs", diff);
     PutStringAndDecimal("diff_abs", diff_abs);
     PutStringAndDecimal("map_size", map_info_.heap.GetMapSize());
     Panic("Too large heap expansion request");
