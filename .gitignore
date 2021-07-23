@@ -10,5 +10,6 @@ mnt/
 *.o
 *.dat
 *.log
+*.tmp
 cc_cache.gen.mk
 prebuilt/

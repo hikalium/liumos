@@ -26,16 +26,45 @@ class Sheet {
     pixels_per_scan_line_ = pixels_per_scan_line;
     rect_.x = x;
     rect_.y = y;
+    map_ = nullptr;
+  }
+  void SetMap(Sheet** map) {
+    map_ = map;
+    UpdateMap();
+  }
+  void UpdateMap() {
+    if (!map_) {
+      return;
+    }
+    for (int y = 0; y < GetYSize(); y++) {
+      for (int x = 0; x < GetXSize(); x++) {
+        map_[y * GetXSize() + x] = nullptr;
+      }
+    }
+    Rect client_rect = GetClientRect();
+    for (Sheet* s = children_; s; s = s->below_) {
+      Rect in_view = client_rect.GetIntersectionWith(s->GetRect());
+      for (int y = in_view.y; y < in_view.y + in_view.ysize; y++) {
+        for (int x = in_view.x; x < in_view.x + in_view.xsize; x++) {
+          if (map_[y * GetXSize() + x]) {
+            continue;
+          }
+          map_[y * GetXSize() + x] = s;
+        }
+      }
+    }
   }
   void SetParent(Sheet* parent) {
     // Insert at front
     below_ = parent->children_;
     parent_ = parent;
-    parent->children_ = this;
+    parent_->children_ = this;
+    parent_->UpdateMap();
   }
   void SetPosition(int x, int y) {
     rect_.x = x;
     rect_.y = y;
+    parent_->UpdateMap();
   }
   void MoveRelative(int dx, int dy) {
     SetPosition(GetX() + dx, GetY() + dy);
@@ -70,6 +99,7 @@ class Sheet {
   void TransferLineFrom(Sheet& src, int py, int px, int w);
   Sheet *parent_, *below_, *children_;
   uint32_t* buf_;
+  Sheet** map_;
   Rect rect_;
   int pixels_per_scan_line_;
 };

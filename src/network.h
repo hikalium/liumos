@@ -7,6 +7,8 @@
 #include "generic.h"
 #include "ring_buffer.h"
 
+#include "string_buffer.h"
+
 class Network {
  public:
   //
@@ -23,6 +25,15 @@ class Network {
     }
     bool operator==(const EtherAddr& rhs) const { return IsEqualTo(rhs); }
     void Print() const;
+
+    template <typename T>
+    void WriteString(T & string_buf) const {
+      for (int i = 0; i < 6; i++) {
+        string_buf.WriteHex8ZeroFilled(mac[i]);
+        if (i != 5)
+          string_buf.WriteChar(':');
+      }
+    }
   };
   static constexpr EtherAddr kBroadcastEtherAddr = {0xFF, 0xFF, 0xFF,
                                                     0xFF, 0xFF, 0xFF};
@@ -79,6 +90,15 @@ class Network {
   packed_struct IPv4NetMask {
     uint8_t mask[4];
     void Print() const;
+
+    template <typename T>
+    void WriteString(T & string_buf) const {
+      for (int i = 0; i < 4; i++) {
+        string_buf.WriteDecimal64(mask[i]);
+        if (i != 3)
+          string_buf.WriteChar('.');
+      }
+    }
   };
   packed_struct IPv4Addr {
     uint8_t addr[4];
@@ -106,6 +126,15 @@ class Network {
       return ((*reinterpret_cast<const uint32_t*>(addr) ^
                *reinterpret_cast<const uint32_t*>(another.addr)) &
               *reinterpret_cast<const uint32_t*>(mask.mask)) == 0;
+    }
+
+    template <typename T>
+    void WriteString(T & string_buf) const {
+      for (int i = 0; i < 4; i++) {
+        string_buf.WriteDecimal64(addr[i]);
+        if (i != 3)
+          string_buf.WriteChar('.');
+      }
     }
   };
   struct IPv4AddrHash {
