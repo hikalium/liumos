@@ -11,20 +11,53 @@ print('liumOS root is at: ', liumos_root_path, file=sys.stderr, flush=True)
 
 def launch_liumos():
     p = pexpect.spawn("make -C {} run_for_e2e_test".format(liumos_root_path))
-    p.expect(r"\(qemu\)")
+    i = 1
+    while (i != 0):
+        try:
+            i = p.expect([r"\(qemu\)", ".*\n"], timeout=60)
+        except pexpect.exceptions.EOF:
+            print("---- log begin ----")
+            print(p.before.decode("utf-8"))
+            print("---- log end ----")
+            print("FAIL (failed to launch liumOS)")
+            sys.exit(1)
+        if i == 1:
+            print(p.match[0].decode("utf-8"), end='')
     print('QEMU Launched', file=sys.stderr, flush=True)
     return p
 
 def launch_liumos_on_docker():
     # returns connection to qemu monitor
     p = pexpect.spawn("make run_docker")
-    p.expect(r"\(qemu\)", timeout=60)
+    i = 1
+    while (i != 0):
+        try:
+            i = p.expect([r"\(qemu\)", ".*\n"], timeout=60)
+        except pexpect.exceptions.EOF:
+            print("---- log begin ----")
+            print(p.before.decode("utf-8"))
+            print("---- log end ----")
+            print("FAIL (failed to launch liumOS on Docker). Maybe Docker is not running?")
+            sys.exit(1)
+        if i == 1:
+            print(p.match[0].decode("utf-8"), end='')
     print('Reached to qemu monitor on docker', file=sys.stderr, flush=True)
     return p
 
 def connect_to_liumos_serial(retry = 5):
     p = pexpect.spawn("telnet localhost 1235")
-    p.expect(r"\(liumos\)")
+    i = 1
+    while (i != 0):
+        try:
+            i = p.expect([r"\(liumos\)", ".*\n"], timeout=60)
+        except pexpect.exceptions.EOF:
+            print("---- log begin ----")
+            print(p.before.decode("utf-8"))
+            print("---- log end ----")
+            print("FAIL (failed to launch liumOS)")
+            sys.exit(1)
+        if i == 1:
+            print(p.match[0].decode("utf-8"), end='')
     print('Reached to liumos prompt via serial', file=sys.stderr, flush=True)
     return p
 

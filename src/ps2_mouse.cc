@@ -180,5 +180,8 @@ void MouseManager() {
     SheetPainter::DrawCharacter(*debug_info_sheet, me.buttonR ? 'R' : 'r',
                                 8 * 4, 32, false);
     debug_info_sheet->Flush();
+    if (me.buttonL) {
+      debug_info_sheet->MoveRelative(16, 0);
+    }
   }
 }

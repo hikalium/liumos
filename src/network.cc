@@ -4,27 +4,21 @@
 #include "virtio_net.h"
 
 void Network::IPv4Addr::Print() const {
-  for (int i = 0; i < 4; i++) {
-    PutDecimal64(addr[i]);
-    if (i != 3)
-      PutChar('.');
-  }
+  StringBuffer<128> line;
+  WriteString(line);
+  PutString(line.GetString());
 }
 
 void Network::IPv4NetMask::Print() const {
-  for (int i = 0; i < 4; i++) {
-    PutDecimal64(mask[i]);
-    if (i != 3)
-      PutChar('.');
-  }
+  StringBuffer<128> line;
+  WriteString(line);
+  PutString(line.GetString());
 }
 
 void Network::EtherAddr::Print() const {
-  for (int i = 0; i < 6; i++) {
-    PutHex8ZeroFilled(mac[i]);
-    if (i != 5)
-      PutChar(':');
-  }
+  StringBuffer<128> line;
+  WriteString(line);
+  PutString(line.GetString());
 }
 
 Network* Network::network_;

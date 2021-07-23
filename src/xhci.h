@@ -128,6 +128,18 @@ namespace XHCI {
 
 class Controller {
  public:
+  enum class SlotState {
+    kUndefined,
+    kWaitingForSecondAddressDeviceCommandCompletion,
+    kWaitingForDeviceDescriptor,
+    kAvailable,
+    kManaged,
+    kSettingBootProtocol,
+    kCheckingProtocol,
+    kGettingReport,
+    kFailed,
+  };
+
   class DeviceContext;
   class InputContext;
   class EndpointContext;
@@ -166,7 +178,7 @@ class Controller {
     // returns -1 if there is no such device
     for (int slot = 1; slot <= num_of_slots_enabled_; slot++) {
       auto& info = slot_info_[slot];
-      if (info.state != SlotInfo::kAvailable) {
+      if (info.state != SlotState::kAvailable) {
         continue;
       }
       if (info.device_class == device_class) {
@@ -185,6 +197,20 @@ class Controller {
                                   int in_max_packet_size,
                                   int out_dci,
                                   int out_max_packet_size);
+
+  SlotState GetSlotState(int slot) {
+    if (slot < 0 || kMaxNumOfSlots <= slot) {
+      return SlotState::kUndefined;
+    }
+    return slot_info_[slot].state;
+  }
+  void MarkSlotAsManaged(int slot) {
+    if (slot < 0 || kMaxNumOfSlots <= slot) {
+      return;
+    }
+    slot_info_[slot].state = SlotState::kManaged;
+  }
+  void MarkSlotAsFailed(int slot);
 
   static Controller& GetInstance() {
     if (!xhci_) {
@@ -302,16 +328,7 @@ class Controller {
   };
 
   struct SlotInfo {
-    enum SlotState {
-      kUndefined,
-      kWaitingForSecondAddressDeviceCommandCompletion,
-      kWaitingForDeviceDescriptor,
-      kAvailable,
-      kSettingBootProtocol,
-      kCheckingProtocol,
-      kGettingReport,
-      kFailed,
-    } state;
+    SlotState state;
     int port;
     InputContext* input_ctx;
     DeviceContext* output_ctx;
@@ -351,14 +368,13 @@ class Controller {
   };
   void WritePORTSC(int slot, uint32_t data);
   void ResetPort(int port);
-  void MarkSlotAsFailed(int slot);
   void DisablePort(int port);
   void HandlePortStatusChange(int port);
   void SendAddressDeviceCommand(int slot);
   void SendConfigureEndpointCommand(int slot);
   void PressKey(int hid_idx, uint8_t mod);
   void HandleKeyInput(int slot, uint8_t data[8]);
-  void RequestDeviceDescriptor(int slot, SlotInfo::SlotState);
+  void RequestDeviceDescriptor(int slot, SlotState);
   void SetHIDBootProtocol(int slot);
   void GetHIDProtocol(int slot);
   void GetHIDReport(int slot);
@@ -395,6 +411,7 @@ class Controller {
     kDisconnected,
     kAttached,
     kAttachedUSB2,
+    kAttachedUSB3,
     //
     kNeedsPortReset,
     kNeedsSlotAssignment,

@@ -655,17 +655,21 @@ void Run(TextBox& tbox) {
     Virtio::Net& net = Virtio::Net::GetInstance();
     auto ip_addr = net.GetSelfIPv4Addr();
     auto mac_addr = net.GetSelfEtherAddr();
-    ip_addr.Print();
-    PutString(" eth ");
-    mac_addr.Print();
+
     auto& network = Network::GetInstance();
-    PutString(" mask ");
     auto mask = network.GetIPv4NetMask();
-    mask.Print();
-    PutString(" gateway ");
     auto gateway_ip = network.GetIPv4DefaultGateway();
-    gateway_ip.Print();
-    PutString("\n");
+
+    StringBuffer<128> line;
+    ip_addr.WriteString(line);
+    line.WriteString(" eth ");
+    mac_addr.WriteString(line);
+    line.WriteString(" mask ");
+    mask.WriteString(line);
+    line.WriteString(" gateway ");
+    gateway_ip.WriteString(line);
+    line.WriteChar('\n');
+    PutString(line.GetString());
     return;
   }
   if (IsEqualString(args.GetArg(0), "arp")) {

@@ -2,24 +2,26 @@
 #include "network.h"
 #include "xhci.h"
 
-/*
-
-USB control flow:
-
-Slot will be assigned after the device is plugged in.
-if port_state_[port] == kSlotAssigned, the slot for a device is available.
-
-With this port:
-- Address Device
-
-*/
-
 class USBClassDriver {
  public:
-  virtual void tick(XHCI::Controller&){
-
-  };
+  virtual ~USBClassDriver(){};
+  virtual void tick(XHCI::Controller&) = 0;
 };
+
+struct SlotStatus {
+  enum State {
+    kUninitialized,
+    kDriverAttached,
+    kNoDriverFound,
+  } state;
+  USBClassDriver* driver;
+  static constexpr int kMaxNumOfConfigDescriptors = 4;
+  ConfigDescriptor* config_descriptors[kMaxNumOfConfigDescriptors];
+};
+
+SlotStatus slot_state[XHCI::Controller::kMaxNumOfSlots];
+
+static constexpr uint8_t kUSBDeviceClassCommunication = 0x02;
 
 static int EndpointAddressToDeviceContextIndex(uint8_t ep_addr) {
   return ((ep_addr & 0b111) << 1) | ((ep_addr >> 7) & 1);
@@ -30,10 +32,12 @@ class USBCommunicationClassDriver : public USBClassDriver {
   USBCommunicationClassDriver(int slot) : slot_(slot), state_(kDriverAttached) {
     send_buf_ = AllocMemoryForMappedIO<uint8_t*>(kPageSize);
   };
+  ~USBCommunicationClassDriver() {}
   void tick(XHCI::Controller& xhc) {
     switch (state_) {
       case kDriverAttached: {
         config_desc_idx_ = 0;
+        kprintf("Requesting config descriptor...\n");
         xhc.RequestConfigDescriptor(slot_, config_desc_idx_);
         state_ = kCheckingConfigDescriptor;
       } break;
@@ -42,6 +46,7 @@ class USBCommunicationClassDriver : public USBClassDriver {
         if (!e.has_value()) {
           return;
         }
+        kprintf("Got config descriptor\n");
         ConfigDescriptor* config_desc =
             xhc.ReadDescriptorBuffer<ConfigDescriptor>(slot_, 0);
         assert(config_desc);
@@ -124,6 +129,7 @@ class USBCommunicationClassDriver : public USBClassDriver {
         }
         kprintf("\n");
         xhc.SetConfig(slot_, config_value_);
+        kprintf("Using config value = %d\n", config_value_);
         state_ = kWaitingForConfigCompletion;
       } break;
       case kWaitingForConfigCompletion: {
@@ -163,6 +169,8 @@ class USBCommunicationClassDriver : public USBClassDriver {
 
         xhc.SetInterface(slot_, data_interface_alt_setting_,
                          data_interface_number_);
+        kprintf("Using interface num = %d, alt setting = %d\n",
+                data_interface_number_, data_interface_alt_setting_);
         state_ = kWaitingForSetInterfaceCompletion;
       } break;
       case kWaitingForSetInterfaceCompletion: {
@@ -239,6 +247,7 @@ class USBCommunicationClassDriver : public USBClassDriver {
           send_buf_[i] = s[i];
         }
         xhc.WriteBulkData(slot_, send_buf_, len);
+        kprintf("packet sent!\n");
         state_ = kFailed;
       } break;
       case kFailed: {
@@ -276,18 +285,123 @@ class USBCommunicationClassDriver : public USBClassDriver {
   }
 };
 
-struct SlotStatus {
-  enum State {
-    kUninitialized,
+class USBCommonDriver : public USBClassDriver {
+ public:
+  USBCommonDriver(int slot) : slot_(slot), state_(kDriverAttached) {
+    auto& config_descriptors = slot_state[slot_].config_descriptors;
+    for (int i = 0; i < SlotStatus::kMaxNumOfConfigDescriptors; i++) {
+      if (config_descriptors[i] != nullptr) {
+        kprintf("Warning: USBCommonDriver: config_descriptors needs free\n");
+      }
+      config_descriptors[i] = nullptr;
+    }
+  };
+  ~USBCommonDriver() {}
+  void tick(XHCI::Controller& xhc) {
+    switch (state_) {
+      case kDriverAttached: {
+        config_desc_idx_ = 0;
+        xhc.RequestConfigDescriptor(slot_, config_desc_idx_);
+        state_ = kCheckingConfigDescriptor;
+      } break;
+      case kCheckingConfigDescriptor: {
+        auto e = xhc.PopSlotEvent(slot_);
+        if (!e.has_value()) {
+          return;
+        }
+        kprintf("Slot %d: Got config descriptor[%d/%d]\n", slot_,
+                config_desc_idx_ + 1, xhc.GetNumOfConfigs(slot_));
+        ConfigDescriptor* config_desc =
+            xhc.ReadDescriptorBuffer<ConfigDescriptor>(slot_, 0);
+        assert(config_desc);
+        if (*e != XHCI::Controller::SlotEvent::kTransferSucceeded) {
+          kprintf("Failed to get config descriptor\n");
+          state_ = kFailed;
+          return;
+        }
+        // Copy descriptors into cache in this class
+        if (config_desc->total_length > kConfigDescCacheSize) {
+          kprintf("slot %d: Config descriptor too large %d\n", slot_,
+                  config_desc->total_length);
+        }
+        ConfigDescriptor* buf =
+            AllocKernelMemory<ConfigDescriptor*>(config_desc->total_length);
+        memcpy(buf, config_desc, config_desc->total_length);
+        slot_state[slot_].config_descriptors[config_desc_idx_] = buf;
+        // TODO: Impl free
+
+        config_desc_idx_++;
+        if (config_desc_idx_ < xhc.GetNumOfConfigs(slot_) &&
+            config_desc_idx_ < SlotStatus::kMaxNumOfConfigDescriptors) {
+          xhc.RequestConfigDescriptor(slot_, config_desc_idx_);
+          break;
+        }
+        if (config_desc_idx_ == xhc.GetNumOfConfigs(slot_)) {
+          state_ = kDone;
+          break;
+        }
+        state_ = kFailed;
+      } break;
+      case kDone: {
+        kprintf("Got %d config descriptors in total\n", config_desc_idx_);
+        bool found_cdc_net = false;
+        for (int i = 0; i < config_desc_idx_; i++) {
+          auto& config = slot_state[slot_].config_descriptors[i];
+          kprintf("config[%d]:\n", i);
+          kprintf("  config value = %d:\n", config->config_value);
+          for (const auto& e : *config) {
+            if (e->type == kDescriptorTypeInterface) {
+              InterfaceDescriptor& interface_desc =
+                  *reinterpret_cast<InterfaceDescriptor*>(e);
+              kprintf("  interface:\n");
+              kprintf("    num:      %d\n", interface_desc.interface_number);
+              kprintf("    alt:      %d\n", interface_desc.alt_setting);
+              kprintf("    class:    0x%02X\n", interface_desc.interface_class);
+              kprintf("    subclass: 0x%02X\n",
+                      interface_desc.interface_subclass);
+              kprintf("    protocol: 0x%02X\n",
+                      interface_desc.interface_protocol);
+              if (interface_desc.interface_class == 0x02 &&
+                  interface_desc.interface_subclass == 0x06 &&
+                  interface_desc.interface_protocol == 0x00) {
+                kprintf("USB CDC Network device found!\n");
+                found_cdc_net = true;
+              }
+            }
+            if (e->type == kDescriptorTypeEndpoint) {
+              EndpointDescriptor& ep_desc =
+                  *reinterpret_cast<EndpointDescriptor*>(e);
+              kprintf("    endpoint:\n");
+              kprintf("      addr:    0x%02X\n", ep_desc.endpoint_address);
+              kprintf("      attributes: 0x%02X\n", ep_desc.attributes);
+            }
+          }
+        }
+        if (found_cdc_net) {
+          auto cdc_net_driver = new USBCommunicationClassDriver(slot_);
+          delete slot_state[slot_].driver;
+          slot_state[slot_].driver = cdc_net_driver;
+          return;
+        }
+        state_ = kFailed;
+      } break;
+      case kFailed: {
+        // do nothing
+      } break;
+    }
+  }
+
+ private:
+  int config_desc_idx_;
+  int slot_;
+  static constexpr int kConfigDescCacheSize = 4096;
+  enum {
     kDriverAttached,
-    kNoDriverFound,
-  } state;
-  USBClassDriver* driver;
+    kCheckingConfigDescriptor,
+    kDone,
+    kFailed,
+  } state_;
 };
-
-SlotStatus slot_state[XHCI::Controller::kMaxNumOfSlots];
-
-static constexpr uint8_t kUSBDeviceClassCommunication = 0x02;
 
 static void InitDrivers(XHCI::Controller& xhc) {
   int slot = xhc.FindSlotIndexWithDeviceClass(kUSBDeviceClassCommunication);
@@ -303,6 +417,7 @@ static void InitDrivers(XHCI::Controller& xhc) {
 }
 
 void USBManager() {
+  using SlotState = XHCI::Controller::SlotState;
   kprintf("USBManager started\n");
   auto& xhc = XHCI::Controller::GetInstance();
   xhc.Init();
@@ -310,11 +425,29 @@ void USBManager() {
     xhc.PollEvents();
     InitDrivers(xhc);
     for (int i = 0; i < XHCI::Controller::kMaxNumOfSlots; i++) {
+      auto& ss = slot_state[i];
+      SlotState state = xhc.GetSlotState(i);
+      if (state == SlotState::kAvailable) {
+        // Initialize state in USBManager
+        kprintf("Slot %d is now managed\n", i);
+        ss.driver = new USBCommonDriver(i);
+        ss.state = SlotStatus::kDriverAttached;
+        xhc.MarkSlotAsManaged(i);
+        continue;
+      }
+      if (ss.driver) {
+        ss.driver->tick(xhc);
+      }
+      /*
+      if (slot_state[i].state != SlotStatus::kManaged) {
+        break;
+      }
       if (slot_state[i].state != SlotStatus::kDriverAttached ||
           !slot_state[i].driver) {
         continue;
       }
       slot_state[i].driver->tick(xhc);
+      */
     }
     Sleep();
   }

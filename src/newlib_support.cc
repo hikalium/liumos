@@ -9,6 +9,7 @@
 
 extern "C" {
 
+// This function will be called for malloc/free operations.
 caddr_t sbrk(int diff) {
   Process& proc = liumos->scheduler->GetCurrentProcess();
   ExecutionContext& ctx = proc.GetExecutionContext();

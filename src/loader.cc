@@ -123,6 +123,9 @@ void IdentifyCPU() {
 void CoreFunc::PutChar(char c) {
   main_console_.PutChar(c);
 }
+void CoreFunc::PutString(const char* s) {
+  main_console_.PutString(s);
+}
 
 EFI& CoreFunc::GetEFI() {
   return efi_;

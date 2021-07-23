@@ -61,15 +61,24 @@ void Sheet::Flush(int rx, int ry, int rw, int rh) {
   for (int y = ty; y < ty + th; y++) {
     int tbegin = tx;
     for (int x = tx; x < tx + tw; x++) {
-      bool is_covered = false;
-      for (Sheet* s = parent_->children_; s && s != this; s = s->below_) {
-        if (s->IsInRectOnParent(x, y)) {
-          is_covered = true;
-          break;
+      if (parent_->map_) {
+        // Fast path
+        if (parent_->map_[y * parent_->GetXSize() + x] == this) {
+          continue;
+        }
+      } else {
+        // Slow path (should be removed)
+        bool is_covered = false;
+        for (Sheet* s = parent_->children_; s && s != this; s = s->below_) {
+          if (s->IsInRectOnParent(x, y)) {
+            is_covered = true;
+            break;
+          }
+        }
+        if (!is_covered) {
+          continue;
         }
       }
-      if (!is_covered)
-        continue;
       parent_->TransferLineFrom(*this, y, tbegin, x - tbegin);
       tbegin = x + 1;
     }
@@ -84,12 +93,9 @@ void Sheet::Flush(int rx, int ry, int rw, int rh) {
   }
 }
 
-/*
 void Sheet::FlushRecursive(int rx, int ry, int rw, int rh) {
   if (!parent_)
     return;
   Flush(rx, ry, rw, rh);
-  parent_.FlushRecursive(rx + ry, )
-
+  parent_->FlushRecursive(rx + rect_.x, ry + rect_.y, rw, rh);
 }
-*/

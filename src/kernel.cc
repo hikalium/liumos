@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "corefunc.h"
+#include "kernel.h"
 #include "liumos.h"
 #include "panic_printer.h"
 #include "pci.h"
@@ -42,7 +43,7 @@ void kprintf(const char* fmt, ...) {
     PutStringAndHex("kprintf: warning: vsnprintf returned", len);
     buf[kSizeOfBuffer - 1] = 0;
   }
-  PutString(buf);
+  liumos->main_console->PutString(buf);
   va_end(args);
 }
 
@@ -104,6 +105,8 @@ void InitializeVRAMForKernel() {
   virtual_vram_.Init(reinterpret_cast<uint32_t*>(kernel_virtual_vram_base),
                      xsize, ysize, ppsl);
   liumos->vram_sheet = &virtual_vram_;
+  virtual_vram_.SetMap(AllocKernelMemory<Sheet**>(
+      virtual_vram_.GetXSize() * virtual_vram_.GetYSize() * sizeof(Sheet*)));
 
   constexpr uint64_t kernel_virtual_screen_base = 0xFFFF'FFFF'8800'0000ULL;
   CreatePageMapping(
@@ -211,6 +214,9 @@ void TimerHandler(uint64_t, InterruptInfo* info) {
 
 void CoreFunc::PutChar(char c) {
   liumos->main_console->PutChar(c);
+}
+void CoreFunc::PutString(const char* s) {
+  liumos->main_console->PutString(s);
 }
 
 EFI& CoreFunc::GetEFI() {
