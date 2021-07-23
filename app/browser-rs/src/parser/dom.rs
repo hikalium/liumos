@@ -74,7 +74,6 @@ pub enum InsertionMode {
     InHead,
     AfterHead,
     InBody,
-    Text,
     AfterBody,
     AfterAfterBody,
 }
@@ -119,18 +118,103 @@ impl Parser {
     pub fn construct_tree(&mut self) -> DomTree {
         let tree = DomTree::new();
 
-        let _token = match self.t.next() {
-            Some(t) => t,
-            None => return tree,
-        };
+        let mut token = self.t.next();
 
-        match self.mode {
-            // https://html.spec.whatwg.org/multipage/parsing.html#the-initial-insertion-mode
-            InsertionMode::Initial => self.mode = InsertionMode::BeforeHtml,
-            // https://html.spec.whatwg.org/multipage/parsing.html#the-before-html-insertion-mode
-            InsertionMode::BeforeHtml => {}
-            _ => {}
-        }
+        while token.is_some() {
+            match self.mode {
+                // https://html.spec.whatwg.org/multipage/parsing.html#the-initial-insertion-mode
+                InsertionMode::Initial => self.mode = InsertionMode::BeforeHtml,
+                // https://html.spec.whatwg.org/multipage/parsing.html#the-before-html-insertion-mode
+                InsertionMode::BeforeHtml => {
+                    match token {
+                        Some(Token::Doctype) => {
+                            // https://html.spec.whatwg.org/multipage/parsing.html#the-before-html-insertion-mode
+                            token = self.t.next();
+                        }
+                        Some(Token::Char(c)) => {
+                            // If a character token that is one of U+0009 CHARACTER TABULATION, U+000A
+                            // LINE FEED (LF), U+000C FORM FEED (FF), U+000D CARRIAGE RETURN (CR), or
+                            // U+0020 SPACE, ignore the token.
+                            let num = c as u32;
+                            if num == 0x09
+                                || num == 0x0a
+                                || num == 0x0c
+                                || num == 0x0d
+                                || num == 0x20
+                            {
+                                token = self.t.next();
+                            }
+                        }
+                        Some(Token::StartTag {
+                            ref tag,
+                            self_closing: _,
+                        }) => {
+                            // A start tag whose tag name is "html"
+                            // Create an element for the token in the HTML namespace, with the Document
+                            // as the intended parent. Append it to the Document object. Put this
+                            // element in the stack of open elements.
+                            if tag == "html" {
+                                // TODO: add html node to the tree.
+                            }
+                        }
+                        Some(Token::EndTag {
+                            ref tag,
+                            self_closing: _,
+                        }) => {
+                            // Any other end tag
+                            // Parse error. Ignore the token.
+                            if tag != "head" || tag != "body" || tag != "html" || tag != "br" {
+                                // Ignore the token.
+                                token = self.t.next();
+                            }
+                        }
+                        _ => {}
+                    }
+                    // TODO: add html node to the tree.
+                    self.mode = InsertionMode::BeforeHead;
+                } // end of InsertionMode::BeforeHtml
+                // https://html.spec.whatwg.org/multipage/parsing.html#the-before-head-insertion-mode
+                InsertionMode::BeforeHead => {
+                    match token {
+                        Some(Token::Char(c)) => {
+                            let num = c as u32;
+                            // If a character token that is one of U+0009 CHARACTER TABULATION, U+000A
+                            // LINE FEED (LF), U+000C FORM FEED (FF), U+000D CARRIAGE RETURN (CR), or
+                            // U+0020 SPACE, ignore the token.
+                            if num == 0x09
+                                || num == 0x0a
+                                || num == 0x0c
+                                || num == 0x0d
+                                || num == 0x20
+                            {
+                                token = self.t.next();
+                            }
+                        }
+                        Some(Token::StartTag {
+                            ref tag,
+                            self_closing: _,
+                        }) => {
+                            if tag == "head" {
+                                // TODO: add head node to the tree.
+                            }
+                        }
+                        _ => {}
+                    }
+                    // TODO: add head node to the tree.
+                    self.mode = InsertionMode::InHead;
+                } // end of InsertionMode::BeforeHead
+                // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inhead
+                InsertionMode::InHead => {} // end of InsertionMode::InHead
+                // https://html.spec.whatwg.org/multipage/parsing.html#the-after-head-insertion-mode
+                InsertionMode::AfterHead => {} // end of InsertionMode::AfterHead
+                // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inbody
+                InsertionMode::InBody => {} // end of InsertionMode::InBody
+                // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-afterbody
+                InsertionMode::AfterBody => {} // end of InsertionMode::AfterBody
+                // https://html.spec.whatwg.org/multipage/parsing.html#the-after-after-body-insertion-mode
+                InsertionMode::AfterAfterBody => {} // end of InsertionMode::AfterAfterBody
+            } // end of match self.mode {}
+        } // end of while token.is_some {}
 
         tree
     }
