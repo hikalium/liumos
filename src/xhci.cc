@@ -818,6 +818,7 @@ void Controller::HandleTransferEvent(BasicTRB& e) {
           "(%02X, %02X, %02X)\n",
           si.device_class, si.device_subclass, si.device_protocol);
       si.state = SlotState::kAvailable;
+      port_is_initializing_[slot_info_[slot].port] = false;
     } break;
     case SlotState::kManaged: {
       si.event_queue.Push(SlotEvent::kTransferSucceeded);
@@ -952,7 +953,6 @@ void Controller::HandleAddressDeviceCommandCompletion(const BasicTRB& e) {
   }
   uint8_t* buf = AllocMemoryForMappedIO<uint8_t*>(kSizeOfDescriptorBuffer);
   descriptor_buffers_[slot] = buf;
-  port_is_initializing_[slot_info_[slot].port] = false;
   RequestDeviceDescriptor(slot, SlotState::kWaitingForDeviceDescriptor);
 }
 

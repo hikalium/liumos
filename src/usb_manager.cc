@@ -37,6 +37,7 @@ class USBCommunicationClassDriver : public USBClassDriver {
     switch (state_) {
       case kDriverAttached: {
         config_desc_idx_ = 0;
+        kprintf("Requesting config descriptor...\n");
         xhc.RequestConfigDescriptor(slot_, config_desc_idx_);
         state_ = kCheckingConfigDescriptor;
       } break;
@@ -45,6 +46,7 @@ class USBCommunicationClassDriver : public USBClassDriver {
         if (!e.has_value()) {
           return;
         }
+        kprintf("Got config descriptor\n");
         ConfigDescriptor* config_desc =
             xhc.ReadDescriptorBuffer<ConfigDescriptor>(slot_, 0);
         assert(config_desc);
@@ -127,6 +129,7 @@ class USBCommunicationClassDriver : public USBClassDriver {
         }
         kprintf("\n");
         xhc.SetConfig(slot_, config_value_);
+        kprintf("Using config value = %d\n", config_value_);
         state_ = kWaitingForConfigCompletion;
       } break;
       case kWaitingForConfigCompletion: {
@@ -166,6 +169,8 @@ class USBCommunicationClassDriver : public USBClassDriver {
 
         xhc.SetInterface(slot_, data_interface_alt_setting_,
                          data_interface_number_);
+        kprintf("Using interface num = %d, alt setting = %d\n",
+                data_interface_number_, data_interface_alt_setting_);
         state_ = kWaitingForSetInterfaceCompletion;
       } break;
       case kWaitingForSetInterfaceCompletion: {
@@ -339,14 +344,18 @@ class USBCommonDriver : public USBClassDriver {
       } break;
       case kDone: {
         kprintf("Got %d config descriptors in total\n", config_desc_idx_);
+        bool found_cdc_net = false;
         for (int i = 0; i < config_desc_idx_; i++) {
           auto& config = slot_state[slot_].config_descriptors[i];
           kprintf("config[%d]:\n", i);
+          kprintf("  config value = %d:\n", config->config_value);
           for (const auto& e : *config) {
             if (e->type == kDescriptorTypeInterface) {
               InterfaceDescriptor& interface_desc =
                   *reinterpret_cast<InterfaceDescriptor*>(e);
               kprintf("  interface:\n");
+              kprintf("    num:      %d\n", interface_desc.interface_number);
+              kprintf("    alt:      %d\n", interface_desc.alt_setting);
               kprintf("    class:    0x%02X\n", interface_desc.interface_class);
               kprintf("    subclass: 0x%02X\n",
                       interface_desc.interface_subclass);
@@ -356,13 +365,23 @@ class USBCommonDriver : public USBClassDriver {
                   interface_desc.interface_subclass == 0x06 &&
                   interface_desc.interface_protocol == 0x00) {
                 kprintf("USB CDC Network device found!\n");
-                auto cdc_net_driver = new USBCommunicationClassDriver(slot_);
-                delete slot_state[slot_].driver;
-                slot_state[slot_].driver = cdc_net_driver;
-                return;
+                found_cdc_net = true;
               }
             }
+            if (e->type == kDescriptorTypeEndpoint) {
+              EndpointDescriptor& ep_desc =
+                  *reinterpret_cast<EndpointDescriptor*>(e);
+              kprintf("    endpoint:\n");
+              kprintf("      addr:    0x%02X\n", ep_desc.endpoint_address);
+              kprintf("      attributes: 0x%02X\n", ep_desc.attributes);
+            }
           }
+        }
+        if (found_cdc_net) {
+          auto cdc_net_driver = new USBCommunicationClassDriver(slot_);
+          delete slot_state[slot_].driver;
+          slot_state[slot_].driver = cdc_net_driver;
+          return;
         }
         state_ = kFailed;
       } break;

@@ -101,9 +101,7 @@ void PutChar(char c) {
 }
 
 void PutString(const char* s) {
-  while (*s) {
-    PutChar(*(s++));
-  }
+  CoreFunc::PutString(s);
 }
 
 void PutDecimal64(uint64_t value) {

@@ -42,7 +42,7 @@ void kprintf(const char* fmt, ...) {
     PutStringAndHex("kprintf: warning: vsnprintf returned", len);
     buf[kSizeOfBuffer - 1] = 0;
   }
-  PutString(buf);
+  liumos->main_console->PutString(buf);
   va_end(args);
 }
 
@@ -211,6 +211,9 @@ void TimerHandler(uint64_t, InterruptInfo* info) {
 
 void CoreFunc::PutChar(char c) {
   liumos->main_console->PutChar(c);
+}
+void CoreFunc::PutString(const char* s) {
+  liumos->main_console->PutString(s);
 }
 
 EFI& CoreFunc::GetEFI() {
