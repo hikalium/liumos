@@ -140,6 +140,10 @@ fn run_end_to_end_tests() -> Result<()> {
     );
 
     let mut liumos_serial_conn = connect_to_liumos_serial();
+
+    println!("Waiting 10 seconds for stabilization...");
+    thread::sleep(std::time::Duration::from_secs(10));
+
     liumos_serial_conn.send_line("version")?;
     liumos_serial_conn.exp_regex("liumOS version: ").unwrap();
     println!(
@@ -161,9 +165,6 @@ fn run_end_to_end_tests() -> Result<()> {
         .unwrap();
     println!("liumos_builder_conn uname: {}", result);
 
-    println!("Waiting 10 seconds for stabilization...");
-    thread::sleep(std::time::Duration::from_secs(10));
-
     expect_liumos_command_result(
         &mut liumos_serial_conn,
         "ip",
@@ -184,5 +185,5 @@ fn run_end_to_end_tests() -> Result<()> {
 }
 
 fn main() {
-    run_end_to_end_tests().unwrap_or_else(|e| panic!("ftp job failed with {}", e));
+    run_end_to_end_tests().unwrap_or_else(|e| panic!("FAIL: {}", e));
 }

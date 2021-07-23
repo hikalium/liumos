@@ -161,8 +161,9 @@ format :
 spellcheck :
 	@scripts/spellcheck.sh recieve receive
 
-commit_root : format test 
+commit_root : format stop_docker
 	make -C e2etest presubmit
+	make test
 	git submodule update
 	git add .
 	./scripts/ensure_objs_are_not_under_git_control.sh
