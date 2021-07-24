@@ -377,7 +377,7 @@ extern "C" void KernelEntry(LiumOS* liumos_passed, LoaderInfo& loader_info) {
   // CreateAndLaunchKernelTask(SubTask);
   CreateAndLaunchKernelTask(NetworkManager);
   CreateAndLaunchKernelTask(MouseManager);
-  CreateAndLaunchKernelTask(USBManager);
+  // CreateAndLaunchKernelTask(USBManager);
 
   EnableSyscall();
   Virtio::Net::GetInstance().Init();

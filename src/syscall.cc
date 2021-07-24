@@ -19,6 +19,7 @@ constexpr uint64_t kSyscallIndex_sys_recvfrom = 45;
 constexpr uint64_t kSyscallIndex_sys_bind = 49;
 constexpr uint64_t kSyscallIndex_sys_exit = 60;
 constexpr uint64_t kSyscallIndex_sys_ftruncate = 77;
+constexpr uint64_t kSyscallIndex_sys_getdents64 = 217;
 constexpr uint64_t kSyscallIndex_arch_prctl = 158;
 // constexpr uint64_t kArchSetGS = 0x1001;
 constexpr uint64_t kArchSetFS = 0x1002;
@@ -46,6 +47,7 @@ typedef uint32_t socklen_t;
 
 struct PerProcessSyscallData {
   Sheet* window_sheet;
+  int num_getdents64_called;
 };
 
 std::unordered_map<Process::PID, PerProcessSyscallData>
@@ -390,6 +392,36 @@ static ssize_t sys_sendto(int sockfd,
   return -1;
 }
 
+packed_struct DirectoryEntry {
+  uint64_t inode;        // +0
+  uint64_t next_offset;  // +8
+  uint16_t this_size;    // +16
+  uint8_t d_type;        // +18
+};
+static_assert(sizeof(DirectoryEntry) == 19);
+
+static ssize_t sys_getdents64(int, void* buf, size_t) {
+  auto pid = liumos->scheduler->GetCurrentProcess().GetID();
+  auto& ppdata = per_process_syscall_data[pid];
+
+  if (ppdata.num_getdents64_called != 0) {
+    return 0;
+  }
+  ppdata.num_getdents64_called++;
+
+  DirectoryEntry* de = reinterpret_cast<DirectoryEntry*>(buf);
+  const char* file_name = "TEST_FILE.bin";
+  size_t file_name_len = strlen(file_name);
+  de->inode = 123;
+  de->next_offset = 0;
+  de->this_size = sizeof(DirectoryEntry) + file_name_len + 1;
+  char* dst = reinterpret_cast<char*>(de + 1);
+  for (size_t i = 0; i < file_name_len + 1; i++) {
+    dst[i] = file_name[i];
+  }
+  return de->this_size;
+}
+
 __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
   // This function will be called under exceptions are masked
   // with Kernel Stack
@@ -419,6 +451,10 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     return;
   }
   if (idx == kSyscallIndex_sys_open) {
+    auto pid = liumos->scheduler->GetCurrentProcess().GetID();
+    auto& ppdata = per_process_syscall_data[pid];
+    ppdata.num_getdents64_called = 0;
+
     args[0] = 5;
     return;
   }
@@ -539,6 +575,11 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     args[0] = sys_bind(static_cast<int>(args[1]),
                        reinterpret_cast<struct sockaddr_in*>(args[2]),
                        static_cast<socklen_t>(args[3]));
+    return;
+  }
+  if (idx == kSyscallIndex_sys_getdents64) {
+    args[0] = sys_getdents64(static_cast<int>(args[1]),
+                             reinterpret_cast<void*>(args[2]), args[3]);
     return;
   }
   char s[64];

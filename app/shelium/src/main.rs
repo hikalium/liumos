@@ -42,6 +42,7 @@ fn run_command(line: &str) {
             }
             let mut cur = 0;
             while cur < bytes_read as usize {
+                // TODO: check bytes_read before reading bytes
                 let de: &DirectoryEntry = unsafe { &*(p.add(cur) as *mut DirectoryEntry) };
                 let file_name_bytes = &buf[(size_of::<DirectoryEntry>() + cur)..(de.size() + cur)];
                 let null_terminator_pos = file_name_bytes.iter().position(|&v| v == 0);
