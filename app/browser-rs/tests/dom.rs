@@ -6,8 +6,8 @@
 
 extern crate alloc;
 
+use alloc::prelude::v1::Box;
 use alloc::string::String;
-use alloc::vec::Vec;
 
 use browser_rs::parser::dom::*;
 use browser_rs::parser::tokenizer::*;
@@ -47,60 +47,32 @@ fn main() {
 
 #[macro_export]
 macro_rules! run_test {
-    ($html:literal, $( $node:expr ),*) => {
+    ($html:literal, $expected_root:expr) => {
         let t = Tokenizer::new(String::from($html));
 
         let mut p = Parser::new(t);
-        let tree = p.construct_tree();
+        let root = p.construct_tree();
 
-        let mut queue = Vec::new();
+        assert_eq!($expected_root, root);
 
-        queue.push(tree.root());
-        /*
-        let mut sibiling = root.next_sibling();
-
-        while sibiling.is_some() {
-            queue.push(sibiling);
-            sibiling = sibiling.next_sibling();
-        }
-
-        // TODO: fix duplicated children
-        let mut child = root.first_child();
-        while child.is_some() {
-            queue.push(child);
-            child = child.next_sibling();
-        }
-        */
-
-        $(
-            let n = queue.remove(0);
-
-            assert_eq!($node, n);
-
-            /*
-            while sibiling.is_some() {
-                queue.push(sibiling);
-                sibiling = sibiling.next_sibling();
-            }
-            */
-
-            // TODO: add children to queue.
-        )*
+        // TODO: check children
     };
 }
 
 #[test_case]
 fn no_input() {
-    run_test!("", Node::Document);
+    let root = Box::new(Node::new(NodeKind::Document));
+    run_test!("", root);
 }
 
-/*
 #[test_case]
 fn html() {
-    run_test!(
-        "<html></html>",
-        Node::Document,
-        Node::Element(Element::HtmlElement(HtmlElementImpl::new()))
-    );
+    let mut root = Box::new(Node::new(NodeKind::Document));
+    let html = Box::new(Node::new(NodeKind::Element(Element::HtmlElement(
+        HtmlElementImpl::new(),
+    ))));
+    //root.parent = &html;
+    //root.first_child = html;
+    root.last_child = Some(html);
+    run_test!("<html></html>", root);
 }
-*/
