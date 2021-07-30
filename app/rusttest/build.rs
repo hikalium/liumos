@@ -10,6 +10,7 @@ fn get_object_name(s: &str) -> String {
 }
 
 fn main() {
+    println!("cargo:rerun-if-changed=src/");
     let srcs = ["hello.c", "syscall.S"];
     let out_dir = env::var("OUT_DIR").unwrap();
     let llvm_cc_path = env::var("LLVM_CC").unwrap();
@@ -47,5 +48,4 @@ fn main() {
 
     println!("cargo:rustc-link-search=native={}", out_dir);
     println!("cargo:rustc-link-lib=static=liumos");
-    println!("cargo:rerun-if-changed=src/hello.c,src/hello.S");
 }
