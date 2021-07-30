@@ -64,6 +64,9 @@ class Sheet {
   void SetPosition(int x, int y) {
     rect_.x = x;
     rect_.y = y;
+    if (!parent_) {
+      return;
+    }
     parent_->UpdateMap();
   }
   void MoveRelative(int dx, int dy) {
