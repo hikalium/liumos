@@ -56,13 +56,5 @@ fn main() {
 
     println!("cargo:rustc-link-search=native={}", out_dir);
     println!("cargo:rustc-link-lib=static=liumos");
-    println!(
-        "cargo:rerun-if-changed={}",
-        srcs.map(|s| {
-            let mut t = "src/".to_string();
-            t.push_str(s);
-            t
-        })
-        .join(",")
-    );
+    println!("cargo:rerun-if-changed=src/");
 }
