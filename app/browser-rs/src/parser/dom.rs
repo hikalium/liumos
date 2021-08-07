@@ -6,17 +6,18 @@ use crate::parser::tokenizer::*;
 use liumlib::*;
 
 use alloc::rc::Rc;
+use alloc::rc::Weak;
 use alloc::vec::Vec;
 #[allow(unused_imports)]
 use core::assert;
 use core::cell::RefCell;
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 /// https://dom.spec.whatwg.org/#interface-node
 pub struct Node {
-    kind: NodeKind,
-    pub parent: Option<Rc<RefCell<Node>>>,
+    pub kind: NodeKind,
+    pub parent: Option<Weak<RefCell<Node>>>,
     pub first_child: Option<Rc<RefCell<Node>>>,
     pub last_child: Option<Rc<RefCell<Node>>>,
     pub previous_sibling: Option<Rc<RefCell<Node>>>,
@@ -95,7 +96,7 @@ pub enum InsertionMode {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct Parser {
     mode: InsertionMode,
     t: Tokenizer,
@@ -127,17 +128,18 @@ impl Parser {
     /// the stack of open elements.
     fn append_to_root(&mut self, root: Rc<RefCell<Node>>, tag: &str) {
         let node = Rc::new(RefCell::new(self.create_element_by_tag(tag)));
+
         if root.borrow().first_child().is_none() {
-            //root.borrow_mut().first_child = Some(node.clone());
+            root.borrow_mut().first_child = Some(node.clone());
         }
         {
             root.borrow_mut().last_child = Some(node.clone());
         }
         {
-            //node.borrow_mut().parent = Some(root.clone());
+            node.borrow_mut().parent = Some(Rc::downgrade(&root));
         }
 
-        self.stack_of_open_elements.push(node.clone());
+        self.stack_of_open_elements.push(node);
     }
 
     #[allow(dead_code)]
