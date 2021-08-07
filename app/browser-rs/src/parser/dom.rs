@@ -5,24 +5,22 @@ use crate::parser::tokenizer::*;
 #[allow(unused_imports)]
 use liumlib::*;
 
-use alloc::prelude::v1::Box;
-#[allow(unused_imports)]
-use alloc::string::String;
-#[allow(unused_imports)]
+use alloc::rc::Rc;
 use alloc::vec::Vec;
 #[allow(unused_imports)]
 use core::assert;
+use core::cell::RefCell;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// https://dom.spec.whatwg.org/#interface-node
 pub struct Node {
     kind: NodeKind,
-    pub parent: Option<Box<Node>>,
-    pub first_child: Option<Box<Node>>,
-    pub last_child: Option<Box<Node>>,
-    pub previous_sibling: Option<Box<Node>>,
-    pub next_sibling: Option<Box<Node>>,
+    pub parent: Option<Rc<RefCell<Node>>>,
+    pub first_child: Option<Rc<RefCell<Node>>>,
+    pub last_child: Option<Rc<RefCell<Node>>>,
+    pub previous_sibling: Option<Rc<RefCell<Node>>>,
+    pub next_sibling: Option<Rc<RefCell<Node>>>,
 }
 
 #[allow(dead_code)]
@@ -39,20 +37,20 @@ impl Node {
         }
     }
 
-    pub fn first_child(&self) -> Option<&Node> {
-        self.first_child.as_ref().map(|n| n.as_ref())
+    pub fn first_child(&self) -> Option<Rc<RefCell<Node>>> {
+        self.first_child.as_ref().map(|n| n.clone())
     }
 
-    pub fn last_child(&self) -> Option<&Node> {
-        self.last_child.as_ref().map(|n| n.as_ref())
+    pub fn last_child(&self) -> Option<Rc<RefCell<Node>>> {
+        self.last_child.as_ref().map(|n| n.clone())
     }
 
-    pub fn previous_sibling(&self) -> Option<&Node> {
-        self.previous_sibling.as_ref().map(|n| n.as_ref())
+    pub fn previous_sibling(&self) -> Option<Rc<RefCell<Node>>> {
+        self.previous_sibling.as_ref().map(|n| n.clone())
     }
 
-    pub fn next_sibling(&self) -> Option<&Node> {
-        self.next_sibling.as_ref().map(|n| n.as_ref())
+    pub fn next_sibling(&self) -> Option<Rc<RefCell<Node>>> {
+        self.next_sibling.as_ref().map(|n| n.clone())
     }
 }
 
@@ -98,14 +96,14 @@ pub enum InsertionMode {
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Parser<'a> {
+pub struct Parser {
     mode: InsertionMode,
     t: Tokenizer,
     /// https://html.spec.whatwg.org/multipage/parsing.html#the-stack-of-open-elements
-    stack_of_open_elements: Vec<&'a Node>,
+    stack_of_open_elements: Vec<Rc<RefCell<Node>>>,
 }
 
-impl Parser<'_> {
+impl Parser {
     #[allow(dead_code)]
     pub fn new(t: Tokenizer) -> Self {
         Self {
@@ -127,20 +125,24 @@ impl Parser<'_> {
 
     /// Create an element for the token and append it to the Document object. Put this element in
     /// the stack of open elements.
-    fn append_to_root(&mut self, root: &mut Box<Node>, tag: &str) {
-        let node = Box::new(self.create_element_by_tag(tag));
-        //node.parent = Some(root);
-        //if root.first_child().is_none() {
-        //root.first_child = Some(node);
-        //}
-        root.last_child = Some(node);
+    fn append_to_root(&mut self, root: Rc<RefCell<Node>>, tag: &str) {
+        let node = Rc::new(RefCell::new(self.create_element_by_tag(tag)));
+        if root.borrow().first_child().is_none() {
+            //root.borrow_mut().first_child = Some(node.clone());
+        }
+        {
+            root.borrow_mut().last_child = Some(node.clone());
+        }
+        {
+            //node.borrow_mut().parent = Some(root.clone());
+        }
 
-        //self.stack_of_open_elements.push(&node);
+        self.stack_of_open_elements.push(node.clone());
     }
 
     #[allow(dead_code)]
-    pub fn construct_tree(&mut self) -> Box<Node> {
-        let mut root = Box::new(Node::new(NodeKind::Document));
+    pub fn construct_tree(&mut self) -> Rc<RefCell<Node>> {
+        let root = Rc::new(RefCell::new(Node::new(NodeKind::Document)));
 
         let mut token = self.t.next();
 
@@ -180,7 +182,7 @@ impl Parser<'_> {
                             // as the intended parent. Append it to the Document object. Put this
                             // element in the stack of open elements.
                             if tag == "html" {
-                                self.append_to_root(&mut root, tag);
+                                self.append_to_root(root.clone(), tag);
                                 token = self.t.next();
                                 continue;
                             }
@@ -201,7 +203,7 @@ impl Parser<'_> {
                             return root;
                         }
                     }
-                    self.append_to_root(&mut root, "html");
+                    self.append_to_root(root.clone(), "html");
                     self.mode = InsertionMode::BeforeHead;
                 } // end of InsertionMode::BeforeHtml
 

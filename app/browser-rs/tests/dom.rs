@@ -6,8 +6,9 @@
 
 extern crate alloc;
 
-use alloc::prelude::v1::Box;
+use alloc::rc::Rc;
 use alloc::string::String;
+use core::cell::RefCell;
 
 use browser_rs::parser::dom::*;
 use browser_rs::parser::tokenizer::*;
@@ -61,18 +62,20 @@ macro_rules! run_test {
 
 #[test_case]
 fn no_input() {
-    let root = Box::new(Node::new(NodeKind::Document));
+    let root = Rc::new(RefCell::new(Node::new(NodeKind::Document)));
     run_test!("", root);
 }
 
 #[test_case]
 fn html() {
-    let mut root = Box::new(Node::new(NodeKind::Document));
-    let html = Box::new(Node::new(NodeKind::Element(Element::HtmlElement(
-        HtmlElementImpl::new(),
+    let root = Rc::new(RefCell::new(Node::new(NodeKind::Document)));
+    let html = Rc::new(RefCell::new(Node::new(NodeKind::Element(
+        Element::HtmlElement(HtmlElementImpl::new()),
     ))));
     //root.parent = &html;
     //root.first_child = html;
-    root.last_child = Some(html);
+    {
+        root.borrow_mut().last_child = Some(html);
+    }
     run_test!("<html></html>", root);
 }
