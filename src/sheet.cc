@@ -43,6 +43,55 @@ void Sheet::TransferLineFrom(Sheet& src, int py, int px, int w) {
   }
 }
 
+void Sheet::FlushInParent(int rx, int ry, int rw, int rh) {
+  auto [tx, ty, tw, th] =
+      parent_->GetClientRect().GetIntersectionWith({rx, ry, rw, rh});
+  if (tw <= 0 || th <= 0) {
+    // No need to flush when the given area is empty
+    return;
+  }
+  assert(0 <= tx && 0 <= ty && (tx + tw) <= parent_->rect_.xsize &&
+         (ty + th) <= parent_->rect_.ysize);
+
+  // printf("flush for %p (%d, %d, %d, %d,)\n", (void *)this, tx, ty, tw, th);
+  for (Sheet* w = this; w; w = w->below_) {
+    // printf("  w = %p\n", (void *)w);
+    for (int y = ty; y < ty + th; y++) {
+      int tbegin = tx;
+      for (int x = tx; x < tx + tw; x++) {
+        if (parent_->map_) {
+          // Fast path
+          if (parent_->map_[y * parent_->GetXSize() + x] == w) {
+            continue;
+          }
+        } else {
+          // Slow path (should be removed)
+          bool is_covered = false;
+          for (Sheet* s = parent_->children_; s && s != w; s = s->below_) {
+            if (s->IsInRectOnParent(x, y)) {
+              is_covered = true;
+              break;
+            }
+          }
+          if (!is_covered) {
+            continue;
+          }
+        }
+        parent_->TransferLineFrom(*w, y, tbegin, x - tbegin);
+        tbegin = x + 1;
+      }
+      if (tx != tbegin) {
+        // this line is overwrapped with other sheets and already transfered in
+        // the loop above.
+        // Transfer last segment of line.
+        parent_->TransferLineFrom(*w, y, tbegin, (tx + tw) - tbegin);
+        continue;
+      }
+      parent_->TransferLineFrom(*w, y, tx, tw);
+    }
+  }
+}
+
 void Sheet::Flush(int rx, int ry, int rw, int rh) {
   // Transfer (ax, ay)(aw * ah) area in this sheet to parent
   if (!parent_)
@@ -52,45 +101,7 @@ void Sheet::Flush(int rx, int ry, int rw, int rh) {
   auto [tx, ty, tw, th] = parent_->GetClientRect().GetIntersectionWith(
       {local_area.x + rect_.x, local_area.y + rect_.y, local_area.xsize,
        local_area.ysize});
-  if (tw <= 0 || th <= 0) {
-    // No need to flush when the given area is empty
-    return;
-  }
-  assert(0 <= tx && 0 <= ty && (tx + tw) <= parent_->rect_.xsize &&
-         (ty + th) <= parent_->rect_.ysize);
-  for (int y = ty; y < ty + th; y++) {
-    int tbegin = tx;
-    for (int x = tx; x < tx + tw; x++) {
-      if (parent_->map_) {
-        // Fast path
-        if (parent_->map_[y * parent_->GetXSize() + x] == this) {
-          continue;
-        }
-      } else {
-        // Slow path (should be removed)
-        bool is_covered = false;
-        for (Sheet* s = parent_->children_; s && s != this; s = s->below_) {
-          if (s->IsInRectOnParent(x, y)) {
-            is_covered = true;
-            break;
-          }
-        }
-        if (!is_covered) {
-          continue;
-        }
-      }
-      parent_->TransferLineFrom(*this, y, tbegin, x - tbegin);
-      tbegin = x + 1;
-    }
-    if (tx != tbegin) {
-      // this line is overwrapped with other sheets and already transfered in
-      // the loop above.
-      // Transfer last segment of line.
-      parent_->TransferLineFrom(*this, y, tbegin, (tx + tw) - tbegin);
-      continue;
-    }
-    parent_->TransferLineFrom(*this, y, tx, tw);
-  }
+  FlushInParent(tx, ty, tw, th);
 }
 
 void Sheet::FlushRecursive(int rx, int ry, int rw, int rh) {

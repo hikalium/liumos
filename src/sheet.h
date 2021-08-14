@@ -60,6 +60,7 @@ class Sheet {
     parent_ = parent;
     parent_->children_ = this;
     parent_->UpdateMap();
+    Flush();
   }
   void SetPosition(int x, int y) {
     rect_.x = x;
@@ -68,11 +69,14 @@ class Sheet {
       return;
     }
     parent_->UpdateMap();
+    Flush();
   }
   void MoveRelative(int dx, int dy) {
     SetPosition(GetX() + dx, GetY() + dy);
-    FlushRecursive(GetX() - dx, GetY() - dy, GetXSize() + Absolute(dx),
-                   GetYSize() + Absolute(dy));
+    // (1, 0) -> (1, 1)
+    // dx = 0, dy = 1
+    FlushInParent(GetX() - dx, GetY() - dy, GetXSize() + Absolute(dx),
+                  GetYSize() + Absolute(dy));
   }
   int GetX() const { return rect_.x; }
   int GetY() const { return rect_.y; }
@@ -89,6 +93,7 @@ class Sheet {
   void BlockTransfer(int to_x, int to_y, int from_x, int from_y, int w, int h);
   // Flush fluhes the contents of sheet buf_ to its parent sheet.
   // This function is not recursive.
+  void FlushInParent(int px, int py, int w, int h);
   void Flush(int px, int py, int w, int h);
   void Flush() { Flush(0, 0, rect_.xsize, rect_.ysize); };
   void FlushRecursive(int rx, int ry, int rw, int rh);

@@ -31,12 +31,11 @@ static void TestFlushSheets(int x,
   if (use_map) {
     dst.SetMap(dst_map);
   }
-  src.SetParent(&dst);
 
   for (uint32_t i = 0; i < 12; i++) {
     assert(dst_mem[i] == i);
   }
-  src.Flush(0, 0, 2, 2);
+  src.SetParent(&dst);  // This flushes the sheet as well
   for (uint32_t i = 0; i < 12; i++) {
     if (is_in_refresh_range(i)) {
       assert(dst_mem[i] == i + 0xff0000 - (2 * y) - x);
@@ -144,6 +143,23 @@ static void TestFlushOverwrapped(
   }
 }
 
+void ExpectEqBuf(uint32_t* actual, uint32_t* expected, int w, int h, int line) {
+  printf("%s on line %d:\n", __func__, line);
+  for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) {
+      printf("%2d ", actual[y * w + x]);
+    }
+    printf("\n");
+  }
+  for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) {
+      assert(actual[y * w + x] == expected[y * w + x]);
+    }
+  }
+}
+#define EXPECT_EQ_BUF_3x3(actual, expected) \
+  ExpectEqBuf((uint32_t*)actual, (uint32_t*)expected, 3, 3, __LINE__)
+
 void ExpectEqMap(void** actual, void** expected, int w, int h, int line) {
   printf("%s on line %d:\n", __func__, line);
   for (int y = 0; y < h; y++) {
@@ -161,6 +177,15 @@ void ExpectEqMap(void** actual, void** expected, int w, int h, int line) {
 #define EXPECT_EQ_MAP_3x3(actual, expected) \
   ExpectEqMap((void**)actual, (void**)expected, 3, 3, __LINE__)
 
+void SetBuf(uint32_t* buf, uint32_t value, int w, int h) {
+  for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) {
+      buf[y * w + x] = value;
+    }
+  }
+}
+#define SET_BUF_3x3(buf, value) SetBuf((uint32_t*)buf, value, 3, 3)
+
 static void TestUpdateMap() {
   printf("%s()\n", __func__);
 
@@ -176,12 +201,16 @@ static void TestUpdateMap() {
   printf("s2: %p\n", (void*)&s2);
   printf("s3: %p\n", (void*)&s3);
 
+  SET_BUF_3x3(sheet0_buf, 0);
+  SET_BUF_3x3(sheet1_buf, 1);
+  SET_BUF_3x3(sheet2_buf, 2);
+
   s0.Init(sheet0_buf, 3, 3, 3, 0, 0);
   s1.Init(sheet1_buf, 3, 3, 3, 2, 0);
   s2.Init(sheet2_buf, 3, 3, 3, -1, -1);
+  s0.SetMap(sheet0_map);
   s2.SetParent(&s0);
   s1.SetParent(&s0);
-  s0.SetMap(sheet0_map);
 
   {
     Sheet* sheet0_map_expected[3 * 3] = {
@@ -190,10 +219,17 @@ static void TestUpdateMap() {
         nullptr, nullptr, &s1,  // - - 1
     };
     EXPECT_EQ_MAP_3x3(sheet0_map, sheet0_map_expected);
+    uint32_t sheet0_buf_expected[3 * 3] = {
+        2, 2, 1,  //
+        2, 2, 1,  //
+        0, 0, 1,  //
+    };
+    EXPECT_EQ_BUF_3x3(sheet0_buf, sheet0_buf_expected);
   }
 
   uint32_t sheet3_buf[3 * 3];
   s3.Init(sheet3_buf, 3, 3, 3, 1, 1);
+  SET_BUF_3x3(sheet3_buf, 3);
   s3.SetParent(&s0);  // New sheet will be inserted at top
   // Map should be updated automatically
 
@@ -204,6 +240,12 @@ static void TestUpdateMap() {
         nullptr, &s3, &s3,  // - 3 3
     };
     EXPECT_EQ_MAP_3x3(sheet0_map, sheet0_map_expected);
+    uint32_t sheet0_buf_expected[3 * 3] = {
+        2, 2, 1,  //
+        2, 3, 3,  //
+        0, 3, 3,  //
+    };
+    EXPECT_EQ_BUF_3x3(sheet0_buf, sheet0_buf_expected);
   }
 }
 
@@ -214,49 +256,75 @@ static void TestMoveRelative() {
   Sheet* sheet0_map[3 * 3];
   uint32_t sheet1_buf[3 * 3];
   uint32_t sheet2_buf[3 * 3];
+  uint32_t sheet3_buf[3 * 3];
 
-  Sheet s0, s1, s2;
+  Sheet s0, s1, s2, s3;
 
   printf("s0: %p\n", (void*)&s0);
   printf("s1: %p\n", (void*)&s1);
   printf("s2: %p\n", (void*)&s2);
+  printf("s3: %p\n", (void*)&s3);
 
+  SET_BUF_3x3(sheet0_buf, 0);
+  SET_BUF_3x3(sheet1_buf, 1);
+  SET_BUF_3x3(sheet2_buf, 2);
+  SET_BUF_3x3(sheet3_buf, 3);
   s0.Init(sheet0_buf, 3, 3, 3, 0, 0);
   s1.Init(sheet1_buf, 3, 3, 3, 2, 0);
   s2.Init(sheet2_buf, 3, 3, 3, -1, -1);
+  s3.Init(sheet3_buf, 3, 3, 3, 0, 0);
+  s3.SetParent(&s0);
   s2.SetParent(&s0);
   s1.SetParent(&s0);
   s0.SetMap(sheet0_map);
 
   {
     Sheet* sheet0_map_expected[3 * 3] = {
-        &s2,     &s2,     &s1,  // 2 2 1
-        &s2,     &s2,     &s1,  // 2 2 1
-        nullptr, nullptr, &s1,  // - - 1
+        &s2, &s2, &s1,  // 2 2 1
+        &s2, &s2, &s1,  // 2 2 1
+        &s3, &s3, &s1,  // 3 3 1
     };
     EXPECT_EQ_MAP_3x3(sheet0_map, sheet0_map_expected);
+    uint32_t sheet0_buf_expected[3 * 3] = {
+        2, 2, 1,  //
+        2, 2, 1,  //
+        3, 3, 1,  //
+    };
+    EXPECT_EQ_BUF_3x3(sheet0_buf, sheet0_buf_expected);
   }
 
   // Move s1 1px left
   s1.MoveRelative(-1, 0);
   {
     Sheet* sheet0_map_expected[3 * 3] = {
-        &s2,     &s1, &s1,  // 2 1 1
-        &s2,     &s1, &s1,  // 2 1 1
-        nullptr, &s1, &s1,  // - 1 1
+        &s2, &s1, &s1,  // 2 1 1
+        &s2, &s1, &s1,  // 2 1 1
+        &s3, &s1, &s1,  // 3 1 1
     };
     EXPECT_EQ_MAP_3x3(sheet0_map, sheet0_map_expected);
+    uint32_t sheet0_buf_expected[3 * 3] = {
+        2, 1, 1,  //
+        2, 1, 1,  //
+        3, 1, 1,  //
+    };
+    EXPECT_EQ_BUF_3x3(sheet0_buf, sheet0_buf_expected);
   }
 
   // Move s1 1px down
   s1.MoveRelative(0, 1);
   {
     Sheet* sheet0_map_expected[3 * 3] = {
-        &s2,     &s2, nullptr,  // 2 2 -
-        &s2,     &s1, &s1,      // 2 1 1
-        nullptr, &s1, &s1,      // - 1 1
+        &s2, &s2, &s3,  // 2 2 3
+        &s2, &s1, &s1,  // 2 1 1
+        &s3, &s1, &s1,  // 3 1 1
     };
     EXPECT_EQ_MAP_3x3(sheet0_map, sheet0_map_expected);
+    uint32_t sheet0_buf_expected[3 * 3] = {
+        2, 2, 3,  //
+        2, 1, 1,  //
+        3, 1, 1,  //
+    };
+    EXPECT_EQ_BUF_3x3(sheet0_buf, sheet0_buf_expected);
   }
 }
 
