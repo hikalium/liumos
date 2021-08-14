@@ -98,6 +98,7 @@ pub enum InsertionMode {
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Parser {
+    root: Rc<RefCell<Node>>,
     mode: InsertionMode,
     t: Tokenizer,
     /// https://html.spec.whatwg.org/multipage/parsing.html#the-stack-of-open-elements
@@ -108,13 +109,14 @@ impl Parser {
     #[allow(dead_code)]
     pub fn new(t: Tokenizer) -> Self {
         Self {
+            root: Rc::new(RefCell::new(Node::new(NodeKind::Document))),
             mode: InsertionMode::Initial,
             t,
             stack_of_open_elements: Vec::new(),
         }
     }
 
-    /// Create an element based on the `tag` string.
+    /// Creates an element based on the `tag` string.
     fn create_element_by_tag(&self, tag: &str) -> Node {
         if tag == "html" {
             return Node::new(NodeKind::Element(Element::HtmlElement(
@@ -124,28 +126,32 @@ impl Parser {
         panic!("not supported this tag name: {}", tag);
     }
 
-    /// Create an element for the token and append it to the Document object. Put this element in
-    /// the stack of open elements.
-    fn append_to_root(&mut self, root: Rc<RefCell<Node>>, tag: &str) {
+    /// Creates an element node for the token and append it to the appropriate place for inserting
+    /// a node. Put the new node in the stack of open elements.
+    /// https://html.spec.whatwg.org/multipage/parsing.html#insert-a-foreign-element
+    fn append_to_current_node(&mut self, tag: &str) {
+        let root = self.root.clone();
+        let current = match self.stack_of_open_elements.last() {
+            Some(n) => n,
+            None => &root,
+        };
+
         let node = Rc::new(RefCell::new(self.create_element_by_tag(tag)));
 
-        if root.borrow().first_child().is_none() {
-            root.borrow_mut().first_child = Some(node.clone());
+        if current.borrow().first_child().is_none() {
+            current.borrow_mut().first_child = Some(node.clone());
         }
         {
-            root.borrow_mut().last_child = Some(node.clone());
+            current.borrow_mut().last_child = Some(node.clone());
         }
         {
-            node.borrow_mut().parent = Some(Rc::downgrade(&root));
+            node.borrow_mut().parent = Some(Rc::downgrade(&current));
         }
 
         self.stack_of_open_elements.push(node);
     }
 
-    #[allow(dead_code)]
     pub fn construct_tree(&mut self) -> Rc<RefCell<Node>> {
-        let root = Rc::new(RefCell::new(Node::new(NodeKind::Document)));
-
         let mut token = self.t.next();
 
         while token.is_some() {
@@ -184,7 +190,7 @@ impl Parser {
                             // as the intended parent. Append it to the Document object. Put this
                             // element in the stack of open elements.
                             if tag == "html" {
-                                self.append_to_root(root.clone(), tag);
+                                self.append_to_current_node(tag);
                                 token = self.t.next();
                                 continue;
                             }
@@ -202,10 +208,10 @@ impl Parser {
                             }
                         }
                         Some(Token::Eof) | None => {
-                            return root;
+                            return self.root.clone();
                         }
                     }
-                    self.append_to_root(root.clone(), "html");
+                    self.append_to_current_node("html");
                     self.mode = InsertionMode::BeforeHead;
                 } // end of InsertionMode::BeforeHtml
 
@@ -252,6 +258,6 @@ impl Parser {
             } // end of match self.mode {}
         } // end of while token.is_some {}
 
-        root
+        self.root.clone()
     }
 }

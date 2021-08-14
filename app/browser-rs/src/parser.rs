@@ -12,5 +12,5 @@ pub fn render(html: String) {
     println!("{}", html);
 
     let t = Tokenizer::new(html);
-    let _parser = Parser::new(t);
+    let _root = Parser::new(t).construct_tree();
 }
