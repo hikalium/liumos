@@ -56,18 +56,19 @@ void Sheet::FlushInParent(int rx, int ry, int rw, int rh) {
   assert(0 <= tx && 0 <= ty && (tx + tw) <= parent_->rect_.xsize &&
          (ty + th) <= parent_->rect_.ysize);
 
-  for (Sheet* w = this; w; w = w->below_) {
-    for (int y = ty; y < ty + th; y++) {
-      int tbegin = tx;
-      for (int x = tx; x < tx + tw; x++) {
-        if (parent_->map_[y * parent_->GetXSize() + x] == w) {
-          continue;
-        }
-        parent_->TransferLineFrom(*w, y, tbegin, x - tbegin);
-        tbegin = x + 1;
+  for (int y = ty; y < ty + th; y++) {
+    int tbegin = tx;
+    for (int x = tx; x < tx + tw; x++) {
+      if (parent_->map_[y * parent_->GetXSize() + x] == this) {
+        continue;
       }
-      // Transfer last segment of line.
-      parent_->TransferLineFrom(*w, y, tbegin, (tx + tw) - tbegin);
+      parent_->TransferLineFrom(*this, y, tbegin, x - tbegin);
+      tbegin = x + 1;
+    }
+    // Transfer last segment of line.
+    if (tbegin < tx + tw &&
+        parent_->map_[y * parent_->GetXSize() + tbegin] == this) {
+      parent_->TransferLineFrom(*this, y, tbegin, (tx + tw) - tbegin);
     }
   }
 }

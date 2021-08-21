@@ -18,8 +18,8 @@ class Sheet {
             int x = 0,
             int y = 0) {
     parent_ = nullptr;
-    below_ = nullptr;
-    top_child_ = nullptr;
+    upper_ = nullptr;
+    bottom_child_ = nullptr;
     buf_ = buf;
     rect_.xsize = xsize;
     rect_.ysize = ysize;
@@ -33,10 +33,17 @@ class Sheet {
     UpdateMap(GetRect());
   }
   void SetParent(Sheet* parent) {
-    // Insert at front
-    below_ = parent->top_child_;
     parent_ = parent;
-    parent_->top_child_ = this;
+    if (!parent_) {
+      return;
+    }
+    // Insert at front
+    upper_ = nullptr;
+    Sheet** topmost_upper_holder_ = &parent_->bottom_child_;
+    while (*topmost_upper_holder_) {
+      topmost_upper_holder_ = &(*topmost_upper_holder_)->upper_;
+    }
+    *topmost_upper_holder_ = this;
     parent_->UpdateMap(GetRect());
     Flush();
   }
@@ -48,7 +55,9 @@ class Sheet {
       return;
     }
     parent_->UpdateMap(prev_rect);
-    FlushInParent(prev_rect.x, prev_rect.y, GetXSize(), GetYSize());
+    for (Sheet* s = parent_->bottom_child_; s && s != this; s = s->upper_) {
+      s->FlushInParent(prev_rect.x, prev_rect.y, GetXSize(), GetYSize());
+    }
     parent_->UpdateMap(GetRect());
     FlushInParent(GetX(), GetY(), GetXSize(), GetYSize());
   }
@@ -83,13 +92,10 @@ class Sheet {
         map_[y * GetXSize() + x] = nullptr;
       }
     }
-    for (Sheet* s = top_child_; s; s = s->below_) {
+    for (Sheet* s = bottom_child_; s; s = s->upper_) {
       Rect in_view = target.GetIntersectionWith(s->GetRect());
       for (int y = in_view.y; y < in_view.y + in_view.ysize; y++) {
         for (int x = in_view.x; x < in_view.x + in_view.xsize; x++) {
-          if (map_[y * GetXSize() + x]) {
-            continue;
-          }
           map_[y * GetXSize() + x] = s;
         }
       }
@@ -101,7 +107,7 @@ class Sheet {
            x < rect_.x + rect_.xsize;
   }
   void TransferLineFrom(Sheet& src, int py, int px, int w);
-  Sheet *parent_, *below_, *top_child_;
+  Sheet *parent_, *upper_, *bottom_child_;
   uint32_t* buf_;
   Sheet** map_;
   Rect rect_;
