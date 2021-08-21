@@ -148,7 +148,7 @@ void MouseManager() {
   auto& mctrl = PS2MouseController::GetInstance();
   int mx = 50, my = 50;
 
-  constexpr int debug_info_width = 128;
+  constexpr int debug_info_width = 64;
   constexpr int debug_info_height = 64;
   Sheet* debug_info_sheet = AllocKernelMemory<Sheet*>(sizeof(Sheet));
   bzero(debug_info_sheet, sizeof(Sheet));
@@ -181,7 +181,7 @@ void MouseManager() {
                                 8 * 4, 32, false);
     debug_info_sheet->Flush();
     if (me.buttonL) {
-      debug_info_sheet->MoveRelative(0, 16);
+      debug_info_sheet->MoveRelative(me.dx, me.dy);
     }
   }
 }
