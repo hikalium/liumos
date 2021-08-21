@@ -119,34 +119,29 @@ static void FixPositionInVRAM(int& px, int& py) {
     py = vram.GetYSize() - 1;
 }
 
-constexpr int kMouseCursorSize = 10;
-
-static void DrawMouseCursor(int& px, int& py) {
-  FixPositionInVRAM(px, py);
-  assert(liumos->vram_sheet);
-  Sheet vram = *liumos->vram_sheet;
-  Rect mrect = vram.GetRect().GetIntersectionWith(
-      {px, py, kMouseCursorSize, kMouseCursorSize});
-  for (int x = 0; x < mrect.xsize; x++) {
-    SheetPainter::DrawPoint(vram, px + x, py, 0x00FF00, false);
-  }
-  for (int y = 0; y < mrect.ysize; y++) {
-    SheetPainter::DrawPoint(vram, px, py + y, 0x00FF00, false);
-  }
-}
-
 static void MoveMouseCursor(int& px, int& py, int dx, int dy) {
-  // Erase cursor
-  liumos->screen_sheet->Flush(px, py, kMouseCursorSize, kMouseCursorSize);
   // Move and redraw
   px += dx;
   py += dy;
-  DrawMouseCursor(px, py);
+  FixPositionInVRAM(px, py);
 }
 
 void MouseManager() {
   auto& mctrl = PS2MouseController::GetInstance();
   int mx = 50, my = 50;
+
+  constexpr int cursor_size = 8;
+  Sheet* cursor_sheet = AllocKernelMemory<Sheet*>(sizeof(Sheet));
+  bzero(cursor_sheet, sizeof(Sheet));
+  uint32_t* cursor_buf =
+      AllocKernelMemory<uint32_t*>(4 * cursor_size * cursor_size);
+  for (int y = 0; y < cursor_size; y++) {
+    for (int x = 0; x < cursor_size; x++) {
+      cursor_buf[y * cursor_size + x] = 0x88ff88;
+    }
+  }
+  cursor_sheet->Init(cursor_buf, cursor_size, cursor_size, cursor_size, mx, my);
+  cursor_sheet->SetParent(liumos->vram_sheet);
 
   constexpr int debug_info_width = 64;
   constexpr int debug_info_height = 64;
@@ -165,7 +160,6 @@ void MouseManager() {
   SheetPainter::DrawString(*debug_info_sheet, "mouse:", 8, 16, false);
   debug_info_sheet->Flush();
 
-  DrawMouseCursor(mx, my);
   for (;;) {
     if (mctrl.buffer.IsEmpty()) {
       Sleep();
@@ -173,6 +167,8 @@ void MouseManager() {
     }
     auto me = mctrl.buffer.Pop();
     MoveMouseCursor(mx, my, me.dx, me.dy);
+    cursor_sheet->SetPosition(mx, my);
+
     SheetPainter::DrawCharacter(*debug_info_sheet, me.buttonL ? 'L' : 'l',
                                 8 * 2, 32, false);
     SheetPainter::DrawCharacter(*debug_info_sheet, me.buttonC ? 'C' : 'c',
@@ -180,8 +176,5 @@ void MouseManager() {
     SheetPainter::DrawCharacter(*debug_info_sheet, me.buttonR ? 'R' : 'r',
                                 8 * 4, 32, false);
     debug_info_sheet->Flush();
-    if (me.buttonL) {
-      debug_info_sheet->MoveRelative(me.dx, me.dy);
-    }
   }
 }
