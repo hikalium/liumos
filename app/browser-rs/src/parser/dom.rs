@@ -55,7 +55,6 @@ impl Node {
     }
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum NodeKind {
     /// https://dom.spec.whatwg.org/#interface-document
@@ -64,22 +63,32 @@ pub enum NodeKind {
     Element(Element),
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+/// https://dom.spec.whatwg.org/#interface-element
+pub struct Element {
+    kind: ElementKind,
+    //id: String,
+    //class_name: String,
+}
+
+impl Element {
+    pub fn new(kind: ElementKind) -> Self {
+        Self {
+            kind,
+            //id: String::new(),
+            //class_name: String::new(),
+        }
+    }
+}
+
 #[allow(dead_code)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 /// https://dom.spec.whatwg.org/#interface-element
-pub enum Element {
-    /// https://html.spec.whatwg.org/multipage/dom.html#htmlelement
-    HtmlElement(HtmlElementImpl),
-}
-
-/// https://html.spec.whatwg.org/multipage/semantics.html#htmlhtmlelement
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct HtmlElementImpl {}
-
-impl HtmlElementImpl {
-    pub fn new() -> Self {
-        Self {}
-    }
+pub enum ElementKind {
+    /// https://html.spec.whatwg.org/multipage/semantics.html#the-html-element
+    Html,
+    /// https://html.spec.whatwg.org/multipage/semantics.html#the-head-element
+    Head,
 }
 
 #[allow(dead_code)]
@@ -95,7 +104,6 @@ pub enum InsertionMode {
     AfterAfterBody,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Parser {
     root: Rc<RefCell<Node>>,
@@ -116,12 +124,17 @@ impl Parser {
         }
     }
 
+    /// Creates an element node.
+    fn create_element(&self, kind: ElementKind) -> Node {
+        return Node::new(NodeKind::Element(Element::new(kind)));
+    }
+
     /// Creates an element based on the `tag` string.
     fn create_element_by_tag(&self, tag: &str) -> Node {
         if tag == "html" {
-            return Node::new(NodeKind::Element(Element::HtmlElement(
-                HtmlElementImpl::new(),
-            )));
+            return self.create_element(ElementKind::Html);
+        } else if tag == "head" {
+            return self.create_element(ElementKind::Head);
         }
         panic!("not supported this tag name: {}", tag);
     }
@@ -237,22 +250,37 @@ impl Parser {
                             self_closing: _,
                         }) => {
                             if tag == "head" {
-                                // TODO: add head node to the tree.
+                                self.append_to_current_node(tag);
+                                token = self.t.next();
+                                continue;
                             }
                         }
                         _ => {}
                     }
-                    // TODO: add head node to the tree.
+                    self.append_to_current_node("head");
                     self.mode = InsertionMode::InHead;
                 } // end of InsertionMode::BeforeHead
+
                 // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inhead
-                InsertionMode::InHead => {} // end of InsertionMode::InHead
+                InsertionMode::InHead => {
+                    self.mode = InsertionMode::AfterHead;
+                } // end of InsertionMode::InHead
+
                 // https://html.spec.whatwg.org/multipage/parsing.html#the-after-head-insertion-mode
-                InsertionMode::AfterHead => {} // end of InsertionMode::AfterHead
+                InsertionMode::AfterHead => {
+                    self.mode = InsertionMode::InBody;
+                } // end of InsertionMode::AfterHead
+
                 // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inbody
-                InsertionMode::InBody => {} // end of InsertionMode::InBody
+                InsertionMode::InBody => {
+                    self.mode = InsertionMode::AfterBody;
+                } // end of InsertionMode::InBody
+
                 // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-afterbody
-                InsertionMode::AfterBody => {} // end of InsertionMode::AfterBody
+                InsertionMode::AfterBody => {
+                    self.mode = InsertionMode::AfterAfterBody;
+                } // end of InsertionMode::AfterBody
+
                 // https://html.spec.whatwg.org/multipage/parsing.html#the-after-after-body-insertion-mode
                 InsertionMode::AfterAfterBody => {} // end of InsertionMode::AfterAfterBody
             } // end of match self.mode {}
