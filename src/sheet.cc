@@ -66,33 +66,15 @@ void Sheet::FlushInParent(int rx, int ry, int rw, int rh) {
         parent_->TransferLineFrom(*w, y, tbegin, x - tbegin);
         tbegin = x + 1;
       }
-      if (tx != tbegin) {
-        // this line is overwrapped with other sheets and already transfered in
-        // the loop above.
-        // Transfer last segment of line.
-        parent_->TransferLineFrom(*w, y, tbegin, (tx + tw) - tbegin);
-        continue;
-      }
-      parent_->TransferLineFrom(*w, y, tx, tw);
+      // Transfer last segment of line.
+      parent_->TransferLineFrom(*w, y, tbegin, (tx + tw) - tbegin);
     }
   }
 }
 
 void Sheet::Flush(int rx, int ry, int rw, int rh) {
-  // Transfer (ax, ay)(aw * ah) area in this sheet to parent
-  if (!parent_)
-    return;
-  auto local_area = GetClientRect().GetIntersectionWith({rx, ry, rw, rh});
   // calc area rect in parent
   auto [tx, ty, tw, th] = parent_->GetClientRect().GetIntersectionWith(
-      {local_area.x + rect_.x, local_area.y + rect_.y, local_area.xsize,
-       local_area.ysize});
+      GetRect().GetIntersectionWith({rx + GetX(), ry + GetY(), rw, rh}));
   FlushInParent(tx, ty, tw, th);
-}
-
-void Sheet::FlushRecursive(int rx, int ry, int rw, int rh) {
-  if (!parent_)
-    return;
-  Flush(rx, ry, rw, rh);
-  parent_->FlushRecursive(rx + rect_.x, ry + rect_.y, rw, rh);
 }

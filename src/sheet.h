@@ -71,7 +71,6 @@ class Sheet {
   void FlushInParent(int px, int py, int w, int h);
   void Flush(int px, int py, int w, int h);
   void Flush() { Flush(0, 0, rect_.xsize, rect_.ysize); };
-  void FlushRecursive(int rx, int ry, int rw, int rh);
 
  private:
   void UpdateMap(Rect target) {
