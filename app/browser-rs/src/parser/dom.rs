@@ -5,8 +5,7 @@ use crate::parser::tokenizer::*;
 #[allow(unused_imports)]
 use liumlib::*;
 
-use alloc::rc::Rc;
-use alloc::rc::Weak;
+use alloc::rc::{Rc, Weak};
 use alloc::vec::Vec;
 use core::cell::RefCell;
 
@@ -17,8 +16,8 @@ pub struct Node {
     pub kind: NodeKind,
     pub parent: Option<Weak<RefCell<Node>>>,
     pub first_child: Option<Rc<RefCell<Node>>>,
-    pub last_child: Option<Rc<RefCell<Node>>>,
-    pub previous_sibling: Option<Rc<RefCell<Node>>>,
+    pub last_child: Option<Weak<RefCell<Node>>>,
+    pub previous_sibling: Option<Weak<RefCell<Node>>>,
     pub next_sibling: Option<Rc<RefCell<Node>>>,
 }
 
@@ -40,11 +39,11 @@ impl Node {
         self.first_child.as_ref().map(|n| n.clone())
     }
 
-    pub fn last_child(&self) -> Option<Rc<RefCell<Node>>> {
+    pub fn last_child(&self) -> Option<Weak<RefCell<Node>>> {
         self.last_child.as_ref().map(|n| n.clone())
     }
 
-    pub fn previous_sibling(&self) -> Option<Rc<RefCell<Node>>> {
+    pub fn previous_sibling(&self) -> Option<Weak<RefCell<Node>>> {
         self.previous_sibling.as_ref().map(|n| n.clone())
     }
 
@@ -153,11 +152,25 @@ impl Parser {
 
         let node = Rc::new(RefCell::new(self.create_element_by_tag(tag)));
 
-        if current.borrow().first_child().is_none() {
+        if current.borrow().first_child().is_some() {
+            {
+                current
+                    .borrow()
+                    .first_child()
+                    .unwrap()
+                    .borrow_mut()
+                    .next_sibling = Some(node.clone());
+            }
+            {
+                node.borrow_mut().previous_sibling =
+                    Some(Rc::downgrade(&current.borrow().first_child().unwrap()));
+            }
+        } else {
             current.borrow_mut().first_child = Some(node.clone());
         }
+
         {
-            current.borrow_mut().last_child = Some(node.clone());
+            current.borrow_mut().last_child = Some(Rc::downgrade(&node));
         }
         {
             node.borrow_mut().parent = Some(Rc::downgrade(&current));
@@ -167,17 +180,17 @@ impl Parser {
     }
 
     /// Returns true if the current node's kind is same as NodeKind::Element::<element_kind>.
-    fn pop_current_node(&mut self, element_kind: ElementKind) {
-        let current = self.stack_of_open_elements.pop();
-        match current {
-            Some(n) => {
-                assert_eq!(
-                    n.borrow().kind,
-                    NodeKind::Element(Element::new(element_kind))
-                );
-            }
-            _ => {}
+    fn pop_current_node(&mut self, expected_element_kind: ElementKind) -> bool {
+        let current = match self.stack_of_open_elements.last() {
+            Some(n) => n,
+            _ => return false,
+        };
+        if current.borrow().kind == NodeKind::Element(Element::new(expected_element_kind)) {
+            self.stack_of_open_elements.pop();
+            return true;
         }
+
+        false
     }
 
     pub fn construct_tree(&mut self) -> Rc<RefCell<Node>> {
@@ -292,7 +305,7 @@ impl Parser {
                             if tag == "head" {
                                 self.mode = InsertionMode::AfterHead;
                                 token = self.t.next();
-                                self.pop_current_node(ElementKind::Head);
+                                assert!(self.pop_current_node(ElementKind::Head));
                                 continue;
                             }
                         }
@@ -302,48 +315,67 @@ impl Parser {
                         _ => {}
                     }
                     self.mode = InsertionMode::AfterHead;
-                    self.pop_current_node(ElementKind::Head);
+                    assert!(self.pop_current_node(ElementKind::Head));
                 } // end of InsertionMode::InHead
 
                 // https://html.spec.whatwg.org/multipage/parsing.html#the-after-head-insertion-mode
                 InsertionMode::AfterHead => {
                     match token {
+                        Some(Token::StartTag {
+                            ref tag,
+                            self_closing: _,
+                        }) => {
+                            if tag == "body" {
+                                self.append_to_current_node(tag);
+                                token = self.t.next();
+                                self.mode = InsertionMode::InBody;
+                                continue;
+                            }
+                        }
                         Some(Token::Eof) | None => {
                             return self.root.clone();
                         }
                         _ => {}
                     }
+                    self.append_to_current_node("body");
                     self.mode = InsertionMode::InBody;
                 } // end of InsertionMode::AfterHead
 
                 // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inbody
-                InsertionMode::InBody => match token {
-                    Some(Token::StartTag {
-                        tag: _,
-                        self_closing: _,
-                    }) => {}
-                    Some(Token::EndTag {
-                        ref tag,
-                        self_closing: _,
-                    }) => {
-                        if tag == "body" {
-                            self.mode = InsertionMode::AfterBody;
-                            token = self.t.next();
-                            self.pop_current_node(ElementKind::Body);
-                            continue;
+                InsertionMode::InBody => {
+                    match token {
+                        Some(Token::StartTag {
+                            tag: _,
+                            self_closing: _,
+                        }) => {}
+                        Some(Token::EndTag {
+                            ref tag,
+                            self_closing: _,
+                        }) => {
+                            if tag == "body" {
+                                self.mode = InsertionMode::AfterBody;
+                                token = self.t.next();
+                                assert!(self.pop_current_node(ElementKind::Body));
+                                continue;
+                            }
+                            if tag == "html" {
+                                // If the stack of open elements does not have a body element in
+                                // scope, this is a parse error; ignore the token.
+                                if self.pop_current_node(ElementKind::Body) {
+                                    self.mode = InsertionMode::AfterBody;
+                                    assert!(self.pop_current_node(ElementKind::Html));
+                                } else {
+                                    token = self.t.next();
+                                }
+                                continue;
+                            }
                         }
-                        if tag == "html" {
-                            self.mode = InsertionMode::AfterBody;
-                            token = self.t.next();
-                            self.pop_current_node(ElementKind::Html);
-                            continue;
+                        Some(Token::Eof) | None => {
+                            return self.root.clone();
                         }
+                        _ => {}
                     }
-                    Some(Token::Eof) | None => {
-                        return self.root.clone();
-                    }
-                    _ => {}
-                }, // end of InsertionMode::InBody
+                } // end of InsertionMode::InBody
 
                 // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-afterbody
                 InsertionMode::AfterBody => {
@@ -354,7 +386,7 @@ impl Parser {
                         }) => {
                             if tag == "html" {
                                 self.mode = InsertionMode::AfterAfterBody;
-                                self.pop_current_node(ElementKind::Html);
+                                token = self.t.next();
                                 continue;
                             }
                         }
@@ -376,7 +408,7 @@ impl Parser {
                         }) => {
                             if tag == "html" {
                                 self.mode = InsertionMode::AfterAfterBody;
-                                self.pop_current_node(ElementKind::Html);
+                                token = self.t.next();
                                 continue;
                             }
                         }

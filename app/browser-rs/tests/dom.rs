@@ -68,11 +68,11 @@ fn node_equals(expected: Option<Rc<RefCell<Node>>>, actual: Option<Rc<RefCell<No
     }
 
     node_equals(
-        expected_borrowed.first_child.clone(),
-        actual_borrowed.first_child.clone(),
+        expected_borrowed.first_child().clone(),
+        actual_borrowed.first_child().clone(),
     ) && node_equals(
-        expected_borrowed.last_child.clone(),
-        actual_borrowed.last_child.clone(),
+        expected_borrowed.next_sibling().clone(),
+        actual_borrowed.next_sibling().clone(),
     )
 }
 
@@ -90,16 +90,7 @@ macro_rules! run_test {
     };
 }
 
-#[test_case]
-fn no_input() {
-    // root node
-    let root = Rc::new(RefCell::new(Node::new(NodeKind::Document)));
-    run_test!("", Some(root));
-}
-
-#[test_case]
-fn html() {
-    // root node --> html node
+fn create_base_dom_tree() -> Rc<RefCell<Node>> {
     let root = Rc::new(RefCell::new(Node::new(NodeKind::Document)));
     let html = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
         ElementKind::Html,
@@ -107,81 +98,7 @@ fn html() {
     let head = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
         ElementKind::Head,
     )))));
-
-    // root <--> html
-    {
-        html.borrow_mut().parent = Some(Rc::downgrade(&root));
-    }
-    {
-        root.borrow_mut().first_child = Some(html.clone());
-    }
-    {
-        root.borrow_mut().last_child = Some(html.clone());
-    }
-
-    // html <--> head
-    {
-        head.borrow_mut().parent = Some(Rc::downgrade(&html));
-    }
-    {
-        html.borrow_mut().first_child = Some(head.clone());
-    }
-    {
-        html.borrow_mut().last_child = Some(head.clone());
-    }
-
-    // A head node is automatically inserted to DOM.
-    run_test!("<html></html>", Some(root));
-}
-
-#[test_case]
-fn head() {
-    // root node --> html node --> head node
-    let root = Rc::new(RefCell::new(Node::new(NodeKind::Document)));
-    let html = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
-        ElementKind::Html,
-    )))));
-    let head = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
-        ElementKind::Head,
-    )))));
-
-    // root <--> html
-    {
-        html.borrow_mut().parent = Some(Rc::downgrade(&root));
-    }
-    {
-        root.borrow_mut().first_child = Some(html.clone());
-    }
-    {
-        root.borrow_mut().last_child = Some(html.clone());
-    }
-
-    // html <--> head
-    {
-        head.borrow_mut().parent = Some(Rc::downgrade(&html));
-    }
-    {
-        html.borrow_mut().first_child = Some(head.clone());
-    }
-    {
-        html.borrow_mut().last_child = Some(head.clone());
-    }
-
-    run_test!("<html><head></head></html>", Some(root));
-}
-
-/*
-#[test_case]
-fn head() {
-    // root node --> html node --> head node
-    let root = Rc::new(RefCell::new(Node::new(NodeKind::Document)));
-    let html = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
-        ElementKind::Html,
-    )))));
-    let head = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
-        ElementKind::Head,
-    )))));
-    let head = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+    let body = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
         ElementKind::Body,
     )))));
 
@@ -193,7 +110,7 @@ fn head() {
         root.borrow_mut().first_child = Some(html.clone());
     }
     {
-        root.borrow_mut().last_child = Some(html.clone());
+        root.borrow_mut().last_child = Some(Rc::downgrade(&html));
     }
 
     // html <--> head
@@ -204,20 +121,49 @@ fn head() {
         html.borrow_mut().first_child = Some(head.clone());
     }
     {
-        html.borrow_mut().last_child = Some(head.clone());
+        html.borrow_mut().last_child = Some(Rc::downgrade(&head));
     }
 
     // html <--> body
     {
-        body.borrow_mut().parent = Some(Rc::downgrade(&head));
+        body.borrow_mut().parent = Some(Rc::downgrade(&html));
     }
     {
-        head.borrow_mut().first_child = Some(body.clone());
+        html.borrow_mut()
+            .first_child()
+            .unwrap()
+            .borrow_mut()
+            .next_sibling = Some(body.clone());
     }
     {
-        head.borrow_mut().last_child = Some(body.clone());
+        body.borrow_mut().previous_sibling = Some(Rc::downgrade(&html));
     }
 
-    run_test!("<html><head><body></body></head></html>", Some(root));
+    root.clone()
 }
-*/
+
+#[test_case]
+fn no_input() {
+    // root node
+    let root = Rc::new(RefCell::new(Node::new(NodeKind::Document)));
+    run_test!("", Some(root));
+}
+
+#[test_case]
+fn html() {
+    let root = create_base_dom_tree();
+    run_test!("<html></html>", Some(root));
+}
+
+#[test_case]
+fn head() {
+    // root node --> html node --> head node
+    let root = create_base_dom_tree();
+    run_test!("<html><head></head></html>", Some(root));
+}
+
+#[test_case]
+fn body() {
+    let root = create_base_dom_tree();
+    run_test!("<html><head></head><body></body></html>", Some(root));
+}
