@@ -19,7 +19,7 @@ class Sheet {
             int y = 0) {
     parent_ = nullptr;
     below_ = nullptr;
-    children_ = nullptr;
+    top_child_ = nullptr;
     buf_ = buf;
     rect_.xsize = xsize;
     rect_.ysize = ysize;
@@ -34,9 +34,9 @@ class Sheet {
   }
   void SetParent(Sheet* parent) {
     // Insert at front
-    below_ = parent->children_;
+    below_ = parent->top_child_;
     parent_ = parent;
-    parent_->children_ = this;
+    parent_->top_child_ = this;
     parent_->UpdateMap(GetRect());
     Flush();
   }
@@ -83,7 +83,7 @@ class Sheet {
         map_[y * GetXSize() + x] = nullptr;
       }
     }
-    for (Sheet* s = children_; s; s = s->below_) {
+    for (Sheet* s = top_child_; s; s = s->below_) {
       Rect in_view = target.GetIntersectionWith(s->GetRect());
       for (int y = in_view.y; y < in_view.y + in_view.ysize; y++) {
         for (int x = in_view.x; x < in_view.x + in_view.xsize; x++) {
@@ -101,7 +101,7 @@ class Sheet {
            x < rect_.x + rect_.xsize;
   }
   void TransferLineFrom(Sheet& src, int py, int px, int w);
-  Sheet *parent_, *below_, *children_;
+  Sheet *parent_, *below_, *top_child_;
   uint32_t* buf_;
   Sheet** map_;
   Rect rect_;
