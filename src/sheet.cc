@@ -50,32 +50,18 @@ void Sheet::FlushInParent(int rx, int ry, int rw, int rh) {
     // No need to flush when the given area is empty
     return;
   }
+  if (!parent_ || !parent_->map_) {
+    return;
+  }
   assert(0 <= tx && 0 <= ty && (tx + tw) <= parent_->rect_.xsize &&
          (ty + th) <= parent_->rect_.ysize);
 
-  // printf("flush for %p (%d, %d, %d, %d,)\n", (void *)this, tx, ty, tw, th);
   for (Sheet* w = this; w; w = w->below_) {
-    // printf("  w = %p\n", (void *)w);
     for (int y = ty; y < ty + th; y++) {
       int tbegin = tx;
       for (int x = tx; x < tx + tw; x++) {
-        if (parent_->map_) {
-          // Fast path
-          if (parent_->map_[y * parent_->GetXSize() + x] == w) {
-            continue;
-          }
-        } else {
-          // Slow path (should be removed)
-          bool is_covered = false;
-          for (Sheet* s = parent_->children_; s && s != w; s = s->below_) {
-            if (s->IsInRectOnParent(x, y)) {
-              is_covered = true;
-              break;
-            }
-          }
-          if (!is_covered) {
-            continue;
-          }
+        if (parent_->map_[y * parent_->GetXSize() + x] == w) {
+          continue;
         }
         parent_->TransferLineFrom(*w, y, tbegin, x - tbegin);
         tbegin = x + 1;
