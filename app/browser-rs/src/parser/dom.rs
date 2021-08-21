@@ -89,6 +89,8 @@ pub enum ElementKind {
     Html,
     /// https://html.spec.whatwg.org/multipage/semantics.html#the-head-element
     Head,
+    /// https://html.spec.whatwg.org/multipage/sections.html#the-body-element
+    Body,
 }
 
 #[allow(dead_code)]
@@ -135,6 +137,8 @@ impl Parser {
             return self.create_element(ElementKind::Html);
         } else if tag == "head" {
             return self.create_element(ElementKind::Head);
+        } else if tag == "body" {
+            return self.create_element(ElementKind::Body);
         }
         panic!("not supported this tag name: {}", tag);
     }
@@ -204,6 +208,7 @@ impl Parser {
                             // element in the stack of open elements.
                             if tag == "html" {
                                 self.append_to_current_node(tag);
+                                self.mode = InsertionMode::BeforeHead;
                                 token = self.t.next();
                                 continue;
                             }
@@ -251,9 +256,13 @@ impl Parser {
                         }) => {
                             if tag == "head" {
                                 self.append_to_current_node(tag);
+                                self.mode = InsertionMode::InHead;
                                 token = self.t.next();
                                 continue;
                             }
+                        }
+                        Some(Token::Eof) | None => {
+                            return self.root.clone();
                         }
                         _ => {}
                     }
@@ -263,26 +272,109 @@ impl Parser {
 
                 // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inhead
                 InsertionMode::InHead => {
+                    match token {
+                        Some(Token::EndTag {
+                            ref tag,
+                            self_closing: _,
+                        }) => {
+                            if tag == "head" {
+                                self.mode = InsertionMode::AfterHead;
+                                token = self.t.next();
+                                continue;
+                            }
+                        }
+                        Some(Token::Eof) | None => {
+                            return self.root.clone();
+                        }
+                        _ => {}
+                    }
                     self.mode = InsertionMode::AfterHead;
                 } // end of InsertionMode::InHead
 
                 // https://html.spec.whatwg.org/multipage/parsing.html#the-after-head-insertion-mode
                 InsertionMode::AfterHead => {
+                    match token {
+                        Some(Token::EndTag {
+                            ref tag,
+                            self_closing: _,
+                        }) => {
+                            if tag == "head" {
+                                self.mode = InsertionMode::InBody;
+                                token = self.t.next();
+                                continue;
+                            }
+                        }
+                        Some(Token::Eof) | None => {
+                            return self.root.clone();
+                        }
+                        _ => {}
+                    }
                     self.mode = InsertionMode::InBody;
                 } // end of InsertionMode::AfterHead
 
                 // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inbody
-                InsertionMode::InBody => {
-                    self.mode = InsertionMode::AfterBody;
-                } // end of InsertionMode::InBody
+                InsertionMode::InBody => match token {
+                    Some(Token::StartTag {
+                        tag: _,
+                        self_closing: _,
+                    }) => {}
+                    Some(Token::EndTag {
+                        ref tag,
+                        self_closing: _,
+                    }) => {
+                        if tag == "body" || tag == "html" {
+                            self.mode = InsertionMode::AfterBody;
+                            token = self.t.next();
+                            continue;
+                        }
+                    }
+                    Some(Token::Eof) | None => {
+                        return self.root.clone();
+                    }
+                    _ => {}
+                }, // end of InsertionMode::InBody
 
                 // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-afterbody
                 InsertionMode::AfterBody => {
-                    self.mode = InsertionMode::AfterAfterBody;
+                    match token {
+                        Some(Token::EndTag {
+                            ref tag,
+                            self_closing: _,
+                        }) => {
+                            if tag == "html" {
+                                self.mode = InsertionMode::AfterAfterBody;
+                                continue;
+                            }
+                        }
+                        Some(Token::Eof) | None => {
+                            return self.root.clone();
+                        }
+                        _ => {}
+                    }
+
+                    self.mode = InsertionMode::InBody;
                 } // end of InsertionMode::AfterBody
 
                 // https://html.spec.whatwg.org/multipage/parsing.html#the-after-after-body-insertion-mode
-                InsertionMode::AfterAfterBody => {} // end of InsertionMode::AfterAfterBody
+                InsertionMode::AfterAfterBody => {
+                    match token {
+                        Some(Token::EndTag {
+                            ref tag,
+                            self_closing: _,
+                        }) => {
+                            if tag == "html" {
+                                self.mode = InsertionMode::AfterAfterBody;
+                                continue;
+                            }
+                        }
+                        Some(Token::Eof) | None => {
+                            return self.root.clone();
+                        }
+                        _ => {}
+                    }
+
+                    self.mode = InsertionMode::InBody;
+                } // end of InsertionMode::AfterAfterBody
             } // end of match self.mode {}
         } // end of while token.is_some {}
 
