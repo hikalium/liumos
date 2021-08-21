@@ -27,6 +27,7 @@ class Sheet {
     rect_.x = x;
     rect_.y = y;
     map_ = nullptr;
+    is_topmost_ = false;
   }
   void SetMap(Sheet** map) {
     map_ = map;
@@ -38,11 +39,11 @@ class Sheet {
       return;
     }
     // Insert at front
-    upper_ = nullptr;
     Sheet** topmost_upper_holder_ = &parent_->bottom_child_;
-    while (*topmost_upper_holder_) {
+    while (*topmost_upper_holder_ && !(*topmost_upper_holder_)->is_topmost_) {
       topmost_upper_holder_ = &(*topmost_upper_holder_)->upper_;
     }
+    upper_ = *topmost_upper_holder_;
     *topmost_upper_holder_ = this;
     parent_->UpdateMap(GetRect());
     Flush();
@@ -61,6 +62,7 @@ class Sheet {
     parent_->UpdateMap(GetRect());
     FlushInParent(GetX(), GetY(), GetXSize(), GetYSize());
   }
+  void SetTopmost(bool is_topmost) { is_topmost_ = is_topmost; }
   void MoveRelative(int dx, int dy) { SetPosition(GetX() + dx, GetY() + dy); }
   int GetX() const { return rect_.x; }
   int GetY() const { return rect_.y; }
@@ -112,4 +114,5 @@ class Sheet {
   Sheet** map_;
   Rect rect_;
   int pixels_per_scan_line_;
+  bool is_topmost_;
 };

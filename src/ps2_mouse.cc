@@ -142,6 +142,7 @@ void MouseManager() {
   }
   cursor_sheet->Init(cursor_buf, cursor_size, cursor_size, cursor_size, mx, my);
   cursor_sheet->SetParent(liumos->vram_sheet);
+  cursor_sheet->SetTopmost(true);
 
   constexpr int debug_info_width = 64;
   constexpr int debug_info_height = 64;
