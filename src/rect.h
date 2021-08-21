@@ -9,6 +9,8 @@
 
 struct Rect {
   int x, y, xsize, ysize;
+  int GetRight() const { return x + xsize; }
+  int GetBottom() const { return y + ysize; }
   Rect GetIntersectionWith(Rect t) {
     if (xsize < 0 || ysize < 0 || t.xsize < 0 || t.ysize < 0)
       return {0, 0, 0, 0};

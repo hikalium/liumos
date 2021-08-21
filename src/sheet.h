@@ -30,54 +30,29 @@ class Sheet {
   }
   void SetMap(Sheet** map) {
     map_ = map;
-    UpdateMap();
-  }
-  void UpdateMap() {
-    if (!map_) {
-      return;
-    }
-    for (int y = 0; y < GetYSize(); y++) {
-      for (int x = 0; x < GetXSize(); x++) {
-        map_[y * GetXSize() + x] = nullptr;
-      }
-    }
-    Rect client_rect = GetClientRect();
-    for (Sheet* s = children_; s; s = s->below_) {
-      Rect in_view = client_rect.GetIntersectionWith(s->GetRect());
-      for (int y = in_view.y; y < in_view.y + in_view.ysize; y++) {
-        for (int x = in_view.x; x < in_view.x + in_view.xsize; x++) {
-          if (map_[y * GetXSize() + x]) {
-            continue;
-          }
-          map_[y * GetXSize() + x] = s;
-        }
-      }
-    }
+    UpdateMap(GetRect());
   }
   void SetParent(Sheet* parent) {
     // Insert at front
     below_ = parent->children_;
     parent_ = parent;
     parent_->children_ = this;
-    parent_->UpdateMap();
+    parent_->UpdateMap(GetRect());
     Flush();
   }
   void SetPosition(int x, int y) {
+    const auto prev_rect = GetRect();
     rect_.x = x;
     rect_.y = y;
     if (!parent_) {
       return;
     }
-    parent_->UpdateMap();
-    Flush();
+    parent_->UpdateMap(prev_rect);
+    FlushInParent(prev_rect.x, prev_rect.y, GetXSize(), GetYSize());
+    parent_->UpdateMap(GetRect());
+    FlushInParent(GetX(), GetY(), GetXSize(), GetYSize());
   }
-  void MoveRelative(int dx, int dy) {
-    SetPosition(GetX() + dx, GetY() + dy);
-    // (1, 0) -> (1, 1)
-    // dx = 0, dy = 1
-    FlushInParent(GetX() - dx, GetY() - dy, GetXSize() + Absolute(dx),
-                  GetYSize() + Absolute(dy));
-  }
+  void MoveRelative(int dx, int dy) { SetPosition(GetX() + dx, GetY() + dy); }
   int GetX() const { return rect_.x; }
   int GetY() const { return rect_.y; }
   int GetXSize() const { return rect_.xsize; }
@@ -99,6 +74,28 @@ class Sheet {
   void FlushRecursive(int rx, int ry, int rw, int rh);
 
  private:
+  void UpdateMap(Rect target) {
+    if (!map_) {
+      return;
+    }
+    target = target.GetIntersectionWith(GetClientRect());
+    for (int y = target.y; y < target.GetBottom(); y++) {
+      for (int x = target.x; x < target.GetRight(); x++) {
+        map_[y * GetXSize() + x] = nullptr;
+      }
+    }
+    for (Sheet* s = children_; s; s = s->below_) {
+      Rect in_view = target.GetIntersectionWith(s->GetRect());
+      for (int y = in_view.y; y < in_view.y + in_view.ysize; y++) {
+        for (int x = in_view.x; x < in_view.x + in_view.xsize; x++) {
+          if (map_[y * GetXSize() + x]) {
+            continue;
+          }
+          map_[y * GetXSize() + x] = s;
+        }
+      }
+    }
+  }
   bool IsInRectY(int y) { return 0 <= y && y < rect_.ysize; }
   bool IsInRectOnParent(int x, int y) {
     return rect_.y <= y && y < rect_.y + rect_.ysize && rect_.x <= x &&
