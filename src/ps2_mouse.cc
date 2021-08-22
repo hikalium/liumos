@@ -126,6 +126,18 @@ static void MoveMouseCursor(int& px, int& py, int dx, int dy) {
   FixPositionInVRAM(px, py);
 }
 
+static Sheet* FindWindowAtPosition(int px, int py) {
+  Sheet* focused = nullptr;
+  for (Sheet* s = liumos->vram_sheet->GetChildAtBottom(); s && !s->IsTopmost();
+       s = s->GetUpper()) {
+    if (!s->GetRect().IsPointInRect(px, py) || s->IsLocked()) {
+      continue;
+    }
+    focused = s;
+  }
+  return focused;
+}
+
 void MouseManager() {
   auto& mctrl = PS2MouseController::GetInstance();
   int mx = 50, my = 50;
@@ -163,6 +175,10 @@ void MouseManager() {
   SheetPainter::DrawString(*debug_info_sheet, "mouse:", 8, 16, false);
   debug_info_sheet->Flush();
 
+  bool last_left_button_state = false;
+  Sheet* focused = nullptr;
+  int focused_ofs_x = 0, focused_ofs_y = 0;
+
   for (;;) {
     if (mctrl.buffer.IsEmpty()) {
       Sleep();
@@ -171,6 +187,22 @@ void MouseManager() {
     auto me = mctrl.buffer.Pop();
     MoveMouseCursor(mx, my, me.dx, me.dy);
     cursor_sheet->SetPosition(mx, my);
+
+    if (me.buttonL) {
+      if (!last_left_button_state) {
+        focused = FindWindowAtPosition(mx, my);
+        if (focused) {
+          focused_ofs_x = mx - focused->GetX();
+          focused_ofs_y = my - focused->GetY();
+        }
+      }
+      if (focused) {
+        focused->SetPosition(mx - focused_ofs_x, my - focused_ofs_y);
+      }
+    } else {
+      focused = nullptr;
+    }
+    last_left_button_state = me.buttonL;
 
     SheetPainter::DrawCharacter(*debug_info_sheet, me.buttonL ? 'L' : 'l',
                                 8 * 2, 32, false);

@@ -64,6 +64,9 @@ class Sheet {
     FlushInParent(GetX(), GetY(), GetXSize(), GetYSize());
   }
   void SetTopmost(bool is_topmost) { is_topmost_ = is_topmost; }
+  bool IsTopmost() { return is_topmost_; }
+  void SetLocked(bool is_locked) { is_locked_ = is_locked; }
+  bool IsLocked() { return is_locked_; }
   void SetAlphaEnabled(bool is_enabled) {
     is_alpha_enabled_ = is_enabled;
     if (is_alpha_enabled_) {
@@ -90,6 +93,8 @@ class Sheet {
   void FlushInParent(int px, int py, int w, int h);
   void Flush(int px, int py, int w, int h);
   void Flush() { Flush(0, 0, rect_.xsize, rect_.ysize); };
+  Sheet* GetChildAtBottom() { return bottom_child_; }
+  Sheet* GetUpper() { return upper_; }
 
  private:
   void UpdateMap(Rect target) {
@@ -140,4 +145,5 @@ class Sheet {
   int pixels_per_scan_line_;
   bool is_topmost_;
   bool is_alpha_enabled_;
+  bool is_locked_;
 };

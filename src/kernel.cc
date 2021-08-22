@@ -121,6 +121,7 @@ void InitializeVRAMForKernel() {
   memcpy(virtual_screen_.GetBuf(), liumos->screen_sheet->GetBuf(),
          virtual_screen_.GetBufSize());
   liumos->screen_sheet = &virtual_screen_;
+  liumos->screen_sheet->SetLocked(true);
 }
 
 void CreateAndLaunchKernelTask(void (*entry_point)()) {
