@@ -158,7 +158,7 @@ void MouseManager() {
   cursor_sheet->SetTopmost(true);
   cursor_sheet->SetAlphaEnabled(true);
 
-  constexpr int debug_info_width = 64;
+  constexpr int debug_info_width = 128;
   constexpr int debug_info_height = 64;
   Sheet* debug_info_sheet = AllocKernelMemory<Sheet*>(sizeof(Sheet));
   bzero(debug_info_sheet, sizeof(Sheet));

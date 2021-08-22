@@ -3,10 +3,6 @@
 #include <stdint.h>
 #include "rect.h"
 
-static inline int Absolute(int v) {
-  return v > 0 ? v : -v;
-}
-
 class Sheet {
   friend class SheetPainter;
 
