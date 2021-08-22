@@ -26,23 +26,6 @@ void Sheet::BlockTransfer(int to_x,
   Flush(to_x, to_y, w, h);
 }
 
-void Sheet::TransferLineFrom(Sheet& src, int py, int px, int w) {
-  // Transfer line range [px, px + w) at row py from src.
-  // px, py is coordinates on this sheet.
-  // Given range shold be in src sheet.
-  if (w <= 0)
-    return;
-  if (w & 1) {
-    RepeatMove4Bytes(w, &buf_[py * pixels_per_scan_line_ + px],
-                     &src.buf_[(py - src.rect_.y) * src.pixels_per_scan_line_ +
-                               (px - src.rect_.x)]);
-  } else {
-    RepeatMove8Bytes(w >> 1, &buf_[py * pixels_per_scan_line_ + px],
-                     &src.buf_[(py - src.rect_.y) * src.pixels_per_scan_line_ +
-                               (px - src.rect_.x)]);
-  }
-}
-
 void Sheet::FlushInParent(int rx, int ry, int rw, int rh) {
   auto [tx, ty, tw, th] =
       parent_->GetClientRect().GetIntersectionWith({rx, ry, rw, rh});
@@ -56,19 +39,16 @@ void Sheet::FlushInParent(int rx, int ry, int rw, int rh) {
   assert(0 <= tx && 0 <= ty && (tx + tw) <= parent_->rect_.xsize &&
          (ty + th) <= parent_->rect_.ysize);
 
+  const auto parent_map = parent_->map_;
+  const auto parent_line_size = parent_->GetPixelsPerScanLine();
+  const auto parent_buf = parent_->buf_;
   for (int y = ty; y < ty + th; y++) {
-    int tbegin = tx;
     for (int x = tx; x < tx + tw; x++) {
-      if (parent_->map_[y * parent_->GetPixelsPerScanLine() + x] == this) {
+      if (parent_map[y * parent_line_size + x] != this) {
         continue;
       }
-      parent_->TransferLineFrom(*this, y, tbegin, x - tbegin);
-      tbegin = x + 1;
-    }
-    // Transfer last segment of line.
-    if (tbegin < tx + tw &&
-        parent_->map_[y * parent_->GetPixelsPerScanLine() + tbegin] == this) {
-      parent_->TransferLineFrom(*this, y, tbegin, (tx + tw) - tbegin);
+      parent_buf[y * parent_line_size + x] =
+          buf_[(y - rect_.y) * pixels_per_scan_line_ + (x - rect_.x)];
     }
   }
 }

@@ -55,6 +55,7 @@ class Sheet {
     const auto next_rect = GetRect();
     const auto intersection = prev_rect.GetIntersectionWith(next_rect);
 
+    // TODO(hikalium): avoid updating overwrapped area
     if (intersection.IsEmptyRect()) {
       parent_->UpdateMap(prev_rect);
       parent_->UpdateMap(GetRect());
@@ -139,12 +140,14 @@ class Sheet {
     for (Sheet* s = bottom_child_; s; s = s->upper_) {
       if (s->is_alpha_enabled_) {
         // Alpha enabled
+        const auto sbuf = s->buf_;
+        const auto sppl = s->GetPixelsPerScanLine();
+        const auto sy = s->GetY();
+        const auto sx = s->GetX();
         Rect in_view = target.GetIntersectionWith(s->GetRect());
         for (int y = in_view.y; y < in_view.y + in_view.ysize; y++) {
           for (int x = in_view.x; x < in_view.x + in_view.xsize; x++) {
-            if ((s->buf_[(y - s->GetY()) * s->GetPixelsPerScanLine() +
-                         (x - s->GetX())] >>
-                 24) == 0x00) {
+            if ((sbuf[(y - sy) * sppl + (x - sx)] >> 24) == 0x00) {
               continue;
             }
             map_[y * GetPixelsPerScanLine() + x] = s;
