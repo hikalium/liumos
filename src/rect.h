@@ -20,6 +20,9 @@ struct Rect {
     int bysize = std::max(std::min(ysize + y - by, t.ysize + t.y - by), 0);
     return {bx, by, bxsize, bysize};
   }
+  bool IsPointInRect(int px, int py) {
+    return x <= px && px < x + xsize && y <= py && py < y + ysize;
+  }
   bool operator==(const Rect& rhs) const {
     return x == rhs.x && y == rhs.y && xsize == rhs.xsize && ysize == rhs.ysize;
   }
