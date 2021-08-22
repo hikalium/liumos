@@ -28,6 +28,7 @@ class Sheet {
     rect_.y = y;
     map_ = nullptr;
     is_topmost_ = false;
+    is_alpha_enabled_ = false;
   }
   void SetMap(Sheet** map) {
     map_ = map;
@@ -63,6 +64,13 @@ class Sheet {
     FlushInParent(GetX(), GetY(), GetXSize(), GetYSize());
   }
   void SetTopmost(bool is_topmost) { is_topmost_ = is_topmost; }
+  void SetAlphaEnabled(bool is_enabled) {
+    is_alpha_enabled_ = is_enabled;
+    if (is_alpha_enabled_) {
+      // Update map and flush to reflect the alpha change
+      MoveRelative(0, 0);
+    }
+  }
   void MoveRelative(int dx, int dy) { SetPosition(GetX() + dx, GetY() + dy); }
   int GetX() const { return rect_.x; }
   int GetY() const { return rect_.y; }
@@ -95,10 +103,26 @@ class Sheet {
       }
     }
     for (Sheet* s = bottom_child_; s; s = s->upper_) {
-      Rect in_view = target.GetIntersectionWith(s->GetRect());
-      for (int y = in_view.y; y < in_view.y + in_view.ysize; y++) {
-        for (int x = in_view.x; x < in_view.x + in_view.xsize; x++) {
-          map_[y * GetXSize() + x] = s;
+      if (s->is_alpha_enabled_) {
+        // Alpha enabled
+        Rect in_view = target.GetIntersectionWith(s->GetRect());
+        for (int y = in_view.y; y < in_view.y + in_view.ysize; y++) {
+          for (int x = in_view.x; x < in_view.x + in_view.xsize; x++) {
+            if ((s->buf_[(y - s->GetY()) * s->GetPixelsPerScanLine() +
+                         (x - s->GetX())] >>
+                 24) == 0x00) {
+              continue;
+            }
+            map_[y * GetPixelsPerScanLine() + x] = s;
+          }
+        }
+      } else {
+        // Alpha disabled
+        Rect in_view = target.GetIntersectionWith(s->GetRect());
+        for (int y = in_view.y; y < in_view.y + in_view.ysize; y++) {
+          for (int x = in_view.x; x < in_view.x + in_view.xsize; x++) {
+            map_[y * GetPixelsPerScanLine() + x] = s;
+          }
         }
       }
     }
@@ -115,4 +139,5 @@ class Sheet {
   Rect rect_;
   int pixels_per_scan_line_;
   bool is_topmost_;
+  bool is_alpha_enabled_;
 };

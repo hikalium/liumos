@@ -325,7 +325,68 @@ static void TestMoveRelative() {
   }
 }
 
+static void TestTransparent() {
+  printf("%s()\n", __func__);
+
+  uint32_t sheet0_buf[3 * 3];  // vram
+  Sheet* sheet0_map[3 * 3];
+  uint32_t sheet1_buf[3 * 3];  // background
+  uint32_t sheet2_buf[3 * 3];  // foreground
+
+  Sheet s0, s1, s2;
+
+  printf("s0: %p\n", (void*)&s0);
+  printf("s1: %p\n", (void*)&s1);
+  printf("s2: %p\n", (void*)&s2);
+
+  SET_BUF_3x3(sheet0_buf, 0);
+  SET_BUF_3x3(sheet1_buf, 1);
+  SET_BUF_3x3(sheet2_buf, 2);
+
+  s0.Init(sheet0_buf, 3, 3, 3, 0, 0);
+  s0.SetMap(sheet0_map);
+
+  s1.Init(sheet1_buf, 3, 3, 3, 0, 0);
+  s1.SetParent(&s0);
+
+  s2.Init(sheet2_buf, 3, 3, 3, 0, 0);
+  s2.SetParent(&s0);
+
+  {
+    Sheet* sheet0_map_expected[3 * 3] = {
+        &s2, &s2, &s2,  //
+        &s2, &s2, &s2,  //
+        &s2, &s2, &s2,  //
+    };
+    EXPECT_EQ_MAP_3x3(sheet0_map, sheet0_map_expected);
+    uint32_t sheet0_buf_expected[3 * 3] = {
+        2, 2, 2,  //
+        2, 2, 2,  //
+        2, 2, 2,  //
+    };
+    EXPECT_EQ_BUF_3x3(sheet0_buf, sheet0_buf_expected);
+  }
+
+  s2.SetAlphaEnabled(true);
+
+  {
+    Sheet* sheet0_map_expected[3 * 3] = {
+        &s1, &s1, &s1,  //
+        &s1, &s1, &s1,  //
+        &s1, &s1, &s1,  //
+    };
+    EXPECT_EQ_MAP_3x3(sheet0_map, sheet0_map_expected);
+    uint32_t sheet0_buf_expected[3 * 3] = {
+        1, 1, 1,  //
+        1, 1, 1,  //
+        1, 1, 1,  //
+    };
+    EXPECT_EQ_BUF_3x3(sheet0_buf, sheet0_buf_expected);
+  }
+}
+
 int main() {
+  TestTransparent();
   TestMoveRelative();
   TestUpdateMap();
 

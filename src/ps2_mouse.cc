@@ -137,12 +137,14 @@ void MouseManager() {
       AllocKernelMemory<uint32_t*>(4 * cursor_size * cursor_size);
   for (int y = 0; y < cursor_size; y++) {
     for (int x = 0; x < cursor_size; x++) {
-      cursor_buf[y * cursor_size + x] = 0x88ff88;
+      cursor_buf[y * cursor_size + x] =
+          x < (cursor_size - y) ? 0xff88ff88 : 0x00000000 /* transparent */;
     }
   }
   cursor_sheet->Init(cursor_buf, cursor_size, cursor_size, cursor_size, mx, my);
   cursor_sheet->SetParent(liumos->vram_sheet);
   cursor_sheet->SetTopmost(true);
+  cursor_sheet->SetAlphaEnabled(true);
 
   constexpr int debug_info_width = 64;
   constexpr int debug_info_height = 64;
