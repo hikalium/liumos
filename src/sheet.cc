@@ -59,7 +59,7 @@ void Sheet::FlushInParent(int rx, int ry, int rw, int rh) {
   for (int y = ty; y < ty + th; y++) {
     int tbegin = tx;
     for (int x = tx; x < tx + tw; x++) {
-      if (parent_->map_[y * parent_->GetXSize() + x] == this) {
+      if (parent_->map_[y * parent_->GetPixelsPerScanLine() + x] == this) {
         continue;
       }
       parent_->TransferLineFrom(*this, y, tbegin, x - tbegin);
@@ -67,7 +67,7 @@ void Sheet::FlushInParent(int rx, int ry, int rw, int rh) {
     }
     // Transfer last segment of line.
     if (tbegin < tx + tw &&
-        parent_->map_[y * parent_->GetXSize() + tbegin] == this) {
+        parent_->map_[y * parent_->GetPixelsPerScanLine() + tbegin] == this) {
       parent_->TransferLineFrom(*this, y, tbegin, (tx + tw) - tbegin);
     }
   }
