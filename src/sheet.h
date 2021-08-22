@@ -52,11 +52,11 @@ class Sheet {
     if (!parent_) {
       return;
     }
-    parent_->UpdateMap(prev_rect);
+    const auto union_rect = prev_rect.GetUnionWith(GetRect());
+    parent_->UpdateMap(union_rect);
     for (Sheet* s = parent_->bottom_child_; s && s != this; s = s->upper_) {
       s->FlushInParent(prev_rect.x, prev_rect.y, GetXSize(), GetYSize());
     }
-    parent_->UpdateMap(GetRect());
     FlushInParent(GetX(), GetY(), GetXSize(), GetYSize());
   }
   void SetTopmost(bool is_topmost) { is_topmost_ = is_topmost; }

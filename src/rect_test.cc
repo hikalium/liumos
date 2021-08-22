@@ -25,6 +25,13 @@ static void TestIsPointInRect() {
     assert(!one.IsPointInRect(-1, -1));
   }
 }
+static void TestGetUnionWith() {
+  Rect one = {0, 0, 1, 1};
+  Rect one_with_offset = {1, 1, 1, 1};
+  Rect two = {0, 0, 2, 2};
+
+  assert(one.GetUnionWith(one_with_offset) == two);
+}
 
 int main() {
   Rect zero = {0, 0, 0, 0};
@@ -42,6 +49,7 @@ int main() {
   assert(two.GetIntersectionWith(one_with_offset) == one_with_offset);
 
   TestIsPointInRect();
+  TestGetUnionWith();
 
   puts("PASS");
   return 0;

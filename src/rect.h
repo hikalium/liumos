@@ -20,9 +20,25 @@ struct Rect {
     int bysize = std::max(std::min(ysize + y - by, t.ysize + t.y - by), 0);
     return {bx, by, bxsize, bysize};
   }
+  Rect GetUnionWith(Rect s) const {
+    int l1 = x;
+    int r1 = x + xsize;
+    int u1 = y;
+    int d1 = y + ysize;
+    int l2 = s.x;
+    int r2 = s.x + s.xsize;
+    int u2 = s.y;
+    int d2 = s.y + s.ysize;
+    int l = std::min(l1, l2);
+    int r = std::max(r1, r2);
+    int u = std::min(u1, u2);
+    int d = std::max(d1, d2);
+    return {l, u, r - l, d - u};
+  }
   bool IsPointInRect(int px, int py) {
     return x <= px && px < x + xsize && y <= py && py < y + ysize;
   }
+  bool IsEmptyRect() { return x == 0 && y == 0 && xsize == 0 && ysize == 0; }
   bool operator==(const Rect& rhs) const {
     return x == rhs.x && y == rhs.y && xsize == rhs.xsize && ysize == rhs.ysize;
   }
