@@ -52,8 +52,41 @@ class Sheet {
     if (!parent_) {
       return;
     }
-    const auto union_rect = prev_rect.GetUnionWith(GetRect());
-    parent_->UpdateMap(union_rect);
+    const auto next_rect = GetRect();
+    const auto intersection = prev_rect.GetIntersectionWith(next_rect);
+
+    if (intersection.IsEmptyRect()) {
+      parent_->UpdateMap(prev_rect);
+      parent_->UpdateMap(GetRect());
+    } else if (prev_rect == next_rect) {
+      parent_->UpdateMap(prev_rect);
+    } else if (prev_rect.x == next_rect.x || prev_rect.y == next_rect.y) {
+      parent_->UpdateMap(prev_rect.GetUnionWith(next_rect));
+    } else {
+      Rect s1;
+      Rect s2;
+      if (prev_rect.x < next_rect.x) {
+        s1 = prev_rect;
+        s2 = next_rect;
+      } else {
+        s1 = next_rect;
+        s2 = prev_rect;
+      }
+      int dx = s2.x - s1.x;
+      int dy = std::abs(s2.y - s1.y);
+      int w = s1.xsize;  // == s2.w
+      int h = s1.ysize;  // == s2.h
+      if (s1.y < s2.y) {
+        parent_->UpdateMap({s1.x, s1.y, w, dy});
+        parent_->UpdateMap({s1.x, s2.y, w + dx, h - dy});
+        parent_->UpdateMap({s2.x, s1.y + h, w, dy});
+      } else {
+        parent_->UpdateMap({s2.x, s2.y, w, dy});
+        parent_->UpdateMap({s1.x, s1.y, w + dx, h - dy});
+        parent_->UpdateMap({s1.x, s2.y + h, w, dy});
+      }
+    }
+
     for (Sheet* s = parent_->bottom_child_; s && s != this; s = s->upper_) {
       s->FlushInParent(prev_rect.x, prev_rect.y, GetXSize(), GetYSize());
     }

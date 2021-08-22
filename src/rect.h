@@ -11,7 +11,7 @@ struct Rect {
   int x, y, xsize, ysize;
   int GetRight() const { return x + xsize; }
   int GetBottom() const { return y + ysize; }
-  Rect GetIntersectionWith(Rect t) {
+  Rect GetIntersectionWith(Rect t) const {
     if (xsize < 0 || ysize < 0 || t.xsize < 0 || t.ysize < 0)
       return {0, 0, 0, 0};
     int bx = std::max(x, t.x);
@@ -35,10 +35,12 @@ struct Rect {
     int d = std::max(d1, d2);
     return {l, u, r - l, d - u};
   }
-  bool IsPointInRect(int px, int py) {
+  bool IsPointInRect(int px, int py) const {
     return x <= px && px < x + xsize && y <= py && py < y + ysize;
   }
-  bool IsEmptyRect() { return x == 0 && y == 0 && xsize == 0 && ysize == 0; }
+  bool IsEmptyRect() const {
+    return x == 0 && y == 0 && xsize == 0 && ysize == 0;
+  }
   bool operator==(const Rect& rhs) const {
     return x == rhs.x && y == rhs.y && xsize == rhs.xsize && ysize == rhs.ysize;
   }
