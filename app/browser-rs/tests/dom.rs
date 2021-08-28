@@ -50,6 +50,7 @@ fn main() {
 fn node_equals(expected: Option<Rc<RefCell<Node>>>, actual: Option<Rc<RefCell<Node>>>) -> bool {
     if expected.is_some() != actual.is_some() {
         // A node is Some and another is None.
+        println!("expected {:?} but actual {:?}", expected, actual);
         return false;
     }
 
@@ -64,6 +65,10 @@ fn node_equals(expected: Option<Rc<RefCell<Node>>>, actual: Option<Rc<RefCell<No
     let actual_node = actual.unwrap();
     let actual_borrowed = actual_node.borrow();
     if expected_borrowed.kind != actual_borrowed.kind {
+        println!(
+            "expected {:?} but actual {:?}",
+            expected_borrowed, actual_borrowed
+        );
         return false;
     }
 
@@ -84,9 +89,8 @@ macro_rules! run_test {
         let mut p = Parser::new(t);
         let root = Some(p.construct_tree());
 
+        // Check nodes recursively.
         assert!(node_equals($expected_root, root.clone()));
-
-        // TODO: check children
     };
 }
 
@@ -167,3 +171,11 @@ fn body() {
     let root = create_base_dom_tree();
     run_test!("<html><head></head><body></body></html>", Some(root));
 }
+
+/*
+#[test_case]
+fn text() {
+    let root = create_base_dom_tree();
+    run_test!("<html><head></head><body>foo</body></html>", Some(root));
+}
+*/
