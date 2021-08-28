@@ -95,6 +95,11 @@ macro_rules! run_test {
 }
 
 fn create_base_dom_tree() -> Rc<RefCell<Node>> {
+    // root (Document)
+    // └── html
+    //     └── head
+    //     └── body
+
     let root = Rc::new(RefCell::new(Node::new(NodeKind::Document)));
     let html = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
         ElementKind::Html,
@@ -148,7 +153,6 @@ fn create_base_dom_tree() -> Rc<RefCell<Node>> {
 
 #[test_case]
 fn no_input() {
-    // root node
     let root = Rc::new(RefCell::new(Node::new(NodeKind::Document)));
     run_test!("", Some(root));
 }
@@ -161,7 +165,6 @@ fn html() {
 
 #[test_case]
 fn head() {
-    // root node --> html node --> head node
     let root = create_base_dom_tree();
     run_test!("<html><head></head></html>", Some(root));
 }
@@ -172,10 +175,31 @@ fn body() {
     run_test!("<html><head></head><body></body></html>", Some(root));
 }
 
-/*
 #[test_case]
 fn text() {
+    // root (Document)
+    // └── html
+    //     └── head
+    //     └── body
+    //         └── text
     let root = create_base_dom_tree();
+    let body = root
+        .borrow_mut()
+        .first_child()
+        .unwrap()
+        .borrow_mut()
+        .first_child()
+        .unwrap()
+        .borrow_mut()
+        .next_sibling()
+        .unwrap();
+    let text = Rc::new(RefCell::new(Node::new(NodeKind::Text(String::from("foo")))));
+    // body <--> text
+    {
+        body.borrow_mut().first_child = Some(text.clone());
+    }
+    {
+        text.borrow_mut().parent = Some(Rc::downgrade(&body));
+    }
     run_test!("<html><head></head><body>foo</body></html>", Some(root));
 }
-*/
