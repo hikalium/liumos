@@ -14,6 +14,18 @@ use browser_rs::parser::dom::*;
 use browser_rs::parser::tokenizer::*;
 use liumlib::*;
 
+fn print_node(node: Option<Rc<RefCell<Node>>>, depth: usize) {
+    match node {
+        Some(n) => {
+            print!("{}", "  ".repeat(depth));
+            println!("{:?}", n.borrow().kind);
+            print_node(n.borrow().first_child(), depth + 1);
+            print_node(n.borrow().next_sibling(), depth);
+        }
+        None => return,
+    }
+}
+
 #[cfg(test)]
 pub trait Testable {
     fn run(&self) -> ();
@@ -84,10 +96,15 @@ fn node_equals(expected: Option<Rc<RefCell<Node>>>, actual: Option<Rc<RefCell<No
 #[macro_export]
 macro_rules! run_test {
     ($html:literal, $expected_root:expr) => {
+        use browser_rs::parser::dom::*;
+
         let t = Tokenizer::new(String::from($html));
 
         let mut p = Parser::new(t);
-        let root = Some(p.construct_tree());
+        let root_raw = p.construct_tree();
+        let root = Some(root_raw.clone());
+        println!("\n----- nodes -----");
+        print_node(Some(root_raw.clone()), 0);
 
         // Check nodes recursively.
         assert!(node_equals($expected_root, root.clone()));
@@ -201,5 +218,6 @@ fn text() {
     {
         text.borrow_mut().parent = Some(Rc::downgrade(&body));
     }
+
     run_test!("<html><head></head><body>foo</body></html>", Some(root));
 }
