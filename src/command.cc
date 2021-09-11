@@ -634,7 +634,16 @@ void Date() {
 }
 
 void Run(TextBox& tbox) {
-  const char* line = tbox.GetRecordedString();
+  const char* raw = tbox.GetRecordedString();
+  char line[128 + 1];
+  bool background = raw[strlen(raw) - 1] == '&';
+  if (background) {
+    memmove(line, raw, strlen(raw) - 1);
+    line[strlen(raw) - 1] = '\0';
+  } else {
+    memmove(line, raw, strlen(raw));
+    line[strlen(raw)] = '\0';
+  }
   CommandLineArgs args;
   if (!args.Parse(line)) {
     PutString("Failed to parse command line\n");
@@ -1001,6 +1010,13 @@ void Run(TextBox& tbox) {
     uint64_t argc64 = argc;
     proc.GetExecutionContext().PushDataToStack(&argc64, sizeof(argc64));
     liumos->scheduler->RegisterProcess(proc);
+    if (background) {
+      char s[128];
+      sprintf(s, "%lu", proc.GetID());
+      PutString(s);
+      tbox.putc('\n');
+      return;
+    }
     while (proc.GetStatus() != Process::Status::kStopped) {
       uint16_t keyid = liumos->main_console->GetCharWithoutBlocking();
       if (keyid == KeyID::kNoInput) {
