@@ -276,10 +276,12 @@ fn list() {
         li2.borrow_mut().previous_sibling = Some(Rc::downgrade(&li1));
     }
 
-    run_test!("<html><head></head><body><ul><li></li><li></li></ul></body></html>", Some(root));
+    run_test!(
+        "<html><head></head><body><ul><li></li><li></li></ul></body></html>",
+        Some(root)
+    );
 }
 
-/*
 #[test_case]
 fn list2() {
     // root (Document)
@@ -323,7 +325,7 @@ fn list2() {
         ElementKind::Li,
     )))));
 
-    // body <--> ul
+    // body <--> ul1
     {
         body.borrow_mut().first_child = Some(ul1.clone());
     }
@@ -331,7 +333,7 @@ fn list2() {
         ul1.borrow_mut().parent = Some(Rc::downgrade(&body));
     }
 
-    // ul <--> li1
+    // ul1 <--> li1
     {
         ul1.borrow_mut().first_child = Some(li1.clone());
     }
@@ -345,6 +347,14 @@ fn list2() {
     }
     {
         li2.borrow_mut().previous_sibling = Some(Rc::downgrade(&li1));
+    }
+
+    // ul1 <--> ul2
+    {
+        ul1.borrow_mut().next_sibling = Some(ul2.clone());
+    }
+    {
+        ul2.borrow_mut().previous_sibling = Some(Rc::downgrade(&ul1));
     }
 
     // ul2 <--> li3
@@ -365,4 +375,3 @@ fn list2() {
 
     run_test!("<html><head></head><body><ul><li></li><li></li></ul><ul><li></li><li></li></ul></body></html>", Some(root));
 }
-*/
