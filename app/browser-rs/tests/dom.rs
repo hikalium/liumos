@@ -10,8 +10,8 @@ use alloc::rc::Rc;
 use alloc::string::String;
 use core::cell::RefCell;
 
-use browser_rs::parser::dom::*;
-use browser_rs::parser::tokenizer::*;
+use browser_rs::renderer::dom::*;
+use browser_rs::renderer::tokenizer::*;
 use liumlib::*;
 
 fn print_node(node: Option<Rc<RefCell<Node>>>, depth: usize) {
@@ -96,7 +96,7 @@ fn node_equals(expected: Option<Rc<RefCell<Node>>>, actual: Option<Rc<RefCell<No
 #[macro_export]
 macro_rules! run_test {
     ($html:literal, $expected_root:expr) => {
-        use browser_rs::parser::dom::*;
+        use browser_rs::renderer::dom::*;
 
         let t = Tokenizer::new(String::from($html));
 

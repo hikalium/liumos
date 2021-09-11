@@ -3,7 +3,7 @@
 
 mod http;
 mod net;
-mod parser;
+mod renderer;
 mod url;
 
 extern crate alloc;
@@ -12,7 +12,7 @@ use alloc::string::ToString;
 use liumlib::*;
 
 use crate::net::udp_response;
-use crate::parser::render;
+use crate::renderer::render;
 use crate::url::ParsedUrl;
 
 fn help_message() {

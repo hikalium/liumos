@@ -1,7 +1,7 @@
 //! This is a part of "13.2.6 Tree construction" in the HTML spec.
 //! https://html.spec.whatwg.org/multipage/parsing.html#tree-construction
 
-use crate::parser::tokenizer::*;
+use crate::renderer::tokenizer::*;
 #[allow(unused_imports)]
 use liumlib::*;
 

@@ -9,7 +9,7 @@ extern crate alloc;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use browser_rs::parser::tokenizer::*;
+use browser_rs::renderer::tokenizer::*;
 use liumlib::*;
 
 #[cfg(test)]
