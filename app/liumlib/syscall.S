@@ -65,6 +65,18 @@ msync:
 	syscall
 	ret
 
+// int
+// nanosleep(
+//   const struct timespec *,
+//   struct timespec *);
+.global nanosleep
+nanosleep:
+	// arg[1]: rdi = rdi
+	// arg[2]: rsi = rsi
+	mov rax, 35
+	syscall
+	ret
+
 // int socket(int domain, int type, int protocol);
 .global socket
 socket:

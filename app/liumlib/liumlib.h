@@ -63,6 +63,11 @@ struct timeval {
   long tv_usec;
 };
 
+struct timespec {
+  long tv_sec;
+  long tv_nsec;
+};
+
 // c.f.
 // https://elixir.bootlin.com/linux/v4.15/source/include/uapi/linux/in.h#L232
 struct sockaddr_in {
@@ -117,6 +122,7 @@ void* mmap(void* addr,
            int fd,
            off_t offset);
 int msync(void* addr, size_t length, int flags);
+int nanosleep(const struct timespec *, struct timespec *);
 
 // Standard library functions.
 void bzero(void* s, size_t n);
@@ -162,5 +168,11 @@ in_addr_t MakeIPv4AddrFromString(const char* s);
 void PrintHex8ZeroFilled(uint8_t v);
 void PrintIPv4Addr(in_addr_t addr);
 void panic(const char* s);
+
+static inline int puts(const char *s) {
+  Println(s);
+  return strlen(s);
+}
+
 
 #endif /* GRANDPARENT_H */
