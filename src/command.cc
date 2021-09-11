@@ -974,6 +974,16 @@ void Run(TextBox& tbox) {
       PutString(GetLoaderInfo().root_files[i].GetFileName());
       PutChar('\n');
     }
+  } else if (IsEqualString(line, "ps")) {
+    PutString("  PID   CMD\n");
+    for (int i = 0; i < liumos->scheduler->GetNumOfProcess(); i++) {
+      Process* proc = liumos->scheduler->GetProcess(i);
+      char pid[8];
+      sprintf(pid, "%lu", proc->GetID());
+      PutString(pid);
+      tbox.putc(' ');
+      tbox.putc('\n');
+    }
   } else {
     const char* arg0 = args.GetArg(0);
     EFIFile* file = nullptr;

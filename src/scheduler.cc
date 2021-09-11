@@ -43,3 +43,13 @@ Process* Scheduler::SwitchProcess() {
 void Scheduler::KillCurrentProcess() {
   current_->Kill();
 }
+
+Process* Scheduler::GetProcess(int id) {
+  if (id >= number_of_process_)
+    return NULL;
+  return process_[id];
+}
+
+int Scheduler::GetNumOfProcess() {
+  return number_of_process_;
+}
