@@ -99,7 +99,7 @@ class ProcessController {
  public:
   ProcessController(KernelVirtualHeapAllocator& kernel_heap_allocator)
       : last_id_(0), kernel_heap_allocator_(kernel_heap_allocator){};
-  Process& Create(const char* name);
+  Process& Create(const char* const name);
   Process& RestoreFromPersistentProcessInfo(PersistentProcessInfo& pp_info);
 
  private:

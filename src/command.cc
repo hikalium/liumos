@@ -829,7 +829,9 @@ void Run(TextBox& tbox) {
     PutString("Ephemeral Process:\n");
     uint64_t ns_sum_ephemeral = 0;
     for (int i = 0; i < kNumOfTestRun; i++) {
-      Process& proc = LoadELFAndCreateEphemeralProcess(pi_bin, line);
+      char* pname = new char[128 + 1];
+      memmove(pname, line, strlen(line) + 1);
+      Process& proc = LoadELFAndCreateEphemeralProcess(pi_bin, pname);
       ns_sum_ephemeral += liumos->scheduler->LaunchAndWaitUntilExit(proc);
     }
 
@@ -975,13 +977,12 @@ void Run(TextBox& tbox) {
       PutChar('\n');
     }
   } else if (IsEqualString(line, "ps")) {
-    PutString("  PID   CMD\n");
+    PutString("PID  CMD\n");
     for (int i = 0; i < liumos->scheduler->GetNumOfProcess(); i++) {
       Process* proc = liumos->scheduler->GetProcess(i);
-      char pid[8];
-      sprintf(pid, "%lu", proc->GetID());
-      PutString(pid);
-      tbox.putc(' ');
+      PutDecimal64(proc->GetID());
+      PutString("    ");
+      PutString(proc->GetName());
       tbox.putc('\n');
     }
   } else {
@@ -1007,7 +1008,9 @@ void Run(TextBox& tbox) {
       tbox.putc('\n');
       return;
     }
-    Process& proc = LoadELFAndCreateEphemeralProcess(*file, line);
+    char* pname = new char[128 + 1];
+    memmove(pname, line, strlen(line) + 1);
+    Process& proc = LoadELFAndCreateEphemeralProcess(*file, pname);
     for (int i = 0; i < argc; i++) {
       const char* arg = args.GetArg(i);
       proc.GetExecutionContext().PushDataToStack(arg, strlen(arg) + 1);

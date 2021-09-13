@@ -52,7 +52,7 @@ void Process::PrintStatistics() {
   PutString("\n");
 }
 
-Process& ProcessController::Create(const char* name) {
+Process& ProcessController::Create(const char* const name) {
   Process* proc = kernel_heap_allocator_.AllocPages<Process*>(
       ByteSizeToPageSize(sizeof(Process)));
   new (proc) Process(++last_id_, name);
