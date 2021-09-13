@@ -829,7 +829,7 @@ void Run(TextBox& tbox) {
     PutString("Ephemeral Process:\n");
     uint64_t ns_sum_ephemeral = 0;
     for (int i = 0; i < kNumOfTestRun; i++) {
-      Process& proc = LoadELFAndCreateEphemeralProcess(pi_bin);
+      Process& proc = LoadELFAndCreateEphemeralProcess(pi_bin, line);
       ns_sum_ephemeral += liumos->scheduler->LaunchAndWaitUntilExit(proc);
     }
 
@@ -1007,7 +1007,7 @@ void Run(TextBox& tbox) {
       tbox.putc('\n');
       return;
     }
-    Process& proc = LoadELFAndCreateEphemeralProcess(*file);
+    Process& proc = LoadELFAndCreateEphemeralProcess(*file, line);
     for (int i = 0; i < argc; i++) {
       const char* arg = args.GetArg(i);
       proc.GetExecutionContext().PushDataToStack(arg, strlen(arg) + 1);
