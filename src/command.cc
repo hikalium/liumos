@@ -980,10 +980,26 @@ void Run(TextBox& tbox) {
     PutString("PID  CMD\n");
     for (int i = 0; i < liumos->scheduler->GetNumOfProcess(); i++) {
       Process* proc = liumos->scheduler->GetProcess(i);
+      if (proc->GetStatus() == Process::Status::kStopping ||
+          proc->GetStatus() == Process::Status::kStopped)
+        continue;
       PutDecimal64(proc->GetID());
       PutString("    ");
       PutString(proc->GetName());
       tbox.putc('\n');
+    }
+  } else if (IsEqualString(args.GetArg(0), "kill")) {
+    if (args.GetNumOfArgs() < 2) {
+      PutString("kill <pid>\n");
+      return;
+    }
+    Process::PID pid = atoi(args.GetArg(1));
+    for (int i = 0; i < liumos->scheduler->GetNumOfProcess(); i++) {
+      Process* proc = liumos->scheduler->GetProcess(i);
+      if (proc->GetID() == pid) {
+        proc->Kill();
+        return;
+      }
     }
   } else {
     const char* arg0 = args.GetArg(0);
