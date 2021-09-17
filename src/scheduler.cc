@@ -22,6 +22,20 @@ uint64_t Scheduler::LaunchAndWaitUntilExit(Process& proc) {
 
 Process* Scheduler::SwitchProcess() {
   using Status = Process::Status;
+
+  for (int i = 0; i < number_of_process_; i++) {
+    Process* proc = process_[i];
+    if (!proc || proc->GetStatus() != Status::kStopped)
+      continue;
+    delete proc;
+    number_of_process_--;
+    for (int j = i; j < number_of_process_; j++) {
+      process_[j] = process_[j + 1];
+      process_[j]->SetSchedulerIndex(j);
+    }
+    break;
+  }
+
   const int base_index = current_->GetSchedulerIndex();
   for (int i = 1; i < number_of_process_; i++) {
     Process* proc = process_[(base_index + i) % number_of_process_];
@@ -52,4 +66,14 @@ Process* Scheduler::GetProcess(int id) {
 
 int Scheduler::GetNumOfProcess() {
   return number_of_process_;
+}
+
+void Scheduler::Kill(Process::PID pid) {
+  for (int i = 0; i < number_of_process_; i++) {
+    Process* proc = process_[i];
+    if (proc->GetID() == pid) {
+      proc->Kill();
+      return;
+    }
+  }
 }

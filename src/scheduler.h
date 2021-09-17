@@ -18,6 +18,7 @@ class Scheduler {
   void KillCurrentProcess();
   Process* GetProcess(int id);
   int GetNumOfProcess();
+  void Kill(Process::PID pid);
 
  private:
   const static int kNumberOfProcess = 256;

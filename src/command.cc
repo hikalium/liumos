@@ -980,13 +980,10 @@ void Run(TextBox& tbox) {
     PutString("PID  CMD\n");
     for (int i = 0; i < liumos->scheduler->GetNumOfProcess(); i++) {
       Process* proc = liumos->scheduler->GetProcess(i);
-      if (proc->GetStatus() == Process::Status::kStopping ||
-          proc->GetStatus() == Process::Status::kStopped)
-        continue;
       PutDecimal64(proc->GetID());
       PutString("    ");
       PutString(proc->GetName());
-      tbox.putc('\n');
+      PutChar('\n');
     }
   } else if (IsEqualString(args.GetArg(0), "kill")) {
     if (args.GetNumOfArgs() < 2) {
@@ -994,13 +991,7 @@ void Run(TextBox& tbox) {
       return;
     }
     Process::PID pid = atoi(args.GetArg(1));
-    for (int i = 0; i < liumos->scheduler->GetNumOfProcess(); i++) {
-      Process* proc = liumos->scheduler->GetProcess(i);
-      if (proc->GetID() == pid) {
-        proc->Kill();
-        return;
-      }
-    }
+    liumos->scheduler->Kill(pid);
   } else {
     const char* arg0 = args.GetArg(0);
     EFIFile* file = nullptr;
