@@ -4,6 +4,7 @@
 
 void Scheduler::RegisterProcess(Process& proc) {
   using Status = Process::Status;
+  lock_.Lock();
   assert(number_of_process_ < kNumberOfProcess);
   assert(proc.GetStatus() == Process::Status::kNotScheduled);
   process_[number_of_process_] = &proc;
@@ -11,6 +12,7 @@ void Scheduler::RegisterProcess(Process& proc) {
   number_of_process_++;
 
   proc.SetStatus(Status::kSleeping);
+  lock_.Unlock();
 }
 
 uint64_t Scheduler::LaunchAndWaitUntilExit(Process& proc) {
@@ -22,7 +24,7 @@ uint64_t Scheduler::LaunchAndWaitUntilExit(Process& proc) {
 
 Process* Scheduler::SwitchProcess() {
   using Status = Process::Status;
-
+  lock_.Lock();
   for (int i = 0; i < number_of_process_; i++) {
     Process* proc = process_[i];
     if (!proc || proc->GetStatus() != Status::kStopped)
@@ -48,9 +50,11 @@ Process* Scheduler::SwitchProcess() {
         current_->SetStatus(Status::kStopped);
       proc->SetStatus(Status::kRunning);
       current_ = proc;
+      lock_.Unlock();
       return proc;
     }
   }
+  lock_.Unlock();
   return nullptr;
 }
 
@@ -69,11 +73,14 @@ int Scheduler::GetNumOfProcess() {
 }
 
 void Scheduler::Kill(Process::PID pid) {
+  lock_.Lock();
   for (int i = 0; i < number_of_process_; i++) {
     Process* proc = process_[i];
     if (proc->GetID() == pid) {
       proc->Kill();
+      lock_.Unlock();
       return;
     }
   }
+  lock_.Unlock();
 }

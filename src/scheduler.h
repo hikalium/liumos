@@ -1,5 +1,6 @@
 #pragma once
 #include "process.h"
+#include "process_lock.h"
 
 class Scheduler {
  public:
@@ -25,4 +26,5 @@ class Scheduler {
   Process* process_[kNumberOfProcess];
   int number_of_process_;
   Process* current_;
+  ProcessLock lock_;
 };

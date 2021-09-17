@@ -980,6 +980,8 @@ void Run(TextBox& tbox) {
     PutString("PID  CMD\n");
     for (int i = 0; i < liumos->scheduler->GetNumOfProcess(); i++) {
       Process* proc = liumos->scheduler->GetProcess(i);
+      if (!proc)
+        continue;
       PutDecimal64(proc->GetID());
       PutString("    ");
       PutString(proc->GetName());
