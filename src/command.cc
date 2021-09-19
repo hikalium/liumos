@@ -978,20 +978,17 @@ void Run(TextBox& tbox) {
     }
   } else if (IsEqualString(line, "ps")) {
     using Status = Process::Status;
-    PutString("PID  CMD\n");
+    kprintf("  PID CMD\n");
     for (int i = 0; i < liumos->scheduler->GetNumOfProcess(); i++) {
       Process* proc = liumos->scheduler->GetProcess(i);
       if (!proc || proc->GetStatus() == Status::kStopping ||
           proc->GetStatus() == Status::kStopped)
         continue;
-      PutDecimal64(proc->GetID());
-      PutString("    ");
-      PutString(proc->GetName());
-      PutChar('\n');
+      kprintf("%5lu %s\n", proc->GetID(), proc->GetName());
     }
   } else if (IsEqualString(args.GetArg(0), "kill")) {
     if (args.GetNumOfArgs() < 2) {
-      PutString("kill <pid>\n");
+      kprintf("kill <pid>\n");
       return;
     }
     Process::PID pid = atoi(args.GetArg(1));
@@ -1035,10 +1032,7 @@ void Run(TextBox& tbox) {
     proc.GetExecutionContext().PushDataToStack(&argc64, sizeof(argc64));
     liumos->scheduler->RegisterProcess(proc);
     if (background) {
-      char s[128];
-      sprintf(s, "%lu", proc.GetID());
-      PutString(s);
-      tbox.putc('\n');
+      kprintf("%lu\n", proc.GetID());
       return;
     }
     while (proc.GetStatus() != Process::Status::kStopped) {
