@@ -124,7 +124,7 @@ void InitializeVRAMForKernel() {
   liumos->screen_sheet->SetLocked(true);
 }
 
-void CreateAndLaunchKernelTask(void (*entry_point)()) {
+void CreateAndLaunchKernelTask(void (*entry_point)(), const char* task_name) {
   const int kNumOfStackPages = 64;
   void* sub_context_stack_base =
       liumos->kernel_heap_allocator->AllocPages<void*>(kNumOfStackPages);
@@ -143,7 +143,7 @@ void CreateAndLaunchKernelTask(void (*entry_point)()) {
                            GDT::kKernelDSSelector, ReadCR3(),
                            kRFlagsInterruptEnable, 0);
 
-  Process& proc = liumos->proc_ctrl->Create();
+  Process& proc = liumos->proc_ctrl->Create(task_name);
   proc.InitAsEphemeralProcess(sub_context);
   liumos->scheduler->RegisterProcess(proc);
 }
@@ -303,7 +303,7 @@ extern "C" void KernelEntry(LiumOS* liumos_passed, LoaderInfo& loader_info) {
       kernel_heap_virtual_base,
       GetSystemDRAMAllocator().AllocPages<uint64_t>(kNumOfKernelHeapPages),
       kNumOfKernelHeapPages << kPageSizeExponent);
-  liumos->root_process = &liumos->proc_ctrl->Create();
+  liumos->root_process = &liumos->proc_ctrl->Create("root process");
   liumos->root_process->InitAsEphemeralProcess(root_context);
   Scheduler scheduler_(*liumos->root_process);
   liumos->scheduler = &scheduler_;
@@ -376,8 +376,8 @@ extern "C" void KernelEntry(LiumOS* liumos_passed, LoaderInfo& loader_info) {
   pci.DetectDevices();
 
   // CreateAndLaunchKernelTask(SubTask);
-  CreateAndLaunchKernelTask(NetworkManager);
-  CreateAndLaunchKernelTask(MouseManager);
+  CreateAndLaunchKernelTask(NetworkManager, "network manager");
+  CreateAndLaunchKernelTask(MouseManager, "mouse manager");
   // CreateAndLaunchKernelTask(USBManager);
 
   EnableSyscall();

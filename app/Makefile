@@ -18,6 +18,7 @@ APPS=\
 	 shelium/shelium.bin \
 	 udpclient/udpclient.bin \
 	 udpserver/udpserver.bin \
+	 a/a.bin \
 	 # dummy line
 
 default: $(APPS)

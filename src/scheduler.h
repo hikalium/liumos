@@ -1,5 +1,6 @@
 #pragma once
 #include "process.h"
+#include "process_lock.h"
 
 class Scheduler {
  public:
@@ -16,10 +17,14 @@ class Scheduler {
     return *current_;
   }
   void KillCurrentProcess();
+  Process* GetProcess(int id);
+  int GetNumOfProcess();
+  void Kill(Process::PID pid);
 
  private:
   const static int kNumberOfProcess = 256;
   Process* process_[kNumberOfProcess];
   int number_of_process_;
   Process* current_;
+  ProcessLock lock_;
 };
