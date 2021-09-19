@@ -11,7 +11,7 @@ class PersistentMemoryManager;
 
 const Elf64_Shdr* FindSectionHeader(EFIFile& file, const char* name);
 
-Process& LoadELFAndCreateEphemeralProcess(EFIFile& file);
+Process& LoadELFAndCreateEphemeralProcess(EFIFile& file, const char* const name);
 Process& LoadELFAndCreatePersistentProcess(EFIFile& file,
                                            PersistentMemoryManager& pmem);
 void LoadKernelELF(EFIFile& liumos_elf, LoaderInfo&);

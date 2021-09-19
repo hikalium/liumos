@@ -634,7 +634,16 @@ void Date() {
 }
 
 void Run(TextBox& tbox) {
-  const char* line = tbox.GetRecordedString();
+  const char* raw = tbox.GetRecordedString();
+  char line[TextBox::kSizeOfBuffer + 1];
+  bool background = raw[strlen(raw) - 1] == '&';
+  if (background) {
+    memmove(line, raw, strlen(raw) - 1);
+    line[strlen(raw) - 1] = '\0';
+  } else {
+    memmove(line, raw, strlen(raw));
+    line[strlen(raw)] = '\0';
+  }
   CommandLineArgs args;
   if (!args.Parse(line)) {
     PutString("Failed to parse command line\n");
@@ -820,7 +829,9 @@ void Run(TextBox& tbox) {
     PutString("Ephemeral Process:\n");
     uint64_t ns_sum_ephemeral = 0;
     for (int i = 0; i < kNumOfTestRun; i++) {
-      Process& proc = LoadELFAndCreateEphemeralProcess(pi_bin);
+      char* pname = new char[128 + 1];
+      memmove(pname, line, strlen(line) + 1);
+      Process& proc = LoadELFAndCreateEphemeralProcess(pi_bin, pname);
       ns_sum_ephemeral += liumos->scheduler->LaunchAndWaitUntilExit(proc);
     }
 
@@ -965,6 +976,23 @@ void Run(TextBox& tbox) {
       PutString(GetLoaderInfo().root_files[i].GetFileName());
       PutChar('\n');
     }
+  } else if (IsEqualString(line, "ps")) {
+    using Status = Process::Status;
+    kprintf("  PID CMD\n");
+    for (int i = 0; i < liumos->scheduler->GetNumOfProcess(); i++) {
+      Process* proc = liumos->scheduler->GetProcess(i);
+      if (!proc || proc->GetStatus() == Status::kStopping ||
+          proc->GetStatus() == Status::kStopped)
+        continue;
+      kprintf("%5lu %s\n", proc->GetID(), proc->GetName());
+    }
+  } else if (IsEqualString(args.GetArg(0), "kill")) {
+    if (args.GetNumOfArgs() < 2) {
+      kprintf("kill <pid>\n");
+      return;
+    }
+    Process::PID pid = atoi(args.GetArg(1));
+    liumos->scheduler->Kill(pid);
   } else {
     const char* arg0 = args.GetArg(0);
     EFIFile* file = nullptr;
@@ -988,7 +1016,9 @@ void Run(TextBox& tbox) {
       tbox.putc('\n');
       return;
     }
-    Process& proc = LoadELFAndCreateEphemeralProcess(*file);
+    char* pname = new char[strlen(line) + 1];
+    memmove(pname, line, strlen(line) + 1);
+    Process& proc = LoadELFAndCreateEphemeralProcess(*file, pname);
     for (int i = 0; i < argc; i++) {
       const char* arg = args.GetArg(i);
       proc.GetExecutionContext().PushDataToStack(arg, strlen(arg) + 1);
@@ -1001,6 +1031,10 @@ void Run(TextBox& tbox) {
     uint64_t argc64 = argc;
     proc.GetExecutionContext().PushDataToStack(&argc64, sizeof(argc64));
     liumos->scheduler->RegisterProcess(proc);
+    if (background) {
+      kprintf("%lu\n", proc.GetID());
+      return;
+    }
     while (proc.GetStatus() != Process::Status::kStopped) {
       uint16_t keyid = liumos->main_console->GetCharWithoutBlocking();
       if (keyid == KeyID::kNoInput) {

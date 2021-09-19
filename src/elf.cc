@@ -151,7 +151,7 @@ static void LoadAndMap(TAllocator& allocator,
                          should_clflush);
 }
 
-Process& LoadELFAndCreateEphemeralProcess(EFIFile& file) {
+Process& LoadELFAndCreateEphemeralProcess(EFIFile& file, const char* const name) {
   ExecutionContext& ctx =
       *liumos->kernel_heap_allocator->Alloc<ExecutionContext>();
   ProcessMappingInfo& map_info = ctx.GetProcessMappingInfo();
@@ -197,7 +197,7 @@ Process& LoadELFAndCreateEphemeralProcess(EFIFile& file) {
                    GDT::kUserCS64Selector, stack_pointer, GDT::kUserDSSelector,
                    reinterpret_cast<uint64_t>(&user_page_table),
                    kRFlagsInterruptEnable, kernel_stack_pointer);
-  Process& proc = liumos->proc_ctrl->Create();
+  Process& proc = liumos->proc_ctrl->Create(name);
   proc.InitAsEphemeralProcess(ctx);
   return proc;
 }

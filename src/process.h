@@ -25,6 +25,7 @@ class Process {
     return true;
   }
   PID GetID() { return id_; }
+  const char* GetName() { return name_; }
   int GetSchedulerIndex() const { return scheduler_index_; }
   void SetSchedulerIndex(int scheduler_index) {
     scheduler_index_ = scheduler_index;
@@ -67,8 +68,9 @@ class Process {
   friend class ProcessController;
 
  private:
-  Process(uint64_t id)
+  Process(uint64_t id, const char* name)
       : id_(id),
+        name_(name),
         status_(Status::kNotInitialized),
         ctx_(nullptr),
         pp_info_(nullptr),
@@ -79,6 +81,7 @@ class Process {
         num_of_clflush_issued_in_ctx_sw_(0),
         time_consumed_in_ctx_save_femto_sec_(0){};
   uint64_t id_;
+  const char* name_;
   volatile Status status_;
   int scheduler_index_;
   ExecutionContext* ctx_;
@@ -96,7 +99,7 @@ class ProcessController {
  public:
   ProcessController(KernelVirtualHeapAllocator& kernel_heap_allocator)
       : last_id_(0), kernel_heap_allocator_(kernel_heap_allocator){};
-  Process& Create();
+  Process& Create(const char* const name);
   Process& RestoreFromPersistentProcessInfo(PersistentProcessInfo& pp_info);
 
  private:

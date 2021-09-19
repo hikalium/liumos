@@ -52,10 +52,10 @@ void Process::PrintStatistics() {
   PutString("\n");
 }
 
-Process& ProcessController::Create() {
+Process& ProcessController::Create(const char* const name) {
   Process* proc = kernel_heap_allocator_.AllocPages<Process*>(
       ByteSizeToPageSize(sizeof(Process)));
-  new (proc) Process(++last_id_);
+  new (proc) Process(++last_id_, name);
   return *proc;
 }
 
@@ -80,7 +80,7 @@ Process& ProcessController::RestoreFromPersistentProcessInfo(
   PrepareContextForRestoringPersistentProcess(valid_ctx);
   PrepareContextForRestoringPersistentProcess(working_ctx);
 
-  Process& proc = liumos->proc_ctrl->Create();
+  Process& proc = liumos->proc_ctrl->Create("");
   proc.InitAsPersistentProcess(pp_info);
 
   return proc;
