@@ -10,7 +10,6 @@ void Scheduler::RegisterProcess(Process& proc) {
   for (int i = 0; i < number_of_process_; i++) {
     if (process_[i]->GetStatus() != Status::kStopped)
       continue;
-    delete (Process*)process_[i];
     process_[i] = &proc;
     proc.SetSchedulerIndex(i);
     proc.SetStatus(Status::kSleeping);

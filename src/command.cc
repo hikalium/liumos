@@ -635,7 +635,7 @@ void Date() {
 
 void Run(TextBox& tbox) {
   const char* raw = tbox.GetRecordedString();
-  char line[128 + 1];
+  char line[TextBox::kSizeOfBuffer + 1];
   bool background = raw[strlen(raw) - 1] == '&';
   if (background) {
     memmove(line, raw, strlen(raw) - 1);
@@ -1016,7 +1016,7 @@ void Run(TextBox& tbox) {
       tbox.putc('\n');
       return;
     }
-    char* pname = new char[128 + 1];
+    char* pname = new char[strlen(line) + 1];
     memmove(pname, line, strlen(line) + 1);
     Process& proc = LoadELFAndCreateEphemeralProcess(*file, pname);
     for (int i = 0; i < argc; i++) {
