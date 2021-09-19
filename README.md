@@ -105,6 +105,16 @@ network:
   version: 2
 ```
 
+## How to contribute
+
+Contributions are welcome! Please create a pull request to this repository.
+
+Before submitting a PR, please check the test results with `make test`.
+
+`make commit` does all the presubmit checks and creates a commit automatically (recommended!)
+
+If you found any problems or questions, please let us know through [Issues on GitHub](https://github.com/hikalium/liumos/issues).
+
 ## References
 - [newlib](https://sourceware.org/newlib/)
 - [llvm](https://llvm.org/)
