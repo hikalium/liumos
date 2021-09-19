@@ -1,7 +1,7 @@
 //! This is a part of "13.2.6 Tree construction" in the HTML spec.
 //! https://html.spec.whatwg.org/multipage/parsing.html#tree-construction
 
-use crate::parser::tokenizer::*;
+use crate::renderer::tokenizer::*;
 #[allow(unused_imports)]
 use liumlib::*;
 
@@ -91,6 +91,10 @@ pub enum ElementKind {
     Head,
     /// https://html.spec.whatwg.org/multipage/sections.html#the-body-element
     Body,
+    /// https://html.spec.whatwg.org/multipage/grouping-content.html#the-ul-element
+    Ul,
+    /// https://html.spec.whatwg.org/multipage/grouping-content.html#the-li-element
+    Li,
 }
 
 #[allow(dead_code)]
@@ -145,6 +149,10 @@ impl Parser {
             return self.create_element(ElementKind::Head);
         } else if tag == "body" {
             return self.create_element(ElementKind::Body);
+        } else if tag == "ul" {
+            return self.create_element(ElementKind::Ul);
+        } else if tag == "li" {
+            return self.create_element(ElementKind::Li);
         }
         panic!("not supported this tag name: {}", tag);
     }
@@ -429,9 +437,21 @@ impl Parser {
                 InsertionMode::InBody => {
                     match token {
                         Some(Token::StartTag {
-                            tag: _,
+                            ref tag,
                             self_closing: _,
-                        }) => {}
+                        }) => {
+                            if tag == "ul" {
+                                self.insert_element(tag);
+                                token = self.t.next();
+                                continue;
+                            }
+                            if tag == "li" {
+                                self.insert_element(tag);
+                                token = self.t.next();
+                                self.pop_until(ElementKind::Li);
+                                continue;
+                            }
+                        }
                         Some(Token::EndTag {
                             ref tag,
                             self_closing: _,
@@ -455,6 +475,15 @@ impl Parser {
                                 } else {
                                     token = self.t.next();
                                 }
+                                continue;
+                            }
+                            if tag == "ul" {
+                                token = self.t.next();
+                                self.pop_until(ElementKind::Ul);
+                                continue;
+                            }
+                            if tag == "li" {
+                                token = self.t.next();
                                 continue;
                             }
                         }

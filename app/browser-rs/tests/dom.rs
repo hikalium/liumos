@@ -10,8 +10,8 @@ use alloc::rc::Rc;
 use alloc::string::String;
 use core::cell::RefCell;
 
-use browser_rs::parser::dom::*;
-use browser_rs::parser::tokenizer::*;
+use browser_rs::renderer::dom::*;
+use browser_rs::renderer::tokenizer::*;
 use liumlib::*;
 
 fn print_node(node: Option<Rc<RefCell<Node>>>, depth: usize) {
@@ -96,7 +96,7 @@ fn node_equals(expected: Option<Rc<RefCell<Node>>>, actual: Option<Rc<RefCell<No
 #[macro_export]
 macro_rules! run_test {
     ($html:literal, $expected_root:expr) => {
-        use browser_rs::parser::dom::*;
+        use browser_rs::renderer::dom::*;
 
         let t = Tokenizer::new(String::from($html));
 
@@ -220,4 +220,158 @@ fn text() {
     }
 
     run_test!("<html><head></head><body>foo</body></html>", Some(root));
+}
+
+#[test_case]
+fn list() {
+    // root (Document)
+    // └── html
+    //     └── head
+    //     └── body
+    //         └── ul
+    //             └── li
+    //             └── li
+    let root = create_base_dom_tree();
+    let body = root
+        .borrow_mut()
+        .first_child()
+        .unwrap()
+        .borrow_mut()
+        .first_child()
+        .unwrap()
+        .borrow_mut()
+        .next_sibling()
+        .unwrap();
+    let ul = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+        ElementKind::Ul,
+    )))));
+    let li1 = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+        ElementKind::Li,
+    )))));
+    let li2 = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+        ElementKind::Li,
+    )))));
+
+    // body <--> ul
+    {
+        body.borrow_mut().first_child = Some(ul.clone());
+    }
+    {
+        ul.borrow_mut().parent = Some(Rc::downgrade(&body));
+    }
+
+    // ul <--> li1
+    {
+        ul.borrow_mut().first_child = Some(li1.clone());
+    }
+    {
+        li1.borrow_mut().parent = Some(Rc::downgrade(&ul));
+    }
+
+    // li1 <--> li2
+    {
+        li1.borrow_mut().next_sibling = Some(li2.clone());
+    }
+    {
+        li2.borrow_mut().previous_sibling = Some(Rc::downgrade(&li1));
+    }
+
+    run_test!(
+        "<html><head></head><body><ul><li></li><li></li></ul></body></html>",
+        Some(root)
+    );
+}
+
+#[test_case]
+fn list2() {
+    // root (Document)
+    // └── html
+    //     └── head
+    //     └── body
+    //         └── ul
+    //             └── li
+    //             └── li
+    //         └── ul
+    //             └── li
+    //             └── li
+    let root = create_base_dom_tree();
+    let body = root
+        .borrow_mut()
+        .first_child()
+        .unwrap()
+        .borrow_mut()
+        .first_child()
+        .unwrap()
+        .borrow_mut()
+        .next_sibling()
+        .unwrap();
+    let ul1 = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+        ElementKind::Ul,
+    )))));
+    let li1 = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+        ElementKind::Li,
+    )))));
+    let li2 = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+        ElementKind::Li,
+    )))));
+
+    let ul2 = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+        ElementKind::Ul,
+    )))));
+    let li3 = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+        ElementKind::Li,
+    )))));
+    let li4 = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+        ElementKind::Li,
+    )))));
+
+    // body <--> ul1
+    {
+        body.borrow_mut().first_child = Some(ul1.clone());
+    }
+    {
+        ul1.borrow_mut().parent = Some(Rc::downgrade(&body));
+    }
+
+    // ul1 <--> li1
+    {
+        ul1.borrow_mut().first_child = Some(li1.clone());
+    }
+    {
+        li1.borrow_mut().parent = Some(Rc::downgrade(&ul1));
+    }
+
+    // li1 <--> li2
+    {
+        li1.borrow_mut().next_sibling = Some(li2.clone());
+    }
+    {
+        li2.borrow_mut().previous_sibling = Some(Rc::downgrade(&li1));
+    }
+
+    // ul1 <--> ul2
+    {
+        ul1.borrow_mut().next_sibling = Some(ul2.clone());
+    }
+    {
+        ul2.borrow_mut().previous_sibling = Some(Rc::downgrade(&ul1));
+    }
+
+    // ul2 <--> li3
+    {
+        ul2.borrow_mut().first_child = Some(li3.clone());
+    }
+    {
+        li3.borrow_mut().parent = Some(Rc::downgrade(&ul2));
+    }
+
+    // li3 <--> li4
+    {
+        li3.borrow_mut().next_sibling = Some(li4.clone());
+    }
+    {
+        li4.borrow_mut().previous_sibling = Some(Rc::downgrade(&li3));
+    }
+
+    run_test!("<html><head></head><body><ul><li></li><li></li></ul><ul><li></li><li></li></ul></body></html>", Some(root));
 }
