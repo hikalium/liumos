@@ -977,10 +977,12 @@ void Run(TextBox& tbox) {
       PutChar('\n');
     }
   } else if (IsEqualString(line, "ps")) {
+    using Status = Process::Status;
     PutString("PID  CMD\n");
     for (int i = 0; i < liumos->scheduler->GetNumOfProcess(); i++) {
       Process* proc = liumos->scheduler->GetProcess(i);
-      if (!proc)
+      if (!proc || proc->GetStatus() == Status::kStopping ||
+          proc->GetStatus() == Status::kStopped)
         continue;
       PutDecimal64(proc->GetID());
       PutString("    ");

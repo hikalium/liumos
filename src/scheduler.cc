@@ -7,6 +7,16 @@ void Scheduler::RegisterProcess(Process& proc) {
   lock_.Lock();
   assert(number_of_process_ < kNumberOfProcess);
   assert(proc.GetStatus() == Process::Status::kNotScheduled);
+  for (int i = 0; i < number_of_process_; i++) {
+    if (process_[i]->GetStatus() != Status::kStopped)
+      continue;
+    delete (Process*)process_[i];
+    process_[i] = &proc;
+    proc.SetSchedulerIndex(i);
+    proc.SetStatus(Status::kSleeping);
+    lock_.Unlock();
+    return;
+  }
   process_[number_of_process_] = &proc;
   proc.SetSchedulerIndex(number_of_process_);
   number_of_process_++;
@@ -25,19 +35,6 @@ uint64_t Scheduler::LaunchAndWaitUntilExit(Process& proc) {
 Process* Scheduler::SwitchProcess() {
   using Status = Process::Status;
   lock_.Lock();
-  for (int i = 0; i < number_of_process_; i++) {
-    Process* proc = process_[i];
-    if (!proc || proc->GetStatus() != Status::kStopped)
-      continue;
-    delete proc;
-    number_of_process_--;
-    for (int j = i; j < number_of_process_; j++) {
-      process_[j] = process_[j + 1];
-      process_[j]->SetSchedulerIndex(j);
-    }
-    break;
-  }
-
   const int base_index = current_->GetSchedulerIndex();
   for (int i = 1; i < number_of_process_; i++) {
     Process* proc = process_[(base_index + i) % number_of_process_];
