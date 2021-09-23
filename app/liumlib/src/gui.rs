@@ -34,6 +34,7 @@ pub struct BMPInfoV3Header {
     pub b_mask: u32,
 }
 
+#[derive(Debug, Clone)]
 pub struct WindowBuffer {
     file_buf: *mut u8,
     file_size: usize,
