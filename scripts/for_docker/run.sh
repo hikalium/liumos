@@ -22,4 +22,4 @@ make prebuilt
 echo "Start building..."
 cd /liumos # move to the mounted host src dir
 make clean
-make run_user_headless
+make run GUI=n

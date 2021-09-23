@@ -151,7 +151,8 @@ static void LoadAndMap(TAllocator& allocator,
                          should_clflush);
 }
 
-Process& LoadELFAndCreateEphemeralProcess(EFIFile& file, const char* const name) {
+Process& LoadELFAndCreateEphemeralProcess(EFIFile& file,
+                                          const char* const name) {
   ExecutionContext& ctx =
       *liumos->kernel_heap_allocator->Alloc<ExecutionContext>();
   ProcessMappingInfo& map_info = ctx.GetProcessMappingInfo();

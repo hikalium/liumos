@@ -17,9 +17,6 @@ tools : .FORCE
 prebuilt : .FORCE
 	./scripts/deploy_prebuilt.sh
 
-pmem.img :
-	qemu-img create $@ 2G
-
 apps : .FORCE
 	-git submodule update --init --recursive
 	make -C app/
@@ -40,67 +37,12 @@ files : src/BOOTX64.EFI src/LIUMOS.ELF .FORCE
 
 .PHONY : internal_run_loader_test
 
-internal_run_loader_test :
-	@echo Using ${LOADER_TEST_EFI} as a loader...
-	mkdir -p mnt/
-	-rm -rf mnt/*
-	mkdir -p mnt/EFI/BOOT
-	cp ${LOADER_TEST_EFI} mnt/EFI/BOOT/BOOTX64.EFI
-	$(QEMU) $(QEMU_ARGS_LOADER_TEST) ; \
-		RETCODE=$$? ; \
-		if [ $$RETCODE -eq 3 ]; then \
-			echo "\nPASS" ; \
-			exit 0 ; \
-		else \
-			echo "\nFAIL: QEMU returned $$RETCODE" ; \
-			exit 1 ; \
-		fi
-
-run_nopmem : files .FORCE
-	$(QEMU) $(QEMU_ARGS)
-
 LLDB_ARGS = -o 'settings set interpreter.prompt-on-quit false' \
 			-o 'process launch' \
 			-o 'process handle -s false SIGUSR1 SIGUSR2'
 
-run_root : files pmem.img .FORCE
-	$(QEMU) $(QEMU_ARGS_PMEM) -vga std
-
-run_rtl : files pmem.img .FORCE
-	$(QEMU) $(QEMU_ARGS_COMMON) $(QEMU_ARGS_NET_MACOS_RTL)
-
-run_adlib : files pmem.img .FORCE
-	$(QEMU) $(QEMU_ARGS_COMMON) -soundhw adlib
-
-run_user : files pmem.img .FORCE
-	$(QEMU) $(QEMU_ARGS_COMMON) $(QEMU_ARGS_USER_NET)
-
-run_for_e2e_test : files pmem.img .FORCE
-	( echo 'change vnc password $(VNC_PASSWORD)' | while ! nc localhost $(PORT_MONITOR) ; do sleep 1 ; done ) &
-	$(QEMU) $(QEMU_ARGS) -nographic
-
-run_user_headless : files pmem.img .FORCE
-	( echo 'change vnc password $(VNC_PASSWORD)' | while ! nc localhost $(PORT_MONITOR) ; do sleep 1 ; done ) &
-	$(QEMU) $(QEMU_ARGS_COMMON) $(QEMU_ARGS_USER_NET) -vnc 0.0.0.0:$(PORT_VNC),password
-
-run_user_headless_gdb : files pmem.img .FORCE
-	( echo 'change vnc password $(VNC_PASSWORD)' | while ! nc localhost $(PORT_MONITOR) ; do sleep 1 ; done ) &
-	$(QEMU) $(QEMU_ARGS_COMMON) $(QEMU_ARGS_USER_NET) -vnc 0.0.0.0:$(PORT_VNC),password -gdb tcp::1192 -S
-
-run_gdb_root : files pmem.img .FORCE
-	$(QEMU) $(QEMU_ARGS_PMEM) -gdb tcp::1192 -S || reset
-
-run_gdb_nogui_root : files pmem.img .FORCE
-	( echo 'change vnc password $(VNC_PASSWORD)' | while ! nc localhost $(PORT_MONITOR) ; do sleep 1 ; done ) &
-	$(QEMU) $(QEMU_ARGS_PMEM) -gdb tcp::1192 -S -vnc :0,password || reset
-
-run_vnc : files pmem.img .FORCE
-	( echo 'change vnc password $(VNC_PASSWORD)' | while ! nc localhost $(PORT_MONITOR) ; do sleep 1 ; done ) &
-	$(QEMU) $(QEMU_ARGS_PMEM) -vnc :0,password || reset
-
 gdb_root : .FORCE
 	gdb -ex 'target remote localhost:1192' src/LIUMOS.ELF
-
 
 install : files .FORCE
 	@read -p "Write LIUMOS to /Volumes/LIUMOS. Are you sure? [Enter to proceed, or Ctrl-C to abort] " && \

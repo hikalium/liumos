@@ -24,6 +24,9 @@ commit :
 run :
 	make -C $(THIS_DIR) run_root
 
+run_nobuild :
+	make -C $(THIS_DIR) run_nobuild_root
+
 run_rust :
 	make -C $(THIS_DIR) common_run_rust
 
@@ -32,9 +35,6 @@ run_docker :
 
 stop_docker :
 	make -C $(THIS_DIR) stop_docker_root
-
-run_gdb :
-	make -C $(THIS_DIR) run_gdb_root
 
 gdb :
 	make -C $(THIS_DIR) gdb_root

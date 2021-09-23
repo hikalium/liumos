@@ -31,7 +31,8 @@ fn get_liumos_root_path(exec_path_str: &Path) -> String {
 }
 
 fn launch_liumos(liumos_root_dir: &str) -> PtySession {
-    let cmd = format!("make -C {} run_for_e2e_test", liumos_root_dir);
+    let cmd = format!("make -C {} run GUI=n", liumos_root_dir);
+    println!("Launching liumOS with cmdline: {}", cmd);
     let result = retry_with_index(Fixed::from_millis(1000).take(3), |current_try| {
         let result = spawn(&cmd, Some(TIMEOUT_MILLISECONDS))
             .and_then(|mut p| p.exp_regex("\\(qemu\\)").map(|_| p))
@@ -55,10 +56,12 @@ fn launch_liumos(liumos_root_dir: &str) -> PtySession {
     if result.is_err() {
         panic!("Failed to launch liumOS");
     }
+    println!("QEMU started");
     result.unwrap()
 }
 
 fn launch_liumos_on_docker(liumos_root_dir: &str) -> PtySession {
+    println!("Launching liumOS on Docker...");
     let cmd = format!("make -C {} run_docker", liumos_root_dir);
     let mut p = spawn(&cmd, Some(TIMEOUT_MILLISECONDS))
         .unwrap_or_else(|e| panic!("Failed to launch QEMU in Docker: {}", e));

@@ -10,7 +10,7 @@ liumos_root_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(
 print('liumOS root is at: ', liumos_root_path, file=sys.stderr, flush=True)
 
 def launch_liumos():
-    p = pexpect.spawn("make -C {} run_for_e2e_test".format(liumos_root_path))
+    p = pexpect.spawn("make -C {} run GUI=n".format(liumos_root_path))
     i = 1
     while (i != 0):
         try:
