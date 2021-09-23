@@ -10,7 +10,6 @@ mod url;
 extern crate alloc;
 
 use alloc::string::ToString;
-use liumlib::gui::*;
 use liumlib::*;
 
 use crate::gui::ApplicationWindow;
@@ -46,7 +45,8 @@ fn main() {
 
     let parsed_url = ParsedUrl::new(url.to_string());
 
-    let _app = ApplicationWindow::new(512, 256, "my browser".to_string()).initialize();
+    let mut app = ApplicationWindow::new(512, 256, "my browser".to_string());
+    app.initialize();
 
     let response = udp_response(&parsed_url);
 
