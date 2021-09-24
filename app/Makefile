@@ -4,6 +4,7 @@ APPS=\
 	 argstest/argstest.bin \
 	 browser-rs/browser-rs.bin \
 	 browser/browser.bin \
+	 cat/cat.bin \
 	 dig/dig.bin \
 	 fizzbuzz/fizzbuzz.bin \
 	 guitest/guitest.bin \

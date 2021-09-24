@@ -173,6 +173,13 @@ static inline int puts(const char *s) {
   Println(s);
   return strlen(s);
 }
+static inline int putchar(char c) {
+  char s[2];
+  s[0] = c;
+  s[1] = 0;
+  Print(s);
+  return 1;
+}
 
 
 #endif /* GRANDPARENT_H */

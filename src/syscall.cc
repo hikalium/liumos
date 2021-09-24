@@ -48,6 +48,9 @@ typedef uint32_t socklen_t;
 struct PerProcessSyscallData {
   Sheet* window_sheet;
   int num_getdents64_called;
+  // for opening normal file: fd = 6
+  int idx_in_root_files;
+  uint64_t read_offset;
 };
 
 std::unordered_map<Process::PID, PerProcessSyscallData>
@@ -249,19 +252,38 @@ static int sys_bind(int sockfd, sockaddr_in* addr, socklen_t addrlen) {
 }
 
 static ssize_t sys_read(int fd, void* buf, size_t count) {
-  if (fd != 0) {
-    kprintf("%s: fd %d is not supported yet: only stdin is supported now.\n",
-            __func__, fd);
-    return ErrorNumber::kInvalid;
+  if (fd == 0) {
+    if (count < 1)
+      return ErrorNumber::kInvalid;
+    auto& proc_stdin = liumos->scheduler->GetCurrentProcess().GetStdIn();
+    while (proc_stdin.IsEmpty()) {
+      StoreIntFlagAndHalt();
+    }
+    reinterpret_cast<uint8_t*>(buf)[0] = proc_stdin.Pop();
+    return 1;
   }
-  if (count < 1)
-    return ErrorNumber::kInvalid;
-  auto& proc_stdin = liumos->scheduler->GetCurrentProcess().GetStdIn();
-  while (proc_stdin.IsEmpty()) {
-    StoreIntFlagAndHalt();
+  if (fd == 6) {
+    auto pid = liumos->scheduler->GetCurrentProcess().GetID();
+    auto& ppdata = per_process_syscall_data[pid];
+    LoaderInfo& loader_info = *reinterpret_cast<LoaderInfo*>(
+        reinterpret_cast<uint64_t>(&GetLoaderInfo()) +
+        GetKernelStraightMappingBase());
+    EFIFile& file = loader_info.root_files[ppdata.idx_in_root_files];
+    uint64_t file_size = file.GetFileSize();
+    const uint8_t* src = reinterpret_cast<const uint8_t*>(
+        reinterpret_cast<uint64_t>(file.GetBuf()) +
+        GetKernelStraightMappingBase());
+    assert(file_size >= ppdata.read_offset);
+    uint64_t copy_size = std::min(file_size - ppdata.read_offset, count);
+    if (copy_size) {
+      memcpy(buf, src + ppdata.read_offset, copy_size);
+      ppdata.read_offset += copy_size;
+    }
+    return copy_size;
   }
-  reinterpret_cast<uint8_t*>(buf)[0] = proc_stdin.Pop();
-  return 1;
+  kprintf("%s: fd %d is not supported yet: only stdin is supported now.\n",
+          __func__, fd);
+  return ErrorNumber::kInvalid;
 }
 
 static std::optional<Network::EtherAddr> ResolveIPv4WithTimeout(
@@ -453,9 +475,39 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
   if (idx == kSyscallIndex_sys_open) {
     auto pid = liumos->scheduler->GetCurrentProcess().GetID();
     auto& ppdata = per_process_syscall_data[pid];
-    ppdata.num_getdents64_called = 0;
 
-    args[0] = 5;
+    const char* file_name = reinterpret_cast<const char*>(args[1]);
+    kprintf("file name: %s\n", file_name);
+
+    if (IsEqualString(".", file_name)) {
+      // for getdents64
+      ppdata.num_getdents64_called = 0;
+      args[0] = 5;
+      return;
+    }
+
+    int found_idx = -1;
+
+    LoaderInfo& loader_info = *reinterpret_cast<LoaderInfo*>(
+        reinterpret_cast<uint64_t>(&GetLoaderInfo()) +
+        GetKernelStraightMappingBase());
+    kprintf("&GetLoaderInfo(): %p\n", &GetLoaderInfo());
+    kprintf("&loader_info: %p\n", &loader_info);
+    for (int i = 0; i < loader_info.root_files_used; i++) {
+      if (IsEqualString(loader_info.root_files[i].GetFileName(), file_name)) {
+        found_idx = i;
+        break;
+      }
+    }
+    if (found_idx == -1) {
+      kprintf("not found!\n");
+      *((int64_t*)&args[0]) = -1;
+      return;
+    }
+    kprintf("found at index = %d!\n", found_idx);
+    ppdata.idx_in_root_files = found_idx;
+    ppdata.read_offset = 0;
+    args[0] = 6;
     return;
   }
   if (idx == kSyscallIndex_sys_close) {

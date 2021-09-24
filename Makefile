@@ -34,6 +34,7 @@ files : src/BOOTX64.EFI src/LIUMOS.ELF .FORCE
 	cp src/LIUMOS.ELF mnt/LIUMOS.ELF
 	mkdir -p mnt/EFI/EFI/
 	echo 'FS0:\\EFI\\BOOT\\BOOTX64.EFI' > mnt/startup.nsh
+	cp README.md mnt/
 
 .PHONY : internal_run_loader_test
 
