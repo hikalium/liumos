@@ -69,6 +69,24 @@ You can connect serial console using telnet
 telnet localhost 1235
 ```
 
+### Run flags
+
+Flags can be specified for `make run` command. Please check [qemu.mk](./qemu.mk) for more details.
+
+Example:
+
+```
+make run GUI=n GDB=nosuspend
+```
+
+- `GUI`
+  - `=y`: Enable GUI
+  - `=n`: Disable GUI (enable VNC server)
+- `GDB`
+  - `=n`: Disable gdb server in QEMU
+  - `=suspend_on_boot`: Enable gdb server and wait for a connection on startup
+  - `=nosuspend`: Enable gdb server and startup the machine normally without waiting for a gdb connection
+
 ## Setup tap interface (for linux)
 
 `make run` boots liumOS on QEMU with a tap interface on Linux host.
