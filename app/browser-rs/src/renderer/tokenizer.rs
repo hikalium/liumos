@@ -364,10 +364,10 @@ impl Iterator for Tokenizer {
                         continue;
                     }
 
-                   if c == '/' {
+                    if c == '/' {
                         self.state = State::SelfClosingStartTag;
                         continue;
-                   }
+                    }
 
                     if c == '=' {
                         self.state = State::BeforeAttributeValue;
@@ -409,9 +409,16 @@ impl Iterator for Tokenizer {
                 }
                 // https://html.spec.whatwg.org/multipage/parsing.html#attribute-value-(double-quoted)-state
                 State::AttributeValueDoubleQuoted => {
+                    if c == '"' {
+                        self.state = State::AfterAttributeValueQuoted;
+                        continue;
+                    }
+
                     if self.is_eof() {
                         return Some(Token::Eof);
                     }
+
+                    self.append_attribute(c, /*is_name*/ false);
                 }
                 // https://html.spec.whatwg.org/multipage/parsing.html#attribute-value-(single-quoted)-state
                 State::AttributeValueSingleQuoted => {
@@ -428,9 +435,21 @@ impl Iterator for Tokenizer {
                 }
                 // https://html.spec.whatwg.org/multipage/parsing.html#attribute-value-(unquoted)-state
                 State::AttributeValueUnquoted => {
+                    if c == ' ' {
+                        self.state = State::BeforeAttributeName;
+                        continue;
+                    }
+
+                    if c == '>' {
+                        self.state = State::Data;
+                        return self.take_latest_token();
+                    }
+
                     if self.is_eof() {
                         return Some(Token::Eof);
                     }
+
+                    self.append_attribute(c, /*is_name*/ false);
                 }
                 // https://html.spec.whatwg.org/multipage/parsing.html#after-attribute-value-(quoted)-state
                 State::AfterAttributeValueQuoted => {

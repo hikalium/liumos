@@ -159,7 +159,42 @@ fn link() {
     attributes.push(a2);
 
     run_test!(
-        "<html><head><link rel='stylesheet' href='styles.css'></head></html>",
+        "<html><head><link rel='stylesheet' href=\"styles.css\"></head></html>",
+        Token::StartTag {
+            tag: String::from("html"),
+            self_closing: false,
+            attributes: Vec::new(),
+        },
+        Token::StartTag {
+            tag: String::from("head"),
+            self_closing: false,
+            attributes: Vec::new(),
+        },
+        Token::StartTag {
+            tag: String::from("link"),
+            self_closing: false,
+            attributes,
+        },
+        Token::EndTag {
+            tag: String::from("head"),
+            self_closing: false,
+        },
+        Token::EndTag {
+            tag: String::from("html"),
+            self_closing: false,
+        }
+    );
+}
+
+#[test_case]
+fn link_with_unquoted_attribute() {
+    let mut attributes = Vec::new();
+    let mut a = Attribute::new();
+    a.set_name_and_value("href".to_string(), "styles.css".to_string());
+    attributes.push(a);
+
+    run_test!(
+        "<html><head><link href=styles.css></head></html>",
         Token::StartTag {
             tag: String::from("html"),
             self_closing: false,
