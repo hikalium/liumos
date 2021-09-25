@@ -40,11 +40,11 @@ impl ApplicationWindow {
         // address bar
         match draw_rect(
             &self.buffer,
-            0x2222ff, // color (red, green, blue)
-            1, // px
-            1, // py
+            0x2222ff,              // color (red, green, blue)
+            1,                     // px
+            1,                     // py
             self.width as i64 - 2, // w
-            20, // h
+            20,                    // h
         ) {
             Ok(()) => {}
             Err(e) => panic!("Failed to draw a bar: {:?}", e),
@@ -53,11 +53,11 @@ impl ApplicationWindow {
         // close button
         match draw_rect(
             &self.buffer,
-            0xff3333, // color (red, green, blue)
+            0xff3333,               // color (red, green, blue)
             self.width as i64 - 20, // px
-            3, // py
-            16, // w
-            16, // h
+            3,                      // py
+            16,                     // w
+            16,                     // h
         ) {
             Ok(()) => {}
             Err(e) => panic!("Failed to draw a close button: {:?}", e),
@@ -65,11 +65,11 @@ impl ApplicationWindow {
 
         match draw_line(
             &self.buffer,
-            0xffffff, // color
+            0xffffff,               // color
             self.width as i64 - 20, // x0
-            3, // y0
-            self.width as i64 - 5, // x1
-            18, // y1
+            3,                      // y0
+            self.width as i64 - 5,  // x1
+            18,                     // y1
         ) {
             Ok(()) => {}
             Err(e) => panic!("Failed to draw a line: {:?}", e),
@@ -77,11 +77,11 @@ impl ApplicationWindow {
 
         match draw_line(
             &self.buffer,
-            0xffffff, // color
-            self.width as i64 - 5, // x0
-            3, // y0
+            0xffffff,               // color
+            self.width as i64 - 5,  // x0
+            3,                      // y0
             self.width as i64 - 20, // x1
-            18, // y1
+            18,                     // y1
         ) {
             Ok(()) => {}
             Err(e) => panic!("Failed to draw a line: {:?}", e),

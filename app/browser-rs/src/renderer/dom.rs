@@ -318,6 +318,7 @@ impl Parser {
                         Some(Token::StartTag {
                             ref tag,
                             self_closing: _,
+                            attributes: _,
                         }) => {
                             // A start tag whose tag name is "html"
                             // Create an element for the token in the HTML namespace, with the Document
@@ -370,6 +371,7 @@ impl Parser {
                         Some(Token::StartTag {
                             ref tag,
                             self_closing: _,
+                            attributes: _,
                         }) => {
                             if tag == "head" {
                                 self.insert_element(tag);
@@ -416,6 +418,7 @@ impl Parser {
                         Some(Token::StartTag {
                             ref tag,
                             self_closing: _,
+                            attributes: _,
                         }) => {
                             if tag == "body" {
                                 self.insert_element(tag);
@@ -439,6 +442,7 @@ impl Parser {
                         Some(Token::StartTag {
                             ref tag,
                             self_closing: _,
+                            attributes: _,
                         }) => {
                             if tag == "ul" {
                                 self.insert_element(tag);

@@ -10,10 +10,31 @@ use liumlib::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum State {
+    /// https://html.spec.whatwg.org/multipage/parsing.html#data-state
     Data,
+    /// https://html.spec.whatwg.org/multipage/parsing.html#tag-open-state
     TagOpen,
+    /// https://html.spec.whatwg.org/multipage/parsing.html#end-tag-open-state
     EndTagOpen,
+    /// https://html.spec.whatwg.org/multipage/parsing.html#tag-name-state
     TagName,
+    /// https://html.spec.whatwg.org/multipage/parsing.html#before-attribute-name-state
+    BeforeAttributeName,
+    /// https://html.spec.whatwg.org/multipage/parsing.html#attribute-name-state
+    AttributeName,
+    /// https://html.spec.whatwg.org/multipage/parsing.html#after-attribute-name-state
+    AfterAttributeName,
+    /// https://html.spec.whatwg.org/multipage/parsing.html#before-attribute-value-state
+    BeforeAttributeValue,
+    /// https://html.spec.whatwg.org/multipage/parsing.html#attribute-value-(double-quoted)-state
+    AttributeValueDoubleQuoted,
+    /// https://html.spec.whatwg.org/multipage/parsing.html#attribute-value-(single-quoted)-state
+    AttributeValueSingleQuoted,
+    /// https://html.spec.whatwg.org/multipage/parsing.html#attribute-value-(unquoted)-state
+    AttributeValueUnquoted,
+    /// https://html.spec.whatwg.org/multipage/parsing.html#after-attribute-value-(quoted)-state
+    AfterAttributeValueQuoted,
+    /// https://html.spec.whatwg.org/multipage/parsing.html#self-closing-start-tag-state
     SelfClosingStartTag,
 }
 
@@ -21,10 +42,47 @@ pub enum State {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Token {
     Doctype,
-    StartTag { tag: String, self_closing: bool },
-    EndTag { tag: String, self_closing: bool },
+    StartTag {
+        tag: String,
+        self_closing: bool,
+        attributes: Vec<Attribute>,
+    },
+    EndTag {
+        tag: String,
+        self_closing: bool,
+    },
     Char(char),
     Eof,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Attribute {
+    name: String,
+    value: String,
+}
+
+impl Attribute {
+    pub fn new() -> Self {
+        Self {
+            name: String::new(),
+            value: String::new(),
+        }
+    }
+
+    fn add_char(&mut self, c: char, is_name: bool) {
+        if is_name {
+            self.name.push(c);
+        } else {
+            self.value.push(c);
+        }
+    }
+
+    // This is for test.
+    #[allow(dead_code)]
+    pub fn set_name_and_value(&mut self, name: String, value: String) {
+        self.name = name;
+        self.value = value;
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -49,7 +107,6 @@ impl Tokenizer {
 
     /// Consumes a next input character.
     fn consume_next_input(&mut self) -> char {
-        //println!("{:?}", self);
         let c = self.input[self.pos];
         self.pos += 1;
         c
@@ -70,6 +127,7 @@ impl Tokenizer {
             self.latest_token = Some(Token::StartTag {
                 tag: String::new(),
                 self_closing: false,
+                attributes: Vec::new(),
             });
         } else {
             self.latest_token = Some(Token::EndTag {
@@ -79,7 +137,7 @@ impl Tokenizer {
         }
     }
 
-    /// Appends a char to the latest created Token `latest_token`.
+    /// Appends a char to the tag in the latest created Token `latest_token`.
     fn append_tag_name(&mut self, c: char) {
         assert!(self.latest_token.is_some());
 
@@ -88,12 +146,52 @@ impl Tokenizer {
                 Token::StartTag {
                     ref mut tag,
                     self_closing: _,
+                    attributes: _,
                 }
                 | Token::EndTag {
                     ref mut tag,
                     self_closing: _,
                 } => tag.push(c),
                 _ => panic!("`latest_token` should be either StartTag or EndTag"),
+            }
+        }
+    }
+
+    /// Starts a new attribute with empty strings in the latest token.
+    fn start_new_attribute(&mut self) {
+        assert!(self.latest_token.is_some());
+
+        if let Some(t) = self.latest_token.as_mut() {
+            match t {
+                Token::StartTag {
+                    tag: _,
+                    self_closing: _,
+                    ref mut attributes,
+                } => {
+                    attributes.push(Attribute::new());
+                }
+                _ => panic!("`latest_token` should be either StartTag"),
+            }
+        }
+    }
+
+    /// Appends a char to the attribute in the latest created Token `latest_token`.
+    fn append_attribute(&mut self, c: char, is_name: bool) {
+        assert!(self.latest_token.is_some());
+
+        if let Some(t) = self.latest_token.as_mut() {
+            match t {
+                Token::StartTag {
+                    tag: _,
+                    self_closing: _,
+                    ref mut attributes,
+                } => {
+                    let len = attributes.len();
+                    assert!(len > 0);
+
+                    attributes[len - 1].add_char(c, is_name);
+                }
+                _ => panic!("`latest_token` should be either StartTag"),
             }
         }
     }
@@ -107,6 +205,7 @@ impl Tokenizer {
                 Token::StartTag {
                     tag: _,
                     ref mut self_closing,
+                    attributes: _,
                 }
                 | Token::EndTag {
                     tag: _,
@@ -199,14 +298,19 @@ impl Iterator for Tokenizer {
                 }
                 // https://html.spec.whatwg.org/multipage/parsing.html#tag-name-state
                 State::TagName => {
-                    if c == '>' {
-                        self.state = State::Data;
-                        return self.take_latest_token();
+                    if c == ' ' {
+                        self.state = State::BeforeAttributeName;
+                        continue;
                     }
 
                     if c == '/' {
                         self.state = State::SelfClosingStartTag;
                         continue;
+                    }
+
+                    if c == '>' {
+                        self.state = State::Data;
+                        return self.take_latest_token();
                     }
 
                     if c.is_ascii_uppercase() {
@@ -221,6 +325,137 @@ impl Iterator for Tokenizer {
 
                     self.append_tag_name(c);
                 }
+                // https://html.spec.whatwg.org/multipage/parsing.html#before-attribute-name-state
+                State::BeforeAttributeName => {
+                    if c == '/' || c == '>' || self.is_eof() {
+                        self.reconsume = true;
+                        self.state = State::AfterAttributeName;
+                        continue;
+                    }
+
+                    self.reconsume = true;
+                    self.state = State::AttributeName;
+                    self.start_new_attribute();
+                }
+                // https://html.spec.whatwg.org/multipage/parsing.html#attribute-name-state
+                State::AttributeName => {
+                    if c == ' ' || c == '/' || c == '>' || self.is_eof() {
+                        self.reconsume = true;
+                        self.state = State::AfterAttributeName;
+                        continue;
+                    }
+
+                    if c == '=' {
+                        self.state = State::BeforeAttributeValue;
+                        continue;
+                    }
+
+                    if c.is_ascii_uppercase() {
+                        self.append_attribute(c.to_ascii_lowercase(), /*is_name*/ true);
+                        continue;
+                    }
+
+                    self.append_attribute(c, /*is_name*/ true);
+                }
+                // https://html.spec.whatwg.org/multipage/parsing.html#after-attribute-name-state
+                State::AfterAttributeName => {
+                    if c == ' ' {
+                        // Ignore.
+                        continue;
+                    }
+
+                   if c == '/' {
+                        self.state = State::SelfClosingStartTag;
+                        continue;
+                   }
+
+                    if c == '=' {
+                        self.state = State::BeforeAttributeValue;
+                        continue;
+                    }
+
+                    if c == '>' {
+                        self.state = State::Data;
+                        return self.take_latest_token();
+                    }
+
+                    if self.is_eof() {
+                        return Some(Token::Eof);
+                    }
+
+                    self.reconsume = true;
+                    self.state = State::AttributeName;
+                    self.start_new_attribute();
+                }
+                // https://html.spec.whatwg.org/multipage/parsing.html#before-attribute-value-state
+                State::BeforeAttributeValue => {
+                    if c == ' ' {
+                        // Ignore the char.
+                        continue;
+                    }
+
+                    if c == '"' {
+                        self.state = State::AttributeValueDoubleQuoted;
+                        continue;
+                    }
+
+                    if c == '\'' {
+                        self.state = State::AttributeValueSingleQuoted;
+                        continue;
+                    }
+
+                    self.reconsume = true;
+                    self.state = State::AttributeValueUnquoted;
+                }
+                // https://html.spec.whatwg.org/multipage/parsing.html#attribute-value-(double-quoted)-state
+                State::AttributeValueDoubleQuoted => {
+                    if self.is_eof() {
+                        return Some(Token::Eof);
+                    }
+                }
+                // https://html.spec.whatwg.org/multipage/parsing.html#attribute-value-(single-quoted)-state
+                State::AttributeValueSingleQuoted => {
+                    if c == '\'' {
+                        self.state = State::AfterAttributeValueQuoted;
+                        continue;
+                    }
+
+                    if self.is_eof() {
+                        return Some(Token::Eof);
+                    }
+
+                    self.append_attribute(c, /*is_name*/ false);
+                }
+                // https://html.spec.whatwg.org/multipage/parsing.html#attribute-value-(unquoted)-state
+                State::AttributeValueUnquoted => {
+                    if self.is_eof() {
+                        return Some(Token::Eof);
+                    }
+                }
+                // https://html.spec.whatwg.org/multipage/parsing.html#after-attribute-value-(quoted)-state
+                State::AfterAttributeValueQuoted => {
+                    if c == ' ' {
+                        self.state = State::BeforeAttributeName;
+                        continue;
+                    }
+
+                    if c == '/' {
+                        self.state = State::SelfClosingStartTag;
+                        continue;
+                    }
+
+                    if c == '>' {
+                        self.state = State::Data;
+                        return self.take_latest_token();
+                    }
+
+                    if self.is_eof() {
+                        return Some(Token::Eof);
+                    }
+
+                    self.reconsume = true;
+                    self.state = State::BeforeAttributeValue;
+                }
                 // https://html.spec.whatwg.org/multipage/parsing.html#self-closing-start-tag-state
                 State::SelfClosingStartTag => {
                     if c == '>' {
@@ -234,7 +469,7 @@ impl Iterator for Tokenizer {
                         return Some(Token::Eof);
                     }
                 }
-            }
-        }
+            } // end of `match self.state`
+        } // end of `loop`
     }
 }

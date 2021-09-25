@@ -6,6 +6,7 @@
 
 extern crate alloc;
 
+use crate::alloc::string::ToString;
 use alloc::string::String;
 use alloc::vec::Vec;
 
@@ -60,7 +61,7 @@ macro_rules! run_test {
 
         for e in expected {
             let token = t.next().expect("tokenizer should have a next Token");
-            assert_eq!(token, e, "expected {:?} but got {:?}", e, token);
+            assert_eq!(token, e, "\n\nexpected {:?} but got {:?}", e, token);
         }
     };
 }
@@ -82,6 +83,7 @@ fn body() {
         Token::StartTag {
             tag: String::from("body"),
             self_closing: false,
+            attributes: Vec::new(),
         },
         Token::EndTag {
             tag: String::from("body"),
@@ -97,6 +99,7 @@ fn BODY() {
         Token::StartTag {
             tag: String::from("body"),
             self_closing: false,
+            attributes: Vec::new(),
         },
         Token::EndTag {
             tag: String::from("body"),
@@ -112,6 +115,7 @@ fn br() {
         Token::StartTag {
             tag: String::from("br"),
             self_closing: true,
+            attributes: Vec::new(),
         }
     );
 }
@@ -123,16 +127,56 @@ fn simple_page() {
         Token::StartTag {
             tag: String::from("html"),
             self_closing: false,
+            attributes: Vec::new(),
         },
         Token::StartTag {
             tag: String::from("body"),
             self_closing: false,
+            attributes: Vec::new(),
         },
         Token::Char('a'),
         Token::Char('b'),
         Token::Char('c'),
         Token::EndTag {
             tag: String::from("body"),
+            self_closing: false,
+        },
+        Token::EndTag {
+            tag: String::from("html"),
+            self_closing: false,
+        }
+    );
+}
+
+#[test_case]
+fn link() {
+    let mut attributes = Vec::new();
+    let mut a1 = Attribute::new();
+    a1.set_name_and_value("rel".to_string(), "stylesheet".to_string());
+    attributes.push(a1);
+    let mut a2 = Attribute::new();
+    a2.set_name_and_value("href".to_string(), "styles.css".to_string());
+    attributes.push(a2);
+
+    run_test!(
+        "<html><head><link rel='stylesheet' href='styles.css'></head></html>",
+        Token::StartTag {
+            tag: String::from("html"),
+            self_closing: false,
+            attributes: Vec::new(),
+        },
+        Token::StartTag {
+            tag: String::from("head"),
+            self_closing: false,
+            attributes: Vec::new(),
+        },
+        Token::StartTag {
+            tag: String::from("link"),
+            self_closing: false,
+            attributes,
+        },
+        Token::EndTag {
+            tag: String::from("head"),
             self_closing: false,
         },
         Token::EndTag {
