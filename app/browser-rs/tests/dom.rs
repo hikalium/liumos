@@ -6,6 +6,7 @@
 
 extern crate alloc;
 
+use crate::alloc::string::ToString;
 use alloc::rc::Rc;
 use alloc::string::String;
 use core::cell::RefCell;
@@ -374,4 +375,39 @@ fn list2() {
     }
 
     run_test!("<html><head></head><body><ul><li></li><li></li></ul><ul><li></li><li></li></ul></body></html>", Some(root));
+}
+
+#[test_case]
+fn list() {
+    // root (Document)
+    // └── html
+    //     └── head
+    //         └── link
+    //     └── body
+    let root = create_base_dom_tree();
+    let head = root
+        .borrow_mut()
+        .first_child()
+        .unwrap()
+        .borrow_mut()
+        .first_child()
+        .unwrap();
+    let mut link_element = Element::new(ElementKind::Link);
+    link_element.set_attribute("rel".to_string(), "stylesheet".to_string());
+    link_element.set_attribute("href".to_string(), "styles.css".to_string());
+
+    let link = Rc::new(RefCell::new(Node::new(NodeKind::Element(link_element))));
+
+    // head <--> link
+    {
+        head.borrow_mut().first_child = Some(link.clone());
+    }
+    {
+        link.borrow_mut().parent = Some(Rc::downgrade(&head));
+    }
+
+    run_test!(
+        "<html><head><link rel='stylesheet' href=\"styles.css\"></head></html>",
+        Some(root)
+    );
 }

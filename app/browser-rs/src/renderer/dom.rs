@@ -67,17 +67,19 @@ pub enum NodeKind {
 /// https://dom.spec.whatwg.org/#interface-element
 pub struct Element {
     kind: ElementKind,
-    //id: String,
-    //class_name: String,
+    attributes: Vec<Attribute>,
 }
 
 impl Element {
     pub fn new(kind: ElementKind) -> Self {
         Self {
             kind,
-            //id: String::new(),
-            //class_name: String::new(),
+            attributes: Vec::new(),
         }
+    }
+
+    pub fn set_attribute(&mut self, name: String, value: String) {
+        self.attributes.push(Attribute::new(name, value));
     }
 }
 
@@ -89,12 +91,28 @@ pub enum ElementKind {
     Html,
     /// https://html.spec.whatwg.org/multipage/semantics.html#the-head-element
     Head,
+    /// https://html.spec.whatwg.org/multipage/semantics.html#the-link-element
+    Link,
     /// https://html.spec.whatwg.org/multipage/sections.html#the-body-element
     Body,
     /// https://html.spec.whatwg.org/multipage/grouping-content.html#the-ul-element
     Ul,
     /// https://html.spec.whatwg.org/multipage/grouping-content.html#the-li-element
     Li,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+/// https://dom.spec.whatwg.org/#attr
+pub struct Attribute {
+    name: String,
+    value: String,
+}
+
+impl Attribute {
+    pub fn new(name: String, value: String) -> Self {
+        Self { name, value }
+    }
 }
 
 #[allow(dead_code)]
@@ -147,6 +165,8 @@ impl Parser {
             return self.create_element(ElementKind::Html);
         } else if tag == "head" {
             return self.create_element(ElementKind::Head);
+        } else if tag == "link" {
+            return self.create_element(ElementKind::Link);
         } else if tag == "body" {
             return self.create_element(ElementKind::Body);
         } else if tag == "ul" {
@@ -241,6 +261,22 @@ impl Parser {
         self.stack_of_open_elements.push(node);
     }
 
+    /// Sets an attribute to the current node.
+    fn set_attribute_to_current_node(&mut self, name: String, value: String) {
+        let current = match self.stack_of_open_elements.last() {
+            Some(n) => n,
+            None => &self.root,
+        };
+
+        match current.borrow_mut().kind {
+            NodeKind::Element(ref mut elem) => {
+                elem.set_attribute(name, value);
+                return;
+            }
+            _ => {}
+        }
+    }
+
     /// Returns true if the current node's kind is same as NodeKind::Element::<element_kind>.
     fn pop_current_node(&mut self, element_kind: ElementKind) -> bool {
         let current = match self.stack_of_open_elements.last() {
@@ -248,12 +284,22 @@ impl Parser {
             None => return false,
         };
 
-        if current.borrow().kind == NodeKind::Element(Element::new(element_kind)) {
+        let ok = match current.borrow().kind {
+            NodeKind::Element(ref elem) => {
+                if elem.kind == element_kind {
+                    true
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        };
+
+        if ok {
             self.stack_of_open_elements.pop();
-            return true;
         }
 
-        false
+        ok
     }
 
     /// Pops nodes until a node with `element_kind` comes.
@@ -392,6 +438,25 @@ impl Parser {
                 // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inhead
                 InsertionMode::InHead => {
                     match token {
+                        Some(Token::StartTag {
+                            ref tag,
+                            self_closing: _,
+                            ref attributes,
+                        }) => {
+                            if tag == "link" {
+                                self.insert_element("link");
+                                for attr in attributes {
+                                    self.set_attribute_to_current_node(
+                                        attr.name.clone(),
+                                        attr.value.clone(),
+                                    );
+                                }
+                                // Immediately pop the current node off the stack of open elements.
+                                assert!(self.pop_current_node(ElementKind::Link));
+                                token = self.t.next();
+                                continue;
+                            }
+                        }
                         Some(Token::EndTag {
                             ref tag,
                             self_closing: _,

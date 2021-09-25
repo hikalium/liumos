@@ -57,8 +57,8 @@ pub enum Token {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Attribute {
-    name: String,
-    value: String,
+    pub name: String,
+    pub value: String,
 }
 
 impl Attribute {
