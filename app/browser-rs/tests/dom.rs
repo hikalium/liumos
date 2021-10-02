@@ -427,7 +427,7 @@ fn css_with_style() {
         .borrow_mut()
         .first_child()
         .unwrap();
-    let style = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(ElementKind::Script)))));
+    let style = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(ElementKind::Style)))));
 
     // head <--> style
     {

@@ -97,6 +97,8 @@ pub enum ElementKind {
     Style,
     /// https://html.spec.whatwg.org/multipage/sections.html#the-body-element
     Body,
+    /// https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-incdata
+    Text,
     /// https://html.spec.whatwg.org/multipage/grouping-content.html#the-ul-element
     Ul,
     /// https://html.spec.whatwg.org/multipage/grouping-content.html#the-li-element
@@ -169,6 +171,8 @@ impl Parser {
             return self.create_element(ElementKind::Head);
         } else if tag == "link" {
             return self.create_element(ElementKind::Link);
+        } else if tag == "style" {
+            return self.create_element(ElementKind::Style);
         } else if tag == "body" {
             return self.create_element(ElementKind::Body);
         } else if tag == "ul" {

@@ -480,9 +480,13 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
     kprintf("file name: %s\n", file_name);
 
     if (IsEqualString(".", file_name)) {
-      // for getdents64
       ppdata.num_getdents64_called = 0;
       args[0] = 5;
+      return;
+    }
+
+    if (IsEqualString("window.bmp", file_name)) {
+      args[0] = 7;
       return;
     }
 
@@ -517,8 +521,8 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
   if (idx == kSyscallIndex_sys_mmap) {
     uint64_t size = args[2];
     uint64_t fd = args[5];
-    if (fd != 5) {
-      kprintf("fd != 5\n");
+    if (fd != 7) {
+      kprintf("fd != 7\n");
       args[0] = static_cast<uint64_t>(-1);
       return;
     }
