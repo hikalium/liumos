@@ -47,6 +47,7 @@ typedef uint32_t socklen_t;
 
 struct PerProcessSyscallData {
   Sheet* window_sheet;
+  uint32_t* window_buf;
   int num_getdents64_called;
   // for opening normal file: fd = 6
   int idx_in_root_files;
@@ -556,20 +557,28 @@ __attribute__((ms_abi)) extern "C" void SyscallHandler(uint64_t* args) {
       return;
     }
     ysize = -ysize;
+    if (ysize > 2048 || xsize > 2048) {
+      kprintf("msync: create window: window too large: %dx%d\n", xsize, ysize);
+      args[0] = static_cast<uint64_t>(-1);
+      return;
+    }
     auto pid = liumos->scheduler->GetCurrentProcess().GetID();
     auto& ppdata = per_process_syscall_data[pid];
     auto& sheet = ppdata.window_sheet;
+    auto& buf = ppdata.window_buf;
     if (!sheet) {
       kprintf("offset_to_data = %d, xsize = %d, ysize = %d\n", offset_to_data,
               xsize, ysize);
       // TODO(hikalium): allocate this backing sheet on fopen.
       sheet = AllocKernelMemory<Sheet*>(sizeof(Sheet));
+      buf = AllocKernelMemory<uint32_t*>(xsize * ysize * 4);
       bzero(sheet, sizeof(Sheet));
-      sheet->Init(reinterpret_cast<uint32_t*>(addr + offset_to_data), xsize,
-                  ysize, xsize, 0, 0);
+      sheet->Init(buf, xsize, ysize, xsize, 0, 0);
       kprintf("vram_sheet is at %p\n", liumos->vram_sheet);
       sheet->SetParent(liumos->vram_sheet);
     }
+    memcpy(buf, reinterpret_cast<uint32_t*>(addr + offset_to_data),
+           xsize * ysize * 4);
     sheet->Flush(0, 0, xsize, ysize);
     args[0] = 0;
     return;

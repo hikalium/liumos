@@ -175,6 +175,21 @@ void MouseManager() {
   SheetPainter::DrawString(*debug_info_sheet, "mouse:", 8, 16, false);
   debug_info_sheet->Flush();
 
+  Sheet* debug_info_sheet2 = AllocKernelMemory<Sheet*>(sizeof(Sheet));
+  bzero(debug_info_sheet2, sizeof(Sheet));
+  uint32_t* debug_info_buf2 =
+      AllocKernelMemory<uint32_t*>(4 * debug_info_width * debug_info_height);
+  for (int y = 0; y < debug_info_height; y++) {
+    for (int x = 0; x < debug_info_width; x++) {
+      debug_info_buf2[y * debug_info_width + x] = 0xffffff;
+    }
+  }
+  debug_info_sheet2->Init(debug_info_buf2, debug_info_width, debug_info_height,
+                          debug_info_width, 0, 0);
+  debug_info_sheet2->SetParent(liumos->vram_sheet);
+  SheetPainter::DrawString(*debug_info_sheet2, "sheet2", 8, 16, false);
+  debug_info_sheet2->Flush();
+
   bool last_left_button_state = false;
   Sheet* focused = nullptr;
   int focused_ofs_x = 0, focused_ofs_y = 0;
