@@ -128,6 +128,7 @@ pub enum InsertionMode {
     InHead,
     AfterHead,
     InBody,
+    Text,
     AfterBody,
     AfterAfterBody,
 }
@@ -139,6 +140,8 @@ pub struct Parser {
     t: Tokenizer,
     /// https://html.spec.whatwg.org/multipage/parsing.html#the-stack-of-open-elements
     stack_of_open_elements: Vec<Rc<RefCell<Node>>>,
+    /// https://html.spec.whatwg.org/multipage/parsing.html#original-insertion-mode
+    original_insertion_mode: InsertionMode,
 }
 
 impl Parser {
@@ -148,6 +151,7 @@ impl Parser {
             mode: InsertionMode::Initial,
             t,
             stack_of_open_elements: Vec::new(),
+            original_insertion_mode: InsertionMode::Initial,
         }
     }
 
@@ -464,6 +468,10 @@ impl Parser {
                             }
 
                             if tag == "style" {
+                                self.insert_element(tag);
+                                self.original_insertion_mode = self.mode;
+                                self.mode = InsertionMode::Text;
+                                token = self.t.next();
                                 continue;
                             }
                         }
@@ -577,6 +585,34 @@ impl Parser {
                         _ => {}
                     }
                 } // end of InsertionMode::InBody
+
+                // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-incdata
+                InsertionMode::Text => {
+                    match token {
+                        Some(Token::Eof) | None => {
+                            return self.root.clone();
+                        }
+                        Some(Token::EndTag {
+                            ref tag,
+                            self_closing: _,
+                        }) => {
+                            if tag == "style" {
+                                self.pop_until(ElementKind::Style);
+                                self.mode = self.original_insertion_mode;
+                                token = self.t.next();
+                                continue;
+                            }
+                        }
+                        Some(Token::Char(c)) => {
+                            self.insert_char(c);
+                            token = self.t.next();
+                            continue;
+                        }
+                        _ => {}
+                    }
+
+                    self.mode = self.original_insertion_mode;
+                } // end of InsertionMode::Text
 
                 // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-afterbody
                 InsertionMode::AfterBody => {

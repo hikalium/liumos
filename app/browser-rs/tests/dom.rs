@@ -427,7 +427,12 @@ fn css_with_style() {
         .borrow_mut()
         .first_child()
         .unwrap();
-    let style = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(ElementKind::Style)))));
+    let style = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+        ElementKind::Style,
+    )))));
+    let text = Rc::new(RefCell::new(Node::new(NodeKind::Text(String::from(
+        "h1{background-color:red;}",
+    )))));
 
     // head <--> style
     {
@@ -435,6 +440,14 @@ fn css_with_style() {
     }
     {
         style.borrow_mut().parent = Some(Rc::downgrade(&head));
+    }
+
+    // style <--> text
+    {
+        style.borrow_mut().first_child = Some(text.clone());
+    }
+    {
+        text.borrow_mut().parent = Some(Rc::downgrade(&style));
     }
 
     run_test!(
