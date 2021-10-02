@@ -93,6 +93,8 @@ pub enum ElementKind {
     Head,
     /// https://html.spec.whatwg.org/multipage/semantics.html#the-link-element
     Link,
+    /// https://html.spec.whatwg.org/multipage/semantics.html#the-style-element
+    Style,
     /// https://html.spec.whatwg.org/multipage/sections.html#the-body-element
     Body,
     /// https://html.spec.whatwg.org/multipage/grouping-content.html#the-ul-element
@@ -454,6 +456,10 @@ impl Parser {
                                 // Immediately pop the current node off the stack of open elements.
                                 assert!(self.pop_current_node(ElementKind::Link));
                                 token = self.t.next();
+                                continue;
+                            }
+
+                            if tag == "style" {
                                 continue;
                             }
                         }

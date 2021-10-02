@@ -411,3 +411,34 @@ fn list() {
         Some(root)
     );
 }
+
+#[test_case]
+fn css_with_style() {
+    // root (Document)
+    // └── html
+    //     └── head
+    //         └── style
+    //     └── body
+    let root = create_base_dom_tree();
+    let head = root
+        .borrow_mut()
+        .first_child()
+        .unwrap()
+        .borrow_mut()
+        .first_child()
+        .unwrap();
+    let style = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(ElementKind::Script)))));
+
+    // head <--> style
+    {
+        head.borrow_mut().first_child = Some(style.clone());
+    }
+    {
+        style.borrow_mut().parent = Some(Rc::downgrade(&head));
+    }
+
+    run_test!(
+        "<html><head><style>h1{background-color:red;}</style></head></html>",
+        Some(root)
+    );
+}

@@ -220,3 +220,62 @@ fn link_with_unquoted_attribute() {
         }
     );
 }
+
+#[test_case]
+fn css_with_style() {
+    run_test!(
+        "<html><head><style>h1{background-color:red;}</style></head></html>",
+        Token::StartTag {
+            tag: String::from("html"),
+            self_closing: false,
+            attributes: Vec::new(),
+        },
+        Token::StartTag {
+            tag: String::from("head"),
+            self_closing: false,
+            attributes: Vec::new(),
+        },
+        Token::StartTag {
+            tag: String::from("style"),
+            self_closing: false,
+            attributes: Vec::new(),
+        },
+        Token::Char('h'),
+        Token::Char('1'),
+        Token::Char('{'),
+        Token::Char('b'),
+        Token::Char('a'),
+        Token::Char('c'),
+        Token::Char('k'),
+        Token::Char('g'),
+        Token::Char('r'),
+        Token::Char('o'),
+        Token::Char('u'),
+        Token::Char('n'),
+        Token::Char('d'),
+        Token::Char('-'),
+        Token::Char('c'),
+        Token::Char('o'),
+        Token::Char('l'),
+        Token::Char('o'),
+        Token::Char('r'),
+        Token::Char(':'),
+        Token::Char('r'),
+        Token::Char('e'),
+        Token::Char('d'),
+        Token::Char(';'),
+        Token::Char('}'),
+        Token::EndTag {
+            tag: String::from("style"),
+            self_closing: false,
+        },
+        Token::EndTag {
+            tag: String::from("head"),
+            self_closing: false,
+        },
+        Token::EndTag {
+            tag: String::from("html"),
+            self_closing: false,
+        }
+    );
+}
