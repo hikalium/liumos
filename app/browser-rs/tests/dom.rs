@@ -169,6 +169,96 @@ fn create_base_dom_tree() -> Rc<RefCell<Node>> {
     root.clone()
 }
 
+fn add_child_node_to(target: &mut Rc<RefCell<Node>>, child: &Rc<RefCell<Node>>) {
+    //  └── target
+    //      └── child
+    {
+        target.borrow_mut().first_child = Some(child.clone());
+    }
+    {
+        child.borrow_mut().parent = Some(Rc::downgrade(&target));
+    }
+}
+
+fn add_child_ul_to(target: &mut Rc<RefCell<Node>>) {
+    //  └── target
+    //      └── ul
+    //          └── li
+    //          └── li
+    let ul = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+        ElementKind::Ul,
+    )))));
+    let li1 = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+        ElementKind::Li,
+    )))));
+    let li2 = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+        ElementKind::Li,
+    )))));
+
+    // ul <--> li1
+    {
+        ul.borrow_mut().first_child = Some(li1.clone());
+    }
+    {
+        li1.borrow_mut().parent = Some(Rc::downgrade(&ul));
+    }
+
+    // li1 <--> li2
+    {
+        li1.borrow_mut().next_sibling = Some(li2.clone());
+    }
+    {
+        li2.borrow_mut().previous_sibling = Some(Rc::downgrade(&li1));
+    }
+
+    add_child_node_to(target, &ul);
+}
+
+fn add_sibling_node_to(target: &mut Rc<RefCell<Node>>, sibling: &Rc<RefCell<Node>>) {
+    //  └── target
+    //  └── sibling
+    {
+        target.borrow_mut().next_sibling = Some(sibling.clone());
+    }
+    {
+        sibling.borrow_mut().previous_sibling = Some(Rc::downgrade(&target));
+    }
+}
+
+fn add_sibling_ul_to(target: &mut Rc<RefCell<Node>>) {
+    //  └── target
+    //  └── ul
+    //      └── li
+    //      └── li
+    let ul = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+        ElementKind::Ul,
+    )))));
+    let li1 = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+        ElementKind::Li,
+    )))));
+    let li2 = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+        ElementKind::Li,
+    )))));
+
+    // ul <--> li1
+    {
+        ul.borrow_mut().first_child = Some(li1.clone());
+    }
+    {
+        li1.borrow_mut().parent = Some(Rc::downgrade(&ul));
+    }
+
+    // li1 <--> li2
+    {
+        li1.borrow_mut().next_sibling = Some(li2.clone());
+    }
+    {
+        li2.borrow_mut().previous_sibling = Some(Rc::downgrade(&li1));
+    }
+
+    add_sibling_node_to(target, &ul);
+}
+
 #[test_case]
 fn no_input() {
     let root = Rc::new(RefCell::new(Node::new(NodeKind::Document)));
@@ -233,7 +323,7 @@ fn list() {
     //             └── li
     //             └── li
     let root = create_base_dom_tree();
-    let body = root
+    let mut body = root
         .borrow_mut()
         .first_child()
         .unwrap()
@@ -243,39 +333,7 @@ fn list() {
         .borrow_mut()
         .next_sibling()
         .unwrap();
-    let ul = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
-        ElementKind::Ul,
-    )))));
-    let li1 = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
-        ElementKind::Li,
-    )))));
-    let li2 = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
-        ElementKind::Li,
-    )))));
-
-    // body <--> ul
-    {
-        body.borrow_mut().first_child = Some(ul.clone());
-    }
-    {
-        ul.borrow_mut().parent = Some(Rc::downgrade(&body));
-    }
-
-    // ul <--> li1
-    {
-        ul.borrow_mut().first_child = Some(li1.clone());
-    }
-    {
-        li1.borrow_mut().parent = Some(Rc::downgrade(&ul));
-    }
-
-    // li1 <--> li2
-    {
-        li1.borrow_mut().next_sibling = Some(li2.clone());
-    }
-    {
-        li2.borrow_mut().previous_sibling = Some(Rc::downgrade(&li1));
-    }
+    add_child_ul_to(&mut body);
 
     run_test!(
         "<html><head></head><body><ul><li></li><li></li></ul></body></html>",
@@ -296,7 +354,7 @@ fn list2() {
     //             └── li
     //             └── li
     let root = create_base_dom_tree();
-    let body = root
+    let mut body = root
         .borrow_mut()
         .first_child()
         .unwrap()
@@ -306,79 +364,16 @@ fn list2() {
         .borrow_mut()
         .next_sibling()
         .unwrap();
-    let ul1 = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
-        ElementKind::Ul,
-    )))));
-    let li1 = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
-        ElementKind::Li,
-    )))));
-    let li2 = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
-        ElementKind::Li,
-    )))));
+    add_child_ul_to(&mut body);
 
-    let ul2 = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
-        ElementKind::Ul,
-    )))));
-    let li3 = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
-        ElementKind::Li,
-    )))));
-    let li4 = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
-        ElementKind::Li,
-    )))));
-
-    // body <--> ul1
-    {
-        body.borrow_mut().first_child = Some(ul1.clone());
-    }
-    {
-        ul1.borrow_mut().parent = Some(Rc::downgrade(&body));
-    }
-
-    // ul1 <--> li1
-    {
-        ul1.borrow_mut().first_child = Some(li1.clone());
-    }
-    {
-        li1.borrow_mut().parent = Some(Rc::downgrade(&ul1));
-    }
-
-    // li1 <--> li2
-    {
-        li1.borrow_mut().next_sibling = Some(li2.clone());
-    }
-    {
-        li2.borrow_mut().previous_sibling = Some(Rc::downgrade(&li1));
-    }
-
-    // ul1 <--> ul2
-    {
-        ul1.borrow_mut().next_sibling = Some(ul2.clone());
-    }
-    {
-        ul2.borrow_mut().previous_sibling = Some(Rc::downgrade(&ul1));
-    }
-
-    // ul2 <--> li3
-    {
-        ul2.borrow_mut().first_child = Some(li3.clone());
-    }
-    {
-        li3.borrow_mut().parent = Some(Rc::downgrade(&ul2));
-    }
-
-    // li3 <--> li4
-    {
-        li3.borrow_mut().next_sibling = Some(li4.clone());
-    }
-    {
-        li4.borrow_mut().previous_sibling = Some(Rc::downgrade(&li3));
-    }
+    let mut ul = body.borrow_mut().first_child().unwrap();
+    add_sibling_ul_to(&mut ul);
 
     run_test!("<html><head></head><body><ul><li></li><li></li></ul><ul><li></li><li></li></ul></body></html>", Some(root));
 }
 
 #[test_case]
-fn list() {
+fn link() {
     // root (Document)
     // └── html
     //     └── head
@@ -455,3 +450,102 @@ fn css_with_style() {
         Some(root)
     );
 }
+
+#[test_case]
+fn formatted_body() {
+    // root (Document)
+    // └── html
+    //     └── head
+    //     └── body
+    //         └── Hello
+    //         └── ul
+    //             └── li
+    //             └── li
+    let root = create_base_dom_tree();
+    let mut body = root
+        .borrow_mut()
+        .first_child()
+        .unwrap()
+        .borrow_mut()
+        .first_child()
+        .unwrap()
+        .borrow_mut()
+        .next_sibling()
+        .unwrap();
+    let text = Rc::new(RefCell::new(Node::new(NodeKind::Text(String::from(
+        "\n  ",
+    )))));
+    add_child_node_to(&mut body, &text);
+
+    run_test!(
+        "<html>
+  <body>
+  </body>
+</html>",
+        Some(root)
+    );
+}
+
+/*
+#[test_case]
+fn default_page() {
+    // root (Document)
+    // └── html
+    //     └── head
+    //         └── style
+    //     └── body
+    //         └── ul
+    //             └── li
+    //             └── li
+    let root = create_base_dom_tree();
+    let head = root
+        .borrow_mut()
+        .first_child()
+        .unwrap()
+        .borrow_mut()
+        .first_child()
+        .unwrap();
+    let style = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+        ElementKind::Style,
+    )))));
+    let text = Rc::new(RefCell::new(Node::new(NodeKind::Text(String::from(
+        "h1{background-color:red;}",
+    )))));
+
+    // head <--> style
+    {
+        head.borrow_mut().first_child = Some(style.clone());
+    }
+    {
+        style.borrow_mut().parent = Some(Rc::downgrade(&head));
+    }
+
+    // style <--> text
+    {
+        style.borrow_mut().first_child = Some(text.clone());
+    }
+    {
+        text.borrow_mut().parent = Some(Rc::downgrade(&style));
+    }
+
+    run_test!(
+        "<html>
+  <head>
+    <style>
+    h1 {
+        background-color:red;
+    }
+    </style>
+    </head>
+  <body>
+    Hello, this is a toy browser.
+    <ul>
+        <li>list 1</li>
+        <li>list 2</li>
+    </ul>
+  </body>
+</html>",
+        Some(root)
+    );
+}
+*/

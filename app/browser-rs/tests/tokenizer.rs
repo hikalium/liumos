@@ -279,3 +279,120 @@ fn css_with_style() {
         }
     );
 }
+
+#[test_case]
+fn format() {
+    run_test!(
+        "<html>
+  <body>
+    Hello
+    <ul>
+        <li>list 1</li>
+        <li>list 2</li>
+    </ul>
+  </body>
+</html>",
+        Token::StartTag {
+            tag: String::from("html"),
+            self_closing: false,
+            attributes: Vec::new(),
+        },
+        Token::Char('\n'),
+        Token::Char(' '),
+        Token::Char(' '),
+        Token::StartTag {
+            tag: String::from("body"),
+            self_closing: false,
+            attributes: Vec::new(),
+        },
+        Token::Char('\n'),
+        Token::Char(' '),
+        Token::Char(' '),
+        Token::Char(' '),
+        Token::Char(' '),
+        Token::Char('H'),
+        Token::Char('e'),
+        Token::Char('l'),
+        Token::Char('l'),
+        Token::Char('o'),
+        Token::Char('\n'),
+        Token::Char(' '),
+        Token::Char(' '),
+        Token::Char(' '),
+        Token::Char(' '),
+        Token::StartTag {
+            tag: String::from("ul"),
+            self_closing: false,
+            attributes: Vec::new(),
+        },
+        Token::Char('\n'),
+        Token::Char(' '),
+        Token::Char(' '),
+        Token::Char(' '),
+        Token::Char(' '),
+        Token::Char(' '),
+        Token::Char(' '),
+        Token::Char(' '),
+        Token::Char(' '),
+        Token::StartTag {
+            tag: String::from("li"),
+            self_closing: false,
+            attributes: Vec::new(),
+        },
+        Token::Char('l'),
+        Token::Char('i'),
+        Token::Char('s'),
+        Token::Char('t'),
+        Token::Char(' '),
+        Token::Char('1'),
+        Token::EndTag {
+            tag: String::from("li"),
+            self_closing: false,
+        },
+        Token::Char('\n'),
+        Token::Char(' '),
+        Token::Char(' '),
+        Token::Char(' '),
+        Token::Char(' '),
+        Token::Char(' '),
+        Token::Char(' '),
+        Token::Char(' '),
+        Token::Char(' '),
+        Token::StartTag {
+            tag: String::from("li"),
+            self_closing: false,
+            attributes: Vec::new(),
+        },
+        Token::Char('l'),
+        Token::Char('i'),
+        Token::Char('s'),
+        Token::Char('t'),
+        Token::Char(' '),
+        Token::Char('2'),
+        Token::EndTag {
+            tag: String::from("li"),
+            self_closing: false,
+        },
+        Token::Char('\n'),
+        Token::Char(' '),
+        Token::Char(' '),
+        Token::Char(' '),
+        Token::Char(' '),
+        Token::EndTag {
+            tag: String::from("ul"),
+            self_closing: false,
+        },
+        Token::Char('\n'),
+        Token::Char(' '),
+        Token::Char(' '),
+        Token::EndTag {
+            tag: String::from("body"),
+            self_closing: false,
+        },
+        Token::Char('\n'),
+        Token::EndTag {
+            tag: String::from("html"),
+            self_closing: false,
+        }
+    );
+}

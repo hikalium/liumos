@@ -357,16 +357,7 @@ impl Parser {
                             continue;
                         }
                         Some(Token::Char(c)) => {
-                            // If a character token that is one of U+0009 CHARACTER TABULATION, U+000A
-                            // LINE FEED (LF), U+000C FORM FEED (FF), U+000D CARRIAGE RETURN (CR), or
-                            // U+0020 SPACE, ignore the token.
-                            let num = c as u32;
-                            if num == 0x09
-                                || num == 0x0a
-                                || num == 0x0c
-                                || num == 0x0d
-                                || num == 0x20
-                            {
+                            if c == ' ' || c == '\n' {
                                 token = self.t.next();
                                 continue;
                             }
@@ -411,17 +402,9 @@ impl Parser {
                 InsertionMode::BeforeHead => {
                     match token {
                         Some(Token::Char(c)) => {
-                            let num = c as u32;
-                            // If a character token that is one of U+0009 CHARACTER TABULATION, U+000A
-                            // LINE FEED (LF), U+000C FORM FEED (FF), U+000D CARRIAGE RETURN (CR), or
-                            // U+0020 SPACE, ignore the token.
-                            if num == 0x09
-                                || num == 0x0a
-                                || num == 0x0c
-                                || num == 0x0d
-                                || num == 0x20
-                            {
+                            if c == ' ' || c == '\n' {
                                 token = self.t.next();
+                                continue;
                             }
                         }
                         Some(Token::StartTag {
@@ -617,6 +600,13 @@ impl Parser {
                 // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-afterbody
                 InsertionMode::AfterBody => {
                     match token {
+                        Some(Token::Char(_c)) => {
+                            // Not align with the spec.
+                            // TODO: Process the token using the rules for the "in body" insertion
+                            // mode.
+                            token = self.t.next();
+                            continue;
+                        }
                         Some(Token::EndTag {
                             ref tag,
                             self_closing: _,
@@ -639,6 +629,13 @@ impl Parser {
                 // https://html.spec.whatwg.org/multipage/parsing.html#the-after-after-body-insertion-mode
                 InsertionMode::AfterAfterBody => {
                     match token {
+                        Some(Token::Char(_c)) => {
+                            // Not align with the spec.
+                            // TODO: Process the token using the rules for the "in body" insertion
+                            // mode.
+                            token = self.t.next();
+                            continue;
+                        }
                         Some(Token::EndTag {
                             ref tag,
                             self_closing: _,

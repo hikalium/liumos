@@ -36,10 +36,8 @@ test :
 	$(CARGO) test $(CARGO_ARGS) --tests -- --test-threads=1 --nocapture ;
 endif
 
-ifeq ($(OSNAME),Darwin)
-test :
-	echo "Skipping test for $(PWD) because we can't run the binary on this host." ;
-else
 test_dom :
 	$(CARGO) test $(CARGO_ARGS) --test dom -- --test-threads=1 --nocapture ;
-endif
+
+test_tokenizer :
+	$(CARGO) test $(CARGO_ARGS) --test tokenizer -- --test-threads=1 --nocapture ;
