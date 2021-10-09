@@ -10,11 +10,16 @@ mod url;
 
 extern crate alloc;
 
+use alloc::string::String;
 use alloc::string::ToString;
+use alloc::vec::Vec;
+use liumlib::gui::draw_rect;
+use liumlib::gui::BitmapImageBuffer;
 use liumlib::*;
 
 use crate::gui::ApplicationWindow;
 use crate::net::udp_response;
+use crate::renderer::css::Token;
 use crate::renderer::render;
 use crate::url::ParsedUrl;
 
@@ -54,24 +59,24 @@ fn main() {
     app.initialize();
 
     if default {
-        let default_page = r#"
-<html>
-  <head>
-    <style>
-    h1 {
-        background-color:red;
-    }
-    </style>
-    </head>
-  <body>
-    <ul>
-        <li>list 1</li>
-        <li>list 2</li>
-    </ul>
-  </body>
-</html>"#;
+        let default_page =
+            "<html><head><style>h1{background-color:blue;}</style></head><body></body></html>";
 
-        render(default_page.to_string(), &app);
+        let rules = render(default_page.to_string(), &app);
+        if rules[0].key == Token::Ident("background-color".to_string()) {
+            let color = match &rules[0].value {
+                Token::Ident(color_string) => match color_string.as_str() {
+                    "red" => 0xff0000,
+                    "green" => 0x00ff00,
+                    "blue" => 0x0000ff,
+                    _ => unimplemented!("unsupported"),
+                },
+                _ => unimplemented!("unsupported"),
+            };
+
+            draw_rect(&app.buffer, color, 10, 10, 210, 210).expect("update a window");
+            app.buffer.flush();
+        }
     } else {
         let parsed_url = ParsedUrl::new(url.to_string());
         println!("parsed_url: {:?}", parsed_url);

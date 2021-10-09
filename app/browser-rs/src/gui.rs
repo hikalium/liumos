@@ -6,7 +6,7 @@ pub struct ApplicationWindow {
     width: u64,
     height: u64,
     title: String,
-    buffer: WindowBuffer,
+    pub buffer: WindowBuffer,
 }
 
 impl ApplicationWindow {

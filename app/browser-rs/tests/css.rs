@@ -57,7 +57,10 @@ macro_rules! run_test {
 
         let t2 = CssTokenizer::new(style_content);
         let mut p2 = CssParser::new(t2);
-        p2.construct_tree();
+        let rules = p2.construct_tree();
+        println!("\n--------------------------------");
+        println!("rules {:?}", rules);
+        println!("--------------------------------");
     };
 }
 
