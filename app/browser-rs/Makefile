@@ -41,3 +41,6 @@ test_dom :
 
 test_tokenizer :
 	$(CARGO) test $(CARGO_ARGS) --test tokenizer -- --test-threads=1 --nocapture ;
+
+test_css :
+	$(CARGO) test $(CARGO_ARGS) --test css -- --test-threads=1 --nocapture ;

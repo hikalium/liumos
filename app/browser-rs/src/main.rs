@@ -63,11 +63,9 @@ fn main() {
     </style>
     </head>
   <body>
-    Hello, this is a toy browser.
     <ul>
         <li>list 1</li>
         <li>list 2</li>
-        <li>list 3</li>
     </ul>
   </body>
 </html>"#;

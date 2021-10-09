@@ -10,7 +10,6 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::cell::RefCell;
 
-#[allow(dead_code)]
 #[derive(Debug, Clone)]
 /// https://dom.spec.whatwg.org/#interface-node
 pub struct Node {
@@ -667,4 +666,36 @@ impl Parser {
 
         self.root.clone()
     }
+}
+
+#[allow(dead_code)]
+fn get_target_element_node(node: Option<Rc<RefCell<Node>>>, element_kind: ElementKind) -> Option<Rc<RefCell<Node>>> {
+    match node {
+        Some(n) => {
+            if n.borrow().kind == NodeKind::Element(Element::new(element_kind)) {
+                return Some(n.clone());
+            }
+            let result1 = get_target_element_node(n.borrow().first_child(), element_kind);
+            let result2 = get_target_element_node(n.borrow().next_sibling(), element_kind);
+            if result1.is_none() && result2.is_none() {
+                return None;
+            }
+            if result1.is_none() {
+                return result2;
+            }
+            return result1;
+        }
+        None => return None,
+    }
+}
+
+#[allow(dead_code)]
+pub fn get_style_content(root: Rc<RefCell<Node>>) -> Option<String> {
+    let style_node = get_target_element_node(Some(root), ElementKind::Style)?;
+    let text_node = style_node.borrow().first_child()?;
+    let content = match &text_node.borrow().kind {
+         NodeKind::Text(ref s) => Some(s.clone()),
+           _ => None,
+    };
+    content
 }
