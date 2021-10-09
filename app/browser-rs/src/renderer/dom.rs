@@ -2,13 +2,12 @@
 //! https://html.spec.whatwg.org/multipage/parsing.html#tree-construction
 
 use crate::renderer::tokenizer::*;
-#[allow(unused_imports)]
-use liumlib::*;
-
 use alloc::rc::{Rc, Weak};
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::cell::RefCell;
+#[allow(unused_imports)]
+use liumlib::*;
 
 #[derive(Debug, Clone)]
 /// https://dom.spec.whatwg.org/#interface-node
@@ -525,7 +524,6 @@ impl Parser {
                             if tag == "li" {
                                 self.insert_element(tag);
                                 token = self.t.next();
-                                self.pop_until(ElementKind::Li);
                                 continue;
                             }
                         }
@@ -561,6 +559,7 @@ impl Parser {
                             }
                             if tag == "li" {
                                 token = self.t.next();
+                                self.pop_until(ElementKind::Li);
                                 continue;
                             }
                         }
@@ -669,7 +668,10 @@ impl Parser {
 }
 
 #[allow(dead_code)]
-fn get_target_element_node(node: Option<Rc<RefCell<Node>>>, element_kind: ElementKind) -> Option<Rc<RefCell<Node>>> {
+fn get_target_element_node(
+    node: Option<Rc<RefCell<Node>>>,
+    element_kind: ElementKind,
+) -> Option<Rc<RefCell<Node>>> {
     match node {
         Some(n) => {
             if n.borrow().kind == NodeKind::Element(Element::new(element_kind)) {
@@ -694,8 +696,8 @@ pub fn get_style_content(root: Rc<RefCell<Node>>) -> Option<String> {
     let style_node = get_target_element_node(Some(root), ElementKind::Style)?;
     let text_node = style_node.borrow().first_child()?;
     let content = match &text_node.borrow().kind {
-         NodeKind::Text(ref s) => Some(s.clone()),
-           _ => None,
+        NodeKind::Text(ref s) => Some(s.clone()),
+        _ => None,
     };
     content
 }

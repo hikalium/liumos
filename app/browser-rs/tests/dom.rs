@@ -52,6 +52,24 @@ pub fn test_runner(tests: &[&dyn Testable]) {
     }
 }
 
+#[macro_export]
+macro_rules! run_test {
+    ($html:literal, $expected_root:expr) => {
+        use browser_rs::renderer::dom::*;
+
+        let t = Tokenizer::new(String::from($html));
+
+        let mut p = Parser::new(t);
+        let root_raw = p.construct_tree();
+        let root = Some(root_raw.clone());
+        println!("\n----- nodes -----");
+        print_node(Some(root_raw.clone()), 0);
+
+        // Check nodes recursively.
+        assert!(node_equals($expected_root, root.clone()));
+    };
+}
+
 #[cfg(test)]
 entry_point!(main);
 #[cfg(test)]
@@ -92,24 +110,6 @@ fn node_equals(expected: Option<Rc<RefCell<Node>>>, actual: Option<Rc<RefCell<No
         expected_borrowed.next_sibling().clone(),
         actual_borrowed.next_sibling().clone(),
     )
-}
-
-#[macro_export]
-macro_rules! run_test {
-    ($html:literal, $expected_root:expr) => {
-        use browser_rs::renderer::dom::*;
-
-        let t = Tokenizer::new(String::from($html));
-
-        let mut p = Parser::new(t);
-        let root_raw = p.construct_tree();
-        let root = Some(root_raw.clone());
-        println!("\n----- nodes -----");
-        print_node(Some(root_raw.clone()), 0);
-
-        // Check nodes recursively.
-        assert!(node_equals($expected_root, root.clone()));
-    };
 }
 
 fn create_base_dom_tree() -> Rc<RefCell<Node>> {
@@ -167,6 +167,13 @@ fn create_base_dom_tree() -> Rc<RefCell<Node>> {
     }
 
     root.clone()
+}
+
+fn add_text_node_to(target: &mut Rc<RefCell<Node>>, s: &str) {
+    //  └── target
+    //      └── child
+    let text = Rc::new(RefCell::new(Node::new(NodeKind::Text(String::from(s)))));
+    add_child_node_to(target, &text);
 }
 
 fn add_child_node_to(target: &mut Rc<RefCell<Node>>, child: &Rc<RefCell<Node>>) {
@@ -291,7 +298,7 @@ fn text() {
     //     └── body
     //         └── text
     let root = create_base_dom_tree();
-    let body = root
+    let mut body = root
         .borrow_mut()
         .first_child()
         .unwrap()
@@ -301,14 +308,7 @@ fn text() {
         .borrow_mut()
         .next_sibling()
         .unwrap();
-    let text = Rc::new(RefCell::new(Node::new(NodeKind::Text(String::from("foo")))));
-    // body <--> text
-    {
-        body.borrow_mut().first_child = Some(text.clone());
-    }
-    {
-        text.borrow_mut().parent = Some(Rc::downgrade(&body));
-    }
+    add_text_node_to(&mut body, "foo");
 
     run_test!("<html><head></head><body>foo</body></html>", Some(root));
 }
@@ -373,6 +373,48 @@ fn list2() {
 }
 
 #[test_case]
+fn list_with_text() {
+    // root (Document)
+    // └── html
+    //     └── head
+    //     └── body
+    //         └── ul
+    //             └── li
+    //                 └── list 1
+    //             └── li
+    //                 └── list 2
+    let root = create_base_dom_tree();
+    let mut body = root
+        .borrow_mut()
+        .first_child()
+        .unwrap()
+        .borrow_mut()
+        .first_child()
+        .unwrap()
+        .borrow_mut()
+        .next_sibling()
+        .unwrap();
+    add_child_ul_to(&mut body);
+
+    let mut li1 = body
+        .borrow_mut()
+        .first_child()
+        .unwrap()
+        .borrow_mut()
+        .first_child()
+        .unwrap();
+    add_text_node_to(&mut li1, "list 1");
+
+    let mut l12 = li1.borrow_mut().next_sibling().unwrap();
+    add_text_node_to(&mut l12, "list 2");
+
+    run_test!(
+        "<html><head></head><body><ul><li>list 1</li><li>list 2</li></ul></body></html>",
+        Some(root)
+    );
+}
+
+#[test_case]
 fn link() {
     // root (Document)
     // └── html
@@ -415,35 +457,18 @@ fn css_with_style() {
     //         └── style
     //     └── body
     let root = create_base_dom_tree();
-    let head = root
+    let mut head = root
         .borrow_mut()
         .first_child()
         .unwrap()
         .borrow_mut()
         .first_child()
         .unwrap();
-    let style = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+    let mut style = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
         ElementKind::Style,
     )))));
-    let text = Rc::new(RefCell::new(Node::new(NodeKind::Text(String::from(
-        "h1{background-color:red;}",
-    )))));
-
-    // head <--> style
-    {
-        head.borrow_mut().first_child = Some(style.clone());
-    }
-    {
-        style.borrow_mut().parent = Some(Rc::downgrade(&head));
-    }
-
-    // style <--> text
-    {
-        style.borrow_mut().first_child = Some(text.clone());
-    }
-    {
-        text.borrow_mut().parent = Some(Rc::downgrade(&style));
-    }
+    add_text_node_to(&mut style, "h1{background-color:red;}");
+    add_child_node_to(&mut head, &style);
 
     run_test!(
         "<html><head><style>h1{background-color:red;}</style></head></html>",
@@ -472,10 +497,7 @@ fn formatted_body() {
         .borrow_mut()
         .next_sibling()
         .unwrap();
-    let text = Rc::new(RefCell::new(Node::new(NodeKind::Text(String::from(
-        "\n  ",
-    )))));
-    add_child_node_to(&mut body, &text);
+    add_text_node_to(&mut body, "\n  ");
 
     run_test!(
         "<html>
@@ -486,7 +508,6 @@ fn formatted_body() {
     );
 }
 
-/*
 #[test_case]
 fn default_page() {
     // root (Document)
@@ -498,54 +519,60 @@ fn default_page() {
     //             └── li
     //             └── li
     let root = create_base_dom_tree();
-    let head = root
+    let mut head = root
         .borrow_mut()
         .first_child()
         .unwrap()
         .borrow_mut()
         .first_child()
         .unwrap();
-    let style = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+    let mut style = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
         ElementKind::Style,
     )))));
-    let text = Rc::new(RefCell::new(Node::new(NodeKind::Text(String::from(
-        "\n    h1 {\n        background-color:red;\n    }\n    ",
-    )))));
+    add_text_node_to(&mut style, " h1 { background-color:red; } ");
+    add_child_node_to(&mut head, &style);
 
-    // head <--> style
-    {
-        head.borrow_mut().first_child = Some(style.clone());
-    }
-    {
-        style.borrow_mut().parent = Some(Rc::downgrade(&head));
-    }
+    let mut body = root
+        .borrow_mut()
+        .first_child()
+        .unwrap()
+        .borrow_mut()
+        .first_child()
+        .unwrap()
+        .borrow_mut()
+        .next_sibling()
+        .unwrap();
+    add_child_ul_to(&mut body);
 
-    // style <--> text
-    {
-        style.borrow_mut().first_child = Some(text.clone());
-    }
-    {
-        text.borrow_mut().parent = Some(Rc::downgrade(&style));
-    }
+    let mut li1 = body
+        .borrow_mut()
+        .first_child()
+        .unwrap()
+        .borrow_mut()
+        .first_child()
+        .unwrap();
+    add_text_node_to(&mut li1, "list 1");
 
+    let mut l12 = li1.borrow_mut().next_sibling().unwrap();
+    add_text_node_to(&mut l12, "list 2");
+
+    // <html>
+    //  <head>
+    //    <style>
+    //    h1 {
+    //        background-color:red;
+    //    }
+    //    </style>
+    //    </head>
+    //  <body>
+    //    <ul>
+    //        <li>list 1</li>
+    //        <li>list 2</li>
+    //    </ul>
+    //  </body>
+    //</html>",
     run_test!(
-        "<html>
-  <head>
-    <style>
-    h1 {
-        background-color:red;
-    }
-    </style>
-    </head>
-  <body>
-    Hello, this is a toy browser.
-    <ul>
-        <li>list 1</li>
-        <li>list 2</li>
-    </ul>
-  </body>
-</html>",
+        "<html><head><style> h1 { background-color:red; } </style></head><body><ul><li>list 1</li><li>list 2</li></ul></body></html>",
         Some(root)
     );
 }
-*/
