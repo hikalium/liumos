@@ -1,5 +1,6 @@
 #![no_std]
 #![no_main]
+#![feature(exclusive_range_pattern)]
 
 mod gui;
 mod http;

@@ -8,6 +8,7 @@ extern crate alloc;
 
 use alloc::string::String;
 
+use browser_rs::renderer::css::*;
 use browser_rs::renderer::tokenizer::*;
 use liumlib::*;
 
@@ -38,7 +39,7 @@ pub fn test_runner(tests: &[&dyn Testable]) {
 
 #[macro_export]
 macro_rules! run_test {
-    ($html:literal) => {
+    ($html:literal, $expected_style:expr) => {
         use browser_rs::renderer::dom::*;
 
         let t = Tokenizer::new(String::from($html));
@@ -47,7 +48,16 @@ macro_rules! run_test {
         let root = p.construct_tree();
         let style = get_style_content(root.clone());
 
+        println!("\n--------------------------------");
         println!("style: {:?}", style);
+        println!("--------------------------------");
+        assert!(style.is_some());
+        let style_content = style.unwrap();
+        assert_eq!($expected_style, style_content.clone());
+
+        let t2 = CssTokenizer::new(style_content);
+        let mut p2 = CssParser::new(t2);
+        p2.construct_tree();
     };
 }
 
@@ -65,5 +75,8 @@ fn background_color() {
     //     └── head
     //         └── style
     //     └── body
-    run_test!("<html><head><style>h1{background-color:red;}</style></head></html>");
+    run_test!(
+        "<html><head><style>h1{background-color:red;}</style></head></html>",
+        "h1{background-color:red;}"
+    );
 }
