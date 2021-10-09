@@ -53,7 +53,7 @@ impl Node {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub enum NodeKind {
     /// https://dom.spec.whatwg.org/#interface-document
     Document,
@@ -62,6 +62,27 @@ pub enum NodeKind {
     /// https://dom.spec.whatwg.org/#interface-text
     Text(String),
 }
+
+impl PartialEq for NodeKind {
+    fn eq(&self, other: &Self) -> bool {
+        match &self {
+            NodeKind::Document => match &other {
+                NodeKind::Document => true,
+                _ => false,
+            },
+            NodeKind::Element(e1) => match &other {
+                NodeKind::Element(e2) => e1.kind == e2.kind,
+                _ => false,
+            },
+            NodeKind::Text(_) => match &other {
+                NodeKind::Text(_) => true,
+                _ => false,
+            },
+        }
+    }
+}
+
+impl Eq for NodeKind {}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// https://dom.spec.whatwg.org/#interface-element
@@ -199,28 +220,20 @@ impl Parser {
         let node = Rc::new(RefCell::new(self.create_element_by_tag(tag)));
 
         if current.borrow().first_child().is_some() {
-            {
-                current
-                    .borrow()
-                    .first_child()
-                    .unwrap()
-                    .borrow_mut()
-                    .next_sibling = Some(node.clone());
-            }
-            {
-                node.borrow_mut().previous_sibling =
-                    Some(Rc::downgrade(&current.borrow().first_child().unwrap()));
-            }
+            current
+                .borrow()
+                .first_child()
+                .unwrap()
+                .borrow_mut()
+                .next_sibling = Some(node.clone());
+            node.borrow_mut().previous_sibling =
+                Some(Rc::downgrade(&current.borrow().first_child().unwrap()));
         } else {
             current.borrow_mut().first_child = Some(node.clone());
         }
 
-        {
-            current.borrow_mut().last_child = Some(Rc::downgrade(&node));
-        }
-        {
-            node.borrow_mut().parent = Some(Rc::downgrade(&current));
-        }
+        current.borrow_mut().last_child = Some(Rc::downgrade(&node));
+        node.borrow_mut().parent = Some(Rc::downgrade(&current));
 
         self.stack_of_open_elements.push(node);
     }
@@ -232,41 +245,32 @@ impl Parser {
             None => &self.root,
         };
 
-        {
-            match current.borrow_mut().kind {
-                NodeKind::Text(ref mut s) => {
-                    s.push(c);
-                    return;
-                }
-                _ => {}
+        // When the current node is Text, add a character to the current node.
+        match current.borrow_mut().kind {
+            NodeKind::Text(ref mut s) => {
+                s.push(c);
+                return;
             }
+            _ => {}
         }
 
         let node = Rc::new(RefCell::new(self.create_char(c)));
 
         if current.borrow().first_child().is_some() {
-            {
-                current
-                    .borrow()
-                    .first_child()
-                    .unwrap()
-                    .borrow_mut()
-                    .next_sibling = Some(node.clone());
-            }
-            {
-                node.borrow_mut().previous_sibling =
-                    Some(Rc::downgrade(&current.borrow().first_child().unwrap()));
-            }
+            current
+                .borrow()
+                .first_child()
+                .unwrap()
+                .borrow_mut()
+                .next_sibling = Some(node.clone());
+            node.borrow_mut().previous_sibling =
+                Some(Rc::downgrade(&current.borrow().first_child().unwrap()));
         } else {
             current.borrow_mut().first_child = Some(node.clone());
         }
 
-        {
-            current.borrow_mut().last_child = Some(Rc::downgrade(&node));
-        }
-        {
-            node.borrow_mut().parent = Some(Rc::downgrade(&current));
-        }
+        current.borrow_mut().last_child = Some(Rc::downgrade(&node));
+        node.borrow_mut().parent = Some(Rc::downgrade(&current));
 
         self.stack_of_open_elements.push(node);
     }
@@ -294,22 +298,12 @@ impl Parser {
             None => return false,
         };
 
-        let ok = match current.borrow().kind {
-            NodeKind::Element(ref elem) => {
-                if elem.kind == element_kind {
-                    true
-                } else {
-                    false
-                }
-            }
-            _ => false,
-        };
-
-        if ok {
+        if current.borrow().kind == NodeKind::Element(Element::new(element_kind)) {
             self.stack_of_open_elements.pop();
+            return true;
         }
 
-        ok
+        false
     }
 
     /// Pops nodes until a node with `element_kind` comes.
@@ -431,6 +425,13 @@ impl Parser {
                 // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inhead
                 InsertionMode::InHead => {
                     match token {
+                        Some(Token::Char(c)) => {
+                            if c == ' ' || c == '\n' {
+                                self.insert_char(c);
+                                token = self.t.next();
+                                continue;
+                            }
+                        }
                         Some(Token::StartTag {
                             ref tag,
                             self_closing: _,
@@ -465,7 +466,7 @@ impl Parser {
                             if tag == "head" {
                                 self.mode = InsertionMode::AfterHead;
                                 token = self.t.next();
-                                assert!(self.pop_current_node(ElementKind::Head));
+                                self.pop_until(ElementKind::Head);
                                 continue;
                             }
                         }
@@ -475,12 +476,19 @@ impl Parser {
                         _ => {}
                     }
                     self.mode = InsertionMode::AfterHead;
-                    assert!(self.pop_current_node(ElementKind::Head));
+                    self.pop_until(ElementKind::Head);
                 } // end of InsertionMode::InHead
 
                 // https://html.spec.whatwg.org/multipage/parsing.html#the-after-head-insertion-mode
                 InsertionMode::AfterHead => {
                     match token {
+                        Some(Token::Char(c)) => {
+                            if c == ' ' || c == '\n' {
+                                self.insert_char(c);
+                                token = self.t.next();
+                                continue;
+                            }
+                        }
                         Some(Token::StartTag {
                             ref tag,
                             self_closing: _,

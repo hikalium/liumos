@@ -509,7 +509,7 @@ fn default_page() {
         ElementKind::Style,
     )))));
     let text = Rc::new(RefCell::new(Node::new(NodeKind::Text(String::from(
-        "h1{background-color:red;}",
+        "\n    h1 {\n        background-color:red;\n    }\n    ",
     )))));
 
     // head <--> style
