@@ -10,7 +10,7 @@ use crate::alloc::string::ToString;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use browser_rs::renderer::tokenizer::*;
+use browser_rs::renderer::html_token::*;
 use liumlib::*;
 
 #[cfg(test)]
@@ -48,11 +48,11 @@ fn main() {
 #[macro_export]
 macro_rules! run_test {
     ($html:literal) => {
-        let mut t = Tokenizer::new(String::from($html));
+        let mut t = HtmlTokenizer::new(String::from($html));
         assert_eq!(t.next(), None);
     };
     ($html:literal, $( $token:expr ),*) => {
-        let mut t = Tokenizer::new(String::from($html));
+        let mut t = HtmlTokenizer::new(String::from($html));
 
         let mut expected = Vec::new();
         $(
@@ -73,19 +73,24 @@ fn no_input() {
 
 #[test_case]
 fn chars() {
-    run_test!("foo", Token::Char('f'), Token::Char('o'), Token::Char('o'));
+    run_test!(
+        "foo",
+        HtmlToken::Char('f'),
+        HtmlToken::Char('o'),
+        HtmlToken::Char('o')
+    );
 }
 
 #[test_case]
 fn body() {
     run_test!(
         "<body></body>",
-        Token::StartTag {
+        HtmlToken::StartTag {
             tag: String::from("body"),
             self_closing: false,
             attributes: Vec::new(),
         },
-        Token::EndTag {
+        HtmlToken::EndTag {
             tag: String::from("body"),
             self_closing: false,
         }
@@ -96,12 +101,12 @@ fn body() {
 fn BODY() {
     run_test!(
         "<BODY></BODY>",
-        Token::StartTag {
+        HtmlToken::StartTag {
             tag: String::from("body"),
             self_closing: false,
             attributes: Vec::new(),
         },
-        Token::EndTag {
+        HtmlToken::EndTag {
             tag: String::from("body"),
             self_closing: false
         }
@@ -112,7 +117,7 @@ fn BODY() {
 fn br() {
     run_test!(
         "<br/>",
-        Token::StartTag {
+        HtmlToken::StartTag {
             tag: String::from("br"),
             self_closing: true,
             attributes: Vec::new(),
@@ -124,24 +129,24 @@ fn br() {
 fn simple_page() {
     run_test!(
         "<html><body>abc</body></html>",
-        Token::StartTag {
+        HtmlToken::StartTag {
             tag: String::from("html"),
             self_closing: false,
             attributes: Vec::new(),
         },
-        Token::StartTag {
+        HtmlToken::StartTag {
             tag: String::from("body"),
             self_closing: false,
             attributes: Vec::new(),
         },
-        Token::Char('a'),
-        Token::Char('b'),
-        Token::Char('c'),
-        Token::EndTag {
+        HtmlToken::Char('a'),
+        HtmlToken::Char('b'),
+        HtmlToken::Char('c'),
+        HtmlToken::EndTag {
             tag: String::from("body"),
             self_closing: false,
         },
-        Token::EndTag {
+        HtmlToken::EndTag {
             tag: String::from("html"),
             self_closing: false,
         }
@@ -160,26 +165,26 @@ fn link() {
 
     run_test!(
         "<html><head><link rel='stylesheet' href=\"styles.css\"></head></html>",
-        Token::StartTag {
+        HtmlToken::StartTag {
             tag: String::from("html"),
             self_closing: false,
             attributes: Vec::new(),
         },
-        Token::StartTag {
+        HtmlToken::StartTag {
             tag: String::from("head"),
             self_closing: false,
             attributes: Vec::new(),
         },
-        Token::StartTag {
+        HtmlToken::StartTag {
             tag: String::from("link"),
             self_closing: false,
             attributes,
         },
-        Token::EndTag {
+        HtmlToken::EndTag {
             tag: String::from("head"),
             self_closing: false,
         },
-        Token::EndTag {
+        HtmlToken::EndTag {
             tag: String::from("html"),
             self_closing: false,
         }
@@ -195,26 +200,26 @@ fn link_with_unquoted_attribute() {
 
     run_test!(
         "<html><head><link href=styles.css></head></html>",
-        Token::StartTag {
+        HtmlToken::StartTag {
             tag: String::from("html"),
             self_closing: false,
             attributes: Vec::new(),
         },
-        Token::StartTag {
+        HtmlToken::StartTag {
             tag: String::from("head"),
             self_closing: false,
             attributes: Vec::new(),
         },
-        Token::StartTag {
+        HtmlToken::StartTag {
             tag: String::from("link"),
             self_closing: false,
             attributes,
         },
-        Token::EndTag {
+        HtmlToken::EndTag {
             tag: String::from("head"),
             self_closing: false,
         },
-        Token::EndTag {
+        HtmlToken::EndTag {
             tag: String::from("html"),
             self_closing: false,
         }
@@ -225,55 +230,55 @@ fn link_with_unquoted_attribute() {
 fn css_with_style() {
     run_test!(
         "<html><head><style>h1{background-color:red;}</style></head></html>",
-        Token::StartTag {
+        HtmlToken::StartTag {
             tag: String::from("html"),
             self_closing: false,
             attributes: Vec::new(),
         },
-        Token::StartTag {
+        HtmlToken::StartTag {
             tag: String::from("head"),
             self_closing: false,
             attributes: Vec::new(),
         },
-        Token::StartTag {
+        HtmlToken::StartTag {
             tag: String::from("style"),
             self_closing: false,
             attributes: Vec::new(),
         },
-        Token::Char('h'),
-        Token::Char('1'),
-        Token::Char('{'),
-        Token::Char('b'),
-        Token::Char('a'),
-        Token::Char('c'),
-        Token::Char('k'),
-        Token::Char('g'),
-        Token::Char('r'),
-        Token::Char('o'),
-        Token::Char('u'),
-        Token::Char('n'),
-        Token::Char('d'),
-        Token::Char('-'),
-        Token::Char('c'),
-        Token::Char('o'),
-        Token::Char('l'),
-        Token::Char('o'),
-        Token::Char('r'),
-        Token::Char(':'),
-        Token::Char('r'),
-        Token::Char('e'),
-        Token::Char('d'),
-        Token::Char(';'),
-        Token::Char('}'),
-        Token::EndTag {
+        HtmlToken::Char('h'),
+        HtmlToken::Char('1'),
+        HtmlToken::Char('{'),
+        HtmlToken::Char('b'),
+        HtmlToken::Char('a'),
+        HtmlToken::Char('c'),
+        HtmlToken::Char('k'),
+        HtmlToken::Char('g'),
+        HtmlToken::Char('r'),
+        HtmlToken::Char('o'),
+        HtmlToken::Char('u'),
+        HtmlToken::Char('n'),
+        HtmlToken::Char('d'),
+        HtmlToken::Char('-'),
+        HtmlToken::Char('c'),
+        HtmlToken::Char('o'),
+        HtmlToken::Char('l'),
+        HtmlToken::Char('o'),
+        HtmlToken::Char('r'),
+        HtmlToken::Char(':'),
+        HtmlToken::Char('r'),
+        HtmlToken::Char('e'),
+        HtmlToken::Char('d'),
+        HtmlToken::Char(';'),
+        HtmlToken::Char('}'),
+        HtmlToken::EndTag {
             tag: String::from("style"),
             self_closing: false,
         },
-        Token::EndTag {
+        HtmlToken::EndTag {
             tag: String::from("head"),
             self_closing: false,
         },
-        Token::EndTag {
+        HtmlToken::EndTag {
             tag: String::from("html"),
             self_closing: false,
         }
@@ -292,105 +297,105 @@ fn format() {
     </ul>
   </body>
 </html>",
-        Token::StartTag {
+        HtmlToken::StartTag {
             tag: String::from("html"),
             self_closing: false,
             attributes: Vec::new(),
         },
-        Token::Char('\n'),
-        Token::Char(' '),
-        Token::Char(' '),
-        Token::StartTag {
+        HtmlToken::Char('\n'),
+        HtmlToken::Char(' '),
+        HtmlToken::Char(' '),
+        HtmlToken::StartTag {
             tag: String::from("body"),
             self_closing: false,
             attributes: Vec::new(),
         },
-        Token::Char('\n'),
-        Token::Char(' '),
-        Token::Char(' '),
-        Token::Char(' '),
-        Token::Char(' '),
-        Token::Char('H'),
-        Token::Char('e'),
-        Token::Char('l'),
-        Token::Char('l'),
-        Token::Char('o'),
-        Token::Char('\n'),
-        Token::Char(' '),
-        Token::Char(' '),
-        Token::Char(' '),
-        Token::Char(' '),
-        Token::StartTag {
+        HtmlToken::Char('\n'),
+        HtmlToken::Char(' '),
+        HtmlToken::Char(' '),
+        HtmlToken::Char(' '),
+        HtmlToken::Char(' '),
+        HtmlToken::Char('H'),
+        HtmlToken::Char('e'),
+        HtmlToken::Char('l'),
+        HtmlToken::Char('l'),
+        HtmlToken::Char('o'),
+        HtmlToken::Char('\n'),
+        HtmlToken::Char(' '),
+        HtmlToken::Char(' '),
+        HtmlToken::Char(' '),
+        HtmlToken::Char(' '),
+        HtmlToken::StartTag {
             tag: String::from("ul"),
             self_closing: false,
             attributes: Vec::new(),
         },
-        Token::Char('\n'),
-        Token::Char(' '),
-        Token::Char(' '),
-        Token::Char(' '),
-        Token::Char(' '),
-        Token::Char(' '),
-        Token::Char(' '),
-        Token::Char(' '),
-        Token::Char(' '),
-        Token::StartTag {
+        HtmlToken::Char('\n'),
+        HtmlToken::Char(' '),
+        HtmlToken::Char(' '),
+        HtmlToken::Char(' '),
+        HtmlToken::Char(' '),
+        HtmlToken::Char(' '),
+        HtmlToken::Char(' '),
+        HtmlToken::Char(' '),
+        HtmlToken::Char(' '),
+        HtmlToken::StartTag {
             tag: String::from("li"),
             self_closing: false,
             attributes: Vec::new(),
         },
-        Token::Char('l'),
-        Token::Char('i'),
-        Token::Char('s'),
-        Token::Char('t'),
-        Token::Char(' '),
-        Token::Char('1'),
-        Token::EndTag {
+        HtmlToken::Char('l'),
+        HtmlToken::Char('i'),
+        HtmlToken::Char('s'),
+        HtmlToken::Char('t'),
+        HtmlToken::Char(' '),
+        HtmlToken::Char('1'),
+        HtmlToken::EndTag {
             tag: String::from("li"),
             self_closing: false,
         },
-        Token::Char('\n'),
-        Token::Char(' '),
-        Token::Char(' '),
-        Token::Char(' '),
-        Token::Char(' '),
-        Token::Char(' '),
-        Token::Char(' '),
-        Token::Char(' '),
-        Token::Char(' '),
-        Token::StartTag {
+        HtmlToken::Char('\n'),
+        HtmlToken::Char(' '),
+        HtmlToken::Char(' '),
+        HtmlToken::Char(' '),
+        HtmlToken::Char(' '),
+        HtmlToken::Char(' '),
+        HtmlToken::Char(' '),
+        HtmlToken::Char(' '),
+        HtmlToken::Char(' '),
+        HtmlToken::StartTag {
             tag: String::from("li"),
             self_closing: false,
             attributes: Vec::new(),
         },
-        Token::Char('l'),
-        Token::Char('i'),
-        Token::Char('s'),
-        Token::Char('t'),
-        Token::Char(' '),
-        Token::Char('2'),
-        Token::EndTag {
+        HtmlToken::Char('l'),
+        HtmlToken::Char('i'),
+        HtmlToken::Char('s'),
+        HtmlToken::Char('t'),
+        HtmlToken::Char(' '),
+        HtmlToken::Char('2'),
+        HtmlToken::EndTag {
             tag: String::from("li"),
             self_closing: false,
         },
-        Token::Char('\n'),
-        Token::Char(' '),
-        Token::Char(' '),
-        Token::Char(' '),
-        Token::Char(' '),
-        Token::EndTag {
+        HtmlToken::Char('\n'),
+        HtmlToken::Char(' '),
+        HtmlToken::Char(' '),
+        HtmlToken::Char(' '),
+        HtmlToken::Char(' '),
+        HtmlToken::EndTag {
             tag: String::from("ul"),
             self_closing: false,
         },
-        Token::Char('\n'),
-        Token::Char(' '),
-        Token::Char(' '),
-        Token::EndTag {
+        HtmlToken::Char('\n'),
+        HtmlToken::Char(' '),
+        HtmlToken::Char(' '),
+        HtmlToken::EndTag {
             tag: String::from("body"),
             self_closing: false,
         },
-        Token::Char('\n'),
-        Token::EndTag {
+        HtmlToken::Char('\n'),
+        HtmlToken::EndTag {
             tag: String::from("html"),
             self_closing: false,
         }

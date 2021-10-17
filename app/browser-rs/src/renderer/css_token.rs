@@ -1,5 +1,8 @@
 //! This is a part of "3. Tokenizing and Parsing CSS" in the CSS Syntax Module Level 3 spec.
 //! https://www.w3.org/TR/css-syntax-3/#tokenizing-and-parsing
+//!
+//! 4. Tokenization
+//! https://www.w3.org/TR/css-syntax-3/#tokenization
 
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -9,9 +12,10 @@ use liumlib::*;
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// https://www.w3.org/TR/css-syntax-3/#consume-token
-pub enum Token {
+pub enum CssToken {
     /// https://www.w3.org/TR/css-syntax-3/#typedef-colon-token
     Colon,
+    /// https://www.w3.org/TR/css-syntax-3/#typedef-semicolon-token
     SemiColon,
     /// https://www.w3.org/TR/css-syntax-3/#tokendef-open-curly
     OpenCurly,
@@ -41,7 +45,7 @@ impl CssTokenizer {
 
     #[allow(dead_code)]
     /// https://www.w3.org/TR/css-syntax-3/#consume-name
-    fn consume_name(&mut self) -> Token {
+    fn consume_name(&mut self) -> CssToken {
         let mut s = String::new();
         s.push(self.input[self.pos]);
 
@@ -56,12 +60,12 @@ impl CssTokenizer {
             }
         }
 
-        return Token::Ident(s);
+        return CssToken::Ident(s);
     }
 }
 
 impl Iterator for CssTokenizer {
-    type Item = Token;
+    type Item = CssToken;
 
     #[allow(dead_code)]
     fn next(&mut self) -> Option<Self::Item> {
@@ -72,10 +76,10 @@ impl Iterator for CssTokenizer {
         let c = self.input[self.pos];
 
         let token = match c {
-            ':' => Token::Colon,
-            ';' => Token::SemiColon,
-            '{' => Token::OpenCurly,
-            '}' => Token::CloseCurly,
+            ':' => CssToken::Colon,
+            ';' => CssToken::SemiColon,
+            '{' => CssToken::OpenCurly,
+            '}' => CssToken::CloseCurly,
             'a'..='z' | 'A'..='Z' => {
                 let t = self.consume_name();
                 self.pos -= 1;
@@ -88,66 +92,5 @@ impl Iterator for CssTokenizer {
 
         self.pos += 1;
         Some(token)
-    }
-}
-#[derive(Debug, Clone)]
-pub struct Rule {
-    selector: Token,  // h1
-    pub key: Token,   // background-color
-    pub value: Token, // red
-}
-
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
-pub struct CssParser {
-    t: CssTokenizer,
-}
-
-#[allow(dead_code)]
-impl CssParser {
-    pub fn new(t: CssTokenizer) -> Self {
-        Self { t }
-    }
-
-    pub fn construct_tree(&mut self) -> Vec<Rule> {
-        let mut token = self.t.next();
-        let mut rules = Vec::new();
-
-        println!("token {:?}", token);
-        // h1
-        let selector = token.expect("expect selector ident");
-        token = self.t.next();
-
-        // {
-        assert_eq!(Some(Token::OpenCurly), token);
-        token = self.t.next();
-
-        // background-color
-        let key = token.expect("expect key ident");
-        token = self.t.next();
-
-        // :
-        assert_eq!(Some(Token::Colon), token);
-        token = self.t.next();
-
-        // red
-        let value = token.expect("expect value ident");
-        token = self.t.next();
-
-        // ;
-        assert_eq!(Some(Token::SemiColon), token);
-        token = self.t.next();
-
-        // }
-        assert_eq!(Some(Token::CloseCurly), token);
-        token = self.t.next();
-
-        rules.push(Rule {
-            selector,
-            key,
-            value,
-        });
-
-        rules
     }
 }

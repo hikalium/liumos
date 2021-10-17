@@ -1,7 +1,7 @@
 //! This is a part of "13.2.6 Tree construction" in the HTML spec.
 //! https://html.spec.whatwg.org/multipage/parsing.html#tree-construction
 
-use crate::renderer::tokenizer::*;
+use crate::renderer::html_token::*;
 use alloc::rc::{Rc, Weak};
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -153,18 +153,18 @@ pub enum InsertionMode {
 }
 
 #[derive(Debug, Clone)]
-pub struct Parser {
+pub struct HtmlParser {
     root: Rc<RefCell<Node>>,
     mode: InsertionMode,
-    t: Tokenizer,
+    t: HtmlTokenizer,
     /// https://html.spec.whatwg.org/multipage/parsing.html#the-stack-of-open-elements
     stack_of_open_elements: Vec<Rc<RefCell<Node>>>,
     /// https://html.spec.whatwg.org/multipage/parsing.html#original-insertion-mode
     original_insertion_mode: InsertionMode,
 }
 
-impl Parser {
-    pub fn new(t: Tokenizer) -> Self {
+impl HtmlParser {
+    pub fn new(t: HtmlTokenizer) -> Self {
         Self {
             root: Rc::new(RefCell::new(Node::new(NodeKind::Document))),
             mode: InsertionMode::Initial,
@@ -344,17 +344,17 @@ impl Parser {
                 // https://html.spec.whatwg.org/multipage/parsing.html#the-before-html-insertion-mode
                 InsertionMode::BeforeHtml => {
                     match token {
-                        Some(Token::Doctype) => {
+                        Some(HtmlToken::Doctype) => {
                             token = self.t.next();
                             continue;
                         }
-                        Some(Token::Char(c)) => {
+                        Some(HtmlToken::Char(c)) => {
                             if c == ' ' || c == '\n' {
                                 token = self.t.next();
                                 continue;
                             }
                         }
-                        Some(Token::StartTag {
+                        Some(HtmlToken::StartTag {
                             ref tag,
                             self_closing: _,
                             attributes: _,
@@ -370,7 +370,7 @@ impl Parser {
                                 continue;
                             }
                         }
-                        Some(Token::EndTag {
+                        Some(HtmlToken::EndTag {
                             ref tag,
                             self_closing: _,
                         }) => {
@@ -382,7 +382,7 @@ impl Parser {
                                 continue;
                             }
                         }
-                        Some(Token::Eof) | None => {
+                        Some(HtmlToken::Eof) | None => {
                             return self.root.clone();
                         }
                     }
@@ -393,13 +393,13 @@ impl Parser {
                 // https://html.spec.whatwg.org/multipage/parsing.html#the-before-head-insertion-mode
                 InsertionMode::BeforeHead => {
                     match token {
-                        Some(Token::Char(c)) => {
+                        Some(HtmlToken::Char(c)) => {
                             if c == ' ' || c == '\n' {
                                 token = self.t.next();
                                 continue;
                             }
                         }
-                        Some(Token::StartTag {
+                        Some(HtmlToken::StartTag {
                             ref tag,
                             self_closing: _,
                             attributes: _,
@@ -411,7 +411,7 @@ impl Parser {
                                 continue;
                             }
                         }
-                        Some(Token::Eof) | None => {
+                        Some(HtmlToken::Eof) | None => {
                             return self.root.clone();
                         }
                         _ => {}
@@ -423,14 +423,14 @@ impl Parser {
                 // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inhead
                 InsertionMode::InHead => {
                     match token {
-                        Some(Token::Char(c)) => {
+                        Some(HtmlToken::Char(c)) => {
                             if c == ' ' || c == '\n' {
                                 self.insert_char(c);
                                 token = self.t.next();
                                 continue;
                             }
                         }
-                        Some(Token::StartTag {
+                        Some(HtmlToken::StartTag {
                             ref tag,
                             self_closing: _,
                             ref attributes,
@@ -457,7 +457,7 @@ impl Parser {
                                 continue;
                             }
                         }
-                        Some(Token::EndTag {
+                        Some(HtmlToken::EndTag {
                             ref tag,
                             self_closing: _,
                         }) => {
@@ -468,7 +468,7 @@ impl Parser {
                                 continue;
                             }
                         }
-                        Some(Token::Eof) | None => {
+                        Some(HtmlToken::Eof) | None => {
                             return self.root.clone();
                         }
                         _ => {}
@@ -480,14 +480,14 @@ impl Parser {
                 // https://html.spec.whatwg.org/multipage/parsing.html#the-after-head-insertion-mode
                 InsertionMode::AfterHead => {
                     match token {
-                        Some(Token::Char(c)) => {
+                        Some(HtmlToken::Char(c)) => {
                             if c == ' ' || c == '\n' {
                                 self.insert_char(c);
                                 token = self.t.next();
                                 continue;
                             }
                         }
-                        Some(Token::StartTag {
+                        Some(HtmlToken::StartTag {
                             ref tag,
                             self_closing: _,
                             attributes: _,
@@ -499,7 +499,7 @@ impl Parser {
                                 continue;
                             }
                         }
-                        Some(Token::Eof) | None => {
+                        Some(HtmlToken::Eof) | None => {
                             return self.root.clone();
                         }
                         _ => {}
@@ -511,7 +511,7 @@ impl Parser {
                 // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inbody
                 InsertionMode::InBody => {
                     match token {
-                        Some(Token::StartTag {
+                        Some(HtmlToken::StartTag {
                             ref tag,
                             self_closing: _,
                             attributes: _,
@@ -527,7 +527,7 @@ impl Parser {
                                 continue;
                             }
                         }
-                        Some(Token::EndTag {
+                        Some(HtmlToken::EndTag {
                             ref tag,
                             self_closing: _,
                         }) => {
@@ -563,12 +563,12 @@ impl Parser {
                                 continue;
                             }
                         }
-                        Some(Token::Char(c)) => {
+                        Some(HtmlToken::Char(c)) => {
                             self.insert_char(c);
                             token = self.t.next();
                             continue;
                         }
-                        Some(Token::Eof) | None => {
+                        Some(HtmlToken::Eof) | None => {
                             return self.root.clone();
                         }
                         _ => {}
@@ -578,10 +578,10 @@ impl Parser {
                 // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-incdata
                 InsertionMode::Text => {
                     match token {
-                        Some(Token::Eof) | None => {
+                        Some(HtmlToken::Eof) | None => {
                             return self.root.clone();
                         }
-                        Some(Token::EndTag {
+                        Some(HtmlToken::EndTag {
                             ref tag,
                             self_closing: _,
                         }) => {
@@ -592,7 +592,7 @@ impl Parser {
                                 continue;
                             }
                         }
-                        Some(Token::Char(c)) => {
+                        Some(HtmlToken::Char(c)) => {
                             self.insert_char(c);
                             token = self.t.next();
                             continue;
@@ -606,14 +606,14 @@ impl Parser {
                 // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-afterbody
                 InsertionMode::AfterBody => {
                     match token {
-                        Some(Token::Char(_c)) => {
+                        Some(HtmlToken::Char(_c)) => {
                             // Not align with the spec.
                             // TODO: Process the token using the rules for the "in body" insertion
                             // mode.
                             token = self.t.next();
                             continue;
                         }
-                        Some(Token::EndTag {
+                        Some(HtmlToken::EndTag {
                             ref tag,
                             self_closing: _,
                         }) => {
@@ -623,7 +623,7 @@ impl Parser {
                                 continue;
                             }
                         }
-                        Some(Token::Eof) | None => {
+                        Some(HtmlToken::Eof) | None => {
                             return self.root.clone();
                         }
                         _ => {}
@@ -635,14 +635,14 @@ impl Parser {
                 // https://html.spec.whatwg.org/multipage/parsing.html#the-after-after-body-insertion-mode
                 InsertionMode::AfterAfterBody => {
                     match token {
-                        Some(Token::Char(_c)) => {
+                        Some(HtmlToken::Char(_c)) => {
                             // Not align with the spec.
                             // TODO: Process the token using the rules for the "in body" insertion
                             // mode.
                             token = self.t.next();
                             continue;
                         }
-                        Some(Token::EndTag {
+                        Some(HtmlToken::EndTag {
                             ref tag,
                             self_closing: _,
                         }) => {
@@ -652,7 +652,7 @@ impl Parser {
                                 continue;
                             }
                         }
-                        Some(Token::Eof) | None => {
+                        Some(HtmlToken::Eof) | None => {
                             return self.root.clone();
                         }
                         _ => {}

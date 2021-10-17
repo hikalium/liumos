@@ -12,7 +12,7 @@ use alloc::string::String;
 use core::cell::RefCell;
 
 use browser_rs::renderer::dom::*;
-use browser_rs::renderer::tokenizer::*;
+use browser_rs::renderer::html_token::*;
 use liumlib::*;
 
 fn print_node(node: Option<Rc<RefCell<Node>>>, depth: usize) {
@@ -57,9 +57,9 @@ macro_rules! run_test {
     ($html:literal, $expected_root:expr) => {
         use browser_rs::renderer::dom::*;
 
-        let t = Tokenizer::new(String::from($html));
+        let t = HtmlTokenizer::new(String::from($html));
 
-        let mut p = Parser::new(t);
+        let mut p = HtmlParser::new(t);
         let root_raw = p.construct_tree();
         let root = Some(root_raw.clone());
         println!("\n----- nodes -----");

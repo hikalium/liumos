@@ -10,16 +10,14 @@ mod url;
 
 extern crate alloc;
 
-use alloc::string::String;
 use alloc::string::ToString;
-use alloc::vec::Vec;
 use liumlib::gui::draw_rect;
 use liumlib::gui::BitmapImageBuffer;
 use liumlib::*;
 
 use crate::gui::ApplicationWindow;
 use crate::net::udp_response;
-use crate::renderer::css::Token;
+use crate::renderer::css_token::CssToken;
 use crate::renderer::render;
 use crate::url::ParsedUrl;
 
@@ -63,9 +61,9 @@ fn main() {
             "<html><head><style>h1{background-color:blue;}</style></head><body></body></html>";
 
         let rules = render(default_page.to_string(), &app);
-        if rules[0].key == Token::Ident("background-color".to_string()) {
+        if rules[0].key == CssToken::Ident("background-color".to_string()) {
             let color = match &rules[0].value {
-                Token::Ident(color_string) => match color_string.as_str() {
+                CssToken::Ident(color_string) => match color_string.as_str() {
                     "red" => 0xff0000,
                     "green" => 0x00ff00,
                     "blue" => 0x0000ff,

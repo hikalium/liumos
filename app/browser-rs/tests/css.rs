@@ -8,8 +8,9 @@ extern crate alloc;
 
 use alloc::string::String;
 
-use browser_rs::renderer::css::*;
-use browser_rs::renderer::tokenizer::*;
+use browser_rs::renderer::css_token::CssTokenizer;
+use browser_rs::renderer::cssom::CssParser;
+use browser_rs::renderer::html_token::HtmlTokenizer;
 use liumlib::*;
 
 #[cfg(test)]
@@ -42,9 +43,9 @@ macro_rules! run_test {
     ($html:literal, $expected_style:expr) => {
         use browser_rs::renderer::dom::*;
 
-        let t = Tokenizer::new(String::from($html));
+        let t = HtmlTokenizer::new(String::from($html));
 
-        let mut p = Parser::new(t);
+        let mut p = HtmlParser::new(t);
         let root = p.construct_tree();
         let style = get_style_content(root.clone());
 

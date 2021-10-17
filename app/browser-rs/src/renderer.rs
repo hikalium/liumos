@@ -1,22 +1,24 @@
-pub mod css;
+pub mod css_token;
+pub mod cssom;
 pub mod dom;
-pub mod tokenizer;
+pub mod html_token;
 
 use crate::gui::ApplicationWindow;
+use crate::renderer::css_token::*;
+use crate::renderer::cssom::*;
+use crate::renderer::dom::*;
+use crate::renderer::html_token::*;
 use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::cell::RefCell;
-use css::*;
-use dom::*;
 use liumlib::*;
-use tokenizer::*;
 
 pub fn render(html: String, _window: &ApplicationWindow) -> Vec<Rule> {
     println!("input html:\n{}", html);
 
-    let t = Tokenizer::new(html);
-    let root = Parser::new(t).construct_tree();
+    let t = HtmlTokenizer::new(html);
+    let root = HtmlParser::new(t).construct_tree();
     print_node(Some(root.clone()), 0);
 
     let style = get_style_content(root.clone());

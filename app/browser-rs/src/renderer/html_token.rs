@@ -40,7 +40,7 @@ pub enum State {
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Token {
+pub enum HtmlToken {
     Doctype,
     StartTag {
         tag: String,
@@ -86,15 +86,15 @@ impl Attribute {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Tokenizer {
+pub struct HtmlTokenizer {
     state: State,
     pos: usize,
     reconsume: bool,
-    latest_token: Option<Token>,
+    latest_token: Option<HtmlToken>,
     input: Vec<char>,
 }
 
-impl Tokenizer {
+impl HtmlTokenizer {
     pub fn new(html: String) -> Self {
         Self {
             state: State::Data,
@@ -124,13 +124,13 @@ impl Tokenizer {
         assert!(self.latest_token.is_none());
 
         if start_tag_token {
-            self.latest_token = Some(Token::StartTag {
+            self.latest_token = Some(HtmlToken::StartTag {
                 tag: String::new(),
                 self_closing: false,
                 attributes: Vec::new(),
             });
         } else {
-            self.latest_token = Some(Token::EndTag {
+            self.latest_token = Some(HtmlToken::EndTag {
                 tag: String::new(),
                 self_closing: false,
             });
@@ -143,12 +143,12 @@ impl Tokenizer {
 
         if let Some(t) = self.latest_token.as_mut() {
             match t {
-                Token::StartTag {
+                HtmlToken::StartTag {
                     ref mut tag,
                     self_closing: _,
                     attributes: _,
                 }
-                | Token::EndTag {
+                | HtmlToken::EndTag {
                     ref mut tag,
                     self_closing: _,
                 } => tag.push(c),
@@ -163,7 +163,7 @@ impl Tokenizer {
 
         if let Some(t) = self.latest_token.as_mut() {
             match t {
-                Token::StartTag {
+                HtmlToken::StartTag {
                     tag: _,
                     self_closing: _,
                     ref mut attributes,
@@ -181,7 +181,7 @@ impl Tokenizer {
 
         if let Some(t) = self.latest_token.as_mut() {
             match t {
-                Token::StartTag {
+                HtmlToken::StartTag {
                     tag: _,
                     self_closing: _,
                     ref mut attributes,
@@ -202,12 +202,12 @@ impl Tokenizer {
 
         if let Some(t) = self.latest_token.as_mut() {
             match t {
-                Token::StartTag {
+                HtmlToken::StartTag {
                     tag: _,
                     ref mut self_closing,
                     attributes: _,
                 }
-                | Token::EndTag {
+                | HtmlToken::EndTag {
                     tag: _,
                     ref mut self_closing,
                 } => *self_closing = true,
@@ -217,7 +217,7 @@ impl Tokenizer {
     }
 
     /// Returns `latest_token` and makes it to None.
-    fn take_latest_token(&mut self) -> Option<Token> {
+    fn take_latest_token(&mut self) -> Option<HtmlToken> {
         assert!(self.latest_token.is_some());
 
         let t = self.latest_token.as_ref().and_then(|t| Some(t.clone()));
@@ -233,8 +233,8 @@ impl Tokenizer {
     }
 }
 
-impl Iterator for Tokenizer {
-    type Item = Token;
+impl Iterator for HtmlTokenizer {
+    type Item = HtmlToken;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.pos >= self.input.len() {
@@ -256,10 +256,10 @@ impl Iterator for Tokenizer {
                     }
 
                     if self.is_eof() {
-                        return Some(Token::Eof);
+                        return Some(HtmlToken::Eof);
                     }
 
-                    return Some(Token::Char(c));
+                    return Some(HtmlToken::Char(c));
                 }
                 // https://html.spec.whatwg.org/multipage/parsing.html#tag-open-state
                 State::TagOpen => {
@@ -276,7 +276,7 @@ impl Iterator for Tokenizer {
                     }
 
                     if self.is_eof() {
-                        return Some(Token::Eof);
+                        return Some(HtmlToken::Eof);
                     }
 
                     self.reconsume = true;
@@ -286,7 +286,7 @@ impl Iterator for Tokenizer {
                 State::EndTagOpen => {
                     if self.is_eof() {
                         // invalid parse error.
-                        return Some(Token::Eof);
+                        return Some(HtmlToken::Eof);
                     }
 
                     if c.is_ascii_alphabetic() {
@@ -320,7 +320,7 @@ impl Iterator for Tokenizer {
 
                     if self.is_eof() {
                         // invalid parse error.
-                        return Some(Token::Eof);
+                        return Some(HtmlToken::Eof);
                     }
 
                     self.append_tag_name(c);
@@ -380,7 +380,7 @@ impl Iterator for Tokenizer {
                     }
 
                     if self.is_eof() {
-                        return Some(Token::Eof);
+                        return Some(HtmlToken::Eof);
                     }
 
                     self.reconsume = true;
@@ -415,7 +415,7 @@ impl Iterator for Tokenizer {
                     }
 
                     if self.is_eof() {
-                        return Some(Token::Eof);
+                        return Some(HtmlToken::Eof);
                     }
 
                     self.append_attribute(c, /*is_name*/ false);
@@ -428,7 +428,7 @@ impl Iterator for Tokenizer {
                     }
 
                     if self.is_eof() {
-                        return Some(Token::Eof);
+                        return Some(HtmlToken::Eof);
                     }
 
                     self.append_attribute(c, /*is_name*/ false);
@@ -446,7 +446,7 @@ impl Iterator for Tokenizer {
                     }
 
                     if self.is_eof() {
-                        return Some(Token::Eof);
+                        return Some(HtmlToken::Eof);
                     }
 
                     self.append_attribute(c, /*is_name*/ false);
@@ -469,7 +469,7 @@ impl Iterator for Tokenizer {
                     }
 
                     if self.is_eof() {
-                        return Some(Token::Eof);
+                        return Some(HtmlToken::Eof);
                     }
 
                     self.reconsume = true;
@@ -485,7 +485,7 @@ impl Iterator for Tokenizer {
 
                     if self.is_eof() {
                         // invalid parse error.
-                        return Some(Token::Eof);
+                        return Some(HtmlToken::Eof);
                     }
                 }
             } // end of `match self.state`
