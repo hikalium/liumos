@@ -61,8 +61,8 @@ fn main() {
             "<html><head><style>h1{background-color:blue;}</style></head><body></body></html>";
 
         let rules = render(default_page.to_string(), &app);
-        if rules[0].key == CssToken::Ident("background-color".to_string()) {
-            let color = match &rules[0].value {
+        if rules[0].declarations[0].property == CssToken::Ident("background-color".to_string()) {
+            let color = match &rules[0].declarations[0].value {
                 CssToken::Ident(color_string) => match color_string.as_str() {
                     "red" => 0xff0000,
                     "green" => 0x00ff00,

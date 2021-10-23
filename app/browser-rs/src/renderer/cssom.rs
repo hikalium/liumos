@@ -9,10 +9,15 @@ use alloc::vec::Vec;
 use liumlib::*;
 
 #[derive(Debug, Clone)]
-pub struct Rule {
-    selector: CssToken,  // h1
-    pub key: CssToken,   // background-color
-    pub value: CssToken, // red
+pub struct Declaration {
+    pub property: CssToken,
+    pub value: CssToken,
+}
+
+#[derive(Debug, Clone)]
+pub struct CssRule {
+    selector: CssToken, // h1
+    pub declarations: Vec<Declaration>,
 }
 
 #[derive(Debug, Clone)]
@@ -27,7 +32,7 @@ impl CssParser {
         Self { t }
     }
 
-    pub fn construct_tree(&mut self) -> Vec<Rule> {
+    pub fn construct_tree(&mut self) -> Vec<CssRule> {
         let mut token = self.t.next();
         let mut rules = Vec::new();
 
@@ -60,10 +65,15 @@ impl CssParser {
         assert_eq!(Some(CssToken::CloseCurly), token);
         token = self.t.next();
 
-        rules.push(Rule {
+        let mut decls = Vec::new();
+        decls.push(Declaration {
+            property: key,
+            value: value,
+        });
+
+        rules.push(CssRule {
             selector,
-            key,
-            value,
+            declarations: decls,
         });
 
         assert!(token.is_none());

@@ -14,7 +14,7 @@ use alloc::vec::Vec;
 use core::cell::RefCell;
 use liumlib::*;
 
-pub fn render(html: String, _window: &ApplicationWindow) -> Vec<Rule> {
+pub fn render(html: String, _window: &ApplicationWindow) -> Vec<CssRule> {
     println!("input html:\n{}", html);
 
     let t = HtmlTokenizer::new(html);
