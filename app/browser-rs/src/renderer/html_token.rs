@@ -89,6 +89,7 @@ impl Attribute {
 pub struct HtmlTokenizer {
     state: State,
     pos: usize,
+    /// True if the next token should be reconsumed.
     reconsume: bool,
     latest_token: Option<HtmlToken>,
     input: Vec<char>,

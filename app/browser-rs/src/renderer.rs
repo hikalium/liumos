@@ -10,11 +10,10 @@ use crate::renderer::dom::*;
 use crate::renderer::html_token::*;
 use alloc::rc::Rc;
 use alloc::string::String;
-use alloc::vec::Vec;
 use core::cell::RefCell;
 use liumlib::*;
 
-pub fn render(html: String, _window: &ApplicationWindow) -> Vec<CssRule> {
+pub fn render(html: String, _window: &ApplicationWindow) -> StyleSheet {
     println!("input html:\n{}", html);
 
     let t = HtmlTokenizer::new(html);
@@ -26,7 +25,7 @@ pub fn render(html: String, _window: &ApplicationWindow) -> Vec<CssRule> {
 
     let t2 = CssTokenizer::new(style_content);
     let mut p2 = CssParser::new(t2);
-    let rules = p2.construct_tree();
+    let rules = p2.parse_stylesheet();
 
     rules
 }

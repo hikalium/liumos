@@ -11,13 +11,13 @@ mod url;
 extern crate alloc;
 
 use alloc::string::ToString;
-use liumlib::gui::draw_rect;
-use liumlib::gui::BitmapImageBuffer;
+//use liumlib::gui::draw_rect;
+//use liumlib::gui::BitmapImageBuffer;
 use liumlib::*;
 
 use crate::gui::ApplicationWindow;
 use crate::net::udp_response;
-use crate::renderer::css_token::CssToken;
+//use crate::renderer::css_token::CssToken;
 use crate::renderer::render;
 use crate::url::ParsedUrl;
 
@@ -60,9 +60,12 @@ fn main() {
         let default_page =
             "<html><head><style>h1{background-color:blue;}</style></head><body></body></html>";
 
-        let rules = render(default_page.to_string(), &app);
-        if rules[0].declarations[0].property == CssToken::Ident("background-color".to_string()) {
-            let color = match &rules[0].declarations[0].value {
+        let cssom = render(default_page.to_string(), &app);
+        println!("{:?}", cssom);
+
+        /*
+        if rules[0].style[0].property == CssToken::Ident("background-color".to_string()) {
+            let color = match &rules[0].style[0].value {
                 CssToken::Ident(color_string) => match color_string.as_str() {
                     "red" => 0xff0000,
                     "green" => 0x00ff00,
@@ -75,6 +78,7 @@ fn main() {
             draw_rect(&app.buffer, color, 10, 10, 210, 210).expect("update a window");
             app.buffer.flush();
         }
+        */
     } else {
         let parsed_url = ParsedUrl::new(url.to_string());
         println!("parsed_url: {:?}", parsed_url);

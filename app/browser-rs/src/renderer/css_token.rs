@@ -9,7 +9,6 @@ use alloc::vec::Vec;
 #[allow(unused_imports)]
 use liumlib::*;
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// https://www.w3.org/TR/css-syntax-3/#consume-token
 pub enum CssToken {
@@ -23,8 +22,6 @@ pub enum CssToken {
     CloseCurly,
     /// https://www.w3.org/TR/css-syntax-3/#typedef-ident-token
     Ident(String),
-    /// https://www.w3.org/TR/css-syntax-3/#typedef-eof-token
-    Eof,
 }
 
 #[allow(dead_code)]
@@ -35,7 +32,6 @@ pub struct CssTokenizer {
 }
 
 impl CssTokenizer {
-    #[allow(dead_code)]
     pub fn new(css: String) -> Self {
         Self {
             pos: 0,
@@ -43,7 +39,6 @@ impl CssTokenizer {
         }
     }
 
-    #[allow(dead_code)]
     /// https://www.w3.org/TR/css-syntax-3/#consume-name
     fn consume_name(&mut self) -> CssToken {
         let mut s = String::new();
@@ -67,7 +62,6 @@ impl CssTokenizer {
 impl Iterator for CssTokenizer {
     type Item = CssToken;
 
-    #[allow(dead_code)]
     fn next(&mut self) -> Option<Self::Item> {
         if self.pos >= self.input.len() {
             return None;

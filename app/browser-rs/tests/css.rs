@@ -7,9 +7,11 @@
 extern crate alloc;
 
 use alloc::string::String;
+use crate::alloc::string::ToString;
+use alloc::vec::Vec;
 
 use browser_rs::renderer::css_token::CssTokenizer;
-use browser_rs::renderer::cssom::CssParser;
+use browser_rs::renderer::cssom::*;
 use browser_rs::renderer::html_token::HtmlTokenizer;
 use liumlib::*;
 
@@ -44,24 +46,17 @@ macro_rules! run_test {
         use browser_rs::renderer::dom::*;
 
         let t = HtmlTokenizer::new(String::from($html));
-
         let mut p = HtmlParser::new(t);
         let root = p.construct_tree();
         let style = get_style_content(root.clone());
 
-        println!("\n--------------------------------");
-        println!("style: {:?}", style);
-        println!("--------------------------------");
         assert!(style.is_some());
         let style_content = style.unwrap();
-        assert_eq!($expected_style, style_content.clone());
 
         let t2 = CssTokenizer::new(style_content);
         let mut p2 = CssParser::new(t2);
-        let rules = p2.construct_tree();
-        println!("\n--------------------------------");
-        println!("rules {:?}", rules);
-        println!("--------------------------------");
+        let cssom = p2.parse_stylesheet();
+        assert_eq!($expected_style, cssom);
     };
 }
 
@@ -74,13 +69,25 @@ fn main() {
 
 #[test_case]
 fn background_color() {
-    // root (Document)
-    // └── html
-    //     └── head
-    //         └── style
-    //     └── body
+    let mut decl = Declaration::new();
+    decl.set_property("background-color".to_string());
+    decl.set_value("red".to_string());
+
+    let mut decls = Vec::new();
+    decls.push(decl);
+
+    let mut rule = CssRule::new();
+    rule.set_selector("h1".to_string());
+    rule.set_style(decls);
+
+    let mut rules = Vec::new();
+    rules.push(rule);
+
+    let mut expected = StyleSheet::new();
+    expected.set_rules(rules);
+
     run_test!(
         "<html><head><style>h1{background-color:red;}</style></head></html>",
-        "h1{background-color:red;}"
+        expected
     );
 }
