@@ -1,5 +1,6 @@
 use super::cssom::*;
 use super::dom::*;
+use crate::gui::ApplicationWindow;
 use alloc::rc::{Rc, Weak};
 use alloc::vec::Vec;
 use core::cell::RefCell;
@@ -40,13 +41,13 @@ impl RenderObject {
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
-struct RenderTree {
-    pub root: RenderObject,
+pub struct RenderTree {
+    root: RenderObject,
 }
 
 #[allow(dead_code)]
 impl RenderTree {
-    fn new(root: Rc<RefCell<Node>>) -> Self {
+    pub fn new(root: Rc<RefCell<Node>>) -> Self {
         Self {
             root: RenderObject::new(root),
         }
@@ -61,4 +62,8 @@ impl RenderTree {
             None => return,
         }
     }
+
+    pub fn apply(&mut self, _cssom: &StyleSheet) {}
+
+    pub fn paint(&self, _window: &ApplicationWindow) {}
 }

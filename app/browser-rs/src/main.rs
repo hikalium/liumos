@@ -60,25 +60,7 @@ fn main() {
         let default_page =
             "<html><head><style>h1{background-color:blue;}</style></head><body></body></html>";
 
-        let cssom = render(default_page.to_string(), &app);
-        println!("{:?}", cssom);
-
-        /*
-        if rules[0].style[0].property == CssToken::Ident("background-color".to_string()) {
-            let color = match &rules[0].style[0].value {
-                CssToken::Ident(color_string) => match color_string.as_str() {
-                    "red" => 0xff0000,
-                    "green" => 0x00ff00,
-                    "blue" => 0x0000ff,
-                    _ => unimplemented!("unsupported"),
-                },
-                _ => unimplemented!("unsupported"),
-            };
-
-            draw_rect(&app.buffer, color, 10, 10, 210, 210).expect("update a window");
-            app.buffer.flush();
-        }
-        */
+        render(default_page.to_string(), &app);
     } else {
         let parsed_url = ParsedUrl::new(url.to_string());
         println!("parsed_url: {:?}", parsed_url);

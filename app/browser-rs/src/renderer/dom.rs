@@ -202,6 +202,8 @@ impl HtmlParser {
             return self.create_element(ElementKind::Ul);
         } else if tag == "li" {
             return self.create_element(ElementKind::Li);
+        } else if tag == "div" {
+            return self.create_element(ElementKind::Li);
         }
         panic!("not supported this tag name: {}", tag);
     }
