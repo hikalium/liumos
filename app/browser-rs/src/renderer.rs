@@ -2,6 +2,7 @@ pub mod css_token;
 pub mod cssom;
 pub mod dom;
 pub mod html_token;
+pub mod render_tree;
 
 use crate::gui::ApplicationWindow;
 use crate::renderer::css_token::*;
