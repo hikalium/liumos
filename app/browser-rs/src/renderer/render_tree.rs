@@ -1,69 +1,181 @@
 use super::cssom::*;
 use super::dom::*;
 use crate::gui::ApplicationWindow;
+use crate::renderer::NodeKind::Element;
 use alloc::rc::{Rc, Weak};
 use alloc::vec::Vec;
 use core::cell::RefCell;
+use liumlib::gui::draw_rect;
+use liumlib::gui::BitmapImageBuffer;
 #[allow(unused_imports)]
 use liumlib::*;
 
+fn check_kind(node_kind: &NodeKind, selector: &Selector) -> bool {
+    match node_kind {
+        Element(e) => {
+            match selector {
+                Selector::TypeSelector(s) => {
+                    if e.kind == ElementKind::Div && s == "div" {
+                        return true;
+                    }
+                    return false;
+                }
+                _ => return false,
+            }
+            false
+        }
+        _ => false,
+    }
+}
+
+fn dom_to_render_object(node: &Option<Rc<RefCell<Node>>>) -> Option<Rc<RefCell<RenderObject>>> {
+    match node {
+        Some(n) => Some(Rc::new(RefCell::new(RenderObject::new(n.clone())))),
+        None => None,
+    }
+}
+
+fn dom_to_render_tree(root: &Option<Rc<RefCell<Node>>>) -> Option<Rc<RefCell<RenderObject>>> {
+    let render_object = dom_to_render_object(&root);
+
+    let obj = match render_object {
+        Some(ref obj) => obj,
+        None => return None,
+    };
+
+    match root {
+        Some(n) => {
+            let first_child = dom_to_render_tree(&n.borrow().first_child());
+            let next_sibling = dom_to_render_tree(&n.borrow().next_sibling());
+
+            obj.borrow_mut().first_child = first_child;
+            obj.borrow_mut().next_sibling = next_sibling;
+        }
+        None => return None,
+    }
+
+    return render_object;
+}
+
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
-struct RenderObject {
+pub struct RenderObject {
     // Similar structure with Node in renderer/dom.rs.
-    kind: NodeKind,
-    first_child: Option<Rc<RefCell<Node>>>,
-    last_child: Option<Weak<RefCell<Node>>>,
-    previous_sibling: Option<Weak<RefCell<Node>>>,
-    next_sibling: Option<Rc<RefCell<Node>>>,
+    pub kind: NodeKind,
+    dom_node: Option<Rc<RefCell<Node>>>,
+    first_child: Option<Rc<RefCell<RenderObject>>>,
+    last_child: Option<Weak<RefCell<RenderObject>>>,
+    previous_sibling: Option<Weak<RefCell<RenderObject>>>,
+    next_sibling: Option<Rc<RefCell<RenderObject>>>,
     // CSS info.
-    style: Vec<Declaration>,
+    pub style: Vec<Declaration>,
 }
 
 #[allow(dead_code)]
 impl RenderObject {
-    fn new(root: Rc<RefCell<Node>>) -> Self {
-        let borrowed_root = root.borrow();
+    fn new(node: Rc<RefCell<Node>>) -> Self {
         Self {
-            kind: borrowed_root.kind.clone(),
-            first_child: borrowed_root.first_child().clone(),
-            last_child: borrowed_root.last_child().clone(),
-            previous_sibling: borrowed_root.previous_sibling().clone(),
-            next_sibling: borrowed_root.next_sibling().clone(),
+            kind: node.borrow().kind.clone(),
+            dom_node: Some(node.clone()),
+            first_child: None,
+            last_child: None,
+            previous_sibling: None,
+            next_sibling: None,
             style: Vec::new(),
         }
     }
 
+    /*
     fn add_style(&mut self, declaration: Declaration) {
         self.style.push(declaration);
     }
+
+    pub fn first_child(&self) -> Option<Rc<RefCell<Node>>> {
+        self.first_child.as_ref().map(|n| n.clone())
+    }
+
+    pub fn last_child(&self) -> Option<Weak<RefCell<Node>>> {
+        self.last_child.as_ref().map(|n| n.clone())
+    }
+
+    pub fn previous_sibling(&self) -> Option<Weak<RefCell<Node>>> {
+        self.previous_sibling.as_ref().map(|n| n.clone())
+    }
+
+    pub fn next_sibling(&self) -> Option<Rc<RefCell<Node>>> {
+        self.next_sibling.as_ref().map(|n| n.clone())
+    }
+    */
 }
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct RenderTree {
-    root: RenderObject,
+    pub root: Option<Rc<RefCell<RenderObject>>>,
 }
 
 #[allow(dead_code)]
 impl RenderTree {
     pub fn new(root: Rc<RefCell<Node>>) -> Self {
         Self {
-            root: RenderObject::new(root),
+            root: dom_to_render_tree(&Some(root)),
         }
     }
 
-    fn dfs(&self, node: Option<Rc<RefCell<Node>>>) {
+    fn dfs(node: &Option<Rc<RefCell<RenderObject>>>, css_rule: &QualifiedRule) {
+        let n = match node {
+            Some(ref n) => n,
+            None => return,
+        };
+
         match node {
             Some(n) => {
-                self.dfs(n.borrow().first_child());
-                self.dfs(n.borrow().next_sibling());
+                if check_kind(&n.borrow().kind, &css_rule.selector) {
+                    println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                    n.borrow_mut().style = css_rule.declarations.clone();
+                }
+
+                Self::dfs(&n.borrow().first_child, css_rule);
+                Self::dfs(&n.borrow().next_sibling, css_rule);
             }
             None => return,
         }
     }
 
-    pub fn apply(&mut self, _cssom: &StyleSheet) {}
+    pub fn apply(&mut self, cssom: &StyleSheet) {
+        println!("==============================");
+        for rule in &cssom.rules {
+            Self::dfs(&self.root, rule);
+        }
+        println!("==============================");
+    }
 
-    pub fn paint(&self, _window: &ApplicationWindow) {}
+    fn paint_node(&self, window: &ApplicationWindow, node: &Option<Rc<RefCell<RenderObject>>>) {
+        let n = match node {
+            Some(ref n) => n,
+            None => return,
+        };
+
+        if n.borrow().style.len() > 0{
+            let color = match n.borrow().style[0].value.as_str() {
+                "blue" => 0x0000ff,
+                "red" => 0xff0000,
+                _ => 0x00ff00,
+            };
+            draw_rect(&window.buffer, color, 10, 10, 210, 210).expect("update a window");
+            window.buffer.flush();
+        }
+
+        match node {
+            Some(n) => {
+                self.paint_node(window, &n.borrow().first_child);
+                self.paint_node(window, &n.borrow().next_sibling);
+            }
+            None => return,
+        }
+    }
+
+    pub fn paint(&self, window: &ApplicationWindow) {
+        self.paint_node(window, &self.root);
+    }
 }

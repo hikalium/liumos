@@ -11,13 +11,10 @@ mod url;
 extern crate alloc;
 
 use alloc::string::ToString;
-//use liumlib::gui::draw_rect;
-//use liumlib::gui::BitmapImageBuffer;
 use liumlib::*;
 
 use crate::gui::ApplicationWindow;
 use crate::net::udp_response;
-//use crate::renderer::css_token::CssToken;
 use crate::renderer::render;
 use crate::url::ParsedUrl;
 
@@ -57,8 +54,22 @@ fn main() {
     app.initialize();
 
     if default {
+        // <html>
+        //   <head>
+        //     <style>
+        //       div {
+        //         background-color: red;
+        //       }
+        //     </style>
+        //   </head>
+        //   <body>
+        //     <div>
+        //       abc
+        //     </div>
+        //   </body>
+        // </html>
         let default_page =
-            "<html><head><style>div{background-color:blue;}</style></head><body><div>abc</div></body></html>";
+            "<html><head><style>div{background-color:red;}</style></head><body><div>abc</div></body></html>";
 
         render(default_page.to_string(), &app);
     } else {

@@ -85,7 +85,7 @@ impl Eq for NodeKind {}
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// https://dom.spec.whatwg.org/#interface-element
 pub struct Element {
-    kind: ElementKind,
+    pub kind: ElementKind,
     attributes: Vec<Attribute>,
 }
 

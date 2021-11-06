@@ -14,7 +14,7 @@ use liumlib::*;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Declaration {
     property: String,
-    value: String,
+    pub value: String,
 }
 
 impl Declaration {
@@ -52,13 +52,13 @@ pub enum Selector {
 /// https://www.w3.org/TR/css-syntax-3/#style-rules
 pub struct QualifiedRule {
     // TODO: support multiple selectors
-    selector: Selector,
+    pub selector: Selector,
     /// https://www.w3.org/TR/selectors-4/#typedef-selector-list
     /// The prelude of the qualified rule is parsed as a <selector-list>.
     selectors: Vec<Selector>,
     /// https://www.w3.org/TR/css-syntax-3/#parse-a-list-of-declarations
     /// The content of the qualified rule’s block is parsed as a list of declarations.
-    declarations: Vec<Declaration>,
+    pub declarations: Vec<Declaration>,
 }
 
 impl QualifiedRule {
@@ -88,7 +88,7 @@ impl QualifiedRule {
 /// https://www.w3.org/TR/cssom-1/#cssstylesheet
 pub struct StyleSheet {
     /// https://drafts.csswg.org/cssom/#dom-cssstylesheet-cssrules
-    rules: Vec<QualifiedRule>,
+    pub rules: Vec<QualifiedRule>,
 }
 
 impl StyleSheet {
