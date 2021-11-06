@@ -92,7 +92,6 @@ fn background_color() {
     );
 }
 
-/*
 #[test_case]
 fn class_selector() {
     let mut decl = Declaration::new();
@@ -103,7 +102,7 @@ fn class_selector() {
     decls.push(decl);
 
     let mut rule = QualifiedRule::new();
-    rule.set_selector(".class".to_string());
+    rule.set_selector(Selector::ClassSelector("class".to_string()));
     rule.set_declarations(decls);
 
     let mut rules = Vec::new();
@@ -117,7 +116,6 @@ fn class_selector() {
         expected
     );
 }
-*/
 
 #[test_case]
 fn id_selector() {

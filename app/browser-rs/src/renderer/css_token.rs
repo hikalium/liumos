@@ -14,6 +14,8 @@ use liumlib::*;
 pub enum CssToken {
     /// https://www.w3.org/TR/css-syntax-3/#typedef-hash-token
     HashToken(String),
+    /// https://www.w3.org/TR/css-syntax-3/#typedef-delim-token
+    Delim(char),
     /// https://www.w3.org/TR/css-syntax-3/#typedef-colon-token
     Colon,
     /// https://www.w3.org/TR/css-syntax-3/#typedef-semicolon-token
@@ -77,6 +79,7 @@ impl Iterator for CssTokenizer {
                 self.pos -= 1;
                 CssToken::HashToken(value)
             }
+            '.' => CssToken::Delim('.'),
             ':' => CssToken::Colon,
             ';' => CssToken::SemiColon,
             '{' => CssToken::OpenCurly,

@@ -172,6 +172,7 @@ impl CssParser {
 
         match token {
             CssToken::HashToken(value) => Selector::IdSelector(value[1..].to_string()),
+            CssToken::Delim(_delim) => Selector::ClassSelector(self.consume_component_value(token)),
             CssToken::Ident(ident) => Selector::TypeSelector(ident.to_string()),
             _ => {
                 panic!("Parse error: {:?} is an unexpected token.", token);
