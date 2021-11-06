@@ -119,7 +119,6 @@ fn class_selector() {
 }
 */
 
-/*
 #[test_case]
 fn id_selector() {
     let mut decl = Declaration::new();
@@ -144,4 +143,3 @@ fn id_selector() {
         expected
     );
 }
-*/

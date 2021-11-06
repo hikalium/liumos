@@ -13,7 +13,7 @@ use liumlib::*;
 /// https://www.w3.org/TR/css-syntax-3/#consume-token
 pub enum CssToken {
     /// https://www.w3.org/TR/css-syntax-3/#typedef-hash-token
-    HashToken { id: bool, value: String },
+    HashToken(String),
     /// https://www.w3.org/TR/css-syntax-3/#typedef-colon-token
     Colon,
     /// https://www.w3.org/TR/css-syntax-3/#typedef-semicolon-token
@@ -75,7 +75,7 @@ impl Iterator for CssTokenizer {
             '#' => {
                 let value = self.consume_name();
                 self.pos -= 1;
-                CssToken::HashToken { id: true, value }
+                CssToken::HashToken(value)
             }
             ':' => CssToken::Colon,
             ';' => CssToken::SemiColon,

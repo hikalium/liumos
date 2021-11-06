@@ -143,8 +143,36 @@ impl CssParser {
                 return self.consume_qualified_rule(&token);
             }
             */
-            CssToken::HashToken { id: _, value } => value.to_string(),
             CssToken::Ident(ident) => ident.to_string(),
+            _ => {
+                panic!("Parse error: {:?} is an unexpected token.", token);
+            }
+        }
+    }
+
+    /// https://www.w3.org/TR/css-syntax-3/#qualified-rule
+    /// Note: Most qualified rules will be style rules, where the prelude is a selector [SELECT]
+    /// and the block a list of declarations.
+    fn consume_selector(&mut self, current_token: &CssToken) -> Selector {
+        let next_token;
+        let token = match self.reconsume {
+            true => {
+                self.reconsume = false;
+                current_token
+            }
+            false => {
+                next_token = match self.t.next() {
+                    Some(t) => t,
+                    // TODO: return an error.
+                    None => return Selector::TypeSelector("".to_string()),
+                };
+                &next_token
+            }
+        };
+
+        match token {
+            CssToken::HashToken(value) => Selector::IdSelector(value[1..].to_string()),
+            CssToken::Ident(ident) => Selector::TypeSelector(ident.to_string()),
             _ => {
                 panic!("Parse error: {:?} is an unexpected token.", token);
             }
@@ -235,6 +263,7 @@ impl CssParser {
         }
     }
 
+    /*
     #[allow(dead_code)]
     /// https://www.w3.org/TR/css-syntax-3/#parse-list-of-component-values
     fn consume_list_of_component_values(&mut self, current_token: &CssToken) -> Vec<String> {
@@ -259,6 +288,7 @@ impl CssParser {
             values.push(self.consume_component_value(token));
         }
     }
+    */
 
     /// https://www.w3.org/TR/css-syntax-3/#consume-qualified-rule
     /// https://www.w3.org/TR/css-syntax-3/#qualified-rule
@@ -305,7 +335,7 @@ impl CssParser {
                     selectors.push(Selector::TypeSelector(self.consume_component_value(&token)));
                     rule.set_selectors(selectors);
                     */
-                    rule.set_selector(Selector::TypeSelector(self.consume_component_value(&token)));
+                    rule.set_selector(self.consume_selector(&token));
                 }
             }
         }
