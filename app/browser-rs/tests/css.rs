@@ -6,8 +6,8 @@
 
 extern crate alloc;
 
-use alloc::string::String;
 use crate::alloc::string::ToString;
+use alloc::string::String;
 use alloc::vec::Vec;
 
 use browser_rs::renderer::css_token::CssTokenizer;
@@ -76,9 +76,9 @@ fn background_color() {
     let mut decls = Vec::new();
     decls.push(decl);
 
-    let mut rule = CssRule::new();
-    rule.set_selector("h1".to_string());
-    rule.set_style(decls);
+    let mut rule = QualifiedRule::new();
+    rule.set_selector(Selector::TypeSelector("h1".to_string()));
+    rule.set_declarations(decls);
 
     let mut rules = Vec::new();
     rules.push(rule);
@@ -91,3 +91,57 @@ fn background_color() {
         expected
     );
 }
+
+/*
+#[test_case]
+fn class_selector() {
+    let mut decl = Declaration::new();
+    decl.set_property("background-color".to_string());
+    decl.set_value("red".to_string());
+
+    let mut decls = Vec::new();
+    decls.push(decl);
+
+    let mut rule = QualifiedRule::new();
+    rule.set_selector(".class".to_string());
+    rule.set_declarations(decls);
+
+    let mut rules = Vec::new();
+    rules.push(rule);
+
+    let mut expected = StyleSheet::new();
+    expected.set_rules(rules);
+
+    run_test!(
+        "<html><head><style>.class{background-color:red;}</style></head></html>",
+        expected
+    );
+}
+*/
+
+/*
+#[test_case]
+fn id_selector() {
+    let mut decl = Declaration::new();
+    decl.set_property("background-color".to_string());
+    decl.set_value("red".to_string());
+
+    let mut decls = Vec::new();
+    decls.push(decl);
+
+    let mut rule = QualifiedRule::new();
+    rule.set_selector(Selector::IdSelector("id".to_string()));
+    rule.set_declarations(decls);
+
+    let mut rules = Vec::new();
+    rules.push(rule);
+
+    let mut expected = StyleSheet::new();
+    expected.set_rules(rules);
+
+    run_test!(
+        "<html><head><style>#id{background-color:red;}</style></head></html>",
+        expected
+    );
+}
+*/

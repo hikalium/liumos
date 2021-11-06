@@ -12,6 +12,8 @@ use liumlib::*;
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// https://www.w3.org/TR/css-syntax-3/#consume-token
 pub enum CssToken {
+    /// https://www.w3.org/TR/css-syntax-3/#typedef-hash-token
+    HashToken { id: bool, value: String },
     /// https://www.w3.org/TR/css-syntax-3/#typedef-colon-token
     Colon,
     /// https://www.w3.org/TR/css-syntax-3/#typedef-semicolon-token
@@ -24,7 +26,6 @@ pub enum CssToken {
     Ident(String),
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CssTokenizer {
     pos: usize,
@@ -40,7 +41,7 @@ impl CssTokenizer {
     }
 
     /// https://www.w3.org/TR/css-syntax-3/#consume-name
-    fn consume_name(&mut self) -> CssToken {
+    fn consume_name(&mut self) -> String {
         let mut s = String::new();
         s.push(self.input[self.pos]);
 
@@ -55,13 +56,14 @@ impl CssTokenizer {
             }
         }
 
-        return CssToken::Ident(s);
+        return s;
     }
 }
 
 impl Iterator for CssTokenizer {
     type Item = CssToken;
 
+    /// https://www.w3.org/TR/css-syntax-3/#consume-token
     fn next(&mut self) -> Option<Self::Item> {
         if self.pos >= self.input.len() {
             return None;
@@ -70,12 +72,17 @@ impl Iterator for CssTokenizer {
         let c = self.input[self.pos];
 
         let token = match c {
+            '#' => {
+                let value = self.consume_name();
+                self.pos -= 1;
+                CssToken::HashToken { id: true, value }
+            }
             ':' => CssToken::Colon,
             ';' => CssToken::SemiColon,
             '{' => CssToken::OpenCurly,
             '}' => CssToken::CloseCurly,
             'a'..='z' | 'A'..='Z' => {
-                let t = self.consume_name();
+                let t = CssToken::Ident(self.consume_name());
                 self.pos -= 1;
                 t
             }

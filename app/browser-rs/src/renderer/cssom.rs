@@ -34,34 +34,61 @@ impl Declaration {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CssRule {
-    selector: String,
-    style: Vec<Declaration>,
+/// https://www.w3.org/TR/selectors-3/#selectors
+pub enum Selector {
+    /// https://www.w3.org/TR/selectors-3/#type-selectors
+    TypeSelector(String),
+    /// https://www.w3.org/TR/selectors-3/#class-html
+    ClassSelector(String),
+    /// https://www.w3.org/TR/selectors-3/#id-selectors
+    IdSelector(String),
 }
 
-impl CssRule {
+#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+/// https://www.w3.org/TR/css-syntax-3/#qualified-rule
+/// https://www.w3.org/TR/css-syntax-3/#style-rules
+pub struct QualifiedRule {
+    // TODO: support multiple selectors
+    selector: Selector,
+    /// https://www.w3.org/TR/selectors-4/#typedef-selector-list
+    /// The prelude of the qualified rule is parsed as a <selector-list>.
+    selectors: Vec<Selector>,
+    /// https://www.w3.org/TR/css-syntax-3/#parse-a-list-of-declarations
+    /// The content of the qualified rule’s block is parsed as a list of declarations.
+    declarations: Vec<Declaration>,
+}
+
+impl QualifiedRule {
     pub fn new() -> Self {
         Self {
-            selector: String::new(),
-            style: Vec::new(),
+            selector: Selector::TypeSelector("".to_string()),
+            selectors: Vec::new(),
+            declarations: Vec::new(),
         }
     }
 
-    pub fn set_selector(&mut self, selector: String) {
+    #[allow(dead_code)]
+    pub fn set_selectors(&mut self, selectors: Vec<Selector>) {
+        self.selectors = selectors;
+    }
+
+    pub fn set_selector(&mut self, selector: Selector) {
         self.selector = selector;
     }
 
-    pub fn set_style(&mut self, style: Vec<Declaration>) {
-        self.style = style;
+    pub fn set_declarations(&mut self, declarations: Vec<Declaration>) {
+        self.declarations = declarations;
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-/// https://drafts.csswg.org/cssom/#the-cssstylesheet-interface
+/// https://www.w3.org/TR/cssom-1/#cssstylesheet
 pub struct StyleSheet {
     /// https://drafts.csswg.org/cssom/#dom-cssstylesheet-cssrules
-    rules: Vec<CssRule>,
+    rules: Vec<QualifiedRule>,
 }
 
 impl StyleSheet {
@@ -69,7 +96,7 @@ impl StyleSheet {
         Self { rules: Vec::new() }
     }
 
-    pub fn set_rules(&mut self, rules: Vec<CssRule>) {
+    pub fn set_rules(&mut self, rules: Vec<QualifiedRule>) {
         self.rules = rules;
     }
 }
@@ -116,6 +143,7 @@ impl CssParser {
                 return self.consume_qualified_rule(&token);
             }
             */
+            CssToken::HashToken { id: _, value } => value.to_string(),
             CssToken::Ident(ident) => ident.to_string(),
             _ => {
                 panic!("Parse error: {:?} is an unexpected token.", token);
@@ -207,9 +235,36 @@ impl CssParser {
         }
     }
 
+    #[allow(dead_code)]
+    /// https://www.w3.org/TR/css-syntax-3/#parse-list-of-component-values
+    fn consume_list_of_component_values(&mut self, current_token: &CssToken) -> Vec<String> {
+        let mut values = Vec::new();
+
+        loop {
+            let next_token;
+            let token = match self.reconsume {
+                true => {
+                    self.reconsume = false;
+                    current_token
+                }
+                false => {
+                    next_token = match self.t.next() {
+                        Some(t) => t,
+                        None => return values,
+                    };
+                    &next_token
+                }
+            };
+
+            values.push(self.consume_component_value(token));
+        }
+    }
+
     /// https://www.w3.org/TR/css-syntax-3/#consume-qualified-rule
-    fn consume_qualified_rule(&mut self, current_token: &CssToken) -> Option<CssRule> {
-        let mut rule = CssRule::new();
+    /// https://www.w3.org/TR/css-syntax-3/#qualified-rule
+    /// https://www.w3.org/TR/css-syntax-3/#style-rules
+    fn consume_qualified_rule(&mut self, current_token: &CssToken) -> Option<QualifiedRule> {
+        let mut rule = QualifiedRule::new();
 
         loop {
             let next_token;
@@ -232,27 +287,32 @@ impl CssParser {
                     // Consume a simple block and assign it to the qualified rule’s block. Return
                     // the qualified rule.
 
-                    // https://www.w3.org/TR/css-syntax-3/#qualified-rule
-                    // Note: Most qualified rules will be style rules, where the prelude is a
-                    // selector [SELECT] and the block a list of declarations.
-                    rule.set_style(self.consume_list_of_declarations(&token));
+                    // The content of the qualified rule’s block is parsed as a list of
+                    // declarations.
+                    rule.set_declarations(self.consume_list_of_declarations(&token));
                     return Some(rule);
                 }
                 _ => {
                     // Reconsume the current input token. Consume a component value. Append the
                     // returned value to the qualified rule’s prelude.
 
-                    // Note: Most qualified rules will be style rules, where the prelude is a
-                    // selector [SELECT] and the block a list of declarations.
+                    // The prelude of the qualified rule is parsed as a <selector-list>.
+                    // https://www.w3.org/TR/css-syntax-3/#css-parse-something-according-to-a-css-grammar
                     self.reconsume = true;
-                    rule.set_selector(self.consume_component_value(&token));
+                    // TODO: support multiple selectors
+                    /*
+                    let mut selectors = Vec::new();
+                    selectors.push(Selector::TypeSelector(self.consume_component_value(&token)));
+                    rule.set_selectors(selectors);
+                    */
+                    rule.set_selector(Selector::TypeSelector(self.consume_component_value(&token)));
                 }
             }
         }
     }
 
     /// https://www.w3.org/TR/css-syntax-3/#consume-a-list-of-rules
-    fn consume_list_of_rules(&mut self) -> Vec<CssRule> {
+    fn consume_list_of_rules(&mut self) -> Vec<QualifiedRule> {
         let mut rules = Vec::new();
 
         let mut token;
