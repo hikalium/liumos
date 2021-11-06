@@ -154,6 +154,25 @@ fn simple_page() {
 }
 
 #[test_case]
+fn div() {
+    run_test!(
+        "<div>abc</div>",
+        HtmlToken::StartTag {
+            tag: String::from("div"),
+            self_closing: false,
+            attributes: Vec::new(),
+        },
+        HtmlToken::Char('a'),
+        HtmlToken::Char('b'),
+        HtmlToken::Char('c'),
+        HtmlToken::EndTag {
+            tag: String::from("div"),
+            self_closing: false,
+        }
+    );
+}
+
+#[test_case]
 fn link() {
     let mut attributes = Vec::new();
     let mut a1 = Attribute::new();

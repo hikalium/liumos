@@ -122,6 +122,8 @@ pub enum ElementKind {
     Ul,
     /// https://html.spec.whatwg.org/multipage/grouping-content.html#the-li-element
     Li,
+    /// https://html.spec.whatwg.org/multipage/grouping-content.html#the-div-element
+    Div,
 }
 
 #[allow(dead_code)]
@@ -203,7 +205,7 @@ impl HtmlParser {
         } else if tag == "li" {
             return self.create_element(ElementKind::Li);
         } else if tag == "div" {
-            return self.create_element(ElementKind::Li);
+            return self.create_element(ElementKind::Div);
         }
         panic!("not supported this tag name: {}", tag);
     }
@@ -528,6 +530,11 @@ impl HtmlParser {
                                 token = self.t.next();
                                 continue;
                             }
+                            if tag == "div" {
+                                self.insert_element(tag);
+                                token = self.t.next();
+                                continue;
+                            }
                         }
                         Some(HtmlToken::EndTag {
                             ref tag,
@@ -562,6 +569,11 @@ impl HtmlParser {
                             if tag == "li" {
                                 token = self.t.next();
                                 self.pop_until(ElementKind::Li);
+                                continue;
+                            }
+                            if tag == "div" {
+                                token = self.t.next();
+                                self.pop_until(ElementKind::Div);
                                 continue;
                             }
                         }

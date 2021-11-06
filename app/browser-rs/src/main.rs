@@ -58,7 +58,7 @@ fn main() {
 
     if default {
         let default_page =
-            "<html><head><style>h1{background-color:blue;}</style></head><body></body></html>";
+            "<html><head><style>div{background-color:blue;}</style></head><body><div>abc</div></body></html>";
 
         render(default_page.to_string(), &app);
     } else {

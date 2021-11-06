@@ -314,6 +314,38 @@ fn text() {
 }
 
 #[test_case]
+fn div() {
+    // root (Document)
+    // └── html
+    //     └── head
+    //     └── body
+    //         └── div
+    let root = create_base_dom_tree();
+    let mut body = root
+        .borrow_mut()
+        .first_child()
+        .unwrap()
+        .borrow_mut()
+        .first_child()
+        .unwrap()
+        .borrow_mut()
+        .next_sibling()
+        .unwrap();
+
+    let mut div = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+        ElementKind::Div,
+    )))));
+    add_text_node_to(&mut div, "foo");
+
+    add_child_node_to(&mut body, &div);
+
+    run_test!(
+        "<html><head></head><body><div>foo</div></body></html>",
+        Some(root)
+    );
+}
+
+#[test_case]
 fn list() {
     // root (Document)
     // └── html
