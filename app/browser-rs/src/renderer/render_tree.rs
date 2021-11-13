@@ -10,53 +10,6 @@ use liumlib::gui::BitmapImageBuffer;
 #[allow(unused_imports)]
 use liumlib::*;
 
-fn check_kind(node_kind: &NodeKind, selector: &Selector) -> bool {
-    match node_kind {
-        Element(e) => {
-            match selector {
-                Selector::TypeSelector(s) => {
-                    if e.kind == ElementKind::Div && s == "div" {
-                        return true;
-                    }
-                    return false;
-                }
-                _ => return false,
-            }
-            false
-        }
-        _ => false,
-    }
-}
-
-fn dom_to_render_object(node: &Option<Rc<RefCell<Node>>>) -> Option<Rc<RefCell<RenderObject>>> {
-    match node {
-        Some(n) => Some(Rc::new(RefCell::new(RenderObject::new(n.clone())))),
-        None => None,
-    }
-}
-
-fn dom_to_render_tree(root: &Option<Rc<RefCell<Node>>>) -> Option<Rc<RefCell<RenderObject>>> {
-    let render_object = dom_to_render_object(&root);
-
-    let obj = match render_object {
-        Some(ref obj) => obj,
-        None => return None,
-    };
-
-    match root {
-        Some(n) => {
-            let first_child = dom_to_render_tree(&n.borrow().first_child());
-            let next_sibling = dom_to_render_tree(&n.borrow().next_sibling());
-
-            obj.borrow_mut().first_child = first_child;
-            obj.borrow_mut().next_sibling = next_sibling;
-        }
-        None => return None,
-    }
-
-    return render_object;
-}
-
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct RenderObject {
@@ -118,36 +71,75 @@ pub struct RenderTree {
 impl RenderTree {
     pub fn new(root: Rc<RefCell<Node>>) -> Self {
         Self {
-            root: dom_to_render_tree(&Some(root)),
+            root: Self::dom_to_render_tree(&Some(root)),
         }
     }
 
-    fn dfs(node: &Option<Rc<RefCell<RenderObject>>>, css_rule: &QualifiedRule) {
-        let n = match node {
-            Some(ref n) => n,
-            None => return,
+    fn check_kind(node_kind: &NodeKind, selector: &Selector) -> bool {
+        match node_kind {
+            Element(e) => match selector {
+                Selector::TypeSelector(s) => {
+                    if e.kind == ElementKind::Div && s == "div" {
+                        return true;
+                    }
+                    return false;
+                }
+                _ => return false,
+            },
+            _ => false,
+        }
+    }
+
+    fn dom_to_render_object(node: &Option<Rc<RefCell<Node>>>) -> Option<Rc<RefCell<RenderObject>>> {
+        match node {
+            Some(n) => Some(Rc::new(RefCell::new(RenderObject::new(n.clone())))),
+            None => None,
+        }
+    }
+
+    fn dom_to_render_tree(root: &Option<Rc<RefCell<Node>>>) -> Option<Rc<RefCell<RenderObject>>> {
+        let render_object = Self::dom_to_render_object(&root);
+
+        let obj = match render_object {
+            Some(ref obj) => obj,
+            None => return None,
         };
 
+        match root {
+            Some(n) => {
+                let first_child = Self::dom_to_render_tree(&n.borrow().first_child());
+                let next_sibling = Self::dom_to_render_tree(&n.borrow().next_sibling());
+
+                obj.borrow_mut().first_child = first_child;
+                obj.borrow_mut().next_sibling = next_sibling;
+            }
+            None => return None,
+        }
+
+        return render_object;
+    }
+
+    fn apply_rule_to_render_object(
+        node: &Option<Rc<RefCell<RenderObject>>>,
+        css_rule: &QualifiedRule,
+    ) {
         match node {
             Some(n) => {
-                if check_kind(&n.borrow().kind, &css_rule.selector) {
-                    println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                if Self::check_kind(&n.borrow().kind, &css_rule.selector) {
                     n.borrow_mut().style = css_rule.declarations.clone();
                 }
 
-                Self::dfs(&n.borrow().first_child, css_rule);
-                Self::dfs(&n.borrow().next_sibling, css_rule);
+                Self::apply_rule_to_render_object(&n.borrow().first_child, css_rule);
+                Self::apply_rule_to_render_object(&n.borrow().next_sibling, css_rule);
             }
             None => return,
         }
     }
 
     pub fn apply(&mut self, cssom: &StyleSheet) {
-        println!("==============================");
         for rule in &cssom.rules {
-            Self::dfs(&self.root, rule);
+            Self::apply_rule_to_render_object(&self.root, rule);
         }
-        println!("==============================");
     }
 
     fn paint_node(&self, window: &ApplicationWindow, node: &Option<Rc<RefCell<RenderObject>>>) {
@@ -156,7 +148,7 @@ impl RenderTree {
             None => return,
         };
 
-        if n.borrow().style.len() > 0{
+        if n.borrow().style.len() > 0 {
             let color = match n.borrow().style[0].value.as_str() {
                 "blue" => 0x0000ff,
                 "red" => 0xff0000,
