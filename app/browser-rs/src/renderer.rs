@@ -22,7 +22,7 @@ pub fn render(html: String, window: &ApplicationWindow) {
     let html_tokenizer = HtmlTokenizer::new(html);
     let dom_root = HtmlParser::new(html_tokenizer).construct_tree();
     println!("DOM:");
-    print_node(Some(dom_root.clone()), 0);
+    print_dom(&Some(dom_root.clone()), 0);
     println!("----------------------");
 
     let style = get_style_content(dom_root.clone());
@@ -37,31 +37,33 @@ pub fn render(html: String, window: &ApplicationWindow) {
     let mut render_tree = RenderTree::new(dom_root);
     render_tree.apply(&cssom);
 
-    println!("Render Tree: {:?}", render_tree);
-    //print_render_object(&render_tree.root, 0);
+    println!("Render Tree:");
+    print_render_object(&render_tree.root, 0);
     println!("----------------------");
 
     render_tree.paint(window);
 }
 
-fn print_node(node: Option<Rc<RefCell<Node>>>, depth: usize) {
+fn print_dom(node: &Option<Rc<RefCell<Node>>>, depth: usize) {
     match node {
         Some(n) => {
             print!("{}", "  ".repeat(depth));
             println!("{:?}", n.borrow().kind);
-            print_node(n.borrow().first_child(), depth + 1);
-            print_node(n.borrow().next_sibling(), depth);
+            print_dom(&n.borrow().first_child(), depth + 1);
+            print_dom(&n.borrow().next_sibling(), depth);
         }
         None => return,
     }
 }
 
-/*
-fn print_render_object(root: &RenderObject, depth: usize) {
-    print!("{}", "  ".repeat(depth));
-    print!("{:?} ", root.kind);
-    println!("{:?}", root.style);
-    print_node(root.first_child(), depth + 1);
-    print_node(root.next_sibling(), depth);
+fn print_render_object(node: &Option<Rc<RefCell<RenderObject>>>, depth: usize) {
+    match node {
+        Some(n) => {
+            print!("{}", "  ".repeat(depth));
+            println!("{:?} {:?}", n.borrow().kind, n.borrow().style);
+            print_render_object(&n.borrow().first_child(), depth + 1);
+            print_render_object(&n.borrow().next_sibling(), depth);
+        }
+        None => return,
+    }
 }
-*/
