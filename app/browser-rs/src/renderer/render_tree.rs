@@ -24,7 +24,6 @@ pub struct RenderObject {
     pub style: Vec<Declaration>,
 }
 
-#[allow(dead_code)]
 impl RenderObject {
     fn new(node: Rc<RefCell<Node>>) -> Self {
         Self {
@@ -38,27 +37,13 @@ impl RenderObject {
         }
     }
 
-    /*
-    fn add_style(&mut self, declaration: Declaration) {
-        self.style.push(declaration);
-    }
-
-    pub fn first_child(&self) -> Option<Rc<RefCell<Node>>> {
+    pub fn first_child(&self) -> Option<Rc<RefCell<RenderObject>>> {
         self.first_child.as_ref().map(|n| n.clone())
     }
 
-    pub fn last_child(&self) -> Option<Weak<RefCell<Node>>> {
-        self.last_child.as_ref().map(|n| n.clone())
-    }
-
-    pub fn previous_sibling(&self) -> Option<Weak<RefCell<Node>>> {
-        self.previous_sibling.as_ref().map(|n| n.clone())
-    }
-
-    pub fn next_sibling(&self) -> Option<Rc<RefCell<Node>>> {
+    pub fn next_sibling(&self) -> Option<Rc<RefCell<RenderObject>>> {
         self.next_sibling.as_ref().map(|n| n.clone())
     }
-    */
 }
 
 #[derive(Debug, Clone)]
@@ -129,8 +114,8 @@ impl RenderTree {
                     n.borrow_mut().style = css_rule.declarations.clone();
                 }
 
-                Self::apply_rule_to_render_object(&n.borrow().first_child, css_rule);
-                Self::apply_rule_to_render_object(&n.borrow().next_sibling, css_rule);
+                Self::apply_rule_to_render_object(&n.borrow().first_child(), css_rule);
+                Self::apply_rule_to_render_object(&n.borrow().next_sibling(), css_rule);
             }
             None => return,
         }
@@ -143,25 +128,20 @@ impl RenderTree {
     }
 
     fn paint_node(&self, window: &ApplicationWindow, node: &Option<Rc<RefCell<RenderObject>>>) {
-        let n = match node {
-            Some(ref n) => n,
-            None => return,
-        };
-
-        if n.borrow().style.len() > 0 {
-            let color = match n.borrow().style[0].value.as_str() {
-                "blue" => 0x0000ff,
-                "red" => 0xff0000,
-                _ => 0x00ff00,
-            };
-            draw_rect(&window.buffer, color, 10, 10, 210, 210).expect("update a window");
-            window.buffer.flush();
-        }
-
         match node {
             Some(n) => {
-                self.paint_node(window, &n.borrow().first_child);
-                self.paint_node(window, &n.borrow().next_sibling);
+                if n.borrow().style.len() > 0 {
+                    let color = match n.borrow().style[0].value.as_str() {
+                        "blue" => 0x0000ff,
+                        "red" => 0xff0000,
+                        _ => 0x00ff00,
+                    };
+                    draw_rect(&window.buffer, color, 10, 10, 210, 210).expect("update a window");
+                    window.buffer.flush();
+                }
+
+                self.paint_node(window, &n.borrow().first_child());
+                self.paint_node(window, &n.borrow().next_sibling());
             }
             None => return,
         }
