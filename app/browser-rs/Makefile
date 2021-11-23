@@ -44,3 +44,6 @@ test_token :
 
 test_css :
 	$(CARGO) test $(CARGO_ARGS) --test css -- --test-threads=1 --nocapture ;
+
+test_js :
+	$(CARGO) test $(CARGO_ARGS) --test js -- --test-threads=1 --nocapture ;

@@ -420,3 +420,40 @@ fn format() {
         }
     );
 }
+
+#[test_case]
+fn js_with_style() {
+    run_test!(
+        "<html><head><script>1+2</script></head></html>",
+        HtmlToken::StartTag {
+            tag: String::from("html"),
+            self_closing: false,
+            attributes: Vec::new(),
+        },
+        HtmlToken::StartTag {
+            tag: String::from("head"),
+            self_closing: false,
+            attributes: Vec::new(),
+        },
+        HtmlToken::StartTag {
+            tag: String::from("script"),
+            self_closing: false,
+            attributes: Vec::new(),
+        },
+        HtmlToken::Char('1'),
+        HtmlToken::Char('+'),
+        HtmlToken::Char('2'),
+        HtmlToken::EndTag {
+            tag: String::from("script"),
+            self_closing: false,
+        },
+        HtmlToken::EndTag {
+            tag: String::from("head"),
+            self_closing: false,
+        },
+        HtmlToken::EndTag {
+            tag: String::from("html"),
+            self_closing: false,
+        }
+    );
+}

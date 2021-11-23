@@ -114,10 +114,12 @@ pub enum ElementKind {
     Link,
     /// https://html.spec.whatwg.org/multipage/semantics.html#the-style-element
     Style,
-    /// https://html.spec.whatwg.org/multipage/sections.html#the-body-element
-    Body,
+    /// https://html.spec.whatwg.org/multipage/scripting.html#the-script-element
+    Script,
     /// https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-incdata
     Text,
+    /// https://html.spec.whatwg.org/multipage/sections.html#the-body-element
+    Body,
     /// https://html.spec.whatwg.org/multipage/grouping-content.html#the-ul-element
     Ul,
     /// https://html.spec.whatwg.org/multipage/grouping-content.html#the-li-element
@@ -198,6 +200,8 @@ impl HtmlParser {
             return self.create_element(ElementKind::Link);
         } else if tag == "style" {
             return self.create_element(ElementKind::Style);
+        } else if tag == "script" {
+            return self.create_element(ElementKind::Script);
         } else if tag == "body" {
             return self.create_element(ElementKind::Body);
         } else if tag == "ul" {
@@ -460,6 +464,14 @@ impl HtmlParser {
                                 token = self.t.next();
                                 continue;
                             }
+
+                            if tag == "script" {
+                                self.insert_element(tag);
+                                self.original_insertion_mode = self.mode;
+                                self.mode = InsertionMode::Text;
+                                token = self.t.next();
+                                continue;
+                            }
                         }
                         Some(HtmlToken::EndTag {
                             ref tag,
@@ -605,6 +617,13 @@ impl HtmlParser {
                                 token = self.t.next();
                                 continue;
                             }
+
+                            if tag == "script" {
+                                self.pop_until(ElementKind::Script);
+                                self.mode = self.original_insertion_mode;
+                                token = self.t.next();
+                                continue;
+                            }
                         }
                         Some(HtmlToken::Char(c)) => {
                             self.insert_char(c);
@@ -709,6 +728,17 @@ fn get_target_element_node(
 pub fn get_style_content(root: Rc<RefCell<Node>>) -> Option<String> {
     let style_node = get_target_element_node(Some(root), ElementKind::Style)?;
     let text_node = style_node.borrow().first_child()?;
+    let content = match &text_node.borrow().kind {
+        NodeKind::Text(ref s) => Some(s.clone()),
+        _ => None,
+    };
+    content
+}
+
+#[allow(dead_code)]
+pub fn get_js_content(root: Rc<RefCell<Node>>) -> Option<String> {
+    let js_node = get_target_element_node(Some(root), ElementKind::Script)?;
+    let text_node = js_node.borrow().first_child()?;
     let content = match &text_node.borrow().kind {
         NodeKind::Text(ref s) => Some(s.clone()),
         _ => None,
