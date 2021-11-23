@@ -39,6 +39,7 @@ impl JsLexer {
 
         loop {
             let c = self.input[self.pos];
+
             match c {
                 '0'..='9' => {
                     num = num * count * 10 + (c.to_digit(10).unwrap() as u64);
@@ -64,12 +65,15 @@ impl Iterator for JsLexer {
         let c = self.input[self.pos];
 
         let token = match c {
-            '+' | '-' => JsToken::Punctuator(c),
+            '+' | '-' | ';' => {
+                let t = JsToken::Punctuator(c);
+                self.pos += 1;
+                t
+            }
             '0'..='9' => JsToken::Number(self.consume_number()),
             _ => unimplemented!("char {} is not supported yet", c),
         };
 
-        self.pos += 1;
         Some(token)
     }
 }

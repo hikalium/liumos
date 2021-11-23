@@ -2,53 +2,34 @@
 //! https://astexplorer.net/
 
 use crate::renderer::js_token::{JsLexer, JsToken};
-use alloc::boxed::Box;
-use alloc::string::String;
+use alloc::rc::Rc;
 use alloc::vec::Vec;
 #[allow(unused_imports)]
 use liumlib::*;
 
 #[allow(dead_code)]
 pub struct Program {
-    body: Vec<Box<Node>>,
+    body: Vec<Rc<Node>>,
 }
 
+#[allow(dead_code)]
 impl Program {
     pub fn new() -> Self {
         Self { body: Vec::new() }
     }
 
-    fn set_body(&mut self, body: Vec<Box<Node>>) {
+    pub fn set_body(&mut self, body: Vec<Rc<Node>>) {
         self.body = body;
     }
-}
 
-#[allow(dead_code)]
-#[derive(Debug, Clone)]
-struct Node {
-    kind: NodeKind,
-    left: Option<Box<Node>>,
-    right: Option<Box<Node>>,
-    num: Option<u64>,
-    operator: Option<String>,
-}
-
-#[allow(dead_code)]
-impl Node {
-    fn new() -> Self {
-        Self {
-            kind: NodeKind::ExpressionStatement,
-            left: None,
-            right: None,
-            num: None,
-            operator: None,
-        }
+    pub fn body(&self) -> &Vec<Rc<Node>> {
+        &self.body
     }
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Clone)]
-enum NodeKind {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum NodeKind {
     /// https://github.com/estree/estree/blob/master/es5.md#expressionstatement
     ExpressionStatement,
     /// https://github.com/estree/estree/blob/master/es5.md#binaryexpression
@@ -62,37 +43,122 @@ enum NodeKind {
 }
 
 #[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct Node {
+    kind: NodeKind,
+    left: Option<Rc<Node>>,
+    right: Option<Rc<Node>>,
+    value: Option<u64>,
+    operator: Option<char>,
+}
+
+#[allow(dead_code)]
+impl Node {
+    fn new() -> Self {
+        Self {
+            kind: NodeKind::ExpressionStatement,
+            left: None,
+            right: None,
+            value: None,
+            operator: None,
+        }
+    }
+
+    pub fn new_num_literal(value: u64) -> Self {
+        Self {
+            kind: NodeKind::NumericLiteral,
+            left: None,
+            right: None,
+            value: Some(value),
+            operator: None,
+        }
+    }
+
+    pub fn new_binary_expr(
+        operator: char,
+        left: Option<Rc<Node>>,
+        right: Option<Rc<Node>>,
+    ) -> Self {
+        Self {
+            kind: NodeKind::BinaryExpression,
+            left,
+            right,
+            value: None,
+            operator: Some(operator),
+        }
+    }
+
+    pub fn kind(&self) -> &NodeKind {
+        &self.kind
+    }
+
+    pub fn left(&self) -> &Option<Rc<Node>> {
+        &self.left
+    }
+
+    pub fn right(&self) -> &Option<Rc<Node>> {
+        &self.right
+    }
+}
+
+#[allow(dead_code)]
 pub struct JsParser {
     t: JsLexer,
-    current: Option<JsToken>,
 }
 
 #[allow(dead_code)]
 impl JsParser {
     pub fn new(t: JsLexer) -> Self {
-        Self { t, current: None }
+        Self { t }
     }
 
-    fn update_current_node(&mut self) {
-        self.current = self.t.next();
-    }
-
-    fn parse_number(&mut self) -> Option<Node> {
-        let _n = match &self.current {
+    fn number(&mut self) -> Option<Rc<Node>> {
+        let n = match self.t.next() {
             Some(node) => node,
             None => return None,
         };
 
-        None
+        match n {
+            JsToken::Number(value) => return Some(Rc::new(Node::new_num_literal(value))),
+            _ => unimplemented!("token {:?} is not supported", n),
+        }
     }
 
-    fn parse_statement(&mut self) -> Option<Node> {
-        let _n = match &self.current {
+    /// AdditiveExpression ::= MultiplicativeExpression ( AdditiveOperator MultiplicativeExpression )*
+    fn expression(&mut self) -> Option<Rc<Node>> {
+        let left = self.number();
+
+        let n = match self.t.next() {
             Some(node) => node,
             None => return None,
         };
 
-        None
+        match n {
+            JsToken::Punctuator(c) => match c {
+                '+' | '-' => Some(Rc::new(Node::new_binary_expr(c, left, self.number()))),
+                _ => unimplemented!("`Punctuator` token with {} is not supported", c),
+            },
+            _ => None,
+        }
+    }
+
+    /// https://262.ecma-international.org/12.0/#prod-Statement
+    /// Statement ::= ExpressionStatement
+    fn statement(&mut self) -> Option<Rc<Node>> {
+        let expr = self.expression();
+
+        let n = match self.t.next() {
+            Some(node) => node,
+            None => return None,
+        };
+
+        match n {
+            JsToken::Punctuator(c) => match c {
+                ';' => return expr,
+                _ => unimplemented!("`Punctuator` token with {} is not supported", c),
+            },
+            _ => return expr,
+        }
     }
 
     pub fn parse_ast(&mut self) -> Program {
@@ -102,9 +168,16 @@ impl JsParser {
         //   type: "Program";
         //   body: [ Directive | Statement ];
         // }
-        let body = Vec::new();
-        program.set_body(body);
+        let mut body = Vec::new();
 
+        loop {
+            match self.statement() {
+                Some(node) => body.push(node),
+                None => break,
+            }
+        }
+
+        program.set_body(body);
         program
     }
 }
