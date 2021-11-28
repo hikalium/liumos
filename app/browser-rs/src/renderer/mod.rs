@@ -1,7 +1,6 @@
-pub mod ast;
 pub mod css;
 pub mod html;
-pub mod js_token;
+pub mod js;
 pub mod render_tree;
 
 use crate::gui::ApplicationWindow;
