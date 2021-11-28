@@ -1,5 +1,5 @@
 use crate::gui::ApplicationWindow;
-use crate::renderer::cssom::*;
+use crate::renderer::css::cssom::*;
 use crate::renderer::html::dom::*;
 use crate::renderer::NodeKind::Element;
 use alloc::rc::{Rc, Weak};

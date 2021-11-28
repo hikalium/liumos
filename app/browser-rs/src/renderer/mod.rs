@@ -1,13 +1,12 @@
 pub mod ast;
-pub mod css_token;
-pub mod cssom;
+pub mod css;
 pub mod html;
 pub mod js_token;
 pub mod render_tree;
 
 use crate::gui::ApplicationWindow;
-use crate::renderer::css_token::*;
-use crate::renderer::cssom::*;
+use crate::renderer::css::css_token::*;
+use crate::renderer::css::cssom::*;
 use crate::renderer::html::dom::*;
 use crate::renderer::html::html_token::*;
 use crate::renderer::render_tree::*;

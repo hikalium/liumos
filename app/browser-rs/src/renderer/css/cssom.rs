@@ -5,7 +5,7 @@
 //! https://www.w3.org/TR/css-syntax-3/#tokenization
 
 use crate::alloc::string::ToString;
-use crate::renderer::css_token::*;
+use crate::renderer::css::css_token::*;
 use alloc::string::String;
 use alloc::vec::Vec;
 #[allow(unused_imports)]
