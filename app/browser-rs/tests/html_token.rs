@@ -10,7 +10,8 @@ use crate::alloc::string::ToString;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use browser_rs::renderer::html_token::*;
+use browser_rs::renderer::html::html_token::{HtmlToken, HtmlTokenizer};
+use browser_rs::renderer::html::Attribute;
 use liumlib::*;
 
 #[cfg(test)]

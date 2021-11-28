@@ -11,8 +11,8 @@ use alloc::rc::Rc;
 use alloc::string::String;
 use core::cell::RefCell;
 
-use browser_rs::renderer::dom::*;
-use browser_rs::renderer::html_token::*;
+use browser_rs::renderer::html::dom::{Element, ElementKind, HtmlParser, Node, NodeKind};
+use browser_rs::renderer::html::html_token::HtmlTokenizer;
 use liumlib::*;
 
 fn print_node(node: Option<Rc<RefCell<Node>>>, depth: usize) {
@@ -55,8 +55,6 @@ pub fn test_runner(tests: &[&dyn Testable]) {
 #[macro_export]
 macro_rules! run_test {
     ($html:literal, $expected_root:expr) => {
-        use browser_rs::renderer::dom::*;
-
         let t = HtmlTokenizer::new(String::from($html));
 
         let mut p = HtmlParser::new(t);

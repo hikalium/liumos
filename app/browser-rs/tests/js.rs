@@ -12,7 +12,8 @@ use alloc::rc::Rc;
 use alloc::vec::Vec;
 use browser_rs::renderer::ast::Node as AstNode;
 use browser_rs::renderer::ast::{JsParser, Program};
-use browser_rs::renderer::html_token::HtmlTokenizer;
+use browser_rs::renderer::html::dom::HtmlParser;
+use browser_rs::renderer::html::html_token::HtmlTokenizer;
 use browser_rs::renderer::js_token::JsLexer;
 use liumlib::*;
 
@@ -44,11 +45,11 @@ pub fn test_runner(tests: &[&dyn Testable]) {
 #[macro_export]
 macro_rules! run_test {
     ($html:literal, $expected:expr) => {
-        use browser_rs::renderer::dom::*;
-
         let t1 = HtmlTokenizer::new(String::from($html));
         let mut p1 = HtmlParser::new(t1);
         let root = p1.construct_tree();
+
+        use browser_rs::renderer::html::dom::get_js_content;
         let js = get_js_content(root.clone());
 
         assert!(js.is_some());

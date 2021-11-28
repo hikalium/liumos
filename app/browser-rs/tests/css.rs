@@ -12,7 +12,8 @@ use alloc::vec::Vec;
 
 use browser_rs::renderer::css_token::CssTokenizer;
 use browser_rs::renderer::cssom::*;
-use browser_rs::renderer::html_token::HtmlTokenizer;
+use browser_rs::renderer::html::dom::HtmlParser;
+use browser_rs::renderer::html::html_token::HtmlTokenizer;
 use liumlib::*;
 
 #[cfg(test)]
@@ -43,11 +44,11 @@ pub fn test_runner(tests: &[&dyn Testable]) {
 #[macro_export]
 macro_rules! run_test {
     ($html:literal, $expected_style:expr) => {
-        use browser_rs::renderer::dom::*;
-
         let t = HtmlTokenizer::new(String::from($html));
         let mut p = HtmlParser::new(t);
         let root = p.construct_tree();
+
+        use browser_rs::renderer::html::dom::get_style_content;
         let style = get_style_content(root.clone());
 
         assert!(style.is_some());
