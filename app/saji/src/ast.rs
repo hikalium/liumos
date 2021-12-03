@@ -1,13 +1,14 @@
 //! https://github.com/estree/estree
 //! https://astexplorer.net/
 
-use crate::renderer::js::token::{JsLexer, JsToken};
+use crate::token::{JsLexer, JsToken};
 use alloc::rc::Rc;
 use alloc::vec::Vec;
 #[allow(unused_imports)]
 use liumlib::*;
 
 #[allow(dead_code)]
+#[derive(Debug, Clone)]
 pub struct Program {
     body: Vec<Rc<Node>>,
 }
@@ -143,12 +144,13 @@ impl JsParser {
     ///             | VariableStatement
     ///
     /// VariableStatement ::= "var" VariableDeclarationList ( ";" )?
-    /// ExpressionStatement ::= Expression ( ";" )? 
+    /// ExpressionStatement ::= Expression ( ";" )?
     fn statement(&mut self) -> Option<Rc<Node>> {
         let t = match self.t.next() {
             Some(token) => token,
             None => return None,
         };
+        println!("t {:?}", t);
 
         let mut expr;
 
@@ -163,11 +165,13 @@ impl JsParser {
                 expr = self.expression();
             }
         }
+        println!("t {:?}", t);
 
         let t = match self.t.next() {
             Some(token) => token,
             None => return None,
         };
+        println!("t {:?}", t);
 
         match t {
             JsToken::Punctuator(c) => match c {

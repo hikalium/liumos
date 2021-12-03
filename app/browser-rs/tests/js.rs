@@ -116,7 +116,7 @@ fn node_equals(expected: &Option<Rc<AstNode>>, actual: &Option<Rc<AstNode>>) -> 
 }
 
 #[test_case]
-fn expression_statement() {
+fn binary_expression_statement() {
     let mut expected = Program::new();
     let mut body = Vec::new();
     body.push(Rc::new(AstNode::new_binary_expr(
@@ -127,4 +127,21 @@ fn expression_statement() {
     expected.set_body(body);
 
     run_test!("<html><head><script>1+2;</script></head></html>", &expected);
+}
+
+#[test_case]
+fn variable_declaration() {
+    let mut expected = Program::new();
+    let mut body = Vec::new();
+    body.push(Rc::new(AstNode::new_binary_expr(
+        '+',
+        Some(Rc::new(AstNode::new_num_literal(1))),
+        Some(Rc::new(AstNode::new_num_literal(2))),
+    )));
+    expected.set_body(body);
+
+    run_test!(
+        "<html><head><script>var x=1;</script></head></html>",
+        &expected
+    );
 }

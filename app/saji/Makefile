@@ -1,4 +1,4 @@
-TARGET=browser-rs
+TARGET=saji
 TARGET_BIN=$(TARGET).bin
 default: $(TARGET_BIN)
 
@@ -35,15 +35,3 @@ else
 test :
 	$(CARGO) test $(CARGO_ARGS) --tests -- --test-threads=1 --nocapture ;
 endif
-
-test_dom :
-	$(CARGO) test $(CARGO_ARGS) --test dom -- --test-threads=1 --nocapture ;
-
-test_token :
-	$(CARGO) test $(CARGO_ARGS) --test html_token -- --test-threads=1 --nocapture ;
-
-test_css :
-	$(CARGO) test $(CARGO_ARGS) --test css -- --test-threads=1 --nocapture ;
-
-test_js :
-	$(CARGO) test $(CARGO_ARGS) --test js -- --test-threads=1 --nocapture ;

@@ -20,6 +20,7 @@ APPS=\
 	 udpclient/udpclient.bin \
 	 udpserver/udpserver.bin \
 	 a/a.bin \
+	 saji/saji.bin \
 	 # dummy line
 
 default: $(APPS)
