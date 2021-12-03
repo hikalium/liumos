@@ -1,7 +1,7 @@
 //! This is a part of "13.2.6 Tree construction" in the HTML spec.
 //! https://html.spec.whatwg.org/multipage/parsing.html#tree-construction
 
-use crate::renderer::html::html_token::{HtmlToken, HtmlTokenizer};
+use crate::renderer::html::token::{HtmlToken, HtmlTokenizer};
 use crate::renderer::html::Attribute;
 use alloc::rc::{Rc, Weak};
 use alloc::string::String;

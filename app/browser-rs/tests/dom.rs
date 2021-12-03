@@ -12,7 +12,7 @@ use alloc::string::String;
 use core::cell::RefCell;
 
 use browser_rs::renderer::html::dom::{Element, ElementKind, HtmlParser, Node, NodeKind};
-use browser_rs::renderer::html::html_token::HtmlTokenizer;
+use browser_rs::renderer::html::token::HtmlTokenizer;
 use liumlib::*;
 
 fn print_node(node: Option<Rc<RefCell<Node>>>, depth: usize) {

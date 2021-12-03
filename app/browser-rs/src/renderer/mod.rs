@@ -4,10 +4,10 @@ pub mod js;
 pub mod render_tree;
 
 use crate::gui::ApplicationWindow;
-use crate::renderer::css::css_token::*;
 use crate::renderer::css::cssom::*;
+use crate::renderer::css::token::*;
 use crate::renderer::html::dom::*;
-use crate::renderer::html::html_token::*;
+use crate::renderer::html::token::*;
 use crate::renderer::render_tree::*;
 use alloc::rc::Rc;
 use alloc::string::String;

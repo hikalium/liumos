@@ -1,5 +1,5 @@
 pub mod dom;
-pub mod html_token;
+pub mod token;
 
 use alloc::string::String;
 

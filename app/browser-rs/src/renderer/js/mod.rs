@@ -1,2 +1,2 @@
 pub mod ast;
-pub mod js_token;
+pub mod token;

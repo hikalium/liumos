@@ -11,10 +11,10 @@ use alloc::string::String;
 use alloc::rc::Rc;
 use alloc::vec::Vec;
 use browser_rs::renderer::html::dom::HtmlParser;
-use browser_rs::renderer::html::html_token::HtmlTokenizer;
+use browser_rs::renderer::html::token::HtmlTokenizer;
 use browser_rs::renderer::js::ast::Node as AstNode;
 use browser_rs::renderer::js::ast::{JsParser, Program};
-use browser_rs::renderer::js::js_token::JsLexer;
+use browser_rs::renderer::js::token::JsLexer;
 use liumlib::*;
 
 #[cfg(test)]

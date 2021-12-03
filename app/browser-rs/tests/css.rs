@@ -10,10 +10,10 @@ use crate::alloc::string::ToString;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use browser_rs::renderer::css::css_token::CssTokenizer;
 use browser_rs::renderer::css::cssom::*;
+use browser_rs::renderer::css::token::CssTokenizer;
 use browser_rs::renderer::html::dom::HtmlParser;
-use browser_rs::renderer::html::html_token::HtmlTokenizer;
+use browser_rs::renderer::html::token::HtmlTokenizer;
 use liumlib::*;
 
 #[cfg(test)]
