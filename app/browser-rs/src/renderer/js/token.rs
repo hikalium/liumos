@@ -62,7 +62,7 @@ impl JsLexer {
                 if word.chars().nth(i).expect("failed to access to i-th char")
                     != self.input[self.pos + i]
                 {
-                    break;
+                    return None;
                 }
             }
             return Some(word.to_string());

@@ -146,32 +146,34 @@ impl JsParser {
     /// VariableStatement ::= "var" VariableDeclarationList ( ";" )?
     /// ExpressionStatement ::= Expression ( ";" )?
     fn statement(&mut self) -> Option<Rc<Node>> {
-        let t = match self.t.next() {
+        /*
+        // Peek a first token and decide the next step.
+        let t = match self.t.peek() {
             Some(token) => token,
-            None => return None,
+            None => return None;
         };
-        println!("t {:?}", t);
 
-        let mut expr;
-
-        match t {
+        let node = match t {
             JsToken::Keyword(keyword) => {
                 if keyword == "var" {
                     let declaration = self.variable_declaration();
+                    return declaration;
                 }
                 return None;
             }
-            _ => {
-                expr = self.expression();
-            }
-        }
+            _ => self.expression(),
+        };
         println!("t {:?}", t);
+        */
+
+        let expr = self.expression();
+        println!("expr {:?}", expr);
 
         let t = match self.t.next() {
             Some(token) => token,
             None => return None,
         };
-        println!("t {:?}", t);
+        println!("token {:?}", t);
 
         match t {
             JsToken::Punctuator(c) => match c {
@@ -180,8 +182,6 @@ impl JsParser {
             },
             _ => return expr,
         }
-
-        None
     }
 
     pub fn parse_ast(&mut self) -> Program {

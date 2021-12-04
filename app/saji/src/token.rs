@@ -41,6 +41,10 @@ impl JsLexer {
         let mut count = 0;
 
         loop {
+            if self.pos >= self.input.len() {
+                return num;
+            }
+
             let c = self.input[self.pos];
 
             match c {
@@ -62,8 +66,7 @@ impl JsLexer {
                 if word.chars().nth(i).expect("failed to access to i-th char")
                     != self.input[self.pos + i]
                 {
-                    println!("fooooooooooooooooooooooooooo");
-                    break;
+                    return None;
                 }
             }
             return Some(word.to_string());
@@ -75,6 +78,10 @@ impl JsLexer {
 
 impl Iterator for JsLexer {
     type Item = JsToken;
+
+    fn peek(&mut self) -> Option<Self::Item> {
+        None
+    }
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.pos >= self.input.len() {

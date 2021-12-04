@@ -54,6 +54,16 @@ pub struct Node {
 
 #[allow(dead_code)]
 impl Node {
+    fn new() -> Self {
+        Self {
+            kind: NodeKind::ExpressionStatement,
+            left: None,
+            right: None,
+            value: None,
+            operator: None,
+        }
+    }
+
     pub fn new_num_literal(value: u64) -> Self {
         Self {
             kind: NodeKind::NumericLiteral,
@@ -103,14 +113,14 @@ impl JsParser {
     }
 
     fn number(&mut self) -> Option<Rc<Node>> {
-        let t = match self.t.next() {
-            Some(token) => token,
+        let n = match self.t.next() {
+            Some(node) => node,
             None => return None,
         };
 
-        match t {
+        match n {
             JsToken::Number(value) => return Some(Rc::new(Node::new_num_literal(value))),
-            _ => unimplemented!("token {:?} is not supported", t),
+            _ => unimplemented!("token {:?} is not supported", n),
         }
     }
 
@@ -118,12 +128,12 @@ impl JsParser {
     fn expression(&mut self) -> Option<Rc<Node>> {
         let left = self.number();
 
-        let t = match self.t.next() {
-            Some(token) => token,
+        let n = match self.t.next() {
+            Some(node) => node,
             None => return None,
         };
 
-        match t {
+        match n {
             JsToken::Punctuator(c) => match c {
                 '+' | '-' => Some(Rc::new(Node::new_binary_expr(c, left, self.number()))),
                 _ => unimplemented!("`Punctuator` token with {} is not supported", c),
@@ -132,52 +142,23 @@ impl JsParser {
         }
     }
 
-    /// VariableDeclarationList ::= VariableDeclaration ( "," VariableDeclaration )*
-    /// VariableDeclaration ::= Identifier ( Initialiser )?
-    fn variable_declaration(&mut self) -> Option<Rc<Node>> {
-        None
-    }
-
     /// https://262.ecma-international.org/12.0/#prod-Statement
     /// Statement ::= ExpressionStatement
-    ///             | VariableStatement
-    ///
-    /// VariableStatement ::= "var" VariableDeclarationList ( ";" )?
-    /// ExpressionStatement ::= Expression ( ";" )? 
     fn statement(&mut self) -> Option<Rc<Node>> {
-        let t = match self.t.next() {
-            Some(token) => token,
+        let expr = self.expression();
+
+        let n = match self.t.next() {
+            Some(node) => node,
             None => return None,
         };
 
-        let mut expr;
-
-        match t {
-            JsToken::Keyword(keyword) => {
-                if keyword == "var" {
-                    let declaration = self.variable_declaration();
-                }
-                return None;
-            }
-            _ => {
-                expr = self.expression();
-            }
-        }
-
-        let t = match self.t.next() {
-            Some(token) => token,
-            None => return None,
-        };
-
-        match t {
+        match n {
             JsToken::Punctuator(c) => match c {
                 ';' => return expr,
                 _ => unimplemented!("`Punctuator` token with {} is not supported", c),
             },
             _ => return expr,
         }
-
-        None
     }
 
     pub fn parse_ast(&mut self) -> Program {
