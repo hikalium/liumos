@@ -19,6 +19,7 @@ pub enum JsToken {
     Punctuator(char),
     /// https://262.ecma-international.org/12.0/#sec-literals-numeric-literals
     Number(u64),
+    StringLiteral(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -38,7 +39,6 @@ impl JsLexer {
 
     fn consume_number(&mut self) -> u64 {
         let mut num = 0;
-        let mut count = 0;
 
         loop {
             if self.pos >= self.input.len() {
@@ -49,8 +49,7 @@ impl JsLexer {
 
             match c {
                 '0'..='9' => {
-                    num = num * count * 10 + (c.to_digit(10).unwrap() as u64);
-                    count += 1;
+                    num = num * 10 + (c.to_digit(10).unwrap() as u64);
                     self.pos += 1;
                 }
                 _ => break,
@@ -58,6 +57,25 @@ impl JsLexer {
         }
 
         return num;
+    }
+
+    fn consume_string(&mut self) -> String {
+        let mut result = String::new();
+        self.pos += 1;
+
+        loop {
+            if self.pos >= self.input.len() {
+                return result;
+            }
+
+            if self.input[self.pos] == '"' {
+                self.pos += 1;
+                return result;
+            }
+
+            result.push(self.input[self.pos]);
+            self.pos += 1;
+        }
     }
 
     fn check_reserved_word(&self) -> Option<String> {
@@ -101,6 +119,7 @@ impl Iterator for JsLexer {
                 self.pos += 1;
                 t
             }
+            '"' => JsToken::StringLiteral(self.consume_string()),
             '0'..='9' => JsToken::Number(self.consume_number()),
             _ => unimplemented!("char {} is not supported yet", c),
         };
