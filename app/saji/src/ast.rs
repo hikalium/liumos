@@ -83,6 +83,10 @@ impl Node {
         &self.kind
     }
 
+    pub fn value(&self) -> &Option<u64> {
+        &self.value
+    }
+
     pub fn left(&self) -> &Option<Rc<Node>> {
         &self.left
     }
