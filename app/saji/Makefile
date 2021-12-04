@@ -28,6 +28,9 @@ dump : $(TARGET_BIN)
 clippy :
 	$(CARGO) clippy $(CARGO_ARGS)
 
+saji:
+	$(CARGO) run $(CARGO_ARGS) -- $(ARGS)
+
 ifeq ($(OSNAME),Darwin)
 test :
 	echo "Skipping test for $(PWD) because we can't run the binary on this host." ;
