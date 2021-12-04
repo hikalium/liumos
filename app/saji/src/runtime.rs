@@ -3,5 +3,7 @@ use crate::ast::Program;
 use liumlib::*;
 
 pub fn execute(program: &Program) {
-    println!("program {:?}", program);
+    for stmt in program.body() {
+        println!("statement {:?}", stmt);
+    }
 }

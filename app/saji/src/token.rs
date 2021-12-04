@@ -74,14 +74,14 @@ impl JsLexer {
 
         None
     }
+
+    fn peek(&mut self) -> Option<JsToken> {
+        None
+    }
 }
 
 impl Iterator for JsLexer {
     type Item = JsToken;
-
-    fn peek(&mut self) -> Option<Self::Item> {
-        None
-    }
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.pos >= self.input.len() {
@@ -104,7 +104,6 @@ impl Iterator for JsLexer {
             '0'..='9' => JsToken::Number(self.consume_number()),
             _ => unimplemented!("char {} is not supported yet", c),
         };
-
         Some(token)
     }
 }

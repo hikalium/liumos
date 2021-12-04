@@ -167,13 +167,11 @@ impl JsParser {
         */
 
         let expr = self.expression();
-        println!("expr {:?}", expr);
 
         let t = match self.t.next() {
             Some(token) => token,
-            None => return None,
+            None => return expr,
         };
-        println!("token {:?}", t);
 
         match t {
             JsToken::Punctuator(c) => match c {
