@@ -9,9 +9,9 @@ extern crate alloc;
 use crate::alloc::string::ToString;
 use alloc::vec::Vec;
 use liumlib::*;
-use saji::ast::JsParser;
+use saji::ast::Parser;
 use saji::runtime::{execute_for_test, RuntimeValue};
-use saji::token::JsLexer;
+use saji::token::Lexer;
 
 #[cfg(test)]
 pub trait Testable {
@@ -41,10 +41,10 @@ pub fn test_runner(tests: &[&dyn Testable]) {
 #[macro_export]
 macro_rules! run_test {
     ($input:expr, $expected:expr) => {
-        let lexer = JsLexer::new($input);
+        let lexer = Lexer::new($input);
         println!("lexer {:?}", lexer);
 
-        let mut parser = JsParser::new(lexer);
+        let mut parser = Parser::new(lexer);
         let ast = parser.parse_ast();
         println!("ast {:?}", ast);
 

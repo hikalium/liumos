@@ -1,7 +1,7 @@
 //! https://github.com/estree/estree
 //! https://astexplorer.net/
 
-use crate::token::{JsLexer, JsToken};
+use crate::token::{Lexer, Token};
 use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -60,13 +60,13 @@ impl Node {
     }
 }
 
-pub struct JsParser {
-    t: JsLexer,
+pub struct Parser {
+    t: Lexer,
 }
 
 #[allow(dead_code)]
-impl JsParser {
-    pub fn new(t: JsLexer) -> Self {
+impl Parser {
+    pub fn new(t: Lexer) -> Self {
         Self { t }
     }
 
@@ -79,8 +79,8 @@ impl JsParser {
         println!("token {:?}", t);
 
         match t {
-            JsToken::Number(value) => return Some(Rc::new(Node::NumericLiteral(value))),
-            JsToken::StringLiteral(s) => return Some(Rc::new(Node::StringLiteral(s))),
+            Token::Number(value) => return Some(Rc::new(Node::NumericLiteral(value))),
+            Token::StringLiteral(s) => return Some(Rc::new(Node::StringLiteral(s))),
             _ => unimplemented!("token {:?} is not supported", t),
         }
     }
@@ -97,7 +97,7 @@ impl JsParser {
         println!("token {:?}", t);
 
         match t {
-            JsToken::Punctuator(c) => match c {
+            Token::Punctuator(c) => match c {
                 '+' | '-' => Some(Rc::new(Node::new_binary_expr(c, left, self.literal()))),
                 _ => unimplemented!("`Punctuator` token with {} is not supported", c),
             },
@@ -128,7 +128,7 @@ impl JsParser {
         println!("token {:?}", t);
 
         match t {
-            JsToken::Punctuator(c) => match c {
+            Token::Punctuator(c) => match c {
                 ';' => return expr,
                 _ => unimplemented!("`Punctuator` token with {} is not supported", c),
             },

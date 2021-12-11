@@ -10,7 +10,7 @@ static RESERVED_WORDS: [&str; 1] = ["var"];
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum JsToken {
+pub enum Token {
     /// https://262.ecma-international.org/12.0/#sec-identifier-names
     Identifier(String),
     /// https://262.ecma-international.org/12.0/#sec-keywords-and-reserved-words
@@ -24,13 +24,13 @@ pub enum JsToken {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct JsLexer {
+pub struct Lexer {
     pos: usize,
     input: Vec<char>,
 }
 
 #[allow(dead_code)]
-impl JsLexer {
+impl Lexer {
     pub fn new(js: String) -> Self {
         Self {
             pos: 0,
@@ -94,7 +94,7 @@ impl JsLexer {
         None
     }
 
-    fn peek(&mut self) -> Option<JsToken> {
+    fn peek(&mut self) -> Option<Token> {
         let start_position = self.pos;
 
         let token = self.get_next_token();
@@ -105,13 +105,13 @@ impl JsLexer {
         token
     }
 
-    fn get_next_token(&mut self) -> Option<JsToken> {
+    fn get_next_token(&mut self) -> Option<Token> {
         if self.pos >= self.input.len() {
             return None;
         }
 
         match self.check_reserved_word() {
-            Some(keyword) => return Some(JsToken::Keyword(keyword)),
+            Some(keyword) => return Some(Token::Keyword(keyword)),
             None => {}
         }
 
@@ -119,20 +119,20 @@ impl JsLexer {
 
         let token = match c {
             '+' | '-' | ';' => {
-                let t = JsToken::Punctuator(c);
+                let t = Token::Punctuator(c);
                 self.pos += 1;
                 t
             }
-            '"' => JsToken::StringLiteral(self.consume_string()),
-            '0'..='9' => JsToken::Number(self.consume_number()),
+            '"' => Token::StringLiteral(self.consume_string()),
+            '0'..='9' => Token::Number(self.consume_number()),
             _ => unimplemented!("char {} is not supported yet", c),
         };
         Some(token)
     }
 }
 
-impl Iterator for JsLexer {
-    type Item = JsToken;
+impl Iterator for Lexer {
+    type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.get_next_token()
