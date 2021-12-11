@@ -4,26 +4,27 @@ use crate::ast::Program;
 use alloc::format;
 use alloc::rc::Rc;
 use alloc::string::String;
+use alloc::vec::Vec;
 use core::borrow::Borrow;
 #[allow(unused_imports)]
 use liumlib::*;
 
-#[derive(Debug, Clone)]
-enum Object {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RuntimeValue {
     Number(u64),
     StringLiteral(String),
 }
 
-impl Object {
+impl RuntimeValue {
     fn to_string(&self) -> String {
         match self {
-            Object::Number(value) => format!("{}", value),
-            Object::StringLiteral(value) => value.to_string(),
+            RuntimeValue::Number(value) => format!("{}", value),
+            RuntimeValue::StringLiteral(value) => value.to_string(),
         }
     }
 }
 
-fn eval(node: &Option<Rc<Node>>) -> Result<Object, String> {
+fn eval(node: &Option<Rc<Node>>) -> Result<RuntimeValue, String> {
     let node = match node {
         Some(n) => n,
         None => return Err("node is None".to_string()),
@@ -46,20 +47,20 @@ fn eval(node: &Option<Rc<Node>>) -> Result<Object, String> {
 
             // https://tc39.es/ecma262/multipage/ecmascript-language-expressions.html#sec-applystringornumericbinaryoperator
             if *operator == '+' {
-                if let (Object::Number(left_num), Object::Number(right_num)) =
+                if let (RuntimeValue::Number(left_num), RuntimeValue::Number(right_num)) =
                     (left_value.clone(), right_value.clone())
                 {
-                    return Ok(Object::Number(left_num + right_num));
+                    return Ok(RuntimeValue::Number(left_num + right_num));
                 }
-                return Ok(Object::StringLiteral(
+                return Ok(RuntimeValue::StringLiteral(
                     left_value.to_string() + &right_value.to_string(),
                 ));
             } else {
                 return Err(format!("unsupported operator {:?}", operator));
             }
         }
-        Node::NumericLiteral(value) => Ok(Object::Number(*value)),
-        Node::StringLiteral(value) => Ok(Object::StringLiteral(value.to_string())),
+        Node::NumericLiteral(value) => Ok(RuntimeValue::Number(*value)),
+        Node::StringLiteral(value) => Ok(RuntimeValue::StringLiteral(value.to_string())),
         _ => return Err(format!("unsupported node {:?}", node)),
     }
 }
@@ -75,4 +76,18 @@ pub fn execute(program: &Program) {
     }
 
     println!("----------------------------");
+}
+
+#[allow(dead_code)]
+pub fn execute_for_test(program: &Program) -> Vec<RuntimeValue> {
+    let mut results = Vec::new();
+
+    for node in program.body() {
+        match eval(&Some(node.clone())) {
+            Ok(result) => results.push(result),
+            Err(e) => println!("invalid expression {:?}", e),
+        }
+    }
+
+    results
 }

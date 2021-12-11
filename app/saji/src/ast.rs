@@ -8,13 +8,11 @@ use alloc::vec::Vec;
 #[allow(unused_imports)]
 use liumlib::*;
 
-#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Program {
     body: Vec<Rc<Node>>,
 }
 
-#[allow(dead_code)]
 impl Program {
     pub fn new() -> Self {
         Self { body: Vec::new() }
@@ -62,7 +60,6 @@ impl Node {
     }
 }
 
-#[allow(dead_code)]
 pub struct JsParser {
     t: JsLexer,
 }
