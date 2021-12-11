@@ -17,9 +17,10 @@ pub enum JsToken {
     Keyword(String),
     /// https://262.ecma-international.org/12.0/#sec-punctuators
     Punctuator(char),
+    /// https://262.ecma-international.org/12.0/#sec-literals-string-literals
+    StringLiteral(String),
     /// https://262.ecma-international.org/12.0/#sec-literals-numeric-literals
     Number(u64),
-    StringLiteral(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -94,14 +95,17 @@ impl JsLexer {
     }
 
     fn peek(&mut self) -> Option<JsToken> {
-        None
+        let start_position = self.pos;
+
+        let token = self.get_next_token();
+
+        // Restore the start position to avoid consuming input.
+        self.pos = start_position;
+
+        token
     }
-}
 
-impl Iterator for JsLexer {
-    type Item = JsToken;
-
-    fn next(&mut self) -> Option<Self::Item> {
+    fn get_next_token(&mut self) -> Option<JsToken> {
         if self.pos >= self.input.len() {
             return None;
         }
@@ -124,5 +128,13 @@ impl Iterator for JsLexer {
             _ => unimplemented!("char {} is not supported yet", c),
         };
         Some(token)
+    }
+}
+
+impl Iterator for JsLexer {
+    type Item = JsToken;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.get_next_token()
     }
 }
