@@ -62,6 +62,7 @@ fn eval(node: &Option<Rc<Node>>) -> Result<RuntimeValue, String> {
         }
         Node::NumericLiteral(value) => Ok(RuntimeValue::Number(*value)),
         Node::StringLiteral(value) => Ok(RuntimeValue::StringLiteral(value.to_string())),
+        _ => unimplemented!("node {:?} is not supported", node),
     }
 }
 

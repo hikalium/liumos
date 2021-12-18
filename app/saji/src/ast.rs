@@ -27,10 +27,18 @@ impl Program {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Node {
     /// https://github.com/estree/estree/blob/master/es5.md#expressionstatement
     ExpressionStatement(Option<Rc<Node>>),
+    /// https://github.com/estree/estree/blob/master/es5.md#variabledeclaration
+    VariableDeclaration(Vec<Option<Rc<Node>>>),
+    /// https://github.com/estree/estree/blob/master/es5.md#variabledeclarator
+    VariableDeclarator {
+        id: Option<Rc<Node>>,
+        init: Option<Rc<Node>>,
+    },
     /// https://github.com/estree/estree/blob/master/es5.md#binaryexpression
     BinaryExpression {
         operator: char,
@@ -60,6 +68,10 @@ impl Node {
 
     pub fn new_expression_statement(expression: Option<Rc<Node>>) -> Self {
         Node::ExpressionStatement(expression)
+    }
+
+    pub fn new_variable_declaration(id: Option<Rc<Node>>, init: Option<Rc<Node>>) -> Self {
+        Node::VariableDeclarator { id, init }
     }
 }
 
@@ -106,10 +118,56 @@ impl Parser {
         }
     }
 
+    /// Identifier ::= <IDENTIFIER_NAME>
+    fn identifier(&mut self) -> Option<Rc<Node>> {
+        let t = match self.t.next() {
+            Some(token) => token,
+            None => return None,
+        };
+        println!("token {:?}", t);
+
+        match t {
+            // TODO: support identifier
+            Token::Identifier(_id) => return None,
+            _ => return None,
+        }
+    }
+
+    /// Initialiser ::= "=" AssignmentExpression
+    fn initialiser(&mut self) -> Option<Rc<Node>> {
+        let t = match self.t.next() {
+            Some(token) => token,
+            None => return None,
+        };
+        println!("token {:?}", t);
+
+        match t {
+            // TODO: support assignment expression
+            _ => return None,
+        }
+    }
+
     /// VariableDeclarationList ::= VariableDeclaration ( "," VariableDeclaration )*
     /// VariableDeclaration ::= Identifier ( Initialiser )?
     fn variable_declaration(&mut self) -> Option<Rc<Node>> {
-        None
+        let ident = self.identifier();
+
+        let t = match self.t.next() {
+            Some(token) => token,
+            None => return None,
+        };
+        println!("token {:?}", t);
+
+        match t {
+            Token::Punctuator(c) => match c {
+                '=' => Some(Rc::new(Node::new_variable_declaration(
+                    ident,
+                    self.initialiser(),
+                ))),
+                _ => unimplemented!("`Punctuator` token with {} is not supported", c),
+            },
+            _ => Some(Rc::new(Node::new_variable_declaration(ident, None))),
+        }
     }
 
     /// https://262.ecma-international.org/12.0/#prod-Statement
