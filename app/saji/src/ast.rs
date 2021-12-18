@@ -27,11 +27,10 @@ impl Program {
     }
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Node {
     /// https://github.com/estree/estree/blob/master/es5.md#expressionstatement
-    ExpressionStatement,
+    ExpressionStatement(Option<Rc<Node>>),
     /// https://github.com/estree/estree/blob/master/es5.md#binaryexpression
     BinaryExpression {
         operator: char,
@@ -58,6 +57,10 @@ impl Node {
             right,
         }
     }
+
+    pub fn new_expression_statement(expression: Option<Rc<Node>>) -> Self {
+        Node::ExpressionStatement(expression)
+    }
 }
 
 pub struct Parser {
@@ -75,7 +78,6 @@ impl Parser {
             Some(token) => token,
             None => return None,
         };
-
         println!("token {:?}", t);
 
         match t {
@@ -93,7 +95,6 @@ impl Parser {
             Some(token) => token,
             None => return None,
         };
-
         println!("token {:?}", t);
 
         match t {
@@ -132,15 +133,17 @@ impl Parser {
 
                 let t = match self.t.next() {
                     Some(token) => token,
-                    None => return expr,
+                    None => return Some(Rc::new(Node::new_expression_statement(expr))),
                 };
+
+                println!("token {:?}", t);
 
                 match t {
                     Token::Punctuator(c) => match c {
-                        ';' => return expr,
+                        ';' => return Some(Rc::new(Node::new_expression_statement(expr))),
                         _ => unimplemented!("`Punctuator` token with {} is not supported", c),
                     },
-                    _ => return expr,
+                    _ => return Some(Rc::new(Node::new_expression_statement(expr))),
                 }
             }
         }

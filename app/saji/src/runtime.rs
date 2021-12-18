@@ -31,6 +31,7 @@ fn eval(node: &Option<Rc<Node>>) -> Result<RuntimeValue, String> {
     };
 
     match node.borrow() {
+        Node::ExpressionStatement(expr) => return eval(&expr),
         Node::BinaryExpression {
             operator,
             left,
@@ -61,7 +62,6 @@ fn eval(node: &Option<Rc<Node>>) -> Result<RuntimeValue, String> {
         }
         Node::NumericLiteral(value) => Ok(RuntimeValue::Number(*value)),
         Node::StringLiteral(value) => Ok(RuntimeValue::StringLiteral(value.to_string())),
-        _ => return Err(format!("unsupported node {:?}", node)),
     }
 }
 
