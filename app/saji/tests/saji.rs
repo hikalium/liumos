@@ -84,3 +84,13 @@ fn add_number_and_string() {
 
     run_test!("1+\"2\"".to_string(), &expected);
 }
+
+/*
+#[test_case]
+fn variable_declaration() {
+    let mut expected = Vec::new();
+    expected.push(RuntimeValue::StringLiteral("12".to_string()));
+
+    run_test!("var a=42;".to_string(), &expected);
+}
+*/

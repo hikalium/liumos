@@ -94,7 +94,7 @@ impl Lexer {
         None
     }
 
-    fn peek(&mut self) -> Option<Token> {
+    pub fn peek(&mut self) -> Option<Token> {
         let start_position = self.pos;
 
         let token = self.get_next_token();

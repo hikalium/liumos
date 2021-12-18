@@ -118,21 +118,31 @@ impl Parser {
     /// VariableStatement ::= "var" VariableDeclarationList ( ";" )?
     /// ExpressionStatement ::= Expression ( ";" )?
     fn statement(&mut self) -> Option<Rc<Node>> {
-        let expr = self.expression();
-
-        let t = match self.t.next() {
-            Some(token) => token,
-            None => return expr,
+        let t = match self.t.peek() {
+            Some(t) => t,
+            None => return None,
         };
 
-        println!("token {:?}", t);
-
         match t {
-            Token::Punctuator(c) => match c {
-                ';' => return expr,
-                _ => unimplemented!("`Punctuator` token with {} is not supported", c),
-            },
-            _ => return expr,
+            Token::Keyword(_keyword) => {
+                return self.variable_declaration();
+            }
+            _ => {
+                let expr = self.expression();
+
+                let t = match self.t.next() {
+                    Some(token) => token,
+                    None => return expr,
+                };
+
+                match t {
+                    Token::Punctuator(c) => match c {
+                        ';' => return expr,
+                        _ => unimplemented!("`Punctuator` token with {} is not supported", c),
+                    },
+                    _ => return expr,
+                }
+            }
         }
     }
 
