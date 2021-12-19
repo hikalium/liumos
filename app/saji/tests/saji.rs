@@ -10,7 +10,7 @@ use crate::alloc::string::ToString;
 use alloc::vec::Vec;
 use liumlib::*;
 use saji::ast::Parser;
-use saji::runtime::{execute_for_test, RuntimeValue};
+use saji::runtime::{Runtime, RuntimeValue};
 use saji::token::Lexer;
 
 #[cfg(test)]
@@ -48,7 +48,13 @@ macro_rules! run_test {
         let ast = parser.parse_ast();
         println!("ast {:?}", ast);
 
-        let result = execute_for_test(&ast);
+        let mut runtime = Runtime::new();
+        let result = runtime.execute_for_test(&ast);
+
+        assert!($expected.len() == result.len());
+        if $expected.len() == 0 {
+            return;
+        }
 
         assert!($expected[0] == result[0]);
     };
@@ -85,12 +91,9 @@ fn add_number_and_string() {
     run_test!("1+\"2\"".to_string(), &expected);
 }
 
-/*
 #[test_case]
 fn variable_declaration() {
-    let mut expected = Vec::new();
-    expected.push(RuntimeValue::StringLiteral("12".to_string()));
+    let expected = Vec::<RuntimeValue>::new();
 
     run_test!("var a=42;".to_string(), &expected);
 }
-*/

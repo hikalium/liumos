@@ -79,6 +79,24 @@ impl Lexer {
         }
     }
 
+    fn consume_identifier(&mut self) -> String {
+        let mut result = String::new();
+
+        loop {
+            if self.pos >= self.input.len() {
+                return result;
+            }
+
+            // https://262.ecma-international.org/12.0/#prod-IdentifierPart
+            if self.input[self.pos].is_ascii_alphanumeric() || self.input[self.pos] == '$' {
+                result.push(self.input[self.pos]);
+                self.pos += 1;
+            } else {
+                return result;
+            }
+        }
+    }
+
     fn check_reserved_word(&self) -> Option<String> {
         for word in RESERVED_WORDS {
             for i in 0..word.len() {
@@ -111,20 +129,32 @@ impl Lexer {
         }
 
         match self.check_reserved_word() {
-            Some(keyword) => return Some(Token::Keyword(keyword)),
+            Some(keyword) => {
+                self.pos += keyword.len();
+                let token = Some(Token::Keyword(keyword));
+                return token;
+            }
             None => {}
         }
 
-        let c = self.input[self.pos];
+        let mut c = self.input[self.pos];
+
+        // skip a white space
+        while c == ' ' {
+            self.pos += 1;
+            c = self.input[self.pos];
+        }
 
         let token = match c {
-            '+' | '-' | ';' => {
+            '+' | '-' | ';' | '=' => {
                 let t = Token::Punctuator(c);
                 self.pos += 1;
                 t
             }
             '"' => Token::StringLiteral(self.consume_string()),
             '0'..='9' => Token::Number(self.consume_number()),
+            // https://262.ecma-international.org/12.0/#prod-IdentifierStart
+            'a'..='z' | 'A'..='Z' | '_' | '$' => Token::Identifier(self.consume_identifier()),
             _ => unimplemented!("char {} is not supported yet", c),
         };
         Some(token)

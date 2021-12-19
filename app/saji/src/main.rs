@@ -10,7 +10,7 @@ extern crate alloc;
 
 use crate::alloc::string::ToString;
 use crate::ast::Parser;
-use crate::runtime::execute;
+use crate::runtime::Runtime;
 use crate::token::Lexer;
 use liumlib::*;
 
@@ -29,5 +29,6 @@ fn main() {
     let ast = parser.parse_ast();
     println!("ast {:?}", ast);
 
-    execute(&ast);
+    let mut runtime = Runtime::new();
+    runtime.execute(&ast);
 }

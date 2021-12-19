@@ -45,6 +45,9 @@ pub enum Node {
         left: Option<Rc<Node>>,
         right: Option<Rc<Node>>,
     },
+    /// https://github.com/estree/estree/blob/master/es5.md#identifier
+    /// https://262.ecma-international.org/12.0/#prod-Identifier
+    Identifier(String),
     /// https://github.com/estree/estree/blob/master/es5.md#literal
     /// https://262.ecma-international.org/12.0/#prod-NumericLiteral
     NumericLiteral(u64),
@@ -58,20 +61,39 @@ impl Node {
         operator: char,
         left: Option<Rc<Node>>,
         right: Option<Rc<Node>>,
-    ) -> Self {
-        Node::BinaryExpression {
+    ) -> Option<Rc<Self>> {
+        Some(Rc::new(Node::BinaryExpression {
             operator,
             left,
             right,
-        }
+        }))
     }
 
-    pub fn new_expression_statement(expression: Option<Rc<Node>>) -> Self {
-        Node::ExpressionStatement(expression)
+    pub fn new_expression_statement(expression: Option<Rc<Node>>) -> Option<Rc<Self>> {
+        Some(Rc::new(Node::ExpressionStatement(expression)))
     }
 
-    pub fn new_variable_declaration(id: Option<Rc<Node>>, init: Option<Rc<Node>>) -> Self {
-        Node::VariableDeclarator { id, init }
+    pub fn new_variable_declarator(
+        id: Option<Rc<Node>>,
+        init: Option<Rc<Node>>,
+    ) -> Option<Rc<Self>> {
+        Some(Rc::new(Node::VariableDeclarator { id, init }))
+    }
+
+    pub fn new_variable_declaration(declarations: Vec<Option<Rc<Node>>>) -> Option<Rc<Self>> {
+        Some(Rc::new(Node::VariableDeclaration(declarations)))
+    }
+
+    pub fn new_identifier(name: String) -> Option<Rc<Self>> {
+        Some(Rc::new(Node::Identifier(name)))
+    }
+
+    pub fn new_numeric_literal(value: u64) -> Option<Rc<Self>> {
+        Some(Rc::new(Node::NumericLiteral(value)))
+    }
+
+    pub fn new_string_literal(value: String) -> Option<Rc<Self>> {
+        Some(Rc::new(Node::StringLiteral(value)))
     }
 }
 
@@ -90,11 +112,11 @@ impl Parser {
             Some(token) => token,
             None => return None,
         };
-        println!("token {:?}", t);
+        println!("literal: token {:?}", t);
 
         match t {
-            Token::Number(value) => return Some(Rc::new(Node::NumericLiteral(value))),
-            Token::StringLiteral(s) => return Some(Rc::new(Node::StringLiteral(s))),
+            Token::Number(value) => Node::new_numeric_literal(value),
+            Token::StringLiteral(value) => Node::new_string_literal(value),
             _ => unimplemented!("token {:?} is not supported", t),
         }
     }
@@ -107,11 +129,12 @@ impl Parser {
             Some(token) => token,
             None => return None,
         };
-        println!("token {:?}", t);
+        println!("expression: token {:?}", t);
 
         match t {
             Token::Punctuator(c) => match c {
-                '+' | '-' => Some(Rc::new(Node::new_binary_expr(c, left, self.literal()))),
+                '+' | '-' => Node::new_binary_expr(c, left, self.literal()),
+                ';' => left,
                 _ => unimplemented!("`Punctuator` token with {} is not supported", c),
             },
             _ => None,
@@ -124,11 +147,10 @@ impl Parser {
             Some(token) => token,
             None => return None,
         };
-        println!("token {:?}", t);
+        println!("identifier: token {:?}", t);
 
         match t {
-            // TODO: support identifier
-            Token::Identifier(_id) => return None,
+            Token::Identifier(name) => Node::new_identifier(name),
             _ => return None,
         }
     }
@@ -139,11 +161,15 @@ impl Parser {
             Some(token) => token,
             None => return None,
         };
-        println!("token {:?}", t);
+
+        println!("initialiser: token {:?}", t);
 
         match t {
-            // TODO: support assignment expression
-            _ => return None,
+            Token::Punctuator(c) => match c {
+                '=' => self.expression(),
+                _ => None,
+            },
+            _ => None,
         }
     }
 
@@ -152,22 +178,13 @@ impl Parser {
     fn variable_declaration(&mut self) -> Option<Rc<Node>> {
         let ident = self.identifier();
 
-        let t = match self.t.next() {
-            Some(token) => token,
-            None => return None,
-        };
-        println!("token {:?}", t);
+        // TODO: support multiple declarator
+        let declarator = Node::new_variable_declarator(ident, self.initialiser());
 
-        match t {
-            Token::Punctuator(c) => match c {
-                '=' => Some(Rc::new(Node::new_variable_declaration(
-                    ident,
-                    self.initialiser(),
-                ))),
-                _ => unimplemented!("`Punctuator` token with {} is not supported", c),
-            },
-            _ => Some(Rc::new(Node::new_variable_declaration(ident, None))),
-        }
+        let mut declarations = Vec::new();
+        declarations.push(declarator);
+
+        Node::new_variable_declaration(declarations)
     }
 
     /// https://262.ecma-international.org/12.0/#prod-Statement
@@ -182,29 +199,28 @@ impl Parser {
             None => return None,
         };
 
-        match t {
-            Token::Keyword(_keyword) => {
-                return self.variable_declaration();
+        let node = match t {
+            Token::Keyword(keyword) => {
+                // consume "var".
+                assert!(self.t.next().is_some());
+
+                println!("statement: keyword {:?}", keyword);
+
+                self.variable_declaration()
             }
-            _ => {
-                let expr = self.expression();
+            _ => Node::new_expression_statement(self.expression()),
+        };
 
-                let t = match self.t.next() {
-                    Some(token) => token,
-                    None => return Some(Rc::new(Node::new_expression_statement(expr))),
-                };
-
-                println!("token {:?}", t);
-
-                match t {
-                    Token::Punctuator(c) => match c {
-                        ';' => return Some(Rc::new(Node::new_expression_statement(expr))),
-                        _ => unimplemented!("`Punctuator` token with {} is not supported", c),
-                    },
-                    _ => return Some(Rc::new(Node::new_expression_statement(expr))),
+        if let Some(t) = self.t.peek() {
+            if let Token::Punctuator(c) = t {
+                // consume ';'
+                if c == ';' {
+                    self.t.next();
                 }
             }
         }
+
+        node
     }
 
     pub fn parse_ast(&mut self) -> Program {

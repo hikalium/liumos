@@ -24,71 +24,90 @@ impl RuntimeValue {
     }
 }
 
-fn eval(node: &Option<Rc<Node>>) -> Result<RuntimeValue, String> {
-    let node = match node {
-        Some(n) => n,
-        None => return Err("node is None".to_string()),
-    };
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Runtime {
+    global_variables: Vec<(String, RuntimeValue)>,
+}
 
-    match node.borrow() {
-        Node::ExpressionStatement(expr) => return eval(&expr),
-        Node::BinaryExpression {
-            operator,
-            left,
-            right,
-        } => {
-            let left_value = match eval(&left) {
-                Ok(value) => value,
-                Err(e) => return Err(e),
-            };
-            let right_value = match eval(&right) {
-                Ok(value) => value,
-                Err(e) => return Err(e),
-            };
+impl Runtime {
+    pub fn new() -> Self {
+        Self {
+            global_variables: Vec::new(),
+        }
+    }
 
-            // https://tc39.es/ecma262/multipage/ecmascript-language-expressions.html#sec-applystringornumericbinaryoperator
-            if *operator == '+' {
-                if let (RuntimeValue::Number(left_num), RuntimeValue::Number(right_num)) =
-                    (left_value.clone(), right_value.clone())
-                {
-                    return Ok(RuntimeValue::Number(left_num + right_num));
+    fn eval(&mut self, node: &Option<Rc<Node>>) -> Option<RuntimeValue> {
+        let node = match node {
+            Some(n) => n,
+            None => return None,
+        };
+
+        match node.borrow() {
+            Node::VariableDeclaration(declarations) => {
+                for _declaration in declarations {
+                    // TODO: add global_variables
                 }
-                return Ok(RuntimeValue::StringLiteral(
-                    left_value.to_string() + &right_value.to_string(),
-                ));
-            } else {
-                return Err(format!("unsupported operator {:?}", operator));
+                None
+            }
+            Node::ExpressionStatement(expr) => return self.eval(&expr),
+            Node::BinaryExpression {
+                operator,
+                left,
+                right,
+            } => {
+                let left_value = match self.eval(&left) {
+                    Some(value) => value,
+                    None => return None,
+                };
+                let right_value = match self.eval(&right) {
+                    Some(value) => value,
+                    None => return None,
+                };
+
+                // https://tc39.es/ecma262/multipage/ecmascript-language-expressions.html#sec-applystringornumericbinaryoperator
+                if *operator == '+' {
+                    if let (RuntimeValue::Number(left_num), RuntimeValue::Number(right_num)) =
+                        (left_value.clone(), right_value.clone())
+                    {
+                        return Some(RuntimeValue::Number(left_num + right_num));
+                    }
+                    return Some(RuntimeValue::StringLiteral(
+                        left_value.to_string() + &right_value.to_string(),
+                    ));
+                } else {
+                    return None;
+                }
+            }
+            Node::NumericLiteral(value) => Some(RuntimeValue::Number(*value)),
+            Node::StringLiteral(value) => Some(RuntimeValue::StringLiteral(value.to_string())),
+            _ => unimplemented!("node {:?} is not supported", node),
+        }
+    }
+
+    pub fn execute(&mut self, program: &Program) {
+        println!("----------------------------");
+
+        for node in program.body() {
+            match self.eval(&Some(node.clone())) {
+                Some(result) => println!("={:?}", result),
+                None => {}
             }
         }
-        Node::NumericLiteral(value) => Ok(RuntimeValue::Number(*value)),
-        Node::StringLiteral(value) => Ok(RuntimeValue::StringLiteral(value.to_string())),
-        _ => unimplemented!("node {:?} is not supported", node),
+
+        println!("----------------------------");
     }
-}
 
-pub fn execute(program: &Program) {
-    println!("----------------------------");
+    #[allow(dead_code)]
+    pub fn execute_for_test(&mut self, program: &Program) -> Vec<RuntimeValue> {
+        let mut results = Vec::new();
 
-    for node in program.body() {
-        match eval(&Some(node.clone())) {
-            Ok(result) => println!("={:?}", result),
-            Err(e) => println!("invalid expression {:?}", e),
+        for node in program.body() {
+            match self.eval(&Some(node.clone())) {
+                Some(result) => results.push(result),
+                None => {}
+            }
         }
+
+        results
     }
-
-    println!("----------------------------");
-}
-
-#[allow(dead_code)]
-pub fn execute_for_test(program: &Program) -> Vec<RuntimeValue> {
-    let mut results = Vec::new();
-
-    for node in program.body() {
-        match eval(&Some(node.clone())) {
-            Ok(result) => results.push(result),
-            Err(e) => println!("invalid expression {:?}", e),
-        }
-    }
-
-    results
 }
