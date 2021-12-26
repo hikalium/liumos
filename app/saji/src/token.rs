@@ -157,6 +157,7 @@ impl Lexer {
             'a'..='z' | 'A'..='Z' | '_' | '$' => Token::Identifier(self.consume_identifier()),
             _ => unimplemented!("char {} is not supported yet", c),
         };
+
         Some(token)
     }
 }

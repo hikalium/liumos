@@ -104,7 +104,6 @@ impl Runtime {
             }
             Node::NumericLiteral(value) => Some(RuntimeValue::Number(*value)),
             Node::StringLiteral(value) => Some(RuntimeValue::StringLiteral(value.to_string())),
-            _ => unimplemented!("node {:?} is not supported", node),
         }
     }
 
@@ -119,19 +118,5 @@ impl Runtime {
         }
 
         println!("----------------------------");
-    }
-
-    #[allow(dead_code)]
-    pub fn execute_for_test(&mut self, program: &Program) -> Vec<RuntimeValue> {
-        let mut results = Vec::new();
-
-        for node in program.body() {
-            match self.eval(&Some(node.clone())) {
-                Some(result) => results.push(result),
-                None => {}
-            }
-        }
-
-        results
     }
 }
