@@ -26,7 +26,7 @@ impl RuntimeValue {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Runtime {
-    global_variables: Vec<(String, RuntimeValue)>,
+    pub global_variables: Vec<(String, Option<RuntimeValue>)>,
 }
 
 impl Runtime {
@@ -44,9 +44,23 @@ impl Runtime {
 
         match node.borrow() {
             Node::VariableDeclaration(declarations) => {
-                for _declaration in declarations {
-                    // TODO: add global_variables
+                for declaration in declarations {
+                    self.eval(&declaration);
                 }
+                None
+            }
+            Node::VariableDeclarator { id, init } => {
+                let id = match self.eval(&id) {
+                    Some(value) => match value {
+                        RuntimeValue::Number(n) => {
+                            unimplemented!("id should be string but got {:?}", n)
+                        }
+                        RuntimeValue::StringLiteral(s) => s,
+                    },
+                    None => return None,
+                };
+                let init = self.eval(&init);
+                self.global_variables.push((id, init));
                 None
             }
             Node::ExpressionStatement(expr) => return self.eval(&expr),
@@ -78,6 +92,7 @@ impl Runtime {
                     return None;
                 }
             }
+            Node::Identifier(value) => Some(RuntimeValue::StringLiteral(value.to_string())),
             Node::NumericLiteral(value) => Some(RuntimeValue::Number(*value)),
             Node::StringLiteral(value) => Some(RuntimeValue::StringLiteral(value.to_string())),
             _ => unimplemented!("node {:?} is not supported", node),

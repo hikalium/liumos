@@ -7,6 +7,7 @@
 extern crate alloc;
 
 use crate::alloc::string::ToString;
+use alloc::string::String;
 use alloc::vec::Vec;
 use liumlib::*;
 use saji::ast::Parser;
@@ -40,7 +41,7 @@ pub fn test_runner(tests: &[&dyn Testable]) {
 
 #[macro_export]
 macro_rules! run_test {
-    ($input:expr, $expected:expr) => {
+    ($input:expr, $expected_runtime_value:expr, $expected_global_variables:expr) => {
         let lexer = Lexer::new($input);
         println!("lexer {:?}", lexer);
 
@@ -49,14 +50,20 @@ macro_rules! run_test {
         println!("ast {:?}", ast);
 
         let mut runtime = Runtime::new();
-        let result = runtime.execute_for_test(&ast);
+        let result_values = runtime.execute_for_test(&ast);
 
-        assert!($expected.len() == result.len());
-        if $expected.len() == 0 {
+        assert!($expected_runtime_value.len() == result_values.len());
+        if $expected_runtime_value.len() == 0 {
             return;
         }
+        assert!($expected_runtime_value[0] == result_values[0]);
 
-        assert!($expected[0] == result[0]);
+        let result_global_variables = &runtime.global_variables;
+        assert!($expected_global_variables.len() == result_global_variables.len());
+        if $expected_global_variables.len() == 0 {
+            return;
+        }
+        assert!($expected_global_variables[0] == result_global_variables[0]);
     };
 }
 
@@ -69,31 +76,52 @@ fn main() {
 
 #[test_case]
 fn add_numbers() {
-    let mut expected = Vec::new();
-    expected.push(RuntimeValue::Number(3));
+    let mut expected_runtime_value = Vec::<RuntimeValue>::new();
+    let expected_global_variables = Vec::<(String, Option<RuntimeValue>)>::new();
+    expected_runtime_value.push(RuntimeValue::Number(3));
 
-    run_test!("1+2".to_string(), &expected);
+    run_test!(
+        "1+2".to_string(),
+        &expected_runtime_value,
+        &expected_global_variables
+    );
 }
 
 #[test_case]
 fn add_strings() {
-    let mut expected = Vec::new();
-    expected.push(RuntimeValue::StringLiteral("12".to_string()));
+    let mut expected_runtime_value = Vec::<RuntimeValue>::new();
+    let expected_global_variables = Vec::<(String, Option<RuntimeValue>)>::new();
+    expected_runtime_value.push(RuntimeValue::StringLiteral("12".to_string()));
 
-    run_test!("\"1\"+\"2\"".to_string(), &expected);
+    run_test!(
+        "\"1\"+\"2\"".to_string(),
+        &expected_runtime_value,
+        &expected_global_variables
+    );
 }
 
 #[test_case]
 fn add_number_and_string() {
-    let mut expected = Vec::new();
-    expected.push(RuntimeValue::StringLiteral("12".to_string()));
+    let mut expected_runtime_value = Vec::<RuntimeValue>::new();
+    let expected_global_variables = Vec::<(String, Option<RuntimeValue>)>::new();
+    expected_runtime_value.push(RuntimeValue::StringLiteral("12".to_string()));
 
-    run_test!("1+\"2\"".to_string(), &expected);
+    run_test!(
+        "1+\"2\"".to_string(),
+        &expected_runtime_value,
+        &expected_global_variables
+    );
 }
 
 #[test_case]
 fn variable_declaration() {
-    let expected = Vec::<RuntimeValue>::new();
+    let expected_runtime_value = Vec::<RuntimeValue>::new();
+    let mut expected_global_variables = Vec::<(String, Option<RuntimeValue>)>::new();
+    expected_global_variables.push(("a".to_string(), Some(RuntimeValue::Number(42))));
 
-    run_test!("var a=42;".to_string(), &expected);
+    run_test!(
+        "var a=42;".to_string(),
+        &expected_runtime_value,
+        &expected_global_variables
+    );
 }
