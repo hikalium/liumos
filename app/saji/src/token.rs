@@ -6,7 +6,7 @@ use alloc::vec::Vec;
 #[allow(unused_imports)]
 use liumlib::*;
 
-static RESERVED_WORDS: [&str; 1] = ["var"];
+static RESERVED_WORDS: [&str; 3] = ["var", "function", "return"];
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -97,16 +97,26 @@ impl Lexer {
         }
     }
 
+    fn contains(&self, keyword: &str) -> bool {
+        for i in 0..keyword.len() {
+            if keyword
+                .chars()
+                .nth(i)
+                .expect("failed to access to i-th char")
+                != self.input[self.pos + i]
+            {
+                return false;
+            }
+        }
+
+        true
+    }
+
     fn check_reserved_word(&self) -> Option<String> {
         for word in RESERVED_WORDS {
-            for i in 0..word.len() {
-                if word.chars().nth(i).expect("failed to access to i-th char")
-                    != self.input[self.pos + i]
-                {
-                    return None;
-                }
+            if self.contains(word) {
+                return Some(word.to_string());
             }
-            return Some(word.to_string());
         }
 
         None
@@ -145,7 +155,7 @@ impl Lexer {
         let c = self.input[self.pos];
 
         let token = match c {
-            '+' | '-' | ';' | '=' => {
+            '+' | '-' | ';' | '=' | '(' | ')' | '{' | '}' => {
                 let t = Token::Punctuator(c);
                 self.pos += 1;
                 t

@@ -43,6 +43,9 @@ impl Runtime {
         };
 
         match node.borrow() {
+            Node::ExpressionStatement(expr) => return self.eval(&expr),
+            Node::BlockStatement { body: _ } => return None,
+            Node::FunctionDeclaration { id: _, params: _, body: _ } => return None,
             Node::VariableDeclaration(declarations) => {
                 for declaration in declarations {
                     self.eval(&declaration);
@@ -63,7 +66,6 @@ impl Runtime {
                 self.global_variables.push((id, init));
                 None
             }
-            Node::ExpressionStatement(expr) => return self.eval(&expr),
             Node::BinaryExpression {
                 operator,
                 left,
@@ -108,15 +110,8 @@ impl Runtime {
     }
 
     pub fn execute(&mut self, program: &Program) {
-        println!("----------------------------");
-
         for node in program.body() {
-            match self.eval(&Some(node.clone())) {
-                Some(result) => println!("={:?}", result),
-                None => {}
-            }
+            self.eval(&Some(node.clone()));
         }
-
-        println!("----------------------------");
     }
 }

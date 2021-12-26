@@ -1,6 +1,7 @@
 //! https://github.com/estree/estree
 //! https://astexplorer.net/
 
+use crate::alloc::string::ToString;
 use crate::token::{Lexer, Token};
 use alloc::rc::Rc;
 use alloc::string::String;
@@ -32,6 +33,15 @@ impl Program {
 pub enum Node {
     /// https://github.com/estree/estree/blob/master/es5.md#expressionstatement
     ExpressionStatement(Option<Rc<Node>>),
+    /// https://github.com/estree/estree/blob/master/es5.md#blockstatement
+    BlockStatement { body: Vec<Option<Rc<Node>>> },
+    /// https://github.com/estree/estree/blob/master/es5.md#functions
+    /// https://github.com/estree/estree/blob/master/es5.md#functiondeclaration
+    FunctionDeclaration {
+        id: Option<Rc<Node>>,
+        params: Vec<Option<Rc<Node>>>,
+        body: Option<Rc<Node>>,
+    },
     /// https://github.com/estree/estree/blob/master/es5.md#variabledeclaration
     VariableDeclaration(Vec<Option<Rc<Node>>>),
     /// https://github.com/estree/estree/blob/master/es5.md#variabledeclarator
@@ -71,6 +81,18 @@ impl Node {
 
     pub fn new_expression_statement(expression: Option<Rc<Node>>) -> Option<Rc<Self>> {
         Some(Rc::new(Node::ExpressionStatement(expression)))
+    }
+
+    pub fn new_block_statement(body: Vec<Option<Rc<Node>>>) -> Option<Rc<Self>> {
+        Some(Rc::new(Node::BlockStatement { body }))
+    }
+
+    pub fn new_function_declaration(
+        id: Option<Rc<Node>>,
+        params: Vec<Option<Rc<Node>>>,
+        body: Option<Rc<Node>>,
+    ) -> Option<Rc<Self>> {
+        Some(Rc::new(Node::FunctionDeclaration { id, params, body }))
     }
 
     pub fn new_variable_declarator(
@@ -129,6 +151,11 @@ impl Parser {
             Token::Identifier(value) => Node::new_identifier(value),
             _ => unimplemented!("token {:?} is not supported", t),
         }
+    }
+
+    /// CallExpression ::= MemberExpression Arguments ( CallExpressionPart )*
+    fn call_expression(&mut self) -> Option<Rc<Node>> {
+        None
     }
 
     /// MemberExpression ::= ( ( FunctionExpression | PrimaryExpression ) ( MemberExpressionPart)* )
@@ -248,7 +275,7 @@ impl Parser {
             if let Token::Punctuator(c) = t {
                 // consume ';'
                 if c == ';' {
-                    self.t.next();
+                    assert!(self.t.next().is_some());
                 }
             }
         }
@@ -256,6 +283,91 @@ impl Parser {
         node
     }
 
+    /// FunctionBody ::= "{" ( SourceElements )? "}"
+    fn function_body(&mut self) -> Option<Rc<Node>> {
+        println!("function_body");
+        // consume '{'
+        match self.t.next() {
+            Some(t) => match t {
+                Token::Punctuator(c) => assert!(c == '{'),
+                _ => unimplemented!("function should have open curly blacket but got {:?}", t),
+            },
+            None => unimplemented!("function should have open curly blacket but got None"),
+        }
+
+        let mut body = Vec::new();
+        loop {
+            // loop until hits '}'
+            match self.t.peek() {
+                Some(t) => match t {
+                    Token::Punctuator(c) => {
+                        if c == '}' {
+                            // consume '}'
+                            assert!(self.t.next().is_some());
+                            return Node::new_block_statement(body);
+                        }
+                    }
+                    _ => {}
+                },
+                None => {}
+            }
+
+            body.push(self.source_element());
+        }
+    }
+
+    /// FunctionDeclaration ::= "function" Identifier ( "(" ( FormalParameterList )? ")" ) FunctionBody
+    fn function_declaration(&mut self) -> Option<Rc<Node>> {
+        println!("function_declaration");
+        let id = self.identifier();
+
+        // consume '('
+        match self.t.next() {
+            Some(t) => match t {
+                Token::Punctuator(c) => assert!(c == '('),
+                _ => unimplemented!("function should have `(` but got {:?}", t),
+            },
+            None => unimplemented!("function should have `(` but got None"),
+        }
+
+        // TODO: support parameters
+
+        // consume ')'
+        match self.t.next() {
+            Some(t) => match t {
+                Token::Punctuator(c) => assert!(c == ')'),
+                _ => unimplemented!("function should have `)` but got {:?}", t),
+            },
+            None => unimplemented!("function should have `)` but got None"),
+        }
+
+        Node::new_function_declaration(id, Vec::new(), self.function_body())
+    }
+
+    /// SourceElement ::= FunctionDeclaration | Statement
+    fn source_element(&mut self) -> Option<Rc<Node>> {
+        let t = match self.t.peek() {
+            Some(t) => t,
+            None => return None,
+        };
+
+        match t {
+            Token::Keyword(keyword) => {
+                if keyword == "function".to_string() {
+                    // consume "function".
+                    assert!(self.t.next().is_some());
+                    self.function_declaration()
+                } else {
+                    self.statement()
+                }
+            }
+            _ => self.statement(),
+        }
+    }
+
+    /// SourceElements ::= ( SourceElement )+
+    ///
+    /// Program ::= ( SourceElements )? <EOF>
     pub fn parse_ast(&mut self) -> Program {
         let mut program = Program::new();
 
@@ -266,13 +378,15 @@ impl Parser {
         let mut body = Vec::new();
 
         loop {
-            match self.statement() {
-                Some(node) => body.push(node),
-                None => break,
+            let node = self.source_element();
+
+            match node {
+                Some(n) => body.push(n),
+                None => {
+                    program.set_body(body);
+                    return program;
+                }
             }
         }
-
-        program.set_body(body);
-        program
     }
 }

@@ -33,7 +33,7 @@ where
 
 #[cfg(test)]
 pub fn test_runner(tests: &[&dyn Testable]) {
-    println!("Running {} tests in dom.rs", tests.len());
+    println!("Running {} tests in saji.rs", tests.len());
     for test in tests {
         test.run();
     }
@@ -155,3 +155,36 @@ var   c    = 3  + b;
         &expected_global_variables
     );
 }
+
+#[test_case]
+fn function_declaration() {
+    let expected_global_variables = Vec::<(String, Option<RuntimeValue>)>::new();
+
+    run_test!(
+        r#"
+function test() {
+    return 42;
+}"#
+        .to_string(),
+        &expected_global_variables
+    );
+}
+
+/*
+#[test_case]
+fn function_declaration_and_call() {
+    let mut expected_global_variables = Vec::<(String, Option<RuntimeValue>)>::new();
+    expected_global_variables.push(("a".to_string(), Some(RuntimeValue::Number(42))));
+
+    run_test!(
+        r#"
+function test() {
+    return 42;
+}
+
+var a=test();"#
+            .to_string(),
+        &expected_global_variables
+    );
+}
+*/
