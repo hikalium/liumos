@@ -139,8 +139,8 @@ impl Lexer {
 
         let mut c = self.input[self.pos];
 
-        // skip a white space
-        while c == ' ' {
+        // skip a white space and a new line
+        while c == ' ' || c == '\n' {
             self.pos += 1;
             c = self.input[self.pos];
         }

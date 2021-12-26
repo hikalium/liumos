@@ -51,6 +51,7 @@ macro_rules! run_test {
 
         let mut runtime = Runtime::new();
         let result_values = runtime.execute_for_test(&ast);
+        println!("result values {:?}", result_values);
 
         assert!($expected_runtime_value.len() == result_values.len());
         if $expected_runtime_value.len() == 0 {
@@ -59,6 +60,7 @@ macro_rules! run_test {
         assert!($expected_runtime_value[0] == result_values[0]);
 
         let result_global_variables = &runtime.global_variables;
+        println!("result global variables {:?}", result_global_variables);
         assert!($expected_global_variables.len() == result_global_variables.len());
         if $expected_global_variables.len() == 0 {
             return;
@@ -121,6 +123,23 @@ fn variable_declaration() {
 
     run_test!(
         "var a=42;".to_string(),
+        &expected_runtime_value,
+        &expected_global_variables
+    );
+}
+
+#[test_case]
+fn add_variable_and_number() {
+    let mut expected_runtime_value = Vec::<RuntimeValue>::new();
+    expected_runtime_value.push(RuntimeValue::Number(3));
+
+    let mut expected_global_variables = Vec::<(String, Option<RuntimeValue>)>::new();
+    expected_global_variables.push(("a".to_string(), Some(RuntimeValue::Number(1))));
+
+    run_test!(
+        r#"var a=1;
+a+2"#
+            .to_string(),
         &expected_runtime_value,
         &expected_global_variables
     );

@@ -92,7 +92,16 @@ impl Runtime {
                     return None;
                 }
             }
-            Node::Identifier(value) => Some(RuntimeValue::StringLiteral(value.to_string())),
+            Node::Identifier(name) => {
+                for (variable_name, runtime_value) in &self.global_variables {
+                    if name == variable_name && runtime_value.is_some() {
+                        return runtime_value.clone();
+                    }
+                }
+
+                // First time to evaluate this identifier.
+                Some(RuntimeValue::StringLiteral(name.to_string()))
+            }
             Node::NumericLiteral(value) => Some(RuntimeValue::Number(*value)),
             Node::StringLiteral(value) => Some(RuntimeValue::StringLiteral(value.to_string())),
             _ => unimplemented!("node {:?} is not supported", node),

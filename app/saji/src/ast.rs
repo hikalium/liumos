@@ -107,7 +107,16 @@ impl Parser {
         Self { t }
     }
 
-    fn literal(&mut self) -> Option<Rc<Node>> {
+    /// Literal ::= ( <DECIMAL_LITERAL> | <HEX_INTEGER_LITERAL> | <STRING_LITERAL> |
+    ///               <BOOLEAN_LITERAL> | <NULL_LITERAL> | <REGULAR_EXPRESSION_LITERAL> )
+    ///
+    /// PrimaryExpression ::= "this"
+    ///                     | ObjectLiteral
+    ///                     | ( "(" Expression ")" )
+    ///                     | Identifier
+    ///                     | ArrayLiteral
+    ///                     | Literal
+    fn primary_expression(&mut self) -> Option<Rc<Node>> {
         let t = match self.t.next() {
             Some(token) => token,
             None => return None,
@@ -117,13 +126,34 @@ impl Parser {
         match t {
             Token::Number(value) => Node::new_numeric_literal(value),
             Token::StringLiteral(value) => Node::new_string_literal(value),
+            Token::Identifier(value) => Node::new_identifier(value),
             _ => unimplemented!("token {:?} is not supported", t),
         }
     }
 
+    /// MemberExpression ::= ( ( FunctionExpression | PrimaryExpression ) ( MemberExpressionPart)* )
+    ///                    | AllocationExpression
+    /// LeftHandSideExpression ::= CallExpression
+    ///                          | MemberExpression
+    /// PostfixExpression ::= LeftHandSideExpression ( PostfixOperator )?
+    /// UnaryExpression ::= ( PostfixExpression | ( UnaryOperator UnaryExpression )+ )
+    /// MultiplicativeExpression ::= UnaryExpression ( MultiplicativeOperator UnaryExpression )*
     /// AdditiveExpression ::= MultiplicativeExpression ( AdditiveOperator MultiplicativeExpression )*
+    /// ShiftExpression ::= AdditiveExpression ( ShiftOperator AdditiveExpression )*
+    /// RelationalExpression ::= ShiftExpression ( RelationalOperator ShiftExpression )*
+    /// EqualityExpression  ::= RelationalExpression ( EqualityOperator RelationalExpression )*
+    /// BitwiseANDExpression ::= EqualityExpression ( BitwiseANDOperator EqualityExpression )*
+    /// BitwiseXORExpression ::= BitwiseANDExpression ( BitwiseXOROperator BitwiseANDExpression )*
+    /// BitwiseORExpression ::= BitwiseXORExpression ( BitwiseOROperator BitwiseXORExpression )*
+    /// LogicalANDExpression ::= BitwiseORExpression ( LogicalANDOperator BitwiseORExpression )*
+    /// LogicalORExpression ::= LogicalANDExpression ( LogicalOROperator LogicalANDExpression )*
+    /// ConditionalExpression ::= LogicalORExpression ( "?" AssignmentExpression ":" AssignmentExpression )?
+    /// AssignmentExpression ::= ( LeftHandSideExpression AssignmentOperator AssignmentExpression
+    ///                          | ConditionalExpression )
+    ///
+    /// Expression ::= AssignmentExpression ( "," AssignmentExpression )*
     fn expression(&mut self) -> Option<Rc<Node>> {
-        let left = self.literal();
+        let left = self.primary_expression();
 
         let t = match self.t.next() {
             Some(token) => token,
@@ -133,7 +163,8 @@ impl Parser {
 
         match t {
             Token::Punctuator(c) => match c {
-                '+' | '-' => Node::new_binary_expr(c, left, self.literal()),
+                // AdditiveOperator
+                '+' | '-' => Node::new_binary_expr(c, left, self.primary_expression()),
                 ';' => left,
                 _ => unimplemented!("`Punctuator` token with {} is not supported", c),
             },
@@ -188,16 +219,18 @@ impl Parser {
     }
 
     /// https://262.ecma-international.org/12.0/#prod-Statement
-    /// Statement ::= ExpressionStatement
-    ///             | VariableStatement
     ///
     /// VariableStatement ::= "var" VariableDeclarationList ( ";" )?
     /// ExpressionStatement ::= Expression ( ";" )?
+    ///
+    /// Statement ::= ExpressionStatement | VariableStatement
     fn statement(&mut self) -> Option<Rc<Node>> {
         let t = match self.t.peek() {
             Some(t) => t,
             None => return None,
         };
+
+        println!("statement: {:?}", t);
 
         let node = match t {
             Token::Keyword(keyword) => {
