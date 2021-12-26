@@ -128,6 +128,11 @@ impl Lexer {
             return None;
         }
 
+        // skip a white space and a new line
+        while self.input[self.pos] == ' ' || self.input[self.pos] == '\n' {
+            self.pos += 1;
+        }
+
         match self.check_reserved_word() {
             Some(keyword) => {
                 self.pos += keyword.len();
@@ -137,13 +142,7 @@ impl Lexer {
             None => {}
         }
 
-        let mut c = self.input[self.pos];
-
-        // skip a white space and a new line
-        while c == ' ' || c == '\n' {
-            self.pos += 1;
-            c = self.input[self.pos];
-        }
+        let c = self.input[self.pos];
 
         let token = match c {
             '+' | '-' | ';' | '=' => {

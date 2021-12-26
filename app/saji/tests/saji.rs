@@ -115,11 +115,42 @@ fn variable_declaration() {
 fn add_variable_and_number() {
     let mut expected_global_variables = Vec::<(String, Option<RuntimeValue>)>::new();
     expected_global_variables.push(("a".to_string(), Some(RuntimeValue::Number(1))));
-    //expected_global_variables.push(("b".to_string(), Some(RuntimeValue::Number(3))));
 
     run_test!(
         r#"var a=1;
 a+2"#
+            .to_string(),
+        &expected_global_variables
+    );
+}
+
+#[test_case]
+fn variable_declaration_of_added_variable_and_number() {
+    let mut expected_global_variables = Vec::<(String, Option<RuntimeValue>)>::new();
+    expected_global_variables.push(("a".to_string(), Some(RuntimeValue::Number(1))));
+    expected_global_variables.push(("b".to_string(), Some(RuntimeValue::Number(3))));
+
+    run_test!(
+        r#"var a=1;
+var b=a+2"#
+            .to_string(),
+        &expected_global_variables
+    );
+}
+
+#[test_case]
+fn white_spaces_and_new_lines() {
+    let mut expected_global_variables = Vec::<(String, Option<RuntimeValue>)>::new();
+    expected_global_variables.push(("a".to_string(), Some(RuntimeValue::Number(1))));
+    expected_global_variables.push(("b".to_string(), Some(RuntimeValue::Number(3))));
+    expected_global_variables.push(("c".to_string(), Some(RuntimeValue::Number(6))));
+    expected_global_variables.push(("d".to_string(), Some(RuntimeValue::Number(42))));
+
+    run_test!(
+        r#"
+var a =  1; var b=a+2;
+var   c    = 3  + b;
+    var d=42"#
             .to_string(),
         &expected_global_variables
     );
