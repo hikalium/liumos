@@ -27,12 +27,14 @@ impl RuntimeValue {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Runtime {
     pub global_variables: Vec<(String, Option<RuntimeValue>)>,
+    pub functions: Vec<(String, Option<Rc<Node>>)>,
 }
 
 impl Runtime {
     pub fn new() -> Self {
         Self {
             global_variables: Vec::new(),
+            functions: Vec::new(),
         }
     }
 
@@ -44,9 +46,35 @@ impl Runtime {
 
         match node.borrow() {
             Node::ExpressionStatement(expr) => return self.eval(&expr),
-            Node::BlockStatement { body: _ } => return None,
-            Node::FunctionDeclaration { id: _, params: _, body: _ } => return None,
-            Node::VariableDeclaration(declarations) => {
+            Node::BlockStatement { body } => {
+                for stmt in body {
+                    self.eval(&stmt);
+                }
+                None
+            }
+            Node::ReturnStatement { argument: _ } => None,
+            Node::FunctionDeclaration {
+                id,
+                params: _,
+                body,
+            } => {
+                let id = match self.eval(&id) {
+                    Some(value) => match value {
+                        RuntimeValue::Number(n) => {
+                            unimplemented!("id should be string but got {:?}", n)
+                        }
+                        RuntimeValue::StringLiteral(s) => s,
+                    },
+                    None => return None,
+                };
+                let cloned_body = match body {
+                    Some(b) => Some(b.clone()),
+                    None => None,
+                };
+                self.functions.push((id, cloned_body));
+                None
+            }
+            Node::VariableDeclaration { declarations } => {
                 for declaration in declarations {
                     self.eval(&declaration);
                 }
@@ -93,6 +121,32 @@ impl Runtime {
                 } else {
                     return None;
                 }
+            }
+            Node::CallExpression {
+                callee,
+                arguments: _,
+            } => {
+                let callee_value = match self.eval(&callee) {
+                    Some(value) => value,
+                    None => return None,
+                };
+
+                let function_body: Option<Rc<Node>> = {
+                    let mut body = None;
+
+                    for (function_name, function_body) in &self.functions {
+                        if callee_value == RuntimeValue::StringLiteral(function_name.to_string()) {
+                            body = match function_body {
+                                Some(b) => Some(b.clone()),
+                                None => None,
+                            };
+                        }
+                    }
+
+                    body
+                };
+
+                return self.eval(&function_body);
             }
             Node::Identifier(name) => {
                 for (variable_name, runtime_value) in &self.global_variables {

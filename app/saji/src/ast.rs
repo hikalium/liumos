@@ -35,6 +35,8 @@ pub enum Node {
     ExpressionStatement(Option<Rc<Node>>),
     /// https://github.com/estree/estree/blob/master/es5.md#blockstatement
     BlockStatement { body: Vec<Option<Rc<Node>>> },
+    /// https://github.com/estree/estree/blob/master/es5.md#returnstatement
+    ReturnStatement { argument: Option<Rc<Node>> },
     /// https://github.com/estree/estree/blob/master/es5.md#functions
     /// https://github.com/estree/estree/blob/master/es5.md#functiondeclaration
     FunctionDeclaration {
@@ -43,7 +45,7 @@ pub enum Node {
         body: Option<Rc<Node>>,
     },
     /// https://github.com/estree/estree/blob/master/es5.md#variabledeclaration
-    VariableDeclaration(Vec<Option<Rc<Node>>>),
+    VariableDeclaration { declarations: Vec<Option<Rc<Node>>> },
     /// https://github.com/estree/estree/blob/master/es5.md#variabledeclarator
     VariableDeclarator {
         id: Option<Rc<Node>>,
@@ -54,6 +56,11 @@ pub enum Node {
         operator: char,
         left: Option<Rc<Node>>,
         right: Option<Rc<Node>>,
+    },
+    /// https://github.com/estree/estree/blob/master/es5.md#callexpression
+    CallExpression {
+        callee: Option<Rc<Node>>,
+        arguments: Vec<Option<Rc<Node>>>,
     },
     /// https://github.com/estree/estree/blob/master/es5.md#identifier
     /// https://262.ecma-international.org/12.0/#prod-Identifier
@@ -79,31 +86,38 @@ impl Node {
         }))
     }
 
-    pub fn new_expression_statement(expression: Option<Rc<Node>>) -> Option<Rc<Self>> {
+    pub fn new_expression_statement(expression: Option<Rc<Self>>) -> Option<Rc<Self>> {
         Some(Rc::new(Node::ExpressionStatement(expression)))
     }
 
-    pub fn new_block_statement(body: Vec<Option<Rc<Node>>>) -> Option<Rc<Self>> {
+    pub fn new_block_statement(body: Vec<Option<Rc<Self>>>) -> Option<Rc<Self>> {
         Some(Rc::new(Node::BlockStatement { body }))
     }
 
     pub fn new_function_declaration(
-        id: Option<Rc<Node>>,
-        params: Vec<Option<Rc<Node>>>,
-        body: Option<Rc<Node>>,
+        id: Option<Rc<Self>>,
+        params: Vec<Option<Rc<Self>>>,
+        body: Option<Rc<Self>>,
     ) -> Option<Rc<Self>> {
         Some(Rc::new(Node::FunctionDeclaration { id, params, body }))
     }
 
     pub fn new_variable_declarator(
-        id: Option<Rc<Node>>,
-        init: Option<Rc<Node>>,
+        id: Option<Rc<Self>>,
+        init: Option<Rc<Self>>,
     ) -> Option<Rc<Self>> {
         Some(Rc::new(Node::VariableDeclarator { id, init }))
     }
 
-    pub fn new_variable_declaration(declarations: Vec<Option<Rc<Node>>>) -> Option<Rc<Self>> {
-        Some(Rc::new(Node::VariableDeclaration(declarations)))
+    pub fn new_variable_declaration(declarations: Vec<Option<Rc<Self>>>) -> Option<Rc<Self>> {
+        Some(Rc::new(Node::VariableDeclaration { declarations }))
+    }
+
+    pub fn new_call_expression(
+        callee: Option<Rc<Self>>,
+        arguments: Vec<Option<Rc<Self>>>,
+    ) -> Option<Rc<Self>> {
+        Some(Rc::new(Node::CallExpression { callee, arguments }))
     }
 
     pub fn new_identifier(name: String) -> Option<Rc<Self>> {
@@ -138,24 +152,52 @@ impl Parser {
     ///                     | Identifier
     ///                     | ArrayLiteral
     ///                     | Literal
-    fn primary_expression(&mut self) -> Option<Rc<Node>> {
+    ///
+    /// MemberExpression ::= ( ( FunctionExpression | PrimaryExpression ) ( MemberExpressionPart)* )
+    ///                    | AllocationExpression
+    /// CallExpression ::= MemberExpression Arguments ( CallExpressionPart )*
+    ///
+    /// LeftHandSideExpression ::= CallExpression | MemberExpression
+    fn left_hand_side_expression(&mut self) -> Option<Rc<Node>> {
         let t = match self.t.next() {
             Some(token) => token,
             None => return None,
         };
-        println!("literal: token {:?}", t);
+        println!("left_hand_side_expression: token {:?}", t);
 
         match t {
+            // member expression
             Token::Number(value) => Node::new_numeric_literal(value),
             Token::StringLiteral(value) => Node::new_string_literal(value),
-            Token::Identifier(value) => Node::new_identifier(value),
+            Token::Identifier(value) => {
+                let ident = Node::new_identifier(value);
+
+                // call expression
+                let t = match self.t.peek() {
+                    Some(token) => token,
+                    None => return None,
+                };
+                match t {
+                    Token::Punctuator(c) => {
+                        if c == '(' {
+                            // consume '('
+                            assert!(self.t.next().is_some());
+                            let node = Node::new_call_expression(ident, Vec::new());
+
+                            // TODO: support arguments
+
+                            // consume ')'
+                            assert!(self.t.next().is_some());
+                            return node;
+                        }
+                    }
+                    _ => {}
+                }
+
+                ident
+            }
             _ => unimplemented!("token {:?} is not supported", t),
         }
-    }
-
-    /// CallExpression ::= MemberExpression Arguments ( CallExpressionPart )*
-    fn call_expression(&mut self) -> Option<Rc<Node>> {
-        None
     }
 
     /// MemberExpression ::= ( ( FunctionExpression | PrimaryExpression ) ( MemberExpressionPart)* )
@@ -180,7 +222,7 @@ impl Parser {
     ///
     /// Expression ::= AssignmentExpression ( "," AssignmentExpression )*
     fn expression(&mut self) -> Option<Rc<Node>> {
-        let left = self.primary_expression();
+        let left = self.left_hand_side_expression();
 
         let t = match self.t.next() {
             Some(token) => token,
@@ -191,7 +233,7 @@ impl Parser {
         match t {
             Token::Punctuator(c) => match c {
                 // AdditiveOperator
-                '+' | '-' => Node::new_binary_expr(c, left, self.primary_expression()),
+                '+' | '-' => Node::new_binary_expr(c, left, self.left_hand_side_expression()),
                 ';' => left,
                 _ => unimplemented!("`Punctuator` token with {} is not supported", c),
             },
@@ -250,7 +292,7 @@ impl Parser {
     /// VariableStatement ::= "var" VariableDeclarationList ( ";" )?
     /// ExpressionStatement ::= Expression ( ";" )?
     ///
-    /// Statement ::= ExpressionStatement | VariableStatement
+    /// Statement ::= ExpressionStatement | VariableStatement | ReturnStatement
     fn statement(&mut self) -> Option<Rc<Node>> {
         let t = match self.t.peek() {
             Some(t) => t,
@@ -261,7 +303,7 @@ impl Parser {
 
         let node = match t {
             Token::Keyword(keyword) => {
-                // consume "var".
+                // consume "var"
                 assert!(self.t.next().is_some());
 
                 println!("statement: keyword {:?}", keyword);
@@ -354,7 +396,7 @@ impl Parser {
         match t {
             Token::Keyword(keyword) => {
                 if keyword == "function".to_string() {
-                    // consume "function".
+                    // consume "function"
                     assert!(self.t.next().is_some());
                     self.function_declaration()
                 } else {

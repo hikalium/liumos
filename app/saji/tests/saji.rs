@@ -47,13 +47,17 @@ macro_rules! run_test {
 
         let mut parser = Parser::new(lexer);
         let ast = parser.parse_ast();
+        println!("---------------------------------");
         println!("ast {:?}", ast);
+        println!("---------------------------------");
 
         let mut runtime = Runtime::new();
         runtime.execute(&ast);
 
         let result_global_variables = &runtime.global_variables;
+        let defined_functions = &runtime.functions;
         println!("result global variables {:?}", result_global_variables);
+        println!("result functions {:?}", defined_functions);
 
         assert!($expected_global_variables.len() == result_global_variables.len());
         if $expected_global_variables.len() == 0 {
