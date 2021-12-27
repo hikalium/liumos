@@ -174,7 +174,6 @@ function test() {
     );
 }
 
-/*
 #[test_case]
 fn function_declaration_and_call() {
     let mut expected_global_variables = Vec::<(String, Option<RuntimeValue>)>::new();
@@ -191,4 +190,3 @@ var a=test();"#
         &expected_global_variables
     );
 }
-*/

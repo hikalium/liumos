@@ -47,12 +47,13 @@ impl Runtime {
         match node.borrow() {
             Node::ExpressionStatement(expr) => return self.eval(&expr),
             Node::BlockStatement { body } => {
+                let mut result: Option<RuntimeValue> = None;
                 for stmt in body {
-                    self.eval(&stmt);
+                    result = self.eval(&stmt);
                 }
-                None
+                result
             }
-            Node::ReturnStatement { argument: _ } => None,
+            Node::ReturnStatement { argument } => return self.eval(&argument),
             Node::FunctionDeclaration {
                 id,
                 params: _,

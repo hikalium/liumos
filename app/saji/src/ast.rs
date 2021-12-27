@@ -94,6 +94,10 @@ impl Node {
         Some(Rc::new(Node::BlockStatement { body }))
     }
 
+    pub fn new_return_statement(argument: Option<Rc<Self>>) -> Option<Rc<Self>> {
+        Some(Rc::new(Node::ReturnStatement { argument }))
+    }
+
     pub fn new_function_declaration(
         id: Option<Rc<Self>>,
         params: Vec<Option<Rc<Self>>>,
@@ -291,6 +295,7 @@ impl Parser {
     ///
     /// VariableStatement ::= "var" VariableDeclarationList ( ";" )?
     /// ExpressionStatement ::= Expression ( ";" )?
+    /// ReturnStatement ::= "return" ( Expression )? ( ";" )?
     ///
     /// Statement ::= ExpressionStatement | VariableStatement | ReturnStatement
     fn statement(&mut self) -> Option<Rc<Node>> {
@@ -303,12 +308,19 @@ impl Parser {
 
         let node = match t {
             Token::Keyword(keyword) => {
-                // consume "var"
-                assert!(self.t.next().is_some());
+                if keyword == "var" {
+                    // consume "var"
+                    assert!(self.t.next().is_some());
 
-                println!("statement: keyword {:?}", keyword);
+                    self.variable_declaration()
+                } else if keyword == "return" {
+                    // consume "return"
+                    assert!(self.t.next().is_some());
 
-                self.variable_declaration()
+                    Node::new_return_statement(self.expression())
+                } else {
+                    None
+                }
             }
             _ => Node::new_expression_statement(self.expression()),
         };
