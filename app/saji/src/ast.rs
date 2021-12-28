@@ -370,10 +370,11 @@ impl Parser {
         }
     }
 
-    /// FunctionDeclaration ::= "function" Identifier ( "(" ( FormalParameterList )? ")" ) FunctionBody
-    fn function_declaration(&mut self) -> Option<Rc<Node>> {
-        println!("function_declaration");
-        let id = self.identifier();
+    /// FormalParameterList ::= Identifier ( "," Identifier )*
+    fn parameter_list(&mut self) -> Vec<Option<Rc<Node>>> {
+        println!("parameter list");
+
+        let mut params = Vec::new();
 
         // consume '('
         match self.t.next() {
@@ -384,18 +385,36 @@ impl Parser {
             None => unimplemented!("function should have `(` but got None"),
         }
 
-        // TODO: support parameters
-
-        // consume ')'
-        match self.t.next() {
-            Some(t) => match t {
-                Token::Punctuator(c) => assert!(c == ')'),
-                _ => unimplemented!("function should have `)` but got {:?}", t),
-            },
-            None => unimplemented!("function should have `)` but got None"),
+        loop {
+            // push identifier to `params` until hits ')'
+            match self.t.peek() {
+                Some(t) => match t {
+                    Token::Punctuator(c) => {
+                        if c == ')' {
+                            // consume ')'
+                            assert!(self.t.next().is_some());
+                            return params;
+                        }
+                        if c == ',' {
+                            // consume ','
+                            assert!(self.t.next().is_some());
+                        }
+                    }
+                    _ => {
+                        params.push(self.identifier());
+                    }
+                },
+                None => return params,
+            }
         }
+    }
 
-        Node::new_function_declaration(id, Vec::new(), self.function_body())
+    /// FunctionDeclaration ::= "function" Identifier ( "(" ( FormalParameterList )? ")" ) FunctionBody
+    fn function_declaration(&mut self) -> Option<Rc<Node>> {
+        println!("function declaration");
+        let id = self.identifier();
+        let params = self.parameter_list();
+        Node::new_function_declaration(id, params, self.function_body())
     }
 
     /// SourceElement ::= FunctionDeclaration | Statement

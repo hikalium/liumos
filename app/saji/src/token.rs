@@ -155,7 +155,7 @@ impl Lexer {
         let c = self.input[self.pos];
 
         let token = match c {
-            '+' | '-' | ';' | '=' | '(' | ')' | '{' | '}' => {
+            '+' | '-' | ';' | '=' | '(' | ')' | '{' | '}' | ',' => {
                 let t = Token::Punctuator(c);
                 self.pos += 1;
                 t

@@ -190,3 +190,17 @@ var a=test();"#
         &expected_global_variables
     );
 }
+
+#[test_case]
+fn function_declaration_with_param() {
+    let expected_global_variables = Vec::<(String, Option<RuntimeValue>)>::new();
+
+    run_test!(
+        r#"
+function test(param1, param2) {
+    return 42;
+}"#
+        .to_string(),
+        &expected_global_variables
+    );
+}
