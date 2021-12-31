@@ -31,7 +31,7 @@ pub struct Variable {
 }
 
 impl Variable {
-    fn new(name: String, value: Option<RuntimeValue>) -> Self {
+    pub fn new(name: String, value: Option<RuntimeValue>) -> Self {
         Self { name, value }
     }
 }
@@ -51,12 +51,8 @@ impl Function {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Runtime {
-    // name: String, value: Option<RuntimeValue>
-    pub global_variables: Vec<(String, Option<RuntimeValue>)>,
-    // pub global_variables: Vec<(String, Option<RuntimeValue>)>,
+    pub global_variables: Vec<Variable>,
     pub functions: Vec<Function>,
-    // id: String, params: Vec<Option<Rc<Node>>>, body: Option<Rc<Node>>
-    //pub functions: Vec<(String, Vec<Option<Rc<Node>>>, Option<Rc<Node>>)>,
 }
 
 impl Runtime {
@@ -70,7 +66,7 @@ impl Runtime {
     fn eval(
         &mut self,
         node: &Option<Rc<Node>>,
-        local_variables: Vec<(String, Option<RuntimeValue>)>,
+        local_variables: Vec<Variable>,
     ) -> Option<RuntimeValue> {
         let node = match node {
             Some(n) => n,
@@ -125,7 +121,7 @@ impl Runtime {
                     None => return None,
                 };
                 let init = self.eval(&init, local_variables.clone());
-                self.global_variables.push((id, init));
+                self.global_variables.push(Variable::new(id, init));
                 None
             }
             Node::BinaryExpression {
@@ -162,7 +158,7 @@ impl Runtime {
                     None => return None,
                 };
 
-                let mut new_local_variables: Vec<(String, Option<RuntimeValue>)> = Vec::new();
+                let mut new_local_variables: Vec<Variable> = Vec::new();
 
                 // find a function
                 let function = {
@@ -192,8 +188,10 @@ impl Runtime {
                         None => return None,
                     };
 
-                    new_local_variables
-                        .push((name, self.eval(&arguments[i], local_variables.clone())));
+                    new_local_variables.push(Variable::new(
+                        name,
+                        self.eval(&arguments[i], local_variables.clone()),
+                    ));
                 }
                 new_local_variables.extend(local_variables.clone());
 
@@ -201,17 +199,17 @@ impl Runtime {
                 self.eval(&function.body.clone(), new_local_variables)
             }
             Node::Identifier(name) => {
-                // Find a value from global varialbes.
-                for (variable_name, runtime_value) in &self.global_variables {
-                    if name == variable_name && runtime_value.is_some() {
-                        return runtime_value.clone();
+                // Find a value from local varialbes.
+                for var in &local_variables {
+                    if name == &var.name && var.value.is_some() {
+                        return var.value.clone();
                     }
                 }
 
-                // Find a value from local varialbes.
-                for (variable_name, runtime_value) in &local_variables {
-                    if name == variable_name && runtime_value.is_some() {
-                        return runtime_value.clone();
+                // Find a value from global varialbes.
+                for var in &self.global_variables {
+                    if name == &var.name && var.value.is_some() {
+                        return var.value.clone();
                     }
                 }
 
