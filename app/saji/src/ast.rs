@@ -184,15 +184,7 @@ impl Parser {
                 match t {
                     Token::Punctuator(c) => {
                         if c == '(' {
-                            // consume '('
-                            assert!(self.t.next().is_some());
-                            let node = Node::new_call_expression(ident, Vec::new());
-
-                            // TODO: support arguments
-
-                            // consume ')'
-                            assert!(self.t.next().is_some());
-                            return node;
+                            return Node::new_call_expression(ident, self.arguments());
                         }
                     }
                     _ => {}
@@ -228,7 +220,7 @@ impl Parser {
     fn expression(&mut self) -> Option<Rc<Node>> {
         let left = self.left_hand_side_expression();
 
-        let t = match self.t.next() {
+        let t = match self.t.peek() {
             Some(token) => token,
             None => return None,
         };
@@ -237,8 +229,19 @@ impl Parser {
         match t {
             Token::Punctuator(c) => match c {
                 // AdditiveOperator
-                '+' | '-' => Node::new_binary_expr(c, left, self.left_hand_side_expression()),
-                ';' => left,
+                '+' | '-' => {
+                    // consume '+' or '-'
+                    assert!(self.t.next().is_some());
+                    Node::new_binary_expr(c, left, self.left_hand_side_expression())
+                }
+                // end of expression
+                ';' => {
+                    // consume ';'
+                    assert!(self.t.next().is_some());
+                    left
+                }
+                // end of expression wihtout consuming next token
+                ',' | ')' => left,
                 _ => unimplemented!("`Punctuator` token with {} is not supported", c),
             },
             _ => None,
@@ -367,6 +370,48 @@ impl Parser {
             }
 
             body.push(self.source_element());
+        }
+    }
+
+    /// Arguments ::= "(" ( ArgumentList )? ")"
+    fn arguments(&mut self) -> Vec<Option<Rc<Node>>> {
+        println!("arguments");
+
+        let mut arguments = Vec::new();
+
+        // consume '('
+        match self.t.next() {
+            Some(t) => match t {
+                Token::Punctuator(c) => assert!(c == '('),
+                _ => unimplemented!("function should have `(` but got {:?}", t),
+            },
+            None => unimplemented!("function should have `(` but got None"),
+        }
+
+        loop {
+            println!("args {:?}", self.t.peek());
+            // push identifier to `arguments` until hits ')'
+            match self.t.peek() {
+                Some(t) => match t {
+                    Token::Punctuator(c) => {
+                        if c == ')' {
+                            // consume ')'
+                            assert!(self.t.next().is_some());
+                            return arguments;
+                        }
+                        if c == ',' {
+                            // consume ','
+                            assert!(self.t.next().is_some());
+                        }
+                    }
+                    _ => {
+                        println!("args 1 {:?}", self.t.peek());
+                        arguments.push(self.expression());
+                        println!("args 2 {:?}", arguments);
+                    }
+                },
+                None => return arguments,
+            }
         }
     }
 

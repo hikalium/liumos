@@ -175,7 +175,7 @@ function test() {
 }
 
 #[test_case]
-fn function_declaration_and_call() {
+fn function_call() {
     let mut expected_global_variables = Vec::<(String, Option<RuntimeValue>)>::new();
     expected_global_variables.push(("a".to_string(), Some(RuntimeValue::Number(42))));
 
@@ -192,7 +192,7 @@ var a=test();"#
 }
 
 #[test_case]
-fn function_declaration_with_param() {
+fn function_declaration_with_params() {
     let expected_global_variables = Vec::<(String, Option<RuntimeValue>)>::new();
 
     run_test!(
@@ -200,6 +200,24 @@ fn function_declaration_with_param() {
 function test(param1, param2) {
     return 42;
 }"#
+        .to_string(),
+        &expected_global_variables
+    );
+}
+
+#[test_case]
+fn function_call_with_arguments() {
+    let mut expected_global_variables = Vec::<(String, Option<RuntimeValue>)>::new();
+    expected_global_variables.push(("a".to_string(), Some(RuntimeValue::Number(3))));
+
+    run_test!(
+        r#"
+function test(param1, param2) {
+    return param1 + param2;
+}
+
+var a=test(1, 2);
+"#
         .to_string(),
         &expected_global_variables
     );

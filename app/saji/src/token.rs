@@ -141,6 +141,10 @@ impl Lexer {
         // skip a white space and a new line
         while self.input[self.pos] == ' ' || self.input[self.pos] == '\n' {
             self.pos += 1;
+
+            if self.pos >= self.input.len() {
+                return None;
+            }
         }
 
         match self.check_reserved_word() {
