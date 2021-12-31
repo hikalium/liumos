@@ -133,7 +133,6 @@ pub enum ElementKind {
     Div,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum InsertionMode {
     Initial,
@@ -691,7 +690,6 @@ impl HtmlParser {
     }
 }
 
-#[allow(dead_code)]
 fn get_target_element_node(
     node: Option<Rc<RefCell<Node>>>,
     element_kind: ElementKind,
@@ -715,7 +713,6 @@ fn get_target_element_node(
     }
 }
 
-#[allow(dead_code)]
 pub fn get_style_content(root: Rc<RefCell<Node>>) -> String {
     let style_node = match get_target_element_node(Some(root), ElementKind::Style) {
         Some(node) => node,
@@ -732,7 +729,6 @@ pub fn get_style_content(root: Rc<RefCell<Node>>) -> String {
     content
 }
 
-#[allow(dead_code)]
 pub fn get_js_content(root: Rc<RefCell<Node>>) -> String {
     let js_node = match get_target_element_node(Some(root), ElementKind::Script) {
         Some(node) => node,

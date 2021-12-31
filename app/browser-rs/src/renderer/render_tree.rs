@@ -11,7 +11,6 @@ use liumlib::gui::BitmapImageBuffer;
 use liumlib::*;
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct RenderObject {
     // Similar structure with Node in renderer/dom.rs.
     pub kind: NodeKind,
@@ -47,12 +46,10 @@ impl RenderObject {
 }
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct RenderTree {
     pub root: Option<Rc<RefCell<RenderObject>>>,
 }
 
-#[allow(dead_code)]
 impl RenderTree {
     pub fn new(root: Rc<RefCell<Node>>) -> Self {
         Self {
