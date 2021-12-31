@@ -44,9 +44,9 @@ pub fn test_runner(tests: &[&dyn Testable]) {
 #[macro_export]
 macro_rules! run_test {
     ($html:literal, $expected_style:expr) => {
-        let t = HtmlTokenizer::new(String::from($html));
-        let mut p = HtmlParser::new(t);
-        let root = p.construct_tree();
+        let t1 = HtmlTokenizer::new(String::from($html));
+        let mut p1 = HtmlParser::new(t1);
+        let root = p1.construct_tree();
 
         use browser_rs::renderer::html::dom::get_style_content;
         let style = get_style_content(root.clone());
@@ -86,6 +86,31 @@ fn background_color() {
 
     run_test!(
         "<html><head><style>h1{background-color:red;}</style></head></html>",
+        expected
+    );
+}
+
+#[test_case]
+fn text_align() {
+    let mut decl = Declaration::new();
+    decl.set_property("text-align".to_string());
+    decl.set_value("center".to_string());
+
+    let mut decls = Vec::new();
+    decls.push(decl);
+
+    let mut rule = QualifiedRule::new();
+    rule.set_selector(Selector::TypeSelector("p".to_string()));
+    rule.set_declarations(decls);
+
+    let mut rules = Vec::new();
+    rules.push(rule);
+
+    let mut expected = StyleSheet::new();
+    expected.set_rules(rules);
+
+    run_test!(
+        "<html><head><style>p{text-align:center;}</style></head></html>",
         expected
     );
 }

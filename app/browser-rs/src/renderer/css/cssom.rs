@@ -1,4 +1,4 @@
-//! This is a part of "3. Tokenizing and Parsing CSS" in the CSS Syntax Module Level 3 spec.
+//! This is a part of "3. Tokenizing and Parsing CSS" in the "CSS Syntax Module Level 3" spec.
 //! https://www.w3.org/TR/css-syntax-3/#tokenizing-and-parsing
 //!
 //! 5. Parsing
@@ -13,7 +13,7 @@ use liumlib::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Declaration {
-    property: String,
+    pub property: String,
     pub value: String,
 }
 
@@ -377,6 +377,8 @@ impl CssParser {
         // the return value be rules.
         // 3. Assign rules to the stylesheet’s value.
         sheet.set_rules(self.consume_list_of_rules());
+
+        println!("\n\nsheet {:?}\n\n", sheet);
 
         // 4. Return the stylesheet.
         sheet

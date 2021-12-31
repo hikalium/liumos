@@ -6,6 +6,10 @@ pub struct ApplicationWindow {
     width: u64,
     height: u64,
     title: String,
+    pub content_x: i64,
+    pub content_y: i64,
+    pub content_w: i64,
+    pub content_h: i64,
     pub buffer: WindowBuffer,
 }
 
@@ -20,6 +24,10 @@ impl ApplicationWindow {
             width: w,
             height: h,
             title,
+            content_x: 0,
+            content_y: 0,
+            content_w: 0,
+            content_h: 0,
             buffer: window_buffer,
         }
     }
@@ -30,6 +38,12 @@ impl ApplicationWindow {
 
         let button_width = 18;
         let address_bar_height = 20;
+
+        self.content_x = window_margin;
+        self.content_y = address_bar_height * 2 + window_margin + component_margin * 2;
+        self.content_w = self.width as i64 - window_margin * 2;
+        self.content_h = self.height as i64
+            - (address_bar_height * 2 + window_margin * 2 + component_margin * 2);
 
         // base window
         match draw_rect(
@@ -114,12 +128,11 @@ impl ApplicationWindow {
         // content for html
         match draw_rect(
             &self.buffer,
-            0xffffff, // white
-            window_margin,
-            address_bar_height * 2 + window_margin + component_margin * 2,
-            self.width as i64 - window_margin * 2,
-            self.height as i64
-                - (address_bar_height * 2 + window_margin * 2 + component_margin * 2),
+            0xffffff,       // white
+            self.content_x, // px
+            self.content_y, // py
+            self.content_w, // w
+            self.content_h, // h
         ) {
             Ok(()) => {}
             Err(e) => panic!("Failed to draw a background window: {:?}", e),

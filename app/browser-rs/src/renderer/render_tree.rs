@@ -1,4 +1,5 @@
 use crate::gui::ApplicationWindow;
+use crate::renderer::css::box_model::BoxInfo;
 use crate::renderer::css::cssom::*;
 use crate::renderer::html::dom::*;
 use crate::renderer::NodeKind::Element;
@@ -14,25 +15,25 @@ use liumlib::*;
 pub struct RenderObject {
     // Similar structure with Node in renderer/dom.rs.
     pub kind: NodeKind,
-    dom_node: Option<Rc<RefCell<Node>>>,
     first_child: Option<Rc<RefCell<RenderObject>>>,
     last_child: Option<Weak<RefCell<RenderObject>>>,
     previous_sibling: Option<Weak<RefCell<RenderObject>>>,
     next_sibling: Option<Rc<RefCell<RenderObject>>>,
-    // CSS info.
+    // CSS information.
     pub style: Vec<Declaration>,
+    box_info: BoxInfo,
 }
 
 impl RenderObject {
     fn new(node: Rc<RefCell<Node>>) -> Self {
         Self {
             kind: node.borrow().kind.clone(),
-            dom_node: Some(node.clone()),
             first_child: None,
             last_child: None,
             previous_sibling: None,
             next_sibling: None,
             style: Vec::new(),
+            box_info: BoxInfo::new(),
         }
     }
 
@@ -118,6 +119,7 @@ impl RenderTree {
         }
     }
 
+    /// Apply CSS Object Model to RenderTree.
     pub fn apply(&mut self, cssom: &StyleSheet) {
         for rule in &cssom.rules {
             Self::apply_rule_to_render_object(&self.root, rule);
@@ -127,14 +129,55 @@ impl RenderTree {
     fn paint_node(&self, window: &ApplicationWindow, node: &Option<Rc<RefCell<RenderObject>>>) {
         match node {
             Some(n) => {
-                if n.borrow().style.len() > 0 {
-                    let color = match n.borrow().style[0].value.as_str() {
-                        "blue" => 0x0000ff,
-                        "red" => 0xff0000,
-                        _ => 0x00ff00,
-                    };
-                    draw_rect(&window.buffer, color, 10, 10, 210, 210).expect("update a window");
-                    window.buffer.flush();
+                let mut background_color = 0xffffff; // default color
+
+                for style in &n.borrow().style {
+                    match style.property.as_str() {
+                        "background-color" => {
+                            background_color = match style.value.as_str() {
+                                "red" => 0xff0000,
+                                "green" => 0x00ff00,
+                                "blue" => 0x0000ff,
+                                _ => 0xffffff,
+                            };
+                        }
+                        _ => {}
+                    }
+                }
+
+                match &n.borrow().kind {
+                    NodeKind::Document => {}
+                    NodeKind::Element(element) => {
+                        match element.kind {
+                            ElementKind::Html
+                            | ElementKind::Head
+                            | ElementKind::Style
+                            | ElementKind::Script
+                            | ElementKind::Body => {}
+                            // TODO: support <a>
+                            ElementKind::Link => {}
+                            // TODO: support raw text
+                            ElementKind::Text => {}
+                            // TODO: support <ul>
+                            ElementKind::Ul => {}
+                            // TODO: support <li>
+                            ElementKind::Li => {}
+                            // TODO: support <div>
+                            ElementKind::Div => {
+                                draw_rect(
+                                    &window.buffer,
+                                    background_color,
+                                    window.content_x,
+                                    window.content_y,
+                                    window.content_w,
+                                    window.content_h,
+                                )
+                                .expect("draw a div");
+                                window.buffer.flush();
+                            }
+                        }
+                    }
+                    NodeKind::Text(_text) => {}
                 }
 
                 self.paint_node(window, &n.borrow().first_child());
@@ -144,6 +187,7 @@ impl RenderTree {
         }
     }
 
+    /// Paint the current RenderTree to ApplicationWindow.
     pub fn paint(&self, window: &ApplicationWindow) {
         self.paint_node(window, &self.root);
     }

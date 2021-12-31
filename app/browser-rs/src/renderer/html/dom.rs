@@ -22,7 +22,6 @@ pub struct Node {
     pub next_sibling: Option<Rc<RefCell<Node>>>,
 }
 
-#[allow(dead_code)]
 ///dom.spec.whatwg.org/#interface-node
 impl Node {
     pub fn new(kind: NodeKind) -> Self {
@@ -40,10 +39,12 @@ impl Node {
         self.first_child.as_ref().map(|n| n.clone())
     }
 
+    #[allow(dead_code)]
     pub fn last_child(&self) -> Option<Weak<RefCell<Node>>> {
         self.last_child.as_ref().map(|n| n.clone())
     }
 
+    #[allow(dead_code)]
     pub fn previous_sibling(&self) -> Option<Weak<RefCell<Node>>> {
         self.previous_sibling.as_ref().map(|n| n.clone())
     }
