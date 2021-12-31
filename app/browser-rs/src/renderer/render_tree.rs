@@ -1,15 +1,35 @@
+use crate::alloc::string::ToString;
 use crate::gui::ApplicationWindow;
 use crate::renderer::css::box_model::BoxInfo;
 use crate::renderer::css::cssom::*;
 use crate::renderer::html::dom::*;
 use crate::renderer::NodeKind::Element;
 use alloc::rc::{Rc, Weak};
+use alloc::string::String;
 use alloc::vec::Vec;
 use core::cell::RefCell;
 use liumlib::gui::draw_rect;
 use liumlib::gui::BitmapImageBuffer;
 #[allow(unused_imports)]
 use liumlib::*;
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct Style {
+    background_color: u32,
+    color: u32,
+    text_align: String,
+}
+
+impl Style {
+    pub fn new() -> Self {
+        Self {
+            background_color: 0xffffff, // white
+            color: 0xffffff,            // white
+            text_align: "left".to_string(),
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct RenderObject {
@@ -20,7 +40,7 @@ pub struct RenderObject {
     previous_sibling: Option<Weak<RefCell<RenderObject>>>,
     next_sibling: Option<Rc<RefCell<RenderObject>>>,
     // CSS information.
-    pub style: Vec<Declaration>,
+    pub style: Style,
     box_info: BoxInfo,
 }
 
@@ -32,7 +52,7 @@ impl RenderObject {
             last_child: None,
             previous_sibling: None,
             next_sibling: None,
-            style: Vec::new(),
+            style: Style::new(),
             box_info: BoxInfo::new(),
         }
     }
@@ -44,6 +64,22 @@ impl RenderObject {
     pub fn next_sibling(&self) -> Option<Rc<RefCell<RenderObject>>> {
         self.next_sibling.as_ref().map(|n| n.clone())
     }
+
+    pub fn set_style(&mut self, declarations: Vec<Declaration>) {
+        for declaration in declarations {
+            match declaration.property.as_str() {
+                "background-color" => {
+                    self.style.background_color = match declaration.value.as_str() {
+                        "red" => 0xff0000,
+                        "green" => 0x00ff00,
+                        "blue" => 0x0000ff,
+                        _ => 0xffffff,
+                    };
+                }
+                _ => unimplemented!("css property {} is not supported yet", declaration.property,),
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -52,10 +88,14 @@ pub struct RenderTree {
 }
 
 impl RenderTree {
-    pub fn new(root: Rc<RefCell<Node>>) -> Self {
-        Self {
+    pub fn new(root: Rc<RefCell<Node>>, cssom: &StyleSheet) -> Self {
+        let mut tree = Self {
             root: Self::dom_to_render_tree(&Some(root)),
-        }
+        };
+
+        tree.apply(cssom);
+
+        tree
     }
 
     fn check_kind(node_kind: &NodeKind, selector: &Selector) -> bool {
@@ -103,48 +143,33 @@ impl RenderTree {
     }
 
     fn apply_rule_to_render_object(
+        &self,
         node: &Option<Rc<RefCell<RenderObject>>>,
         css_rule: &QualifiedRule,
     ) {
         match node {
             Some(n) => {
                 if Self::check_kind(&n.borrow().kind, &css_rule.selector) {
-                    n.borrow_mut().style = css_rule.declarations.clone();
+                    n.borrow_mut().set_style(css_rule.declarations.clone());
                 }
 
-                Self::apply_rule_to_render_object(&n.borrow().first_child(), css_rule);
-                Self::apply_rule_to_render_object(&n.borrow().next_sibling(), css_rule);
+                self.apply_rule_to_render_object(&n.borrow().first_child(), css_rule);
+                self.apply_rule_to_render_object(&n.borrow().next_sibling(), css_rule);
             }
             None => return,
         }
     }
 
     /// Apply CSS Object Model to RenderTree.
-    pub fn apply(&mut self, cssom: &StyleSheet) {
+    fn apply(&mut self, cssom: &StyleSheet) {
         for rule in &cssom.rules {
-            Self::apply_rule_to_render_object(&self.root, rule);
+            self.apply_rule_to_render_object(&self.root, rule);
         }
     }
 
     fn paint_node(&self, window: &ApplicationWindow, node: &Option<Rc<RefCell<RenderObject>>>) {
         match node {
             Some(n) => {
-                let mut background_color = 0xffffff; // default color
-
-                for style in &n.borrow().style {
-                    match style.property.as_str() {
-                        "background-color" => {
-                            background_color = match style.value.as_str() {
-                                "red" => 0xff0000,
-                                "green" => 0x00ff00,
-                                "blue" => 0x0000ff,
-                                _ => 0xffffff,
-                            };
-                        }
-                        _ => {}
-                    }
-                }
-
                 match &n.borrow().kind {
                     NodeKind::Document => {}
                     NodeKind::Element(element) => {
@@ -166,7 +191,7 @@ impl RenderTree {
                             ElementKind::Div => {
                                 draw_rect(
                                     &window.buffer,
-                                    background_color,
+                                    n.borrow().style.background_color,
                                     window.content_x,
                                     window.content_y,
                                     window.content_w,

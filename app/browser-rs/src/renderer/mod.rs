@@ -48,9 +48,8 @@ pub fn render(html: String, window: &ApplicationWindow) {
     let mut runtime = Runtime::new();
     runtime.execute(&ast);
 
-    // apply css to html
-    let mut render_tree = RenderTree::new(dom_root);
-    render_tree.apply(&cssom);
+    // apply css to html and create RenderTree
+    let render_tree = RenderTree::new(dom_root, &cssom);
 
     println!("Render Tree:");
     print_render_object(&render_tree.root, 0);

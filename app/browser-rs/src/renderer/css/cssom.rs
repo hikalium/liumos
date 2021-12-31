@@ -55,7 +55,7 @@ pub struct QualifiedRule {
     pub selector: Selector,
     /// https://www.w3.org/TR/selectors-4/#typedef-selector-list
     /// The prelude of the qualified rule is parsed as a <selector-list>.
-    selectors: Vec<Selector>,
+    //selectors: Vec<Selector>,
     /// https://www.w3.org/TR/css-syntax-3/#parse-a-list-of-declarations
     /// The content of the qualified rule’s block is parsed as a list of declarations.
     pub declarations: Vec<Declaration>,
@@ -65,15 +65,17 @@ impl QualifiedRule {
     pub fn new() -> Self {
         Self {
             selector: Selector::TypeSelector("".to_string()),
-            selectors: Vec::new(),
+            //selectors: Vec::new(),
             declarations: Vec::new(),
         }
     }
 
+    /*
     #[allow(dead_code)]
     pub fn set_selectors(&mut self, selectors: Vec<Selector>) {
         self.selectors = selectors;
     }
+    */
 
     pub fn set_selector(&mut self, selector: Selector) {
         self.selector = selector;
