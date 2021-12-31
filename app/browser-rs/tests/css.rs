@@ -51,10 +51,7 @@ macro_rules! run_test {
         use browser_rs::renderer::html::dom::get_style_content;
         let style = get_style_content(root.clone());
 
-        assert!(style.is_some());
-        let style_content = style.unwrap();
-
-        let t2 = CssTokenizer::new(style_content);
+        let t2 = CssTokenizer::new(style);
         let mut p2 = CssParser::new(t2);
         let cssom = p2.parse_stylesheet();
         assert_eq!($expected_style, cssom);

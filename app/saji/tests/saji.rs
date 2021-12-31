@@ -254,3 +254,28 @@ var a=test(1, 2);
         &expected_global_variables
     );
 }
+
+/*
+#[test_case]
+fn override_with_local_variable() {
+    let mut expected_global_variables = Vec::<Variable>::new();
+    expected_global_variables.push(Variable::new(
+        "a".to_string(),
+        Some(RuntimeValue::Number(2)),
+    ));
+
+    run_test!(
+        r#"
+var b=1;
+function test() {
+    var b=2;
+    return b;
+}
+
+var a=test();
+"#
+        .to_string(),
+        &expected_global_variables
+    );
+}
+*/

@@ -99,7 +99,6 @@ impl Runtime {
                     Some(b) => Some(b.clone()),
                     None => None,
                 };
-                //self.functions.push((id, params.to_vec(), cloned_body));
                 self.functions
                     .push(Function::new(id, params.to_vec(), cloned_body));
                 None

@@ -13,26 +13,42 @@ use alloc::rc::Rc;
 use alloc::string::String;
 use core::cell::RefCell;
 use liumlib::*;
+use saji::ast::Parser;
+use saji::runtime::Runtime;
+use saji::token::Lexer;
 
 pub fn render(html: String, window: &ApplicationWindow) {
     println!("Input HTML:\n{}", html);
     println!("----------------------");
 
+    // html
     let html_tokenizer = HtmlTokenizer::new(html);
     let dom_root = HtmlParser::new(html_tokenizer).construct_tree();
     println!("DOM:");
     print_dom(&Some(dom_root.clone()), 0);
     println!("----------------------");
 
+    // css
     let style = get_style_content(dom_root.clone());
-    let style_content = style.unwrap();
-
-    let css_tokenizer = CssTokenizer::new(style_content);
+    let css_tokenizer = CssTokenizer::new(style);
     let cssom = CssParser::new(css_tokenizer).parse_stylesheet();
 
     println!("CSSOM:\n{:?}", cssom);
     println!("----------------------");
 
+    // js
+    let js = get_js_content(dom_root.clone());
+    let lexer = Lexer::new(js);
+    println!("JS lexer {:?}", lexer);
+
+    let mut parser = Parser::new(lexer);
+    let ast = parser.parse_ast();
+    println!("JS ast {:?}", ast);
+
+    let mut runtime = Runtime::new();
+    runtime.execute(&ast);
+
+    // apply css to html
     let mut render_tree = RenderTree::new(dom_root);
     render_tree.apply(&cssom);
 

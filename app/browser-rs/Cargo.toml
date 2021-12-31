@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 liumlib = { path = "../liumlib" }
+saji = { path = "../saji" }
 
 [lib]
 name = "browser_rs"
