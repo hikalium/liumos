@@ -76,7 +76,11 @@ fn main() {
         // </html>
         let default_page = r#"<html>
             <head>
-              <style>div{background-color:red;}</style>
+              <style>
+                div {
+                  background-color: red;
+                }
+              </style>
               <script>
                 function test(p1, p2) {
                   return p1+p2;

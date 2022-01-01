@@ -164,3 +164,32 @@ fn id_selector() {
         expected
     );
 }
+
+#[test_case]
+fn format() {
+    let mut decl = Declaration::new();
+    decl.set_property("background-color".to_string());
+    decl.set_value("red".to_string());
+
+    let mut decls = Vec::new();
+    decls.push(decl);
+
+    let mut rule = QualifiedRule::new();
+    rule.set_selector(Selector::TypeSelector("h1".to_string()));
+    rule.set_declarations(decls);
+
+    let mut rules = Vec::new();
+    rules.push(rule);
+
+    let mut expected = StyleSheet::new();
+    expected.set_rules(rules);
+
+    run_test!(
+        r#"<html><head><style>
+          h1 {
+            background-color: red;
+          }
+        </style></head></html>"#,
+        expected
+    );
+}

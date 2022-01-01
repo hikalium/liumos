@@ -67,34 +67,40 @@ impl Iterator for CssTokenizer {
 
     /// https://www.w3.org/TR/css-syntax-3/#consume-token
     fn next(&mut self) -> Option<Self::Item> {
-        if self.pos >= self.input.len() {
-            return None;
+        loop {
+            if self.pos >= self.input.len() {
+                return None;
+            }
+
+            let c = self.input[self.pos];
+
+            let token = match c {
+                '#' => {
+                    let value = self.consume_name();
+                    self.pos -= 1;
+                    CssToken::HashToken(value)
+                }
+                '.' => CssToken::Delim('.'),
+                ':' => CssToken::Colon,
+                ';' => CssToken::SemiColon,
+                '{' => CssToken::OpenCurly,
+                '}' => CssToken::CloseCurly,
+                'a'..='z' | 'A'..='Z' => {
+                    let t = CssToken::Ident(self.consume_name());
+                    self.pos -= 1;
+                    t
+                }
+                ' ' | '\n' => {
+                    self.pos += 1;
+                    continue;
+                }
+                _ => {
+                    unimplemented!("char {} is not supported yet", c);
+                }
+            };
+
+            self.pos += 1;
+            return Some(token);
         }
-
-        let c = self.input[self.pos];
-
-        let token = match c {
-            '#' => {
-                let value = self.consume_name();
-                self.pos -= 1;
-                CssToken::HashToken(value)
-            }
-            '.' => CssToken::Delim('.'),
-            ':' => CssToken::Colon,
-            ';' => CssToken::SemiColon,
-            '{' => CssToken::OpenCurly,
-            '}' => CssToken::CloseCurly,
-            'a'..='z' | 'A'..='Z' => {
-                let t = CssToken::Ident(self.consume_name());
-                self.pos -= 1;
-                t
-            }
-            _ => {
-                unimplemented!("char {} is not supported yet", c);
-            }
-        };
-
-        self.pos += 1;
-        Some(token)
     }
 }
