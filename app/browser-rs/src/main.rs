@@ -74,8 +74,20 @@ fn main() {
         //     </div>
         //   </body>
         // </html>
-        let default_page =
-            "<html><head><style>div{background-color:red;}</style><script>function test(p1, p2) { return p1+p2; } var a=test(1, 2);</script></head><body><div>abc</div></body></html>";
+        let default_page = r#"<html>
+            <head>
+              <style>div{background-color:red;}</style>
+              <script>
+                function test(p1, p2) {
+                  return p1+p2;
+                }
+                var a=test(1, 2);
+              </script>
+            </head>
+            <body>
+              <div>abc</div>
+            </body>
+            </html>"#;
 
         render(default_page.to_string(), &app);
     } else {

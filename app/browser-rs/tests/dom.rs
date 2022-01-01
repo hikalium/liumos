@@ -512,22 +512,7 @@ fn formatted_body() {
     // └── html
     //     └── head
     //     └── body
-    //         └── Hello
-    //         └── ul
-    //             └── li
-    //             └── li
     let root = create_base_dom_tree();
-    let mut body = root
-        .borrow_mut()
-        .first_child()
-        .unwrap()
-        .borrow_mut()
-        .first_child()
-        .unwrap()
-        .borrow_mut()
-        .next_sibling()
-        .unwrap();
-    add_text_node_to(&mut body, "\n  ");
 
     run_test!(
         "<html>
@@ -590,19 +575,29 @@ fn default_page() {
     //  <head>
     //    <style>
     //    h1 {
-    //        background-color:red;
+    //      background-color:red;
     //    }
     //    </style>
     //    </head>
     //  <body>
     //    <ul>
-    //        <li>list 1</li>
-    //        <li>list 2</li>
+    //      <li>list 1</li>
+    //      <li>list 2</li>
     //    </ul>
     //  </body>
     //</html>",
     run_test!(
-        "<html><head><style> h1 { background-color:red; } </style></head><body><ul><li>list 1</li><li>list 2</li></ul></body></html>",
+        r#"<html>
+          <head>
+            <style> h1 { background-color:red; } </style>
+          </head>
+          <body>
+            <ul>
+              <li>list 1</li>
+              <li>list 2</li>
+            </ul>
+          </body>
+        </html>"#,
         Some(root)
     );
 }

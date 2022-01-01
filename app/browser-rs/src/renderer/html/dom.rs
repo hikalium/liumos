@@ -251,6 +251,11 @@ impl HtmlParser {
             _ => {}
         }
 
+        // do not create a Text node if new char is '\n' or ' '
+        if c == '\n' || c == ' ' {
+            return;
+        }
+
         let node = Rc::new(RefCell::new(self.create_char(c)));
 
         if current.borrow().first_child().is_some() {

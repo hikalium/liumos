@@ -308,7 +308,7 @@ fn css_with_style() {
 #[test_case]
 fn format() {
     run_test!(
-        "<html>
+        r#"<html>
   <body>
     Hello
     <ul>
@@ -316,7 +316,7 @@ fn format() {
         <li>list 2</li>
     </ul>
   </body>
-</html>",
+</html>"#,
         HtmlToken::StartTag {
             tag: String::from("html"),
             self_closing: false,
