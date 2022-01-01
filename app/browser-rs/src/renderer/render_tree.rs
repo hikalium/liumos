@@ -1,6 +1,5 @@
 use crate::alloc::string::ToString;
 use crate::gui::ApplicationWindow;
-use crate::renderer::css::box_model::BoxInfo;
 use crate::renderer::css::cssom::*;
 use crate::renderer::html::dom::*;
 use crate::renderer::NodeKind::Element;
@@ -19,6 +18,15 @@ pub struct Style {
     background_color: u32,
     color: u32,
     text_align: String,
+    // TODO: support string (e.g. "auto")
+    height: u64,
+    width: u64,
+    // top, right, bottom, left
+    margin: (u64, u64, u64, u64),
+    // top, right, bottom, left
+    padding: (u64, u64, u64, u64),
+    // witdh, style, color
+    border: (String, String, String),
 }
 
 impl Style {
@@ -27,6 +35,15 @@ impl Style {
             background_color: 0xffffff, // white
             color: 0xffffff,            // white
             text_align: "left".to_string(),
+            width: 0,
+            height: 0,
+            margin: (0, 0, 0, 0),
+            padding: (0, 0, 0, 0),
+            border: (
+                "medium".to_string(),
+                "none".to_string(),
+                "color".to_string(),
+            ),
         }
     }
 }
@@ -41,7 +58,6 @@ pub struct RenderObject {
     next_sibling: Option<Rc<RefCell<RenderObject>>>,
     // CSS information.
     pub style: Style,
-    box_info: BoxInfo,
 }
 
 impl RenderObject {
@@ -53,7 +69,6 @@ impl RenderObject {
             previous_sibling: None,
             next_sibling: None,
             style: Style::new(),
-            box_info: BoxInfo::new(),
         }
     }
 
