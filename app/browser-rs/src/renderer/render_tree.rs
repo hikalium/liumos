@@ -2,7 +2,7 @@ use crate::alloc::string::ToString;
 use crate::gui::ApplicationWindow;
 use crate::renderer::css::cssom::*;
 use crate::renderer::html::dom::*;
-use crate::renderer::NodeKind::Element;
+use crate::renderer::{Element, NodeKind};
 use alloc::rc::{Rc, Weak};
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -132,14 +132,29 @@ impl RenderTree {
 
     fn is_node_selected(&self, node_kind: &NodeKind, selector: &Selector) -> bool {
         match node_kind {
-            Element(e) => match selector {
-                Selector::TypeSelector(s) => {
-                    if e.kind == ElementKind::Div && s == "div" {
+            NodeKind::Element(e) => match selector {
+                Selector::TypeSelector(type_name) => {
+                    if Element::element_kind_to_string(e.kind) == *type_name {
                         return true;
                     }
                     return false;
                 }
-                _ => return false,
+                Selector::ClassSelector(class_name) => {
+                    for attr in &e.attributes {
+                        if attr.name == "class" && attr.value == *class_name {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+                Selector::IdSelector(id_name) => {
+                    for attr in &e.attributes {
+                        if attr.name == "id" && attr.value == *id_name {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
             },
             _ => false,
         }
@@ -181,7 +196,6 @@ impl RenderTree {
     ) {
         match node {
             Some(n) => {
-                println!("is_node_selected {:?}\n{:?}", &n.borrow(), &css_rule.selector);
                 if self.is_node_selected(&n.borrow().kind, &css_rule.selector) {
                     n.borrow_mut().set_style(css_rule.declarations.clone());
                 }

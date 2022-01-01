@@ -57,7 +57,12 @@ fn main() {
         let default_page = r#"<html>
             <head>
               <style>
-                div {
+                #id1 {
+                  background-color: blue;
+                  height: 200;
+                  width: 200;
+                }
+                #id2 {
                   background-color: red;
                   height: 100;
                   width: 100;
@@ -71,7 +76,8 @@ fn main() {
               </script>
             </head>
             <body>
-              <div>aaa</div>
+              <div id=id1>aaa</div>
+              <div id=id2>bbb</div>
             </body>
             </html>"#;
 

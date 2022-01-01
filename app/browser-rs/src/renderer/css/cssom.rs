@@ -344,8 +344,6 @@ impl CssParser {
         // 3. Assign rules to the stylesheet’s value.
         sheet.set_rules(self.consume_list_of_rules());
 
-        println!("\n\nsheet {:?}\n\n", sheet);
-
         // 4. Return the stylesheet.
         sheet
     }

@@ -89,12 +89,62 @@ impl Eq for NodeKind {}
 /// https://dom.spec.whatwg.org/#interface-element
 pub struct Element {
     pub kind: ElementKind,
-    attributes: Vec<Attribute>,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Element {
     pub fn new(kind: ElementKind, attributes: Vec<Attribute>) -> Self {
         Self { kind, attributes }
+    }
+
+    // associated function
+    fn str_to_element_kind(name: &str) -> ElementKind {
+        if name == "html" {
+            ElementKind::Html
+        } else if name == "head" {
+            ElementKind::Head
+        } else if name == "link" {
+            ElementKind::Link
+        } else if name == "style" {
+            ElementKind::Style
+        } else if name == "script" {
+            ElementKind::Script
+        } else if name == "body" {
+            ElementKind::Body
+        } else if name == "ul" {
+            ElementKind::Ul
+        } else if name == "li" {
+            ElementKind::Li
+        } else if name == "div" {
+            ElementKind::Div
+        } else {
+            unimplemented!("not supported this tag name: {}", name);
+        }
+    }
+
+    // associated function
+    pub fn element_kind_to_string(kind: ElementKind) -> String {
+        if kind == ElementKind::Html {
+            "html".to_string()
+        } else if kind == ElementKind::Head {
+            "head".to_string()
+        } else if kind == ElementKind::Link {
+            "link".to_string()
+        } else if kind == ElementKind::Style {
+            "style".to_string()
+        } else if kind == ElementKind::Script {
+            "script".to_string()
+        } else if kind == ElementKind::Body {
+            "body".to_string()
+        } else if kind == ElementKind::Ul {
+            "ul".to_string()
+        } else if kind == ElementKind::Li {
+            "li".to_string()
+        } else if kind == ElementKind::Div {
+            "div".to_string()
+        } else {
+            unimplemented!("not supported this element kind: {:?}", kind);
+        }
     }
 }
 
@@ -168,29 +218,7 @@ impl HtmlParser {
 
     /// Creates an element node.
     fn create_element(&self, tag: &str, attributes: Vec<Attribute>) -> Node {
-        let kind = {
-            if tag == "html" {
-                ElementKind::Html
-            } else if tag == "head" {
-                ElementKind::Head
-            } else if tag == "link" {
-                ElementKind::Link
-            } else if tag == "style" {
-                ElementKind::Style
-            } else if tag == "script" {
-                ElementKind::Script
-            } else if tag == "body" {
-                ElementKind::Body
-            } else if tag == "ul" {
-                ElementKind::Ul
-            } else if tag == "li" {
-                ElementKind::Li
-            } else if tag == "div" {
-                ElementKind::Div
-            } else {
-                unimplemented!("not supported this tag name: {}", tag);
-            }
-        };
+        let kind = Element::str_to_element_kind(tag);
 
         return Node::new(NodeKind::Element(Element::new(kind, attributes)));
     }
