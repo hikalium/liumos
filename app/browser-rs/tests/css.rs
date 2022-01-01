@@ -193,3 +193,82 @@ fn format() {
         expected
     );
 }
+
+#[test_case]
+fn multiple_declarations() {
+    let mut decl1 = Declaration::new();
+    decl1.set_property("background-color".to_string());
+    decl1.set_value("green".to_string());
+
+    let mut decl2 = Declaration::new();
+    decl2.set_property("color".to_string());
+    decl2.set_value("blue".to_string());
+
+    let mut decls = Vec::new();
+    decls.push(decl1);
+    decls.push(decl2);
+
+    let mut rule = QualifiedRule::new();
+    rule.set_selector(Selector::TypeSelector("h1".to_string()));
+    rule.set_declarations(decls);
+
+    let mut rules = Vec::new();
+    rules.push(rule);
+
+    let mut expected = StyleSheet::new();
+    expected.set_rules(rules);
+
+    run_test!(
+        r#"<html><head><style>
+          h1 {
+            background-color: green;
+            color: blue;
+          }
+        </style></head></html>"#,
+        expected
+    );
+}
+
+#[test_case]
+fn multiple_declarations() {
+    let mut decl1 = Declaration::new();
+    decl1.set_property("background-color".to_string());
+    decl1.set_value("red".to_string());
+
+    let mut decls1 = Vec::new();
+    decls1.push(decl1);
+
+    let mut rule1 = QualifiedRule::new();
+    rule1.set_selector(Selector::TypeSelector("h1".to_string()));
+    rule1.set_declarations(decls1);
+
+    let mut decl2 = Declaration::new();
+    decl2.set_property("background-color".to_string());
+    decl2.set_value("blue".to_string());
+
+    let mut decls2 = Vec::new();
+    decls2.push(decl2);
+
+    let mut rule2 = QualifiedRule::new();
+    rule2.set_selector(Selector::TypeSelector("div".to_string()));
+    rule2.set_declarations(decls2);
+
+    let mut rules = Vec::new();
+    rules.push(rule1);
+    rules.push(rule2);
+
+    let mut expected = StyleSheet::new();
+    expected.set_rules(rules);
+
+    run_test!(
+        r#"<html><head><style>
+          h1 {
+            background-color: red;
+          }
+          div {
+            background-color: blue;
+          }
+        </style></head></html>"#,
+        expected
+    );
+}

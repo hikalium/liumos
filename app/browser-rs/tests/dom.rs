@@ -571,25 +571,14 @@ fn default_page() {
     let mut l12 = li1.borrow_mut().next_sibling().unwrap();
     add_text_node_to(&mut l12, "list 2");
 
-    // <html>
-    //  <head>
-    //    <style>
-    //    h1 {
-    //      background-color:red;
-    //    }
-    //    </style>
-    //    </head>
-    //  <body>
-    //    <ul>
-    //      <li>list 1</li>
-    //      <li>list 2</li>
-    //    </ul>
-    //  </body>
-    //</html>",
     run_test!(
         r#"<html>
           <head>
-            <style> h1 { background-color:red; } </style>
+            <style>
+              h1 {
+                background-color: red;
+              }
+            </style>
           </head>
           <body>
             <ul>
