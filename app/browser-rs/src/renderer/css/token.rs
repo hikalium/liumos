@@ -16,6 +16,8 @@ pub enum CssToken {
     HashToken(String),
     /// https://www.w3.org/TR/css-syntax-3/#typedef-delim-token
     Delim(char),
+    /// https://www.w3.org/TR/css-syntax-3/#typedef-number-token
+    Number(u64),
     /// https://www.w3.org/TR/css-syntax-3/#typedef-colon-token
     Colon,
     /// https://www.w3.org/TR/css-syntax-3/#typedef-semicolon-token
@@ -60,6 +62,29 @@ impl CssTokenizer {
 
         return s;
     }
+
+    /// https://www.w3.org/TR/css-syntax-3/#consume-number
+    fn consume_number(&mut self) -> u64 {
+        let mut num = 0;
+
+        loop {
+            if self.pos >= self.input.len() {
+                return num;
+            }
+
+            let c = self.input[self.pos];
+
+            match c {
+                '0'..='9' => {
+                    num = num * 10 + (c.to_digit(10).unwrap() as u64);
+                    self.pos += 1;
+                }
+                _ => break,
+            }
+        }
+
+        return num;
+    }
 }
 
 impl Iterator for CssTokenizer {
@@ -87,6 +112,13 @@ impl Iterator for CssTokenizer {
                 '}' => CssToken::CloseCurly,
                 'a'..='z' | 'A'..='Z' => {
                     let t = CssToken::Ident(self.consume_name());
+                    self.pos -= 1;
+                    t
+                }
+                // This condition should come after calling `consume_name()` because numbers can be
+                // name when it starts with alphabet.
+                '1'..='9' => {
+                    let t = CssToken::Number(self.consume_number());
                     self.pos -= 1;
                     t
                 }

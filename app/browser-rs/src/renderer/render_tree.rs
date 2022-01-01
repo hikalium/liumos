@@ -84,11 +84,30 @@ impl RenderObject {
         for declaration in declarations {
             match declaration.property.as_str() {
                 "background-color" => {
-                    self.style.background_color = match declaration.value.as_str() {
-                        "red" => 0xff0000,
-                        "green" => 0x00ff00,
-                        "blue" => 0x0000ff,
+                    self.style.background_color = match declaration.value {
+                        ComponentValue::StringLiteral(value) => match value.as_str() {
+                            "red" => 0xff0000,
+                            "green" => 0x00ff00,
+                            "blue" => 0x0000ff,
+                            _ => 0xffffff,
+                        },
                         _ => 0xffffff,
+                    };
+                }
+                "height" => {
+                    self.style.height = match declaration.value {
+                        // TODO: support string (e.g. "auto")
+                        ComponentValue::StringLiteral(_value) => 0,
+                        ComponentValue::Number(value) => value,
+                        _ => 0,
+                    };
+                }
+                "width" => {
+                    self.style.width = match declaration.value {
+                        // TODO: support string (e.g. "auto")
+                        ComponentValue::StringLiteral(_value) => 0,
+                        ComponentValue::Number(value) => value,
+                        _ => 0,
                     };
                 }
                 _ => unimplemented!("css property {} is not supported yet", declaration.property,),
@@ -209,8 +228,10 @@ impl RenderTree {
                                     n.borrow().style.background_color,
                                     window.content_x,
                                     window.content_y,
-                                    window.content_w,
-                                    window.content_h,
+                                    n.borrow().style.width as i64,
+                                    n.borrow().style.height as i64,
+                                    //window.content_w,
+                                    //window.content_h,
                                 )
                                 .expect("draw a div");
                                 window.buffer.flush();

@@ -11,17 +11,25 @@ use alloc::vec::Vec;
 #[allow(unused_imports)]
 use liumlib::*;
 
+/// https://www.w3.org/TR/css-syntax-3/#component-value
+#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ComponentValue {
+    StringLiteral(String),
+    Number(u64),
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Declaration {
     pub property: String,
-    pub value: String,
+    pub value: ComponentValue,
 }
 
 impl Declaration {
     pub fn new() -> Self {
         Self {
             property: String::new(),
-            value: String::new(),
+            value: ComponentValue::StringLiteral(String::new()),
         }
     }
 
@@ -29,7 +37,7 @@ impl Declaration {
         self.property = property;
     }
 
-    pub fn set_value(&mut self, value: String) {
+    pub fn set_value(&mut self, value: ComponentValue) {
         self.value = value;
     }
 }
@@ -120,8 +128,7 @@ impl CssParser {
         }
     }
 
-    /// https://www.w3.org/TR/css-syntax-3/#consume-component-value
-    fn consume_component_value(&mut self, current_token: &CssToken) -> String {
+    fn consume_ident(&mut self, current_token: &CssToken) -> String {
         let next_token;
         let token = match self.reconsume {
             true => {
@@ -131,7 +138,32 @@ impl CssParser {
             false => {
                 next_token = match self.t.next() {
                     Some(t) => t,
-                    None => return String::new(),
+                    None => unimplemented!("Parse error: should have next token but got None"),
+                };
+                &next_token
+            }
+        };
+
+        match token {
+            CssToken::Ident(ident) => ident.to_string(),
+            _ => {
+                panic!("Parse error: {:?} is an unexpected token.", token);
+            }
+        }
+    }
+
+    /// https://www.w3.org/TR/css-syntax-3/#consume-component-value
+    fn consume_component_value(&mut self, current_token: &CssToken) -> ComponentValue {
+        let next_token;
+        let token = match self.reconsume {
+            true => {
+                self.reconsume = false;
+                current_token
+            }
+            false => {
+                next_token = match self.t.next() {
+                    Some(t) => t,
+                    None => return ComponentValue::StringLiteral(String::new()),
                 };
                 &next_token
             }
@@ -145,7 +177,8 @@ impl CssParser {
                 return self.consume_qualified_rule(&token);
             }
             */
-            CssToken::Ident(ident) => ident.to_string(),
+            CssToken::Ident(ident) => ComponentValue::StringLiteral(ident.to_string()),
+            CssToken::Number(num) => ComponentValue::Number(*num),
             _ => {
                 panic!("Parse error: {:?} is an unexpected token.", token);
             }
@@ -166,7 +199,7 @@ impl CssParser {
                 next_token = match self.t.next() {
                     Some(t) => t,
                     // TODO: return an error.
-                    None => return Selector::TypeSelector("".to_string()),
+                    None => return Selector::TypeSelector(String::new()),
                 };
                 &next_token
             }
@@ -174,7 +207,7 @@ impl CssParser {
 
         match token {
             CssToken::HashToken(value) => Selector::IdSelector(value[1..].to_string()),
-            CssToken::Delim(_delim) => Selector::ClassSelector(self.consume_component_value(token)),
+            CssToken::Delim(_delim) => Selector::ClassSelector(self.consume_ident(token)),
             CssToken::Ident(ident) => Selector::TypeSelector(ident.to_string()),
             _ => {
                 panic!("Parse error: {:?} is an unexpected token.", token);
@@ -202,7 +235,7 @@ impl CssParser {
         // Create a new declaration with its name set to the value of the current input token.
         let mut declaration = Declaration::new();
         self.reconsume = true;
-        declaration.set_property(self.consume_component_value(&token));
+        declaration.set_property(self.consume_ident(&token));
 
         // If the next input token is anything other than a <colon-token>, this is a parse error.
         // Return nothing. Otherwise, consume the next input token.

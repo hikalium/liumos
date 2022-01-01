@@ -59,6 +59,8 @@ fn main() {
               <style>
                 div {
                   background-color: red;
+                  height: 100;
+                  width: 100;
                 }
               </style>
               <script>
@@ -69,7 +71,7 @@ fn main() {
               </script>
             </head>
             <body>
-              <div>abc</div>
+              <div>aaa</div>
             </body>
             </html>"#;
 
