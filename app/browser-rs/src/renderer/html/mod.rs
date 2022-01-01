@@ -3,6 +3,7 @@ pub mod token;
 
 use alloc::string::String;
 
+/// Used in HTML token and DOM.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Attribute {
     pub name: String,
@@ -15,14 +16,6 @@ impl Attribute {
             name: String::new(),
             value: String::new(),
         }
-    }
-
-    fn set_name(&mut self, name: String) {
-        self.name = name;
-    }
-
-    fn set_value(&mut self, value: String) {
-        self.value = value;
     }
 
     fn add_char(&mut self, c: char, is_name: bool) {

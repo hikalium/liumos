@@ -9,6 +9,8 @@ extern crate alloc;
 use crate::alloc::string::ToString;
 use alloc::rc::Rc;
 use alloc::string::String;
+use alloc::vec::Vec;
+use browser_rs::renderer::html::Attribute;
 use core::cell::RefCell;
 
 use browser_rs::renderer::html::dom::{Element, ElementKind, HtmlParser, Node, NodeKind};
@@ -119,12 +121,15 @@ fn create_base_dom_tree() -> Rc<RefCell<Node>> {
     let root = Rc::new(RefCell::new(Node::new(NodeKind::Document)));
     let html = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
         ElementKind::Html,
+        Vec::new(),
     )))));
     let head = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
         ElementKind::Head,
+        Vec::new(),
     )))));
     let body = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
         ElementKind::Body,
+        Vec::new(),
     )))));
 
     // root <--> html
@@ -192,12 +197,15 @@ fn add_child_ul_to(target: &mut Rc<RefCell<Node>>) {
     //          └── li
     let ul = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
         ElementKind::Ul,
+        Vec::new(),
     )))));
     let li1 = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
         ElementKind::Li,
+        Vec::new(),
     )))));
     let li2 = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
         ElementKind::Li,
+        Vec::new(),
     )))));
 
     // ul <--> li1
@@ -237,12 +245,15 @@ fn add_sibling_ul_to(target: &mut Rc<RefCell<Node>>) {
     //      └── li
     let ul = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
         ElementKind::Ul,
+        Vec::new(),
     )))));
     let li1 = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
         ElementKind::Li,
+        Vec::new(),
     )))));
     let li2 = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
         ElementKind::Li,
+        Vec::new(),
     )))));
 
     // ul <--> li1
@@ -332,6 +343,7 @@ fn div() {
 
     let mut div = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
         ElementKind::Div,
+        Vec::new(),
     )))));
     add_text_node_to(&mut div, "foo");
 
@@ -459,9 +471,17 @@ fn link() {
         .borrow_mut()
         .first_child()
         .unwrap();
-    let mut link_element = Element::new(ElementKind::Link);
-    link_element.set_attribute("rel".to_string(), "stylesheet".to_string());
-    link_element.set_attribute("href".to_string(), "styles.css".to_string());
+
+    let mut attributes = Vec::new();
+    let mut attr1 = Attribute::new();
+    attr1.set_name_and_value("rel".to_string(), "stylesheet".to_string());
+    attributes.push(attr1);
+
+    let mut attr2 = Attribute::new();
+    attr2.set_name_and_value("href".to_string(), "styles.css".to_string());
+    attributes.push(attr2);
+
+    let link_element = Element::new(ElementKind::Link, attributes);
 
     let link = Rc::new(RefCell::new(Node::new(NodeKind::Element(link_element))));
 
@@ -496,6 +516,7 @@ fn css_with_style() {
         .unwrap();
     let mut style = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
         ElementKind::Style,
+        Vec::new(),
     )))));
     add_text_node_to(&mut style, "h1{background-color:red;}");
     add_child_node_to(&mut head, &style);
@@ -543,6 +564,7 @@ fn default_page() {
         .unwrap();
     let mut style = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
         ElementKind::Style,
+        Vec::new(),
     )))));
     add_text_node_to(&mut style, " h1 { background-color:red; } ");
     add_child_node_to(&mut head, &style);

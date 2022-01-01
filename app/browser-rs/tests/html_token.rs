@@ -458,3 +458,51 @@ fn js_with_style() {
         }
     );
 }
+
+#[test_case]
+fn class() {
+    let mut attributes = Vec::new();
+    let mut a = Attribute::new();
+    a.set_name_and_value("class".to_string(), "class1".to_string());
+    attributes.push(a);
+
+    run_test!(
+        "<div class=class1>abc</div>",
+        HtmlToken::StartTag {
+            tag: String::from("div"),
+            self_closing: false,
+            attributes: attributes,
+        },
+        HtmlToken::Char('a'),
+        HtmlToken::Char('b'),
+        HtmlToken::Char('c'),
+        HtmlToken::EndTag {
+            tag: String::from("div"),
+            self_closing: false,
+        }
+    );
+}
+
+#[test_case]
+fn id() {
+    let mut attributes = Vec::new();
+    let mut a = Attribute::new();
+    a.set_name_and_value("id".to_string(), "id1".to_string());
+    attributes.push(a);
+
+    run_test!(
+        "<div id=id1>abc</div>",
+        HtmlToken::StartTag {
+            tag: String::from("div"),
+            self_closing: false,
+            attributes: attributes,
+        },
+        HtmlToken::Char('a'),
+        HtmlToken::Char('b'),
+        HtmlToken::Char('c'),
+        HtmlToken::EndTag {
+            tag: String::from("div"),
+            self_closing: false,
+        }
+    );
+}

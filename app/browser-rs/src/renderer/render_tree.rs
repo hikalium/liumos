@@ -130,7 +130,7 @@ impl RenderTree {
         tree
     }
 
-    fn check_kind(node_kind: &NodeKind, selector: &Selector) -> bool {
+    fn is_node_selected(&self, node_kind: &NodeKind, selector: &Selector) -> bool {
         match node_kind {
             Element(e) => match selector {
                 Selector::TypeSelector(s) => {
@@ -181,7 +181,8 @@ impl RenderTree {
     ) {
         match node {
             Some(n) => {
-                if Self::check_kind(&n.borrow().kind, &css_rule.selector) {
+                println!("is_node_selected {:?}\n{:?}", &n.borrow(), &css_rule.selector);
+                if self.is_node_selected(&n.borrow().kind, &css_rule.selector) {
                     n.borrow_mut().set_style(css_rule.declarations.clone());
                 }
 

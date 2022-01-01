@@ -93,18 +93,8 @@ pub struct Element {
 }
 
 impl Element {
-    pub fn new(kind: ElementKind) -> Self {
-        Self {
-            kind,
-            attributes: Vec::new(),
-        }
-    }
-
-    pub fn set_attribute(&mut self, name: String, value: String) {
-        let mut attr = Attribute::new();
-        attr.set_name(name);
-        attr.set_value(value);
-        self.attributes.push(attr);
+    pub fn new(kind: ElementKind, attributes: Vec<Attribute>) -> Self {
+        Self { kind, attributes }
     }
 }
 
@@ -169,11 +159,6 @@ impl HtmlParser {
         }
     }
 
-    /// Creates an element node.
-    fn create_element(&self, kind: ElementKind) -> Node {
-        return Node::new(NodeKind::Element(Element::new(kind)));
-    }
-
     /// Creates a char node.
     fn create_char(&self, c: char) -> Node {
         let mut s = String::new();
@@ -181,40 +166,45 @@ impl HtmlParser {
         return Node::new(NodeKind::Text(s));
     }
 
-    /// Creates an element based on the `tag` string.
-    fn create_element_by_tag(&self, tag: &str) -> Node {
-        if tag == "html" {
-            return self.create_element(ElementKind::Html);
-        } else if tag == "head" {
-            return self.create_element(ElementKind::Head);
-        } else if tag == "link" {
-            return self.create_element(ElementKind::Link);
-        } else if tag == "style" {
-            return self.create_element(ElementKind::Style);
-        } else if tag == "script" {
-            return self.create_element(ElementKind::Script);
-        } else if tag == "body" {
-            return self.create_element(ElementKind::Body);
-        } else if tag == "ul" {
-            return self.create_element(ElementKind::Ul);
-        } else if tag == "li" {
-            return self.create_element(ElementKind::Li);
-        } else if tag == "div" {
-            return self.create_element(ElementKind::Div);
-        }
-        panic!("not supported this tag name: {}", tag);
+    /// Creates an element node.
+    fn create_element(&self, tag: &str, attributes: Vec<Attribute>) -> Node {
+        let kind = {
+            if tag == "html" {
+                ElementKind::Html
+            } else if tag == "head" {
+                ElementKind::Head
+            } else if tag == "link" {
+                ElementKind::Link
+            } else if tag == "style" {
+                ElementKind::Style
+            } else if tag == "script" {
+                ElementKind::Script
+            } else if tag == "body" {
+                ElementKind::Body
+            } else if tag == "ul" {
+                ElementKind::Ul
+            } else if tag == "li" {
+                ElementKind::Li
+            } else if tag == "div" {
+                ElementKind::Div
+            } else {
+                unimplemented!("not supported this tag name: {}", tag);
+            }
+        };
+
+        return Node::new(NodeKind::Element(Element::new(kind, attributes)));
     }
 
     /// Creates an element node for the token and insert it to the appropriate place for inserting
     /// a node. Put the new node in the stack of open elements.
     /// https://html.spec.whatwg.org/multipage/parsing.html#insert-a-foreign-element
-    fn insert_element(&mut self, tag: &str) {
+    fn insert_element(&mut self, tag: &str, attributes: Vec<Attribute>) {
         let current = match self.stack_of_open_elements.last() {
             Some(n) => n,
             None => &self.root,
         };
 
-        let node = Rc::new(RefCell::new(self.create_element_by_tag(tag)));
+        let node = Rc::new(RefCell::new(self.create_element(tag, attributes)));
 
         if current.borrow().first_child().is_some() {
             current
@@ -277,22 +267,6 @@ impl HtmlParser {
         self.stack_of_open_elements.push(node);
     }
 
-    /// Sets an attribute to the current node.
-    fn set_attribute_to_current_node(&mut self, name: String, value: String) {
-        let current = match self.stack_of_open_elements.last() {
-            Some(n) => n,
-            None => &self.root,
-        };
-
-        match current.borrow_mut().kind {
-            NodeKind::Element(ref mut elem) => {
-                elem.set_attribute(name, value);
-                return;
-            }
-            _ => {}
-        }
-    }
-
     /// Returns true if the current node's kind is same as NodeKind::Element::<element_kind>.
     fn pop_current_node(&mut self, element_kind: ElementKind) -> bool {
         let current = match self.stack_of_open_elements.last() {
@@ -300,7 +274,7 @@ impl HtmlParser {
             None => return false,
         };
 
-        if current.borrow().kind == NodeKind::Element(Element::new(element_kind)) {
+        if current.borrow().kind == NodeKind::Element(Element::new(element_kind, Vec::new())) {
             self.stack_of_open_elements.pop();
             return true;
         }
@@ -318,7 +292,7 @@ impl HtmlParser {
                 None => return,
             };
 
-            if current.borrow().kind == NodeKind::Element(Element::new(element_kind)) {
+            if current.borrow().kind == NodeKind::Element(Element::new(element_kind, Vec::new())) {
                 return;
             }
         }
@@ -328,7 +302,7 @@ impl HtmlParser {
     fn contain_in_stack(&mut self, element_kind: ElementKind) -> bool {
         for i in 0..self.stack_of_open_elements.len() {
             if self.stack_of_open_elements[i].borrow().kind
-                == NodeKind::Element(Element::new(element_kind))
+                == NodeKind::Element(Element::new(element_kind, Vec::new()))
             {
                 return true;
             }
@@ -361,14 +335,14 @@ impl HtmlParser {
                         Some(HtmlToken::StartTag {
                             ref tag,
                             self_closing: _,
-                            attributes: _,
+                            ref attributes,
                         }) => {
                             // A start tag whose tag name is "html"
                             // Create an element for the token in the HTML namespace, with the Document
                             // as the intended parent. Append it to the Document object. Put this
                             // element in the stack of open elements.
                             if tag == "html" {
-                                self.insert_element(tag);
+                                self.insert_element(tag, attributes.to_vec());
                                 self.mode = InsertionMode::BeforeHead;
                                 token = self.t.next();
                                 continue;
@@ -390,7 +364,7 @@ impl HtmlParser {
                             return self.root.clone();
                         }
                     }
-                    self.insert_element("html");
+                    self.insert_element("html", Vec::new());
                     self.mode = InsertionMode::BeforeHead;
                 } // end of InsertionMode::BeforeHtml
 
@@ -406,10 +380,10 @@ impl HtmlParser {
                         Some(HtmlToken::StartTag {
                             ref tag,
                             self_closing: _,
-                            attributes: _,
+                            ref attributes,
                         }) => {
                             if tag == "head" {
-                                self.insert_element(tag);
+                                self.insert_element(tag, attributes.to_vec());
                                 self.mode = InsertionMode::InHead;
                                 token = self.t.next();
                                 continue;
@@ -420,7 +394,7 @@ impl HtmlParser {
                         }
                         _ => {}
                     }
-                    self.insert_element("head");
+                    self.insert_element("head", Vec::new());
                     self.mode = InsertionMode::InHead;
                 } // end of InsertionMode::BeforeHead
 
@@ -440,13 +414,7 @@ impl HtmlParser {
                             ref attributes,
                         }) => {
                             if tag == "link" {
-                                self.insert_element("link");
-                                for attr in attributes {
-                                    self.set_attribute_to_current_node(
-                                        attr.name.clone(),
-                                        attr.value.clone(),
-                                    );
-                                }
+                                self.insert_element("link", attributes.to_vec());
                                 // Immediately pop the current node off the stack of open elements.
                                 assert!(self.pop_current_node(ElementKind::Link));
                                 token = self.t.next();
@@ -454,7 +422,7 @@ impl HtmlParser {
                             }
 
                             if tag == "style" {
-                                self.insert_element(tag);
+                                self.insert_element(tag, attributes.to_vec());
                                 self.original_insertion_mode = self.mode;
                                 self.mode = InsertionMode::Text;
                                 token = self.t.next();
@@ -462,7 +430,7 @@ impl HtmlParser {
                             }
 
                             if tag == "script" {
-                                self.insert_element(tag);
+                                self.insert_element(tag, attributes.to_vec());
                                 self.original_insertion_mode = self.mode;
                                 self.mode = InsertionMode::Text;
                                 token = self.t.next();
@@ -502,10 +470,10 @@ impl HtmlParser {
                         Some(HtmlToken::StartTag {
                             ref tag,
                             self_closing: _,
-                            attributes: _,
+                            ref attributes,
                         }) => {
                             if tag == "body" {
-                                self.insert_element(tag);
+                                self.insert_element(tag, attributes.to_vec());
                                 token = self.t.next();
                                 self.mode = InsertionMode::InBody;
                                 continue;
@@ -516,7 +484,7 @@ impl HtmlParser {
                         }
                         _ => {}
                     }
-                    self.insert_element("body");
+                    self.insert_element("body", Vec::new());
                     self.mode = InsertionMode::InBody;
                 } // end of InsertionMode::AfterHead
 
@@ -526,20 +494,20 @@ impl HtmlParser {
                         Some(HtmlToken::StartTag {
                             ref tag,
                             self_closing: _,
-                            attributes: _,
+                            ref attributes,
                         }) => {
                             if tag == "ul" {
-                                self.insert_element(tag);
+                                self.insert_element(tag, attributes.to_vec());
                                 token = self.t.next();
                                 continue;
                             }
                             if tag == "li" {
-                                self.insert_element(tag);
+                                self.insert_element(tag, attributes.to_vec());
                                 token = self.t.next();
                                 continue;
                             }
                             if tag == "div" {
-                                self.insert_element(tag);
+                                self.insert_element(tag, attributes.to_vec());
                                 token = self.t.next();
                                 continue;
                             }
@@ -702,7 +670,7 @@ fn get_target_element_node(
 ) -> Option<Rc<RefCell<Node>>> {
     match node {
         Some(n) => {
-            if n.borrow().kind == NodeKind::Element(Element::new(element_kind)) {
+            if n.borrow().kind == NodeKind::Element(Element::new(element_kind, Vec::new())) {
                 return Some(n.clone());
             }
             let result1 = get_target_element_node(n.borrow().first_child(), element_kind);
