@@ -99,7 +99,6 @@ impl RenderObject {
                         // TODO: support string (e.g. "auto")
                         ComponentValue::StringLiteral(_value) => 0,
                         ComponentValue::Number(value) => value,
-                        _ => 0,
                     };
                 }
                 "width" => {
@@ -107,7 +106,6 @@ impl RenderObject {
                         // TODO: support string (e.g. "auto")
                         ComponentValue::StringLiteral(_value) => 0,
                         ComponentValue::Number(value) => value,
-                        _ => 0,
                     };
                 }
                 _ => unimplemented!("css property {} is not supported yet", declaration.property,),

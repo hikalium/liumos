@@ -117,31 +117,27 @@ pub struct CssParser {
     /// https://www.w3.org/TR/css-syntax-3/#reconsume-the-current-input-token
     /// True if the next time an algorithm instructs you to consume the next input token, instead
     /// do nothing (retain the current input token unchanged).
-    reconsume: bool,
+    reconsumed_token: Option<CssToken>,
 }
 
 impl CssParser {
     pub fn new(t: CssTokenizer) -> Self {
         Self {
             t,
-            reconsume: false,
+            reconsumed_token: None,
         }
     }
 
-    fn consume_ident(&mut self, current_token: &CssToken) -> String {
-        let next_token;
-        let token = match self.reconsume {
-            true => {
-                self.reconsume = false;
-                current_token
+    fn consume_ident(&mut self) -> String {
+        let token = match self.reconsumed_token.clone() {
+            Some(t) => {
+                self.reconsumed_token = None;
+                t
             }
-            false => {
-                next_token = match self.t.next() {
-                    Some(t) => t,
-                    None => unimplemented!("Parse error: should have next token but got None"),
-                };
-                &next_token
-            }
+            None => match self.t.next() {
+                Some(t) => t,
+                None => unimplemented!("Parse error: should have next token but got None"),
+            },
         };
 
         match token {
@@ -153,20 +149,16 @@ impl CssParser {
     }
 
     /// https://www.w3.org/TR/css-syntax-3/#consume-component-value
-    fn consume_component_value(&mut self, current_token: &CssToken) -> ComponentValue {
-        let next_token;
-        let token = match self.reconsume {
-            true => {
-                self.reconsume = false;
-                current_token
+    fn consume_component_value(&mut self) -> ComponentValue {
+        let token = match self.reconsumed_token.clone() {
+            Some(t) => {
+                self.reconsumed_token = None;
+                t
             }
-            false => {
-                next_token = match self.t.next() {
-                    Some(t) => t,
-                    None => return ComponentValue::StringLiteral(String::new()),
-                };
-                &next_token
-            }
+            None => match self.t.next() {
+                Some(t) => t,
+                None => return ComponentValue::StringLiteral(String::new()),
+            },
         };
 
         match token {
@@ -178,7 +170,7 @@ impl CssParser {
             }
             */
             CssToken::Ident(ident) => ComponentValue::StringLiteral(ident.to_string()),
-            CssToken::Number(num) => ComponentValue::Number(*num),
+            CssToken::Number(num) => ComponentValue::Number(num),
             _ => {
                 panic!("Parse error: {:?} is an unexpected token.", token);
             }
@@ -188,26 +180,24 @@ impl CssParser {
     /// https://www.w3.org/TR/css-syntax-3/#qualified-rule
     /// Note: Most qualified rules will be style rules, where the prelude is a selector [SELECT]
     /// and the block a list of declarations.
-    fn consume_selector(&mut self, current_token: &CssToken) -> Selector {
-        let next_token;
-        let token = match self.reconsume {
-            true => {
-                self.reconsume = false;
-                current_token
+    fn consume_selector(&mut self) -> Selector {
+        let token = match self.reconsumed_token.clone() {
+            Some(t) => {
+                self.reconsumed_token = None;
+                t
             }
-            false => {
-                next_token = match self.t.next() {
+            None => {
+                match self.t.next() {
                     Some(t) => t,
                     // TODO: return an error.
                     None => return Selector::TypeSelector(String::new()),
-                };
-                &next_token
+                }
             }
         };
 
         match token {
             CssToken::HashToken(value) => Selector::IdSelector(value[1..].to_string()),
-            CssToken::Delim(_delim) => Selector::ClassSelector(self.consume_ident(token)),
+            CssToken::Delim(_delim) => Selector::ClassSelector(self.consume_ident()),
             CssToken::Ident(ident) => Selector::TypeSelector(ident.to_string()),
             _ => {
                 panic!("Parse error: {:?} is an unexpected token.", token);
@@ -216,26 +206,22 @@ impl CssParser {
     }
 
     /// https://www.w3.org/TR/css-syntax-3/#consume-a-declaration
-    fn consume_declaration(&mut self, current_token: &CssToken) -> Option<Declaration> {
-        let next_token;
-        let token = match self.reconsume {
-            true => {
-                self.reconsume = false;
-                current_token
+    fn consume_declaration(&mut self) -> Option<Declaration> {
+        let token = match self.reconsumed_token.clone() {
+            Some(t) => {
+                self.reconsumed_token = None;
+                t
             }
-            false => {
-                next_token = match self.t.next() {
-                    Some(t) => t,
-                    None => return None,
-                };
-                &next_token
-            }
+            None => match self.t.next() {
+                Some(t) => t,
+                None => return None,
+            },
         };
 
         // Create a new declaration with its name set to the value of the current input token.
         let mut declaration = Declaration::new();
-        self.reconsume = true;
-        declaration.set_property(self.consume_ident(&token));
+        self.reconsumed_token = Some(token);
+        declaration.set_property(self.consume_ident());
 
         // If the next input token is anything other than a <colon-token>, this is a parse error.
         // Return nothing. Otherwise, consume the next input token.
@@ -249,7 +235,7 @@ impl CssParser {
 
         // As long as the next input token is anything other than an <EOF-token>, consume a
         // component value and append it to the declaration’s value.
-        declaration.set_value(self.consume_component_value(&token));
+        declaration.set_value(self.consume_component_value());
 
         Some(declaration)
     }
@@ -258,23 +244,19 @@ impl CssParser {
     /// https://www.w3.org/TR/css-syntax-3/#consume-a-list-of-declarations
     /// Note: Most qualified rules will be style rules, where the prelude is a selector [SELECT] and
     /// the block a list of declarations.
-    fn consume_list_of_declarations(&mut self, current_token: &CssToken) -> Vec<Declaration> {
+    fn consume_list_of_declarations(&mut self) -> Vec<Declaration> {
         let mut declarations = Vec::new();
 
         loop {
-            let next_token;
-            let token = match self.reconsume {
-                true => {
-                    self.reconsume = false;
-                    current_token
+            let token = match self.reconsumed_token.clone() {
+                Some(t) => {
+                    self.reconsumed_token = None;
+                    t
                 }
-                false => {
-                    next_token = match self.t.next() {
-                        Some(t) => t,
-                        None => return declarations,
-                    };
-                    &next_token
-                }
+                None => match self.t.next() {
+                    Some(t) => t,
+                    None => return declarations,
+                },
             };
 
             match token {
@@ -285,9 +267,9 @@ impl CssParser {
                 CssToken::SemiColon => {
                     // Do nothing.
                 }
-                CssToken::Ident(_ident) => {
-                    self.reconsume = true;
-                    match self.consume_declaration(&token) {
+                CssToken::Ident(ref _ident) => {
+                    self.reconsumed_token = Some(token);
+                    match self.consume_declaration() {
                         Some(declaration) => declarations.push(declaration),
                         None => {}
                     }
@@ -329,49 +311,49 @@ impl CssParser {
     /// https://www.w3.org/TR/css-syntax-3/#consume-qualified-rule
     /// https://www.w3.org/TR/css-syntax-3/#qualified-rule
     /// https://www.w3.org/TR/css-syntax-3/#style-rules
-    fn consume_qualified_rule(&mut self, current_token: &CssToken) -> Option<QualifiedRule> {
+    fn consume_qualified_rule(&mut self) -> Option<QualifiedRule> {
         let mut rule = QualifiedRule::new();
 
         loop {
-            let next_token;
-            let token = match self.reconsume {
-                true => {
-                    self.reconsume = false;
-                    current_token
+            let token = match self.reconsumed_token.clone() {
+                Some(t) => {
+                    self.reconsumed_token = None;
+                    t
                 }
-                false => {
-                    next_token = match self.t.next() {
+                None => {
+                    match self.t.next() {
                         Some(t) => t,
+                        // <EOF-token>
+                        // "This is a parse error. Return nothing."
                         None => return None,
-                    };
-                    &next_token
+                    }
                 }
             };
 
             match token {
                 CssToken::OpenCurly => {
-                    // Consume a simple block and assign it to the qualified rule’s block. Return
-                    // the qualified rule.
+                    // "Consume a simple block and assign it to the qualified rule’s block. Return
+                    // the qualified rule."
 
                     // The content of the qualified rule’s block is parsed as a list of
                     // declarations.
-                    rule.set_declarations(self.consume_list_of_declarations(&token));
+                    rule.set_declarations(self.consume_list_of_declarations());
                     return Some(rule);
                 }
                 _ => {
-                    // Reconsume the current input token. Consume a component value. Append the
-                    // returned value to the qualified rule’s prelude.
+                    // "Reconsume the current input token. Consume a component value. Append the
+                    // returned value to the qualified rule’s prelude."
 
                     // The prelude of the qualified rule is parsed as a <selector-list>.
                     // https://www.w3.org/TR/css-syntax-3/#css-parse-something-according-to-a-css-grammar
-                    self.reconsume = true;
+                    self.reconsumed_token = Some(token);
                     // TODO: support multiple selectors
                     /*
                     let mut selectors = Vec::new();
                     selectors.push(Selector::TypeSelector(self.consume_component_value(&token)));
                     rule.set_selectors(selectors);
                     */
-                    rule.set_selector(self.consume_selector(&token));
+                    rule.set_selector(self.consume_selector());
                 }
             }
         }
@@ -379,26 +361,26 @@ impl CssParser {
 
     /// https://www.w3.org/TR/css-syntax-3/#consume-a-list-of-rules
     fn consume_list_of_rules(&mut self) -> Vec<QualifiedRule> {
+        // "Create an initially empty list of rules."
         let mut rules = Vec::new();
 
-        let mut token;
         loop {
-            token = match self.t.next() {
+            let token = match self.t.next() {
                 Some(t) => t,
                 None => return rules,
             };
 
-            match token {
-                _ => {
-                    // Reconsume the current input token. Consume a qualified rule. If anything is
-                    // returned, append it to the list of rules.
-                    self.reconsume = true;
-                    let rule = self.consume_qualified_rule(&token);
-                    match rule {
-                        Some(r) => rules.push(r),
-                        None => {}
-                    }
-                }
+            // TODO: suppor other cases
+            // https://www.w3.org/TR/css-syntax-3/#consume-list-of-rules
+
+            // anything else
+            // "Reconsume the current input token. Consume a qualified rule. If anything is
+            // returned, append it to the list of rules."
+            self.reconsumed_token = Some(token);
+            let rule = self.consume_qualified_rule();
+            match rule {
+                Some(r) => rules.push(r),
+                None => {}
             }
         }
     }

@@ -45,7 +45,7 @@ impl CssTokenizer {
     }
 
     /// https://www.w3.org/TR/css-syntax-3/#consume-name
-    fn consume_name(&mut self) -> String {
+    fn consume_ident_token(&mut self) -> String {
         let mut s = String::new();
         s.push(self.input[self.pos]);
 
@@ -64,7 +64,8 @@ impl CssTokenizer {
     }
 
     /// https://www.w3.org/TR/css-syntax-3/#consume-number
-    fn consume_number(&mut self) -> u64 {
+    /// https://www.w3.org/TR/css-syntax-3/#consume-a-numeric-token
+    fn consume_numeric_token(&mut self) -> u64 {
         let mut num = 0;
 
         loop {
@@ -101,7 +102,11 @@ impl Iterator for CssTokenizer {
 
             let token = match c {
                 '#' => {
-                    let value = self.consume_name();
+                    // TODO: support the case if the next token is not ident code point
+                    // "Otherwise, return a <delim-token> with its value set to the current input
+                    // code point."
+                    // https://www.w3.org/TR/css-syntax-3/#consume-token
+                    let value = self.consume_ident_token();
                     self.pos -= 1;
                     CssToken::HashToken(value)
                 }
@@ -110,18 +115,24 @@ impl Iterator for CssTokenizer {
                 ';' => CssToken::SemiColon,
                 '{' => CssToken::OpenCurly,
                 '}' => CssToken::CloseCurly,
-                'a'..='z' | 'A'..='Z' => {
-                    let t = CssToken::Ident(self.consume_name());
-                    self.pos -= 1;
-                    t
-                }
-                // This condition should come after calling `consume_name()` because numbers can be
-                // name when it starts with alphabet.
+                // digit
+                // Reconsume the current input code point, consume a numeric token, and return it.
                 '1'..='9' => {
-                    let t = CssToken::Number(self.consume_number());
+                    let t = CssToken::Number(self.consume_numeric_token());
                     self.pos -= 1;
                     t
                 }
+                // ident-start code point
+                // Reconsume the current input code point, consume an ident-like token, and return
+                // it.
+                'a'..='z' | 'A'..='Z' | '_' => {
+                    let t = CssToken::Ident(self.consume_ident_token());
+                    self.pos -= 1;
+                    t
+                }
+                // TODO: handle white spaces property
+                // "Consume as much whitespace as possible. Return a <whitespace-token>."
+                // https://www.w3.org/TR/css-syntax-3/#consume-token
                 ' ' | '\n' => {
                     self.pos += 1;
                     continue;
