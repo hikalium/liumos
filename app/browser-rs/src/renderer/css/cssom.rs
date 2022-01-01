@@ -12,7 +12,6 @@ use alloc::vec::Vec;
 use liumlib::*;
 
 /// https://www.w3.org/TR/css-syntax-3/#component-value
-#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ComponentValue {
     StringLiteral(String),
@@ -25,6 +24,7 @@ pub struct Declaration {
     pub value: ComponentValue,
 }
 
+/// https://www.w3.org/TR/css-syntax-3/#declaration
 impl Declaration {
     pub fn new() -> Self {
         Self {
@@ -42,7 +42,6 @@ impl Declaration {
     }
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// https://www.w3.org/TR/selectors-3/#selectors
 pub enum Selector {
@@ -54,16 +53,14 @@ pub enum Selector {
     IdSelector(String),
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// https://www.w3.org/TR/css-syntax-3/#qualified-rule
 /// https://www.w3.org/TR/css-syntax-3/#style-rules
 pub struct QualifiedRule {
     // TODO: support multiple selectors
-    pub selector: Selector,
     /// https://www.w3.org/TR/selectors-4/#typedef-selector-list
     /// The prelude of the qualified rule is parsed as a <selector-list>.
-    //selectors: Vec<Selector>,
+    pub selector: Selector,
     /// https://www.w3.org/TR/css-syntax-3/#parse-a-list-of-declarations
     /// The content of the qualified rule’s block is parsed as a list of declarations.
     pub declarations: Vec<Declaration>,
@@ -73,17 +70,9 @@ impl QualifiedRule {
     pub fn new() -> Self {
         Self {
             selector: Selector::TypeSelector("".to_string()),
-            //selectors: Vec::new(),
             declarations: Vec::new(),
         }
     }
-
-    /*
-    #[allow(dead_code)]
-    pub fn set_selectors(&mut self, selectors: Vec<Selector>) {
-        self.selectors = selectors;
-    }
-    */
 
     pub fn set_selector(&mut self, selector: Selector) {
         self.selector = selector;
@@ -162,13 +151,6 @@ impl CssParser {
         };
 
         match token {
-            // TODO: support nested style
-            /*
-            CssToken::OpenCurly => {
-                // Consume a simple block and return it.
-                return self.consume_qualified_rule(&token);
-            }
-            */
             CssToken::Ident(ident) => ComponentValue::StringLiteral(ident.to_string()),
             CssToken::Number(num) => ComponentValue::Number(num),
             _ => {
@@ -281,33 +263,6 @@ impl CssParser {
         }
     }
 
-    /*
-    #[allow(dead_code)]
-    /// https://www.w3.org/TR/css-syntax-3/#parse-list-of-component-values
-    fn consume_list_of_component_values(&mut self, current_token: &CssToken) -> Vec<String> {
-        let mut values = Vec::new();
-
-        loop {
-            let next_token;
-            let token = match self.reconsume {
-                true => {
-                    self.reconsume = false;
-                    current_token
-                }
-                false => {
-                    next_token = match self.t.next() {
-                        Some(t) => t,
-                        None => return values,
-                    };
-                    &next_token
-                }
-            };
-
-            values.push(self.consume_component_value(token));
-        }
-    }
-    */
-
     /// https://www.w3.org/TR/css-syntax-3/#consume-qualified-rule
     /// https://www.w3.org/TR/css-syntax-3/#qualified-rule
     /// https://www.w3.org/TR/css-syntax-3/#style-rules
@@ -347,12 +302,6 @@ impl CssParser {
                     // The prelude of the qualified rule is parsed as a <selector-list>.
                     // https://www.w3.org/TR/css-syntax-3/#css-parse-something-according-to-a-css-grammar
                     self.reconsumed_token = Some(token);
-                    // TODO: support multiple selectors
-                    /*
-                    let mut selectors = Vec::new();
-                    selectors.push(Selector::TypeSelector(self.consume_component_value(&token)));
-                    rule.set_selectors(selectors);
-                    */
                     rule.set_selector(self.consume_selector());
                 }
             }
