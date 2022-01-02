@@ -66,6 +66,18 @@ enum DisplayType {
     Inline,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct LayoutPosition {
+    x: u64,
+    y: u64,
+}
+
+impl LayoutPosition {
+    fn new(x: u64, y: u64) -> Self {
+        Self { x, y }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct RenderObject {
     // Similar structure with Node in renderer/dom.rs.
@@ -76,6 +88,8 @@ pub struct RenderObject {
     next_sibling: Option<Rc<RefCell<RenderObject>>>,
     // CSS information.
     pub style: RenderStyle,
+    // Layout information.
+    position: LayoutPosition,
 }
 
 impl RenderObject {
@@ -87,6 +101,7 @@ impl RenderObject {
             previous_sibling: None,
             next_sibling: None,
             style: RenderStyle::new(&node),
+            position: LayoutPosition::new(0, 0),
         }
     }
 
@@ -131,7 +146,47 @@ impl RenderObject {
         }
     }
 
-    //fn layout(&mut self, parent_style: &RenderStyle) {}
+    fn layout(&mut self, parent_style: &RenderStyle, parent_position: &LayoutPosition) {
+        match parent_style.display {
+            DisplayType::Inline => {
+                match self.style.display {
+                    DisplayType::Block => {
+                        // TODO: set position property
+                        self.position.x = 0;
+                        self.position.y = parent_style.height;
+                    }
+                    DisplayType::Inline => {
+                        self.position.x = parent_position.x + parent_style.width;
+                        self.position.y = parent_position.y;
+                    }
+                }
+            }
+            DisplayType::Block => {
+                match self.style.display {
+                    DisplayType::Block => {
+                        self.position.x = 0;
+                        self.position.y = parent_style.height;
+                    }
+                    DisplayType::Inline => {
+                        // TODO: set position property
+                        self.position.x = 0;
+                        self.position.y = parent_style.height;
+                    }
+                }
+            }
+        }
+
+        match self.first_child() {
+            Some(first_child) => first_child.borrow_mut().layout(&self.style, &self.position),
+            None => {}
+        }
+        match self.next_sibling() {
+            Some(next_sibling) => next_sibling
+                .borrow_mut()
+                .layout(&self.style, &self.position),
+            None => {}
+        }
+    }
 
     fn paint(&self, window: &ApplicationWindow) {
         match &self.kind {
@@ -156,8 +211,8 @@ impl RenderObject {
                         draw_rect(
                             &window.buffer,
                             self.style.background_color,
-                            window.content_x,
-                            window.content_y,
+                            window.content_x + self.position.x as i64,
+                            window.content_y + self.position.y as i64,
                             self.style.width as i64,
                             self.style.height as i64,
                         )
@@ -183,6 +238,7 @@ impl RenderTree {
         };
 
         tree.apply(cssom);
+        tree.layout();
 
         tree
     }
@@ -224,6 +280,7 @@ impl RenderTree {
         }
     }
 
+    /// Converts DOM tree to render tree.
     fn dom_to_render_tree(root: &Option<Rc<RefCell<Node>>>) -> Option<Rc<RefCell<RenderObject>>> {
         let render_object = Self::dom_to_render_object(&root);
 
@@ -264,10 +321,23 @@ impl RenderTree {
         }
     }
 
-    /// Apply CSS Object Model to RenderTree.
+    /// Applys CSS Object Model to RenderTree.
     fn apply(&mut self, cssom: &StyleSheet) {
         for rule in &cssom.rules {
             self.apply_rule_to_render_object(&self.root, rule);
+        }
+    }
+
+    /// Calculate the layout position.
+    fn layout(&mut self) {
+        match &self.root {
+            Some(root) => {
+                let fake_node = Rc::new(RefCell::new(Node::new(NodeKind::Document)));
+                let fake_style = RenderStyle::new(&fake_node);
+                let fake_position = LayoutPosition::new(0, 0);
+                root.borrow_mut().layout(&fake_style, &fake_position);
+            }
+            None => unimplemented!("root object should exist but None"),
         }
     }
 

@@ -59,8 +59,8 @@ fn main() {
               <style>
                 #id1 {
                   background-color: blue;
-                  height: 200;
-                  width: 200;
+                  height: 50;
+                  width: 50;
                 }
                 #id2 {
                   background-color: red;
