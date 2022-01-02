@@ -11,48 +11,43 @@ use alloc::vec::Vec;
 #[allow(unused_imports)]
 use liumlib::*;
 
-/// https://www.w3.org/TR/css-syntax-3/#component-value
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ComponentValue {
-    /// https://www.w3.org/TR/css-values-3/#keywords
-    Keyword(String),
-    /// https://www.w3.org/TR/css-values-3/#numeric-types
-    Number(u64),
-}
+// e.g.
+// div {
+//   background-color: green;
+//   width: 100;
+// }
+// p {
+//   color: red;
+// }
+//
+// StyleSheet
+// |-- QualifiedRule
+//     |-- Selector
+//         |-- div
+//     |-- Vec<Declaration>
+//         |-- background-color: green
+//         |-- width: 100
+// |-- QualifiedRule
+//     |-- Selector
+//         |-- p
+//     |-- Vec<Declaration>
+//         |-- color: red
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Declaration {
-    pub property: String,
-    pub value: ComponentValue,
+/// https://www.w3.org/TR/cssom-1/#cssstylesheet
+pub struct StyleSheet {
+    /// https://drafts.csswg.org/cssom/#dom-cssstylesheet-cssrules
+    pub rules: Vec<QualifiedRule>,
 }
 
-/// https://www.w3.org/TR/css-syntax-3/#declaration
-impl Declaration {
+impl StyleSheet {
     pub fn new() -> Self {
-        Self {
-            property: String::new(),
-            value: ComponentValue::Keyword(String::new()),
-        }
+        Self { rules: Vec::new() }
     }
 
-    pub fn set_property(&mut self, property: String) {
-        self.property = property;
+    pub fn set_rules(&mut self, rules: Vec<QualifiedRule>) {
+        self.rules = rules;
     }
-
-    pub fn set_value(&mut self, value: ComponentValue) {
-        self.value = value;
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-/// https://www.w3.org/TR/selectors-3/#selectors
-pub enum Selector {
-    /// https://www.w3.org/TR/selectors-3/#type-selectors
-    TypeSelector(String),
-    /// https://www.w3.org/TR/selectors-3/#class-html
-    ClassSelector(String),
-    /// https://www.w3.org/TR/selectors-3/#id-selectors
-    IdSelector(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -86,20 +81,47 @@ impl QualifiedRule {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-/// https://www.w3.org/TR/cssom-1/#cssstylesheet
-pub struct StyleSheet {
-    /// https://drafts.csswg.org/cssom/#dom-cssstylesheet-cssrules
-    pub rules: Vec<QualifiedRule>,
+/// https://www.w3.org/TR/selectors-3/#selectors
+pub enum Selector {
+    /// https://www.w3.org/TR/selectors-3/#type-selectors
+    TypeSelector(String),
+    /// https://www.w3.org/TR/selectors-3/#class-html
+    ClassSelector(String),
+    /// https://www.w3.org/TR/selectors-3/#id-selectors
+    IdSelector(String),
 }
 
-impl StyleSheet {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Declaration {
+    pub property: String,
+    pub value: ComponentValue,
+}
+
+/// https://www.w3.org/TR/css-syntax-3/#declaration
+impl Declaration {
     pub fn new() -> Self {
-        Self { rules: Vec::new() }
+        Self {
+            property: String::new(),
+            value: ComponentValue::Keyword(String::new()),
+        }
     }
 
-    pub fn set_rules(&mut self, rules: Vec<QualifiedRule>) {
-        self.rules = rules;
+    pub fn set_property(&mut self, property: String) {
+        self.property = property;
     }
+
+    pub fn set_value(&mut self, value: ComponentValue) {
+        self.value = value;
+    }
+}
+
+/// https://www.w3.org/TR/css-syntax-3/#component-value
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ComponentValue {
+    /// https://www.w3.org/TR/css-values-3/#keywords
+    Keyword(String),
+    /// https://www.w3.org/TR/css-values-3/#numeric-types
+    Number(u64),
 }
 
 #[derive(Debug, Clone)]

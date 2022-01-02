@@ -14,9 +14,10 @@ use liumlib::*;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
-pub struct Style {
+pub struct RenderStyle {
     background_color: u32,
     color: u32,
+    display: DisplayType,
     text_align: String,
     // TODO: support string (e.g. "auto")
     height: u64,
@@ -29,11 +30,12 @@ pub struct Style {
     border: (String, String, String),
 }
 
-impl Style {
-    pub fn new() -> Self {
+impl RenderStyle {
+    pub fn new(node: &Rc<RefCell<Node>>) -> Self {
         Self {
             background_color: 0xffffff, // white
             color: 0xffffff,            // white
+            display: Self::display_type(node),
             text_align: "left".to_string(),
             width: 0,
             height: 0,
@@ -46,6 +48,22 @@ impl Style {
             ),
         }
     }
+
+    fn display_type(node: &Rc<RefCell<Node>>) -> DisplayType {
+        match &node.borrow().kind {
+            NodeKind::Element(element) => match element.kind {
+                ElementKind::Div | ElementKind::Ul | ElementKind::Li => DisplayType::Block,
+                _ => DisplayType::Inline,
+            },
+            _ => DisplayType::Inline,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum DisplayType {
+    Block,
+    Inline,
 }
 
 #[derive(Debug, Clone)]
@@ -57,7 +75,7 @@ pub struct RenderObject {
     previous_sibling: Option<Weak<RefCell<RenderObject>>>,
     next_sibling: Option<Rc<RefCell<RenderObject>>>,
     // CSS information.
-    pub style: Style,
+    pub style: RenderStyle,
 }
 
 impl RenderObject {
@@ -68,7 +86,7 @@ impl RenderObject {
             last_child: None,
             previous_sibling: None,
             next_sibling: None,
-            style: Style::new(),
+            style: RenderStyle::new(&node),
         }
     }
 
@@ -110,6 +128,45 @@ impl RenderObject {
                 }
                 _ => unimplemented!("css property {} is not supported yet", declaration.property,),
             }
+        }
+    }
+
+    //fn layout(&mut self, parent_style: &RenderStyle) {}
+
+    fn paint(&self, window: &ApplicationWindow) {
+        match &self.kind {
+            NodeKind::Document => {}
+            NodeKind::Element(element) => {
+                match element.kind {
+                    ElementKind::Html
+                    | ElementKind::Head
+                    | ElementKind::Style
+                    | ElementKind::Script
+                    | ElementKind::Body => {}
+                    // TODO: support <a>
+                    ElementKind::Link => {}
+                    // TODO: support raw text
+                    ElementKind::Text => {}
+                    // TODO: support <ul>
+                    ElementKind::Ul => {}
+                    // TODO: support <li>
+                    ElementKind::Li => {}
+                    // TODO: support <div>
+                    ElementKind::Div => {
+                        draw_rect(
+                            &window.buffer,
+                            self.style.background_color,
+                            window.content_x,
+                            window.content_y,
+                            self.style.width as i64,
+                            self.style.height as i64,
+                        )
+                        .expect("draw a div");
+                        window.buffer.flush();
+                    }
+                }
+            }
+            NodeKind::Text(_text) => {}
         }
     }
 }
@@ -214,51 +271,10 @@ impl RenderTree {
         }
     }
 
-    /*
-    fn calculate_start_position(&self, window: &ApplicationWindow, style: &Style) -> (u64, u64) {
-        if style.width < window.width && style.height < window.height {
-
-        }
-    }
-    */
-
     fn paint_node(&self, window: &ApplicationWindow, node: &Option<Rc<RefCell<RenderObject>>>) {
         match node {
             Some(n) => {
-                match &n.borrow().kind {
-                    NodeKind::Document => {}
-                    NodeKind::Element(element) => {
-                        match element.kind {
-                            ElementKind::Html
-                            | ElementKind::Head
-                            | ElementKind::Style
-                            | ElementKind::Script
-                            | ElementKind::Body => {}
-                            // TODO: support <a>
-                            ElementKind::Link => {}
-                            // TODO: support raw text
-                            ElementKind::Text => {}
-                            // TODO: support <ul>
-                            ElementKind::Ul => {}
-                            // TODO: support <li>
-                            ElementKind::Li => {}
-                            // TODO: support <div>
-                            ElementKind::Div => {
-                                draw_rect(
-                                    &window.buffer,
-                                    n.borrow().style.background_color,
-                                    window.content_x,
-                                    window.content_y,
-                                    n.borrow().style.width as i64,
-                                    n.borrow().style.height as i64,
-                                )
-                                .expect("draw a div");
-                                window.buffer.flush();
-                            }
-                        }
-                    }
-                    NodeKind::Text(_text) => {}
-                }
+                n.borrow().paint(window);
 
                 self.paint_node(window, &n.borrow().first_child());
                 self.paint_node(window, &n.borrow().next_sibling());

@@ -18,32 +18,32 @@ use saji::runtime::Runtime;
 use saji::token::Lexer;
 
 pub fn render(html: String, window: &ApplicationWindow) {
-    println!("Input HTML:\n{}", html);
-    println!("----------------------");
+    //println!("Input HTML:\n{}", html);
+    //println!("----------------------");
 
     // html
     let html_tokenizer = HtmlTokenizer::new(html);
     let dom_root = HtmlParser::new(html_tokenizer).construct_tree();
-    println!("DOM:");
+    //println!("DOM:");
     print_dom(&Some(dom_root.clone()), 0);
-    println!("----------------------");
+    //println!("----------------------");
 
     // css
     let style = get_style_content(dom_root.clone());
     let css_tokenizer = CssTokenizer::new(style);
     let cssom = CssParser::new(css_tokenizer).parse_stylesheet();
 
-    println!("CSSOM:\n{:?}", cssom);
-    println!("----------------------");
+    //println!("CSSOM:\n{:?}", cssom);
+    //println!("----------------------");
 
     // js
     let js = get_js_content(dom_root.clone());
     let lexer = Lexer::new(js);
-    println!("JS lexer {:?}", lexer);
+    //println!("JS lexer {:?}", lexer);
 
     let mut parser = Parser::new(lexer);
     let ast = parser.parse_ast();
-    println!("JS ast {:?}", ast);
+    //println!("JS ast {:?}", ast);
 
     let mut runtime = Runtime::new();
     runtime.execute(&ast);
@@ -51,6 +51,7 @@ pub fn render(html: String, window: &ApplicationWindow) {
     // apply css to html and create RenderTree
     let render_tree = RenderTree::new(dom_root, &cssom);
 
+    println!("----------------------");
     println!("Render Tree:");
     print_render_object(&render_tree.root, 0);
     println!("----------------------");
