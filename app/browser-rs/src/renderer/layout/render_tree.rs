@@ -85,7 +85,7 @@ impl RenderObject {
             match declaration.property.as_str() {
                 "background-color" => {
                     self.style.background_color = match declaration.value {
-                        ComponentValue::StringLiteral(value) => match value.as_str() {
+                        ComponentValue::Keyword(value) => match value.as_str() {
                             "red" => 0xff0000,
                             "green" => 0x00ff00,
                             "blue" => 0x0000ff,
@@ -97,14 +97,14 @@ impl RenderObject {
                 "height" => {
                     self.style.height = match declaration.value {
                         // TODO: support string (e.g. "auto")
-                        ComponentValue::StringLiteral(_value) => 0,
+                        ComponentValue::Keyword(_value) => 0,
                         ComponentValue::Number(value) => value,
                     };
                 }
                 "width" => {
                     self.style.width = match declaration.value {
                         // TODO: support string (e.g. "auto")
-                        ComponentValue::StringLiteral(_value) => 0,
+                        ComponentValue::Keyword(_value) => 0,
                         ComponentValue::Number(value) => value,
                     };
                 }
@@ -214,6 +214,14 @@ impl RenderTree {
         }
     }
 
+    /*
+    fn calculate_start_position(&self, window: &ApplicationWindow, style: &Style) -> (u64, u64) {
+        if style.width < window.width && style.height < window.height {
+
+        }
+    }
+    */
+
     fn paint_node(&self, window: &ApplicationWindow, node: &Option<Rc<RefCell<RenderObject>>>) {
         match node {
             Some(n) => {
@@ -243,8 +251,6 @@ impl RenderTree {
                                     window.content_y,
                                     n.borrow().style.width as i64,
                                     n.borrow().style.height as i64,
-                                    //window.content_w,
-                                    //window.content_h,
                                 )
                                 .expect("draw a div");
                                 window.buffer.flush();

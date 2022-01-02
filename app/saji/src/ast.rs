@@ -167,7 +167,6 @@ impl Parser {
             Some(token) => token,
             None => return None,
         };
-        println!("left_hand_side_expression: token {:?}", t);
 
         match t {
             // member expression
@@ -224,7 +223,6 @@ impl Parser {
             Some(token) => token,
             None => return None,
         };
-        println!("expression: token {:?}", t);
 
         match t {
             Token::Punctuator(c) => match c {
@@ -254,7 +252,6 @@ impl Parser {
             Some(token) => token,
             None => return None,
         };
-        println!("identifier: token {:?}", t);
 
         match t {
             Token::Identifier(name) => Node::new_identifier(name),
@@ -268,8 +265,6 @@ impl Parser {
             Some(token) => token,
             None => return None,
         };
-
-        println!("initialiser: token {:?}", t);
 
         match t {
             Token::Punctuator(c) => match c {
@@ -307,8 +302,6 @@ impl Parser {
             None => return None,
         };
 
-        println!("statement: {:?}", t);
-
         let node = match t {
             Token::Keyword(keyword) => {
                 if keyword == "var" {
@@ -342,7 +335,6 @@ impl Parser {
 
     /// FunctionBody ::= "{" ( SourceElements )? "}"
     fn function_body(&mut self) -> Option<Rc<Node>> {
-        println!("function_body");
         // consume '{'
         match self.t.next() {
             Some(t) => match t {
@@ -375,8 +367,6 @@ impl Parser {
 
     /// Arguments ::= "(" ( ArgumentList )? ")"
     fn arguments(&mut self) -> Vec<Option<Rc<Node>>> {
-        println!("arguments");
-
         let mut arguments = Vec::new();
 
         // consume '('
@@ -389,7 +379,6 @@ impl Parser {
         }
 
         loop {
-            println!("args {:?}", self.t.peek());
             // push identifier to `arguments` until hits ')'
             match self.t.peek() {
                 Some(t) => match t {
@@ -404,11 +393,7 @@ impl Parser {
                             assert!(self.t.next().is_some());
                         }
                     }
-                    _ => {
-                        println!("args 1 {:?}", self.t.peek());
-                        arguments.push(self.expression());
-                        println!("args 2 {:?}", arguments);
-                    }
+                    _ => arguments.push(self.expression()),
                 },
                 None => return arguments,
             }
@@ -417,8 +402,6 @@ impl Parser {
 
     /// FormalParameterList ::= Identifier ( "," Identifier )*
     fn parameter_list(&mut self) -> Vec<Option<Rc<Node>>> {
-        println!("parameter list");
-
         let mut params = Vec::new();
 
         // consume '('
@@ -456,7 +439,6 @@ impl Parser {
 
     /// FunctionDeclaration ::= "function" Identifier ( "(" ( FormalParameterList )? ")" ) FunctionBody
     fn function_declaration(&mut self) -> Option<Rc<Node>> {
-        println!("function declaration");
         let id = self.identifier();
         let params = self.parameter_list();
         Node::new_function_declaration(id, params, self.function_body())

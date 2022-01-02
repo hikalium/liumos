@@ -14,7 +14,9 @@ use liumlib::*;
 /// https://www.w3.org/TR/css-syntax-3/#component-value
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ComponentValue {
-    StringLiteral(String),
+    /// https://www.w3.org/TR/css-values-3/#keywords
+    Keyword(String),
+    /// https://www.w3.org/TR/css-values-3/#numeric-types
     Number(u64),
 }
 
@@ -29,7 +31,7 @@ impl Declaration {
     pub fn new() -> Self {
         Self {
             property: String::new(),
-            value: ComponentValue::StringLiteral(String::new()),
+            value: ComponentValue::Keyword(String::new()),
         }
     }
 
@@ -146,12 +148,12 @@ impl CssParser {
             }
             None => match self.t.next() {
                 Some(t) => t,
-                None => return ComponentValue::StringLiteral(String::new()),
+                None => return ComponentValue::Keyword(String::new()),
             },
         };
 
         match token {
-            CssToken::Ident(ident) => ComponentValue::StringLiteral(ident.to_string()),
+            CssToken::Ident(ident) => ComponentValue::Keyword(ident.to_string()),
             CssToken::Number(num) => ComponentValue::Number(num),
             _ => {
                 panic!("Parse error: {:?} is an unexpected token.", token);

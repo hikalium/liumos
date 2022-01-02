@@ -69,7 +69,7 @@ fn main() {
 fn background_color() {
     let mut decl = Declaration::new();
     decl.set_property("background-color".to_string());
-    decl.set_value(ComponentValue::StringLiteral("red".to_string()));
+    decl.set_value(ComponentValue::Keyword("red".to_string()));
 
     let mut decls = Vec::new();
     decls.push(decl);
@@ -94,7 +94,7 @@ fn background_color() {
 fn text_align() {
     let mut decl = Declaration::new();
     decl.set_property("text-align".to_string());
-    decl.set_value(ComponentValue::StringLiteral("center".to_string()));
+    decl.set_value(ComponentValue::Keyword("center".to_string()));
 
     let mut decls = Vec::new();
     decls.push(decl);
@@ -144,7 +144,7 @@ fn width() {
 fn class_selector() {
     let mut decl = Declaration::new();
     decl.set_property("background-color".to_string());
-    decl.set_value(ComponentValue::StringLiteral("red".to_string()));
+    decl.set_value(ComponentValue::Keyword("red".to_string()));
 
     let mut decls = Vec::new();
     decls.push(decl);
@@ -169,7 +169,7 @@ fn class_selector() {
 fn id_selector() {
     let mut decl = Declaration::new();
     decl.set_property("background-color".to_string());
-    decl.set_value(ComponentValue::StringLiteral("red".to_string()));
+    decl.set_value(ComponentValue::Keyword("red".to_string()));
 
     let mut decls = Vec::new();
     decls.push(decl);
@@ -194,7 +194,7 @@ fn id_selector() {
 fn format() {
     let mut decl = Declaration::new();
     decl.set_property("background-color".to_string());
-    decl.set_value(ComponentValue::StringLiteral("red".to_string()));
+    decl.set_value(ComponentValue::Keyword("red".to_string()));
 
     let mut decls = Vec::new();
     decls.push(decl);
@@ -223,11 +223,11 @@ fn format() {
 fn multiple_declarations() {
     let mut decl1 = Declaration::new();
     decl1.set_property("background-color".to_string());
-    decl1.set_value(ComponentValue::StringLiteral("green".to_string()));
+    decl1.set_value(ComponentValue::Keyword("green".to_string()));
 
     let mut decl2 = Declaration::new();
     decl2.set_property("color".to_string());
-    decl2.set_value(ComponentValue::StringLiteral("blue".to_string()));
+    decl2.set_value(ComponentValue::Keyword("blue".to_string()));
 
     let mut decls = Vec::new();
     decls.push(decl1);
@@ -258,7 +258,7 @@ fn multiple_declarations() {
 fn multiple_declarations() {
     let mut decl1 = Declaration::new();
     decl1.set_property("background-color".to_string());
-    decl1.set_value(ComponentValue::StringLiteral("red".to_string()));
+    decl1.set_value(ComponentValue::Keyword("red".to_string()));
 
     let mut decls1 = Vec::new();
     decls1.push(decl1);
@@ -269,7 +269,7 @@ fn multiple_declarations() {
 
     let mut decl2 = Declaration::new();
     decl2.set_property("background-color".to_string());
-    decl2.set_value(ComponentValue::StringLiteral("blue".to_string()));
+    decl2.set_value(ComponentValue::Keyword("blue".to_string()));
 
     let mut decls2 = Vec::new();
     decls2.push(decl2);
