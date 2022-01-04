@@ -171,8 +171,36 @@ impl RenderObject {
                 "margin" => {
                     self.style.margin = match declaration.value {
                         // TODO: support string (e.g. "auto")
-                        ComponentValue::Keyword(_value) => BoxInfo::new(0, 0, 0, 0),
+                        ComponentValue::Keyword(_value) => self.style.margin.clone(),
                         ComponentValue::Number(value) => BoxInfo::new(value, value, value, value),
+                    };
+                }
+                "margin-top" => {
+                    self.style.margin.top = match declaration.value {
+                        // TODO: support string (e.g. "auto")
+                        ComponentValue::Keyword(_value) => self.style.margin.top,
+                        ComponentValue::Number(value) => value,
+                    };
+                }
+                "margin-right" => {
+                    self.style.margin.right = match declaration.value {
+                        // TODO: support string (e.g. "auto")
+                        ComponentValue::Keyword(_value) => self.style.margin.right,
+                        ComponentValue::Number(value) => value,
+                    };
+                }
+                "margin-bottom" => {
+                    self.style.margin.bottom = match declaration.value {
+                        // TODO: support string (e.g. "auto")
+                        ComponentValue::Keyword(_value) => self.style.margin.bottom,
+                        ComponentValue::Number(value) => value,
+                    };
+                }
+                "margin-left" => {
+                    self.style.margin.left = match declaration.value {
+                        // TODO: support string (e.g. "auto")
+                        ComponentValue::Keyword(_value) => self.style.margin.left,
+                        ComponentValue::Number(value) => value,
                     };
                 }
                 _ => unimplemented!("css property {} is not supported yet", declaration.property,),
