@@ -61,6 +61,7 @@ fn main() {
                   background-color: blue;
                   height: 50;
                   width: 50;
+                  margin: 10;
                 }
                 #id2 {
                   background-color: red;

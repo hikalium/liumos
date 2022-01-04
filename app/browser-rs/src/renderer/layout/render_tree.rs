@@ -22,10 +22,8 @@ pub struct RenderStyle {
     // TODO: support string (e.g. "auto")
     height: u64,
     width: u64,
-    // top, right, bottom, left
-    margin: (u64, u64, u64, u64),
-    // top, right, bottom, left
-    padding: (u64, u64, u64, u64),
+    margin: BoxInfo,
+    padding: BoxInfo,
     // witdh, style, color
     border: (String, String, String),
 }
@@ -39,8 +37,8 @@ impl RenderStyle {
             text_align: "left".to_string(),
             width: 0,
             height: 0,
-            margin: (0, 0, 0, 0),
-            padding: (0, 0, 0, 0),
+            margin: BoxInfo::new(0, 0, 0, 0),
+            padding: BoxInfo::new(0, 0, 0, 0),
             border: (
                 "medium".to_string(),
                 "none".to_string(),
@@ -64,6 +62,25 @@ impl RenderStyle {
 enum DisplayType {
     Block,
     Inline,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct BoxInfo {
+    top: u64,
+    right: u64,
+    left: u64,
+    bottom: u64,
+}
+
+impl BoxInfo {
+    fn new(top: u64, right: u64, left: u64, bottom: u64) -> Self {
+        Self {
+            top,
+            right,
+            left,
+            bottom,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -144,8 +161,8 @@ impl RenderObject {
                 "margin" => {
                     self.style.margin = match declaration.value {
                         // TODO: support string (e.g. "auto")
-                        ComponentValue::Keyword(_value) => (0, 0, 0, 0),
-                        ComponentValue::Number(value) => (value, value, value, value),
+                        ComponentValue::Keyword(_value) => BoxInfo::new(0, 0, 0, 0),
+                        ComponentValue::Number(value) => BoxInfo::new(value, value, value, value),
                     };
                 }
                 _ => unimplemented!("css property {} is not supported yet", declaration.property,),
@@ -159,8 +176,8 @@ impl RenderObject {
                 match self.style.display {
                     DisplayType::Block => {
                         // TODO: set position property
-                        self.position.x = 0;
-                        self.position.y = parent_style.height;
+                        self.position.x = self.style.margin.left;
+                        self.position.y = self.style.margin.top + parent_style.height;
                     }
                     DisplayType::Inline => {
                         self.position.x = parent_position.x + parent_style.width;
@@ -171,8 +188,11 @@ impl RenderObject {
             DisplayType::Block => {
                 match self.style.display {
                     DisplayType::Block => {
-                        self.position.x = 0;
-                        self.position.y = parent_style.height;
+                        self.position.x = self.style.margin.left;
+                        self.position.y = parent_position.y
+                            + parent_style.height
+                            + parent_style.margin.bottom
+                            + self.style.margin.top;
                     }
                     DisplayType::Inline => {
                         // TODO: set position property
