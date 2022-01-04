@@ -612,3 +612,48 @@ fn default_page() {
         Some(root)
     );
 }
+
+#[test_case]
+fn div_3_siblings() {
+    // root (Document)
+    // └── html
+    //     └── head
+    //     └── body
+    //         └── div
+    //         └── div
+    //         └── div
+    let root = create_base_dom_tree();
+    let mut body = root
+        .borrow_mut()
+        .first_child()
+        .unwrap()
+        .borrow_mut()
+        .first_child()
+        .unwrap()
+        .borrow_mut()
+        .next_sibling()
+        .unwrap();
+
+    let mut div1 = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+        ElementKind::Div,
+        Vec::new(),
+    )))));
+    add_child_node_to(&mut body, &div1);
+
+    let mut div2 = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+        ElementKind::Div,
+        Vec::new(),
+    )))));
+    add_sibling_node_to(&mut div1, &div2);
+
+    let div3 = Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+        ElementKind::Div,
+        Vec::new(),
+    )))));
+    add_sibling_node_to(&mut div2, &div3);
+
+    run_test!(
+        "<html><head></head><body><div></div><div></div><div></div></body></html>",
+        Some(root)
+    );
+}

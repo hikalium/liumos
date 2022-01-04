@@ -1,3 +1,6 @@
+//! https://www.w3.org/TR/css-box-3/
+//! https://www.w3.org/TR/css-layout-api-1/
+
 use crate::alloc::string::ToString;
 use crate::gui::ApplicationWindow;
 use crate::renderer::css::cssom::*;
@@ -137,8 +140,15 @@ impl RenderObject {
                     self.style.background_color = match declaration.value {
                         ComponentValue::Keyword(value) => match value.as_str() {
                             "red" => 0xff0000,
-                            "green" => 0x00ff00,
+                            "orange" => 0xffa500,
+                            "yellow" => 0xffff00,
+                            "green" => 0x008000,
                             "blue" => 0x0000ff,
+                            "purple" => 0x800080,
+                            "pink" => 0xffc0cb,
+                            "lightgray" => 0xd3d3d3,
+                            "gray" => 0x808080,
+                            "black" => 0x000000,
                             _ => 0xffffff,
                         },
                         _ => 0xffffff,

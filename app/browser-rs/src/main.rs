@@ -58,15 +58,24 @@ fn main() {
             <head>
               <style>
                 #id1 {
-                  background-color: blue;
-                  height: 50;
-                  width: 50;
-                  margin: 10;
+                  background-color: green;
+                  height: 5;
+                  width: 5;
                 }
                 #id2 {
-                  background-color: red;
-                  height: 100;
+                  background-color: orange;
+                  height: 20;
+                  width: 30;
+                }
+                #id3 {
+                  background-color: lightgray;
+                  height: 30;
                   width: 100;
+                }
+                #id4 {
+                  background-color: lightgray;
+                  height: 30;
+                  width: 140;
                 }
               </style>
               <script>
@@ -77,8 +86,10 @@ fn main() {
               </script>
             </head>
             <body>
-              <div id=id1>aaa</div>
-              <div id=id2>bbb</div>
+              <div id=id1></div>
+              <div id=id2></div>
+              <div id=id3></div>
+              <div id=id4></div>
             </body>
             </html>"#;
 

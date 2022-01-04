@@ -235,12 +235,21 @@ impl HtmlParser {
         let node = Rc::new(RefCell::new(self.create_element(tag, attributes)));
 
         if current.borrow().first_child().is_some() {
-            current
-                .borrow()
-                .first_child()
-                .unwrap()
-                .borrow_mut()
-                .next_sibling = Some(node.clone());
+            let mut last_sibiling = current.borrow().first_child();
+            loop {
+                last_sibiling = match last_sibiling {
+                    Some(ref node) => {
+                        if node.borrow().next_sibling().is_some() {
+                            node.borrow().next_sibling()
+                        } else {
+                            break;
+                        }
+                    }
+                    None => unimplemented!("last_sibiling should be Some"),
+                };
+            }
+
+            last_sibiling.unwrap().borrow_mut().next_sibling = Some(node.clone());
             node.borrow_mut().previous_sibling =
                 Some(Rc::downgrade(&current.borrow().first_child().unwrap()));
         } else {
