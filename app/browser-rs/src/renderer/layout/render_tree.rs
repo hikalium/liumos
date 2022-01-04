@@ -141,6 +141,13 @@ impl RenderObject {
                         ComponentValue::Number(value) => value,
                     };
                 }
+                "margin" => {
+                    self.style.margin = match declaration.value {
+                        // TODO: support string (e.g. "auto")
+                        ComponentValue::Keyword(_value) => (0, 0, 0, 0),
+                        ComponentValue::Number(value) => (value, value, value, value),
+                    };
+                }
                 _ => unimplemented!("css property {} is not supported yet", declaration.property,),
             }
         }
@@ -174,17 +181,6 @@ impl RenderObject {
                     }
                 }
             }
-        }
-
-        match self.first_child() {
-            Some(first_child) => first_child.borrow_mut().layout(&self.style, &self.position),
-            None => {}
-        }
-        match self.next_sibling() {
-            Some(next_sibling) => next_sibling
-                .borrow_mut()
-                .layout(&self.style, &self.position),
-            None => {}
         }
     }
 
@@ -328,17 +324,32 @@ impl RenderTree {
         }
     }
 
+    fn layout_node(
+        &self,
+        node: &Option<Rc<RefCell<RenderObject>>>,
+        parent_style: &RenderStyle,
+        parent_position: &LayoutPosition,
+    ) {
+        match node {
+            Some(n) => {
+                n.borrow_mut().layout(parent_style, parent_position);
+
+                let first_child = n.borrow().first_child();
+                self.layout_node(&first_child, &n.borrow().style, &n.borrow().position);
+
+                let next_sibling = n.borrow().next_sibling();
+                self.layout_node(&next_sibling, &n.borrow().style, &n.borrow().position);
+            }
+            None => return,
+        }
+    }
+
     /// Calculate the layout position.
     fn layout(&mut self) {
-        match &self.root {
-            Some(root) => {
-                let fake_node = Rc::new(RefCell::new(Node::new(NodeKind::Document)));
-                let fake_style = RenderStyle::new(&fake_node);
-                let fake_position = LayoutPosition::new(0, 0);
-                root.borrow_mut().layout(&fake_style, &fake_position);
-            }
-            None => unimplemented!("root object should exist but None"),
-        }
+        let fake_node = Rc::new(RefCell::new(Node::new(NodeKind::Document)));
+        let fake_style = RenderStyle::new(&fake_node);
+        let fake_position = LayoutPosition::new(0, 0);
+        self.layout_node(&self.root, &fake_style, &fake_position);
     }
 
     fn paint_node(&self, window: &ApplicationWindow, node: &Option<Rc<RefCell<RenderObject>>>) {
