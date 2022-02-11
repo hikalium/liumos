@@ -2,6 +2,7 @@
 //! RFC 3986 - Uniform Resource Identifier (URI): https://datatracker.ietf.org/doc/html/rfc3986
 
 use alloc::string::String;
+use alloc::string::ToString;
 use alloc::vec::Vec;
 
 #[derive(Debug)]
@@ -43,37 +44,39 @@ impl ParsedUrl {
         url.replacen(&(scheme.to_string() + "://"), "", 1)
     }
 
+    fn extract_host(url: &String) -> String {
+        let splitted_url: Vec<&str> = url.splitn(2, '/').collect();
+        splitted_url[0].to_string()
+    }
+
+    fn extract_path(url: &String) -> String {
+        let splitted_url: Vec<&str> = url.splitn(2, '/').collect();
+        if splitted_url.len() == 2 {
+            splitted_url[1].to_string()
+        } else {
+            // There is no path in URL so set an empty string as a default value.
+            String::from("")
+        }
+    }
+
+    fn extract_port(host: &String) -> u16 {
+        let splitted_host: Vec<&str> = host.splitn(2, ':').collect();
+        if splitted_host.len() == 2 {
+            splitted_host[1].parse::<u16>().unwrap()
+        } else {
+            // There is no port number in URL so set 8888 as a default value.
+            80
+        }
+    }
+
     pub fn new(original_url: String) -> Self {
         let scheme = Self::extract_scheme(&original_url);
         let url = Self::remove_scheme(&original_url, scheme);
 
-        let mut host = String::new();
-        let mut path = String::new();
-        {
-            let v: Vec<&str> = url.splitn(2, '/').collect();
-            if v.len() == 2 {
-                host.push_str(v[0]);
-                path.push_str("/");
-                path.push_str(v[1]);
-            } else if v.len() == 1 {
-                host.push_str(v[0]);
-                path.push_str("/index.html");
-            } else {
-                panic!("invalid url {}", url);
-            }
-        }
+        let host = Self::extract_host(&url);
+        let path = Self::extract_path(&url);
 
-        let port;
-        {
-            let v: Vec<&str> = host.splitn(2, ':').collect();
-            if v.len() == 2 {
-                port = v[1].parse::<u16>().unwrap();
-            } else if v.len() == 1 {
-                port = 8888;
-            } else {
-                panic!("invalid host in url {}", host);
-            }
-        }
+        let port = Self::extract_port(&host);
 
         Self {
             scheme: Protocol::Http,
