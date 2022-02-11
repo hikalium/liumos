@@ -1,25 +1,51 @@
+//! RFC 1738 - Uniform Resource Locators (URL): https://datatracker.ietf.org/doc/html/rfc1738
+//! RFC 3986 - Uniform Resource Identifier (URI): https://datatracker.ietf.org/doc/html/rfc3986
+
 use alloc::string::String;
-use alloc::string::ToString;
 use alloc::vec::Vec;
 
-const SUPPORTED_PROTOCOL: &str = "http://";
+#[derive(Debug)]
+enum Protocol {
+    Http,
+}
+
+impl Protocol {
+    fn to_string(&self) -> String {
+        match self {
+            Protocol::Http => String::from("http"),
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct ParsedUrl {
-    scheme: String,
+    scheme: Protocol,
     pub host: String,
     pub port: u16,
     pub path: String,
 }
 
 impl ParsedUrl {
-    pub fn new(u: String) -> Self {
-        let url;
-        if u.starts_with(SUPPORTED_PROTOCOL) {
-            url = u.split_at(SUPPORTED_PROTOCOL.len()).1.to_string();
+    fn extract_scheme(url: &String) -> Protocol {
+        let splitted_url: Vec<&str> = url.split("://").collect();
+        if splitted_url.len() == 2 && splitted_url[0] == Protocol::Http.to_string() {
+            Protocol::Http
+        } else if splitted_url.len() == 1 {
+            // No scheme. Set "HTTP" as a default behavior.
+            Protocol::Http
         } else {
-            url = u;
+            panic!("unsupported scheme: {}", url);
         }
+    }
+
+    fn remove_scheme(url: &String, scheme: Protocol) -> String {
+        // Remove "scheme://" from url if any.
+        url.replacen(&(scheme.to_string() + "://"), "", 1)
+    }
+
+    pub fn new(original_url: String) -> Self {
+        let scheme = Self::extract_scheme(&original_url);
+        let url = Self::remove_scheme(&original_url, scheme);
 
         let mut host = String::new();
         let mut path = String::new();
@@ -50,10 +76,10 @@ impl ParsedUrl {
         }
 
         Self {
-            scheme: String::from("http"),
-            host: host,
-            port: port,
-            path: path,
+            scheme: Protocol::Http,
+            host,
+            port,
+            path,
         }
     }
 }
