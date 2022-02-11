@@ -2,6 +2,8 @@ use alloc::string::String;
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
+const SUPPORTED_PROTOCOL: &str = "http://";
+
 #[derive(Debug)]
 pub struct ParsedUrl {
     scheme: String,
@@ -13,9 +15,8 @@ pub struct ParsedUrl {
 impl ParsedUrl {
     pub fn new(u: String) -> Self {
         let url;
-        let supported_protocol = "http://";
-        if u.starts_with(supported_protocol) {
-            url = u.split_at(supported_protocol.len()).1.to_string();
+        if u.starts_with(SUPPORTED_PROTOCOL) {
+            url = u.split_at(SUPPORTED_PROTOCOL.len()).1.to_string();
         } else {
             url = u;
         }

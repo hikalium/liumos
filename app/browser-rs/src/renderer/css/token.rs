@@ -11,6 +11,7 @@ use liumlib::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// https://www.w3.org/TR/css-syntax-3/#consume-token
+/// https://www.w3.org/TR/css-syntax-3/#tokenization
 pub enum CssToken {
     /// https://www.w3.org/TR/css-syntax-3/#typedef-hash-token
     HashToken(String),
