@@ -7,9 +7,11 @@
 extern crate alloc;
 
 use crate::alloc::string::ToString;
+use alloc::rc::Rc;
 use alloc::vec::Vec;
+use core::borrow::Borrow;
 use liumlib::*;
-use saji::ast::Parser;
+use saji::ast::{Node, Parser};
 use saji::runtime::{Runtime, RuntimeValue, Variable};
 use saji::token::Lexer;
 
@@ -47,7 +49,9 @@ macro_rules! run_test {
         let mut parser = Parser::new(lexer);
         let ast = parser.parse_ast();
         println!("---------------------------------");
-        println!("ast {:?}", ast);
+        for n in ast.body() {
+            print_ast(&Some(n.clone()), 0);
+        }
         println!("---------------------------------");
 
         let mut runtime = Runtime::new();
@@ -64,6 +68,78 @@ macro_rules! run_test {
         }
         assert!($expected_global_variables[0] == result_global_variables[0]);
     };
+}
+
+fn print_ast(node: &Option<Rc<Node>>, depth: usize) {
+    let n = match node {
+        Some(n) => n,
+        None => return,
+    };
+
+    match n.borrow() {
+        Node::ExpressionStatement(stmt) => {
+            println!("{}ExpressionStatement", "  ".repeat(depth));
+            print_ast(&stmt, depth + 1);
+        }
+        Node::BlockStatement { body } => {
+            println!("{}BlockStatement", "  ".repeat(depth));
+            for node in body {
+                print_ast(&node, depth + 1);
+            }
+        }
+        Node::ReturnStatement { argument } => {
+            println!("{}ReturnStatement", "  ".repeat(depth));
+            print_ast(&argument, depth + 1);
+        }
+        Node::FunctionDeclaration { id, params, body } => {
+            println!("{}FunctionDeclaration", "  ".repeat(depth));
+            print_ast(&id, depth + 1);
+            for param in params {
+                print_ast(&param, depth + 1);
+            }
+            print_ast(&body, depth + 1);
+        }
+        Node::VariableDeclaration { declarations } => {
+            println!("{}VariableDeclaration", "  ".repeat(depth));
+            for decl in declarations {
+                print_ast(&decl, depth + 1);
+            }
+        }
+        Node::VariableDeclarator { id, init } => {
+            println!("{}VariableDeclarator", "  ".repeat(depth));
+            print_ast(&id, depth + 1);
+            print_ast(&init, depth + 1);
+        }
+        Node::BinaryExpression {
+            operator,
+            left,
+            right,
+        } => {
+            print!("{}", "  ".repeat(depth));
+            println!("BinaryExpression: {}", operator);
+            print_ast(&left, depth + 1);
+            print_ast(&right, depth + 1);
+        }
+        Node::CallExpression { callee, arguments } => {
+            println!("{}CallExpression", "  ".repeat(depth));
+            print_ast(&callee, depth + 1);
+            for arg in arguments {
+                print_ast(&arg, depth + 1);
+            }
+        }
+        Node::Identifier(i) => {
+            print!("{}", "  ".repeat(depth));
+            println!("Identifier: {}", i);
+        }
+        Node::NumericLiteral(n) => {
+            print!("{}", "  ".repeat(depth));
+            println!("NumericLiteral: {}", n);
+        }
+        Node::StringLiteral(s) => {
+            print!("{}", "  ".repeat(depth));
+            println!("StringLiteral: {}", s);
+        }
+    }
 }
 
 #[cfg(test)]
