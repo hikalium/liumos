@@ -6,6 +6,9 @@ use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::borrow::Borrow;
+use core::cell::RefCell;
+use hashbrown::hash_map::Entry;
+use hashbrown::HashMap;
 #[allow(unused_imports)]
 use liumlib::*;
 
@@ -24,15 +27,54 @@ impl RuntimeValue {
     }
 }
 
+type VariableMap = HashMap<String, Option<RuntimeValue>>;
+
+/// https://262.ecma-international.org/12.0/#sec-environment-records
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Variable {
-    name: String,
-    value: Option<RuntimeValue>,
+pub struct Environment {
+    variables: VariableMap,
+    outer: Option<Rc<RefCell<Environment>>>,
 }
 
-impl Variable {
-    pub fn new(name: String, value: Option<RuntimeValue>) -> Self {
-        Self { name, value }
+impl Environment {
+    fn new(outer: Option<Rc<RefCell<Environment>>>) -> Self {
+        Self {
+            variables: VariableMap::new(),
+            outer,
+        }
+    }
+
+    pub fn get_variable(&self, name: String) -> Option<RuntimeValue> {
+        match self.variables.get(&name) {
+            Some(val) => val.clone(),
+            None => {
+                if let Some(p) = &self.outer {
+                    p.borrow_mut().get_variable(name)
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
+    fn add_variable(&mut self, name: String, value: Option<RuntimeValue>) {
+        self.variables.insert(name, value);
+    }
+
+    fn assign_variable(&mut self, name: String, value: Option<RuntimeValue>) {
+        let entry = self.variables.entry(name.clone());
+        match entry {
+            Entry::Occupied(_) => {
+                entry.insert(value);
+            }
+            Entry::Vacant(_) => {
+                if let Some(p) = &self.outer {
+                    p.borrow_mut().assign_variable(name, value);
+                } else {
+                    entry.insert(value);
+                }
+            }
+        }
     }
 }
 
@@ -51,22 +93,24 @@ impl Function {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Runtime {
-    pub global_variables: Vec<Variable>,
+    pub global_variables: HashMap<String, Option<RuntimeValue>>,
     pub functions: Vec<Function>,
+    pub env: Rc<RefCell<Environment>>,
 }
 
 impl Runtime {
     pub fn new() -> Self {
         Self {
-            global_variables: Vec::new(),
+            global_variables: HashMap::new(),
             functions: Vec::new(),
+            env: Rc::new(RefCell::new(Environment::new(None))),
         }
     }
 
     fn eval(
         &mut self,
         node: &Option<Rc<Node>>,
-        local_variables: Vec<Variable>,
+        env: Rc<RefCell<Environment>>,
     ) -> Option<RuntimeValue> {
         let node = match node {
             Some(n) => n,
@@ -74,19 +118,19 @@ impl Runtime {
         };
 
         match node.borrow() {
-            Node::ExpressionStatement(expr) => return self.eval(&expr, local_variables.clone()),
+            Node::ExpressionStatement(expr) => return self.eval(&expr, env.clone()),
             Node::BlockStatement { body } => {
                 let mut result: Option<RuntimeValue> = None;
                 for stmt in body {
-                    result = self.eval(&stmt, local_variables.clone());
+                    result = self.eval(&stmt, env.clone());
                 }
                 result
             }
             Node::ReturnStatement { argument } => {
-                return self.eval(&argument, local_variables.clone())
+                return self.eval(&argument, env.clone());
             }
             Node::FunctionDeclaration { id, params, body } => {
-                let id = match self.eval(&id, local_variables.clone()) {
+                let id = match self.eval(&id, env.clone()) {
                     Some(value) => match value {
                         RuntimeValue::Number(n) => {
                             unimplemented!("id should be string but got {:?}", n)
@@ -105,22 +149,18 @@ impl Runtime {
             }
             Node::VariableDeclaration { declarations } => {
                 for declaration in declarations {
-                    self.eval(&declaration, local_variables.clone());
+                    self.eval(&declaration, env.clone());
                 }
                 None
             }
             Node::VariableDeclarator { id, init } => {
-                let id = match self.eval(&id, local_variables.clone()) {
-                    Some(value) => match value {
-                        RuntimeValue::Number(n) => {
-                            unimplemented!("id should be string but got {:?}", n)
-                        }
-                        RuntimeValue::StringLiteral(s) => s,
-                    },
-                    None => return None,
-                };
-                let init = self.eval(&init, local_variables.clone());
-                self.global_variables.push(Variable::new(id, init));
+                if let Some(node) = id {
+                    if let Node::Identifier(id) = node.borrow() {
+                        let init = self.eval(&init, env.clone());
+                        env.borrow_mut().add_variable(id.to_string(), init);
+                        //self.global_variables.insert(id.to_string(), init);
+                    }
+                }
                 None
             }
             Node::BinaryExpression {
@@ -128,11 +168,11 @@ impl Runtime {
                 left,
                 right,
             } => {
-                let left_value = match self.eval(&left, local_variables.clone()) {
+                let left_value = match self.eval(&left, env.clone()) {
                     Some(value) => value,
                     None => return None,
                 };
-                let right_value = match self.eval(&right, local_variables.clone()) {
+                let right_value = match self.eval(&right, env.clone()) {
                     Some(value) => value,
                     None => return None,
                 };
@@ -152,12 +192,13 @@ impl Runtime {
                 }
             }
             Node::CallExpression { callee, arguments } => {
-                let callee_value = match self.eval(&callee, local_variables.clone()) {
+                let env = Rc::new(RefCell::new(Environment::new(Some(env))));
+                let callee_value = match self.eval(&callee, env.clone()) {
                     Some(value) => value,
                     None => return None,
                 };
 
-                let mut new_local_variables: Vec<Variable> = Vec::new();
+                let mut new_local_variables: VariableMap = VariableMap::new();
 
                 // find a function
                 let function = {
@@ -177,7 +218,7 @@ impl Runtime {
                 // assign arguments to params as local variables
                 assert!(arguments.len() == function.params.len());
                 for i in 0..arguments.len() {
-                    let name = match self.eval(&function.params[i], local_variables.clone()) {
+                    let name = match self.eval(&function.params[i], env.clone()) {
                         Some(value) => match value {
                             RuntimeValue::Number(n) => {
                                 unimplemented!("id should be string but got {:?}", n)
@@ -187,33 +228,24 @@ impl Runtime {
                         None => return None,
                     };
 
-                    new_local_variables.push(Variable::new(
-                        name,
-                        self.eval(&arguments[i], local_variables.clone()),
-                    ));
+                    new_local_variables.insert(name, self.eval(&arguments[i], env.clone()));
                 }
-                new_local_variables.extend(local_variables.clone());
 
                 // call function with arguments
-                self.eval(&function.body.clone(), new_local_variables)
+                self.eval(&function.body.clone(), env.clone())
             }
             Node::Identifier(name) => {
-                // Find a value from local varialbes.
-                for var in &local_variables {
-                    if name == &var.name && var.value.is_some() {
-                        return var.value.clone();
-                    }
+                match env.borrow_mut().get_variable(name.to_string()) {
+                    Some(v) => Some(v),
+                    // First time to evaluate this identifier.
+                    None => Some(RuntimeValue::StringLiteral(name.to_string())),
                 }
-
-                // Find a value from global varialbes.
-                for var in &self.global_variables {
-                    if name == &var.name && var.value.is_some() {
-                        return var.value.clone();
-                    }
-                }
-
-                // First time to evaluate this identifier.
-                Some(RuntimeValue::StringLiteral(name.to_string()))
+                // Find a value from global variables.
+                //for (var_name, var_value) in &self.global_variables {
+                //if name == var_name && var_value.is_some() {
+                //return var_value.clone();
+                //}
+                //}
             }
             Node::NumericLiteral(value) => Some(RuntimeValue::Number(*value)),
             Node::StringLiteral(value) => Some(RuntimeValue::StringLiteral(value.to_string())),
@@ -222,7 +254,7 @@ impl Runtime {
 
     pub fn execute(&mut self, program: &Program) {
         for node in program.body() {
-            self.eval(&Some(node.clone()), Vec::new());
+            self.eval(&Some(node.clone()), self.env.clone());
         }
     }
 }

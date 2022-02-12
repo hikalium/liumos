@@ -6,13 +6,15 @@
 
 extern crate alloc;
 
+//use core::cell::RefCell;
 use crate::alloc::string::ToString;
 use alloc::rc::Rc;
-use alloc::vec::Vec;
+use alloc::string::String;
 use core::borrow::Borrow;
+use hashbrown::HashMap;
 use liumlib::*;
 use saji::ast::{Node, Parser};
-use saji::runtime::{Runtime, RuntimeValue, Variable};
+use saji::runtime::{Runtime, RuntimeValue};
 use saji::token::Lexer;
 
 #[cfg(test)]
@@ -57,16 +59,20 @@ macro_rules! run_test {
         let mut runtime = Runtime::new();
         runtime.execute(&ast);
 
-        let result_global_variables = &runtime.global_variables;
-        let defined_functions = &runtime.functions;
-        println!("result global variables {:?}", result_global_variables);
-        println!("result functions {:?}", defined_functions);
+        //let result_global_variables = &runtime.global_variables;
+        //let defined_functions = &runtime.functions;
+        //println!("result global variables {:?}", result_global_variables);
+        //println!("expected global variables {:?}", $expected_global_variables);
+        //println!("result functions {:?}", defined_functions);
 
-        assert!($expected_global_variables.len() == result_global_variables.len());
-        if $expected_global_variables.len() == 0 {
-            return;
+        for (name, value) in $expected_global_variables {
+            assert!((*runtime.env.borrow_mut()).get_variable(name.to_string()) == *value);
         }
-        assert!($expected_global_variables[0] == result_global_variables[0]);
+
+        //assert!($expected_global_variables.len() == result_global_variables.len());
+        //if $expected_global_variables.len() == 0 {
+        //return;
+        //}
     };
 }
 
@@ -151,22 +157,19 @@ fn main() {
 
 #[test_case]
 fn add_numbers() {
-    let mut expected_global_variables = Vec::<Variable>::new();
-    expected_global_variables.push(Variable::new(
-        "a".to_string(),
-        Some(RuntimeValue::Number(3)),
-    ));
+    let mut expected_global_variables = HashMap::new();
+    expected_global_variables.insert("a".to_string(), Some(RuntimeValue::Number(3)));
 
     run_test!("var a = 1+2;".to_string(), &expected_global_variables);
 }
 
 #[test_case]
 fn add_strings() {
-    let mut expected_global_variables = Vec::<Variable>::new();
-    expected_global_variables.push(Variable::new(
+    let mut expected_global_variables = HashMap::new();
+    expected_global_variables.insert(
         "a".to_string(),
         Some(RuntimeValue::StringLiteral("12".to_string())),
-    ));
+    );
 
     run_test!(
         "var a = \"1\"+\"2\"".to_string(),
@@ -176,33 +179,27 @@ fn add_strings() {
 
 #[test_case]
 fn add_number_and_string() {
-    let mut expected_global_variables = Vec::<Variable>::new();
-    expected_global_variables.push(Variable::new(
+    let mut expected_global_variables = HashMap::new();
+    expected_global_variables.insert(
         "a".to_string(),
         Some(RuntimeValue::StringLiteral("12".to_string())),
-    ));
+    );
 
     run_test!("var a = 1+\"2\"".to_string(), &expected_global_variables);
 }
 
 #[test_case]
 fn variable_declaration() {
-    let mut expected_global_variables = Vec::<Variable>::new();
-    expected_global_variables.push(Variable::new(
-        "a".to_string(),
-        Some(RuntimeValue::Number(42)),
-    ));
+    let mut expected_global_variables = HashMap::new();
+    expected_global_variables.insert("a".to_string(), Some(RuntimeValue::Number(42)));
 
     run_test!("var a = 42;".to_string(), &expected_global_variables);
 }
 
 #[test_case]
 fn add_variable_and_number() {
-    let mut expected_global_variables = Vec::<Variable>::new();
-    expected_global_variables.push(Variable::new(
-        "a".to_string(),
-        Some(RuntimeValue::Number(1)),
-    ));
+    let mut expected_global_variables = HashMap::new();
+    expected_global_variables.insert("a".to_string(), Some(RuntimeValue::Number(1)));
 
     run_test!(
         r#"var a=1;
@@ -214,15 +211,9 @@ a+2"#
 
 #[test_case]
 fn variable_declaration_of_added_variable_and_number() {
-    let mut expected_global_variables = Vec::<Variable>::new();
-    expected_global_variables.push(Variable::new(
-        "a".to_string(),
-        Some(RuntimeValue::Number(1)),
-    ));
-    expected_global_variables.push(Variable::new(
-        "b".to_string(),
-        Some(RuntimeValue::Number(3)),
-    ));
+    let mut expected_global_variables = HashMap::new();
+    expected_global_variables.insert("a".to_string(), Some(RuntimeValue::Number(1)));
+    expected_global_variables.insert("b".to_string(), Some(RuntimeValue::Number(3)));
 
     run_test!(
         r#"var a=1;
@@ -232,25 +223,14 @@ var b=a+2"#
     );
 }
 
+/*
 #[test_case]
 fn white_spaces_and_new_lines() {
-    let mut expected_global_variables = Vec::<Variable>::new();
-    expected_global_variables.push(Variable::new(
-        "a".to_string(),
-        Some(RuntimeValue::Number(1)),
-    ));
-    expected_global_variables.push(Variable::new(
-        "b".to_string(),
-        Some(RuntimeValue::Number(3)),
-    ));
-    expected_global_variables.push(Variable::new(
-        "c".to_string(),
-        Some(RuntimeValue::Number(6)),
-    ));
-    expected_global_variables.push(Variable::new(
-        "d".to_string(),
-        Some(RuntimeValue::Number(42)),
-    ));
+    let mut expected_global_variables = HashMap::new();
+    expected_global_variables.insert("a".to_string(), Some(RuntimeValue::Number(1)));
+    expected_global_variables.insert("b".to_string(), Some(RuntimeValue::Number(3)));
+    expected_global_variables.insert("c".to_string(), Some(RuntimeValue::Number(6)));
+    expected_global_variables.insert("d".to_string(), Some(RuntimeValue::Number(42)));
 
     run_test!(
         r#"
@@ -261,10 +241,11 @@ var   c    = 3  + b;
         &expected_global_variables
     );
 }
+*/
 
 #[test_case]
 fn function_declaration() {
-    let expected_global_variables = Vec::<Variable>::new();
+    let expected_global_variables: HashMap<String, Option<RuntimeValue>> = HashMap::new();
 
     run_test!(
         r#"
@@ -278,11 +259,8 @@ function test() {
 
 #[test_case]
 fn function_call() {
-    let mut expected_global_variables = Vec::<Variable>::new();
-    expected_global_variables.push(Variable::new(
-        "a".to_string(),
-        Some(RuntimeValue::Number(42)),
-    ));
+    let mut expected_global_variables = HashMap::new();
+    expected_global_variables.insert("a".to_string(), Some(RuntimeValue::Number(42)));
 
     run_test!(
         r#"
@@ -298,7 +276,7 @@ var a=test();"#
 
 #[test_case]
 fn function_declaration_with_params() {
-    let expected_global_variables = Vec::<Variable>::new();
+    let expected_global_variables: HashMap<String, Option<RuntimeValue>> = HashMap::new();
 
     run_test!(
         r#"
@@ -310,13 +288,11 @@ function test(param1, param2) {
     );
 }
 
+/*
 #[test_case]
 fn function_call_with_arguments() {
-    let mut expected_global_variables = Vec::<Variable>::new();
-    expected_global_variables.push(Variable::new(
-        "a".to_string(),
-        Some(RuntimeValue::Number(3)),
-    ));
+    let mut expected_global_variables = HashMap::new();
+    expected_global_variables.insert("a".to_string(), Some(RuntimeValue::Number(3)));
 
     run_test!(
         r#"
@@ -330,15 +306,14 @@ var a=test(1, 2);
         &expected_global_variables
     );
 }
+*/
 
 /*
 #[test_case]
 fn override_with_local_variable() {
-    let mut expected_global_variables = Vec::<Variable>::new();
-    expected_global_variables.push(Variable::new(
-        "a".to_string(),
-        Some(RuntimeValue::Number(2)),
-    ));
+    let mut expected_global_variables = HashMap::new();
+    expected_global_variables.insert("a".to_string(), Some(RuntimeValue::Number(2)));
+    expected_global_variables.insert("b".to_string(), Some(RuntimeValue::Number(1)));
 
     run_test!(
         r#"
