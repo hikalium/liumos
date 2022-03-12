@@ -29,7 +29,7 @@ QEMU_ARGS_COMMON=\
 		-drive format=raw,file=fat:rw:mnt \
 		-rtc base=localtime \
 		-device isa-debug-exit,iobase=0xf4,iosize=0x01 \
-		-monitor telnet:0.0.0.0:$(PORT_MONITOR),server,nowait \
+		-monitor telnet:0.0.0.0:$(PORT_MONITOR),server,nowait
 
 QEMU_ARGS+=$(QEMU_ARGS_COMMON)
 
