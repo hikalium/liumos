@@ -39,10 +39,8 @@ pub enum State {
     SelfClosingStartTag,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HtmlToken {
-    Doctype,
     StartTag {
         tag: String,
         self_closing: bool,

@@ -1,4 +1,4 @@
-LLVM_PREFIX=`brew --prefix llvm@8`
+LLVM_PREFIX=`brew --prefix llvm`
 echo "LLVM_CC:=${LLVM_PREFIX}/bin/clang"
 echo "LLVM_CXX:=${LLVM_PREFIX}/bin/clang++"
 echo "HOST_CC:=clang"

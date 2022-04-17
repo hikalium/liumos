@@ -1,7 +1,6 @@
 use alloc::string::String;
 use liumlib::gui::*;
 
-#[derive(Debug, Clone)]
 pub struct ApplicationWindow {
     width: u64,
     height: u64,

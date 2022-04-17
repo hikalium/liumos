@@ -359,10 +359,6 @@ impl HtmlParser {
                 // https://html.spec.whatwg.org/multipage/parsing.html#the-before-html-insertion-mode
                 InsertionMode::BeforeHtml => {
                     match token {
-                        Some(HtmlToken::Doctype) => {
-                            token = self.t.next();
-                            continue;
-                        }
                         Some(HtmlToken::Char(c)) => {
                             if c == ' ' || c == '\n' {
                                 token = self.t.next();
@@ -488,7 +484,6 @@ impl HtmlParser {
                         Some(HtmlToken::Eof) | None => {
                             return self.root.clone();
                         }
-                        _ => {}
                     }
                     self.mode = InsertionMode::AfterHead;
                     self.pop_until(ElementKind::Head);
@@ -598,7 +593,6 @@ impl HtmlParser {
                         Some(HtmlToken::Eof) | None => {
                             return self.root.clone();
                         }
-                        _ => {}
                     }
                 } // end of InsertionMode::InBody
 
