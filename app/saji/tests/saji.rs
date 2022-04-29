@@ -13,42 +13,17 @@ use alloc::string::String;
 use core::borrow::Borrow;
 use hashbrown::HashMap;
 use liumlib::*;
-use saji::ast::{Node, Parser};
-use saji::runtime::{Runtime, RuntimeValue};
-use saji::token::Lexer;
-
-#[cfg(test)]
-pub trait Testable {
-    fn run(&self) -> ();
-}
-
-#[cfg(test)]
-impl<T> Testable for T
-where
-    T: Fn(),
-{
-    fn run(&self) {
-        print!("{} ...\t", core::any::type_name::<T>());
-        self();
-        println!("[ok]");
-    }
-}
-
-#[cfg(test)]
-pub fn test_runner(tests: &[&dyn Testable]) {
-    println!("Running {} tests in saji.rs", tests.len());
-    for test in tests {
-        test.run();
-    }
-}
+use saji::ast::{JsParser, Node};
+use saji::runtime::{JsRuntime, RuntimeValue};
+use saji::token::JsLexer;
 
 #[macro_export]
 macro_rules! run_test {
     ($input:expr, $expected_global_variables:expr) => {
-        let lexer = Lexer::new($input);
+        let lexer = JsLexer::new($input);
         println!("lexer {:?}", lexer);
 
-        let mut parser = Parser::new(lexer);
+        let mut parser = JsParser::new(lexer);
         let ast = parser.parse_ast();
         println!("---------------------------------");
         for n in ast.body() {
@@ -56,7 +31,7 @@ macro_rules! run_test {
         }
         println!("---------------------------------");
 
-        let mut runtime = Runtime::new();
+        let mut runtime = JsRuntime::new();
         runtime.execute(&ast);
 
         //let result_global_variables = &runtime.global_variables;
