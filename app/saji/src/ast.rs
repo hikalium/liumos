@@ -2,7 +2,7 @@
 //! https://astexplorer.net/
 
 use crate::alloc::string::ToString;
-use crate::token::{Lexer, Token};
+use crate::token::{JsLexer, Token};
 use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -137,13 +137,13 @@ impl Node {
     }
 }
 
-pub struct Parser {
-    t: Lexer,
+pub struct JsParser {
+    t: JsLexer,
 }
 
 #[allow(dead_code)]
-impl Parser {
-    pub fn new(t: Lexer) -> Self {
+impl JsParser {
+    pub fn new(t: JsLexer) -> Self {
         Self { t }
     }
 

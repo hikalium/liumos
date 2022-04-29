@@ -1,6 +1,5 @@
 pub mod css;
 pub mod html;
-pub mod js;
 pub mod layout;
 
 use crate::gui::ApplicationWindow;
@@ -13,9 +12,9 @@ use alloc::rc::Rc;
 use alloc::string::String;
 use core::cell::RefCell;
 use liumlib::*;
-use saji::ast::Parser;
-use saji::runtime::Runtime;
-use saji::token::Lexer;
+use saji::ast::JsParser;
+use saji::runtime::JsRuntime;
+use saji::token::JsLexer;
 
 pub fn render(html: String, window: &ApplicationWindow) {
     //println!("Input HTML:\n{}", html);
@@ -38,14 +37,14 @@ pub fn render(html: String, window: &ApplicationWindow) {
 
     // js
     let js = get_js_content(dom_root.clone());
-    let lexer = Lexer::new(js);
+    let lexer = JsLexer::new(js);
     //println!("JS lexer {:?}", lexer);
 
-    let mut parser = Parser::new(lexer);
+    let mut parser = JsParser::new(lexer);
     let ast = parser.parse_ast();
     //println!("JS ast {:?}", ast);
 
-    let mut runtime = Runtime::new();
+    let mut runtime = JsRuntime::new();
     runtime.execute(&ast);
 
     // apply css to html and create RenderTree

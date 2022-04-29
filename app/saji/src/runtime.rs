@@ -7,7 +7,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::borrow::Borrow;
 use core::cell::RefCell;
-use hashbrown::hash_map::Entry;
+//use hashbrown::hash_map::Entry;
 use hashbrown::HashMap;
 #[allow(unused_imports)]
 use liumlib::*;
@@ -61,6 +61,7 @@ impl Environment {
         self.variables.insert(name, value);
     }
 
+    /*
     fn assign_variable(&mut self, name: String, value: Option<RuntimeValue>) {
         let entry = self.variables.entry(name.clone());
         match entry {
@@ -76,6 +77,7 @@ impl Environment {
             }
         }
     }
+    */
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -92,13 +94,13 @@ impl Function {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Runtime {
+pub struct JsRuntime {
     pub global_variables: HashMap<String, Option<RuntimeValue>>,
     pub functions: Vec<Function>,
     pub env: Rc<RefCell<Environment>>,
 }
 
-impl Runtime {
+impl JsRuntime {
     pub fn new() -> Self {
         Self {
             global_variables: HashMap::new(),

@@ -9,9 +9,9 @@ mod token;
 extern crate alloc;
 
 use crate::alloc::string::ToString;
-use crate::ast::Parser;
-use crate::runtime::Runtime;
-use crate::token::Lexer;
+use crate::ast::JsParser;
+use crate::runtime::JsRuntime;
+use crate::token::JsLexer;
 use liumlib::*;
 
 entry_point!(main);
@@ -22,13 +22,13 @@ fn main() {
         exit(0);
     }
 
-    let lexer = Lexer::new(args[1].to_string());
+    let lexer = JsLexer::new(args[1].to_string());
     println!("lexer {:?}", lexer);
 
-    let mut parser = Parser::new(lexer);
+    let mut parser = JsParser::new(lexer);
     let ast = parser.parse_ast();
     println!("ast {:?}", ast);
 
-    let mut runtime = Runtime::new();
+    let mut runtime = JsRuntime::new();
     runtime.execute(&ast);
 }

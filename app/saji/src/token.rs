@@ -24,13 +24,13 @@ pub enum Token {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Lexer {
+pub struct JsLexer {
     pos: usize,
     input: Vec<char>,
 }
 
 #[allow(dead_code)]
-impl Lexer {
+impl JsLexer {
     pub fn new(js: String) -> Self {
         Self {
             pos: 0,
@@ -175,7 +175,7 @@ impl Lexer {
     }
 }
 
-impl Iterator for Lexer {
+impl Iterator for JsLexer {
     type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
